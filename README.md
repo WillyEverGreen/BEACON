@@ -1,7 +1,7 @@
 <div align="center">
-  <img src="logo.png" alt="BEACON Logo" width="200" style="border-radius: 50%;">
-  <h1>BEACON</h1>
-  <p><b>Accessibility Intelligence Engine & Automated Remediation Platform</b></p>
+  <img src="beacon.png" alt="BEACON Logo" width="200" style="border-radius: 50%;">
+  <h1>BEACON (Intelligence Engine)</h1>
+  <p><b>The internal Accessibility RAG Engine powering the BEACON automated remediation platform.</b></p>
 </div>
 
 <br/>
