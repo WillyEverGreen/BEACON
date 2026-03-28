@@ -1,0 +1,14 @@
+{
+  "name": "Missing Skip Navigation Link",
+  "issue": {
+    "rule_id": "bypass",
+    "severity": "serious",
+    "wcag_criterion": "2.4.1",
+    "element": "<body>",
+    "html_snippet": "<body><nav>...</nav><main>...</main></body>",
+    "description": "Page has no skip navigation link. Keyboard users must tab through the entire navigation on every page load before reaching the main content."
+  },
+  "expected_patterns": ["skip", "main", "#main", "href"],
+  "must_not_include": [],
+  "must_have_wcag": ["2.4.1"]
+}

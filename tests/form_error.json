@@ -1,0 +1,14 @@
+{
+  "name": "Form Error Not Announced",
+  "issue": {
+    "rule_id": "aria-input-field-name",
+    "severity": "serious",
+    "wcag_criterion": "3.3.1",
+    "element": "<input type=\"email\">",
+    "html_snippet": "<form><input type=\"email\" id=\"email\"><span class=\"error\" style=\"color:red\">Invalid email</span></form>",
+    "description": "Form validation error message is displayed visually but not announced to screen reader users. The error is not programmatically associated with the input."
+  },
+  "expected_patterns": ["aria-describedby", "aria-live", "aria-invalid", "role=\"alert\""],
+  "must_not_include": [],
+  "must_have_wcag": ["3.3.1"]
+}

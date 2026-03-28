@@ -1,0 +1,223 @@
+"""
+Pydantic request/response models for the Accessibility Intelligence Engine.
+Extended schemas for multi-engine auditing, RAG remediation, and feedback.
+"""
+from pydantic import BaseModel, Field
+from typing import Optional
+from enum import Enum
+
+
+# ── Enums ───────────────────────────────────────────────────────
+
+class ScanMode(str, Enum):
+    FAST = "fast"
+    DEEP = "deep"
+
+
+class Severity(str, Enum):
+    CRITICAL = "critical"
+    SERIOUS = "serious"
+    MODERATE = "moderate"
+    MINOR = "minor"
+
+
+class IssueType(str, Enum):
+    VIOLATION = "violation"
+    NEEDS_REVIEW = "needs-review"
+    BEST_PRACTICE = "best-practice"
+
+
+class FixEffort(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class FeedbackState(str, Enum):
+    ACCEPTED = "accepted"
+    EDITED = "edited"
+    REJECTED = "rejected"
+    IGNORED = "ignored"
+
+
+# ── Request Models ──────────────────────────────────────────────
+
+class RAGRequest(BaseModel):
+    query: str = Field(..., min_length=3, description="Accessibility question or issue description")
+    filters: Optional[dict] = Field(
+        default=None,
+        description="Optional filters: {topic: str, level: str, chunk_type: str}",
+        json_schema_extra={"example": {"topic": "contrast", "level": "AA"}}
+    )
+
+
+class AuditRequest(BaseModel):
+    url: str = Field(..., description="URL to audit for accessibility")
+    scan_mode: ScanMode = Field(
+        default=ScanMode.FAST,
+        description="Scan mode: 'fast' (static+axe, ≤15s) or 'deep' (full Playwright, ≤120s)"
+    )
+    checks: Optional[list[str]] = Field(
+        default=None,
+        description="Specific checks to run: contrast, aria, headings, forms, etc."
+    )
+
+
+class FeedbackRequest(BaseModel):
+    issue_id: str = Field(..., description="ID of the issue this feedback is for")
+    state: FeedbackState = Field(..., description="Developer response to the fix")
+    edited_fix: Optional[str] = Field(default=None, description="If edited, the modified fix")
+    comment: Optional[str] = Field(default=None, description="Optional developer comment")
+
+
+# ── Core Issue & Remediation Schemas ────────────────────────────
+
+class WCAGReference(BaseModel):
+    criterion_id: str = Field(..., description="e.g. '1.4.3'")
+    name: str = Field(..., description="e.g. 'Contrast Minimum'")
+    level: str = Field(..., description="A, AA, or AAA")
+    description: str = Field(default="", description="Brief description of the criterion")
+
+
+class PracticalAsset(BaseModel):
+    asset_type: str = Field(..., description="template | aria-pattern | script | reference")
+    name: str = Field(..., description="Filename or asset name")
+    content: str = Field(..., description="The actual code/content snippet")
+
+
+class RetrievedSource(BaseModel):
+    content: str
+    source: str
+    chunk_type: str
+    relevance_score: float
+
+
+class AuditIssue(BaseModel):
+    """Extended issue schema with full metadata for multi-engine auditing."""
+    # ── Identity ──
+    issue_id: str = Field(default="", description="Unique hash: SHA256(url + selector + rule_id)")
+    rule_id: str = Field(default="", description="e.g. 'color-contrast', 'image-alt'")
+    issue_type: str = Field(default="violation", description="violation | needs-review | best-practice")
+
+    # ── Location ──
+    element: str = Field(default="", description="CSS selector or XPath")
+    html_snippet: str = Field(default="", description="Offending HTML fragment (≤500 chars)")
+    page_url: str = Field(default="", description="Full URL where found")
+
+    # ── Classification ──
+    severity: str = Field(default="moderate", description="critical | serious | moderate | minor")
+    wcag_criterion: str = Field(default="", description="e.g. '1.4.3'")
+    wcag_level: str = Field(default="", description="A | AA | AAA")
+    category: str = Field(default="", description="html | keyboard | forms | color | images | aria | media | cognitive")
+
+    # ── Confidence ──
+    confidence: float = Field(default=1.0, description="0.0 – 1.0")
+    confidence_sources: list[str] = Field(default_factory=list, description="e.g. ['axe-core', 'heuristic']")
+    needs_manual_review: bool = Field(default=False, description="True if confidence < 0.6")
+
+    # ── Remediation ──
+    description: str = Field(default="")
+    suggested_fix: str = Field(default="")
+    code_fix: str = Field(default="", description="Ready-to-paste code snippet")
+    fix_effort: str = Field(default="medium", description="low | medium | high")
+
+    # ── Grouping ──
+    group_id: str = Field(default="", description="Groups related issues")
+    domain: str = Field(default="", description="navigation | forms | content | media | structure | cognitive")
+
+    # ── Evidence ──
+    evidence: dict = Field(default_factory=dict, description="Screenshots, computed styles, ARIA tree")
+    reproducibility: str = Field(default="", description="Steps to reproduce")
+
+
+class IssuePacket(BaseModel):
+    """Input to the RAG remediation pipeline."""
+    issue_id: str
+    rule_id: str
+    wcag_criterion: str
+    element: str
+    html_snippet: str
+    description: str
+    severity: str
+    confidence: float
+
+
+class RemediationPacket(BaseModel):
+    """Output from the RAG remediation pipeline."""
+    issue_id: str
+    explanation: str = Field(default="", description="Why this is an issue")
+    wcag_references: list[WCAGReference] = Field(default_factory=list)
+    code_fix: str = Field(default="", description="Ready-to-use fix")
+    practical_assets: list[PracticalAsset] = Field(default_factory=list)
+    validation_hint: str = Field(default="", description="How to verify the fix")
+    confidence: float = Field(default=0.0, description="RAG's confidence in this remediation")
+    needs_manual_review: bool = Field(default=False)
+    sources: list[RetrievedSource] = Field(default_factory=list)
+
+
+# ── Response Models ─────────────────────────────────────────────
+
+class IssueGroup(BaseModel):
+    """A group of related issues by domain and rule family."""
+    group_id: str
+    domain: str
+    rule_family: str = ""
+    issues: list[AuditIssue] = Field(default_factory=list)
+    count: int = 0
+    worst_severity: str = "minor"
+
+
+class CognitiveScore(BaseModel):
+    """Cognitive/UX analysis scores."""
+    readability_grade: float = Field(default=0.0, description="Flesch-Kincaid grade level")
+    readability_ease: float = Field(default=0.0, description="Flesch reading ease (0-100)")
+    gunning_fog: float = Field(default=0.0, description="Gunning Fog index")
+    jargon_density: float = Field(default=0.0, description="Technical jargon percentage")
+    nav_complexity: str = Field(default="low", description="low | medium | high")
+    form_usability: str = Field(default="good", description="good | fair | poor")
+    overall_cognitive_score: float = Field(default=100.0, description="0-100 cognitive accessibility score")
+    issues: list[AuditIssue] = Field(default_factory=list)
+
+
+class RAGResponse(BaseModel):
+    explanation: str = Field(..., description="Why this is an issue and what it means")
+    wcag_references: list[WCAGReference] = Field(default_factory=list)
+    code_fix: str = Field(default="", description="Ready-to-use code snippet fix")
+    practical_assets: list[PracticalAsset] = Field(default_factory=list)
+    validation_hint: str = Field(default="")
+    sources: list[RetrievedSource] = Field(default_factory=list)
+
+
+class AuditResponse(BaseModel):
+    """Full audit response with enriched metadata."""
+    url: str
+    scan_mode: str = "fast"
+    total_issues: int
+    issues: list[AuditIssue]
+    groups: list[IssueGroup] = Field(default_factory=list)
+    score: float = Field(default=0.0, description="Accessibility score 0-100")
+    cognitive_scores: Optional[CognitiveScore] = None
+    summary: str = ""
+    markdown_report: str = Field(default="", description="Full markdown report")
+    scan_time_seconds: float = Field(default=0.0)
+    engines_used: list[str] = Field(default_factory=list)
+    quality_gates: dict = Field(default_factory=dict)
+
+
+class FeedbackResponse(BaseModel):
+    status: str = "recorded"
+    issue_id: str = ""
+    message: str = ""
+
+
+class HealthResponse(BaseModel):
+    status: str
+    vector_store: str
+    chunks_count: int
+    llm_model: str
+
+
+class TopicsResponse(BaseModel):
+    topics: list[str]
+    levels: list[str]
+    chunk_types: list[str]

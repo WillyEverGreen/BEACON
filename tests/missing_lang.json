@@ -1,0 +1,14 @@
+{
+  "name": "Missing HTML Lang Attribute",
+  "issue": {
+    "rule_id": "html-has-lang",
+    "severity": "serious",
+    "wcag_criterion": "3.1.1",
+    "element": "<html>",
+    "html_snippet": "<html><head><title>My App</title></head></html>",
+    "description": "The html element does not have a lang attribute. Screen readers use this to determine the correct pronunciation engine."
+  },
+  "expected_patterns": ["lang=", "lang=\"en\""],
+  "must_not_include": [],
+  "must_have_wcag": ["3.1.1"]
+}

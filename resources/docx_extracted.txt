@@ -1,0 +1,95 @@
+♿  Accessibility Resource Master List
+For building a next-gen accessibility auditing tool
+Generated: 27 March 2026
+1.  Core Standards (Non-Negotiable Base)
+These define the rules. Your tool must cover all of WCAG 2.2 A/AA at minimum.
+
+--- TABLE ---
+Resource || Description
+WCAG 2.2 — Full Specification [WCAG 2.2 — Full Specification](https://www.w3.org/TR/WCAG22/) || The complete, official WCAG 2.2 guideline document
+WCAG 2 Overview [WCAG 2 Overview](https://www.w3.org/WAI/standards-guidelines/wcag/) || Intro to WCAG with POUR principles explained
+What's New in WCAG 2.2 [What's New in WCAG 2.2](https://www.w3.org/WAI/standards-guidelines/wcag/new-in-22/) || New criteria added in 2.2 vs 2.1
+WCAG 2 at a Glance [WCAG 2 at a Glance](https://www.w3.org/WAI/standards-guidelines/wcag/glance/) || Quick summary of all POUR principles
+Understanding WCAG 2.2 [Understanding WCAG 2.2](https://www.w3.org/WAI/WCAG22/Understanding/) || Detailed explanations of all success criteria
+WCAG 3.0 Working Draft [WCAG 3.0 Working Draft](https://w3c.github.io/wcag3/guidelines/) || Next generation — future-proof your tool
+--- END TABLE ---
+
+2.  WAI-ARIA
+Critical for dynamic apps, SPA navigation, and screen reader compatibility.
+
+--- TABLE ---
+Resource || Description
+WAI-ARIA Overview [WAI-ARIA Overview](https://www.w3.org/WAI/standards-guidelines/aria/) || Overview of the ARIA specification
+WAI-ARIA 1.3 Full Spec [WAI-ARIA 1.3 Full Spec](https://w3c.github.io/aria/) || Complete technical spec (roles, states, properties)
+ARIA Authoring Practices Guide [ARIA Authoring Practices Guide](https://www.w3.org/WAI/ARIA/apg/) || How to correctly implement ARIA patterns
+--- END TABLE ---
+
+3.  Cognitive Accessibility (Your Secret Weapon)
+Most tools ignore this entirely. This is where you can differentiate significantly.
+
+--- TABLE ---
+Resource || Description
+Cognitive Accessibility at W3C [Cognitive Accessibility at W3C](https://www.w3.org/WAI/cognitive/) || W3C hub for cognitive accessibility research
+Making Content Usable — COGA [Making Content Usable — COGA](https://www.w3.org/TR/coga-usable/) || Full guide for cognitive & learning disabilities
+COGA Working Draft (GitHub) [COGA Working Draft (GitHub)](https://w3c.github.io/coga/content-usable/) || Live draft with all patterns and objectives
+COGA Task Force Work Statement [COGA Task Force Work Statement](https://www.w3.org/WAI/about/groups/task-forces/coga/work-statement/) || Scope and goals of the COGA task force
+--- END TABLE ---
+
+4.  Testing Tools & Rule Engines
+Reverse-engineer these to understand what they detect — then detect what they miss.
+axe-core (Industry Standard)
+
+--- TABLE ---
+Resource || Description
+axe-core GitHub Repository [axe-core GitHub Repository](https://github.com/dequelabs/axe-core) || The most widely used open-source a11y rule engine
+axe-core API Documentation [axe-core API Documentation](https://github.com/dequelabs/axe-core/blob/develop/doc/API.md) || Full API reference for programmatic use
+axe-core Developer Guide [axe-core Developer Guide](https://github.com/dequelabs/axe-core/blob/develop/doc/developer-guide.md) || How to extend and write custom rules
+axe DevTools (Deque) [axe DevTools (Deque)](https://www.deque.com/axe/axe-core/) || Commercial wrapper — see what they add on top
+--- END TABLE ---
+
+Browser Automation & Accessibility Tree
+
+--- TABLE ---
+Resource || Description
+Playwright Accessibility Testing [Playwright Accessibility Testing](https://playwright.dev/docs/accessibility-testing) || Run axe-core scans via Playwright automation
+Playwright ARIA Snapshots [Playwright ARIA Snapshots](https://playwright.dev/docs/aria-snapshots) || Inspect the accessibility tree as screen readers see it
+--- END TABLE ---
+
+5.  Real User Research (Most Important & Ignored)
+WebAIM surveys are the best real-world data on how disabled users actually browse the web. Use these to validate your tool's priorities.
+
+--- TABLE ---
+Resource || Description
+Screen Reader Survey #10 (2024) [Screen Reader Survey #10 (2024)](https://webaim.org/projects/screenreadersurvey10/) || Latest — current screen reader & browser usage data
+Screen Reader Survey #9 (2021) [Screen Reader Survey #9 (2021)](https://webaim.org/projects/screenreadersurvey9/) || Previous edition for trend comparison
+Screen Reader Survey #8 (2019) [Screen Reader Survey #8 (2019)](https://webaim.org/projects/screenreadersurvey8/) || Earlier data — useful for longitudinal analysis
+Screen Reader Survey #7 (2017) [Screen Reader Survey #7 (2017)](https://webaim.org/projects/screenreadersurvey7/) || Historical benchmark
+All WebAIM Surveys Index [All WebAIM Surveys Index](https://webaim.org/projects/screenreadersurvey/) || Full archive of all surveys since 2008
+--- END TABLE ---
+
+6.  Reference & Developer Docs
+
+--- TABLE ---
+Resource || Description
+MDN Accessibility Guide [MDN Accessibility Guide](https://developer.mozilla.org/en-US/docs/Web/Accessibility/Guides/Information_for_Web_authors) || Practical developer-focused accessibility reference
+Wikipedia — WCAG History [Wikipedia — WCAG History](https://en.wikipedia.org/wiki/Web_Content_Accessibility_Guidelines) || WCAG version history and background
+--- END TABLE ---
+
+7.  Regulatory & Legal Context
+Useful for positioning your tool in compliance-driven markets (US, EU, India).
+
+--- TABLE ---
+Resource || Description
+U.S. Access Board — WCAG 2.2 [U.S. Access Board — WCAG 2.2](https://www.access-board.gov/news/2023/11/27/w3c-wcag-2-2-now-available/) || U.S. federal government adoption announcement
+AllAccessible — WCAG 2.2 Guide 2025 [AllAccessible — WCAG 2.2 Guide 2025](https://www.allaccessible.org/blog/wcag-22-complete-guide-2025) || Comprehensive compliance guide with practical context
+--- END TABLE ---
+
+Is This Enough?
+Short answer: For most projects, YES. For a next-gen tool better than Lighthouse, you need to go further.
+
+--- TABLE ---
+✅  What You Have (Strong) | WCAG A / AA / AAA coverage | HTML semantics & keyboard a11y | Forms, ARIA, color contrast | Media, images, testing strategy | Rule engine references (axe-core) || ❌  Still Missing (For Next-Gen Tool) | Cognitive load & readability scoring | SPA / React dynamic app issues | AI-based semantic alt text quality | Context-aware label evaluation | Low-end device & mobile usability
+--- END TABLE ---
+
+💡  Your Differentiator:
+Combine WCAG rules + COGA cognitive checks + WebAIM real-user data + AI semantic understanding (your RAG layer). That stack is what separates a checklist tool from a platform.

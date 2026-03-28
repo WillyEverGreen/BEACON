@@ -1,0 +1,14 @@
+{
+  "name": "Image Missing Alt Text",
+  "issue": {
+    "rule_id": "image-alt",
+    "severity": "critical",
+    "wcag_criterion": "1.1.1",
+    "element": "<img>",
+    "html_snippet": "<img src=\"/hero-banner.jpg\">",
+    "description": "Image element does not have an alt attribute. Screen readers cannot describe this image to users who are blind or have low vision."
+  },
+  "expected_patterns": ["alt=", "alt=\""],
+  "must_not_include": ["<img src=\"/hero-banner.jpg\">"],
+  "must_have_wcag": ["1.1.1"]
+}

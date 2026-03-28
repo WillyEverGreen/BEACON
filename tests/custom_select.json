@@ -1,0 +1,14 @@
+{
+  "name": "Inaccessible Custom Dropdown",
+  "issue": {
+    "rule_id": "aria-required-attr",
+    "severity": "critical",
+    "wcag_criterion": "4.1.2",
+    "element": "<div class=\"dropdown\">",
+    "html_snippet": "<div class=\"dropdown\"><div class=\"selected\">Choose...</div><ul class=\"options\"><li>Option A</li><li>Option B</li></ul></div>",
+    "description": "Custom dropdown menu built with divs has no ARIA roles, keyboard navigation, or accessible name. It is completely invisible to assistive technology."
+  },
+  "expected_patterns": ["role=\"listbox\"", "role=\"option\"", "aria-expanded", "aria-activedescendant", "tabindex"],
+  "must_not_include": [],
+  "must_have_wcag": ["4.1.2"]
+}

@@ -1,0 +1,29 @@
+# Node & Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+env/
+venv/
+node_modules/
+
+# Environment Variables & Secrets
+.env
+.env.local
+serviceAccountKey.json
+*.pem
+
+# Databases & Vector Stores
+chroma_db/
+data/
+
+# Logs & Temporary Files
+*.log
+logs/
+temp/
+tmp/
+rag_test_output.txt
+
+# OS Files
+.DS_Store
+Thumbs.db
