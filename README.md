@@ -30,9 +30,16 @@ Unlike generic vector-search wrappers, BEACON features a multi-stage ingestion p
 ### 1. The Ingestion Engine (`rag-pipeline/`)
 A deterministic, reproducible 8-stage data pipeline to convert chaotic HTML specs into a high-precision knowledge base.
 
+Unlike the original prototype repo (`Localbros3000_hn4`) which relied on arbitrary or generalized scraping that lacked engineering depth, this revamped Engine specifically targets **four isolated "Knowledge Silos"**:
+
+1.  **Axe-Core Formal Rules:** Directly ingests Deque University's authoritative rule algorithms (`https://dequeuniversity.com/rules/axe/html`).
+2.  **WebAIM & WCAG Spec:** Scrapes `https://webaim.org/techniques/` and official W3C structural mappings to ensure 100% mathematical coverage of all 86 success criteria.
+3.  **MDN Web & ARIA Spec:** Ingests the Mozilla Developer Network documentation on semantic HTML5 (`<dialog>`, `<nav>`) and ARIA roles (`https://developer.mozilla.org/` subsets).
+4.  **Local AAA Engineering Corpus:** Explicitly maps and injects an isolated local repository of pre-written perfect AAA components (`corpus/wcag-aaa-web-design`) into the vector base to provide hyper-specific *code-fix patterns*.
+
 `Crawl` ➔ `Extract` ➔ `Chunk` ➔ `Filter` ➔ `Dedup (O(1))` ➔ `Tag` ➔ `Embed` ➔ `Store`
 
-*   **Custom Corpus Mapping:** Merges Axe-Core rules, MDN Web Docs, WCAG 2.2 specs, and a custom local engineering corpus (`corpus/wcag-aaa-web-design`).
+*   **Custom Corpus Mapping:** Merges the four knowledge silos perfectly before routing to the LLM.
 *   **Algorithmic Dedup:** Trigram caching handles millions of overlap checks in seconds, preventing vector-store bloat.
 *   **Clean Database Resets:** The pipeline natively wipes and rebuilds `chroma_db` cleanly upon every run to prevent stale document corruption.
 
