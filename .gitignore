@@ -17,6 +17,10 @@ serviceAccountKey.json
 chroma_db/
 data/
 
+# Local Only Repos & Submodules
+axe-core/
+corpus/wcag-aaa-web-design/
+
 # Logs & Temporary Files
 *.log
 logs/
