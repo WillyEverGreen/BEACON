@@ -300,6 +300,9 @@ class BrowserProber:
         """Capture accessibility tree snapshot."""
         issues = []
         try:
+            if not hasattr(page, "accessibility") or page.accessibility is None:
+                return issues
+
             snapshot = await page.accessibility.snapshot()
             if snapshot:
                 # Check for unnamed interactive elements in the tree

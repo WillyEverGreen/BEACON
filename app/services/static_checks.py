@@ -78,7 +78,7 @@ class StaticChecker:
             "language", "title", "landmarks", "headings", "images",
             "links", "buttons", "forms", "tables", "lists",
             "aria", "media", "color_hints", "keyboard_hints",
-            "viewport", "skip_nav",
+            "viewport", "skip_nav", "advanced_detect",
         ]
         issues = []
         for check_name in all_checks:
@@ -663,6 +663,278 @@ class StaticChecker:
                     "1.4.4", "AA", "content",
                     'Remove maximum-scale=1 and user-scalable=no from viewport meta tag.'
                 ))
+        return issues
+
+    # ── Advanced Detection Mastery (The Hidden 10) ─────────────
+    
+    def check_advanced_detect(self) -> list[dict]:
+        """Advanced checks beyond basic axe-core rules."""
+        issues = []
+        issues.extend(self._check_placeholder_only_label())
+        issues.extend(self._check_broken_aria_references())
+        issues.extend(self._check_pseudo_icon_accessibility())
+        issues.extend(self._check_visibility_mismatch())
+        issues.extend(self._check_css_reordering())
+        issues.extend(self._check_language_content_mismatch())
+        issues.extend(self._check_inaccessible_documents())
+        issues.extend(self._check_touch_target_spacing())
+        issues.extend(self._check_timeout_warnings())
+        issues.extend(self._check_auto_update_controls())
+        return issues
+
+    def _check_touch_target_spacing(self) -> list[dict]:
+        """Flag potential touch target spacing issues (WCAG 2.5.8)."""
+        issues = []
+        for elem in self.soup.find_all(["button", "a"]):
+            style = elem.get("style", "").lower()
+            # If it's a small button/link, check for spacing
+            if "width:" in style or "height:" in style:
+                match_w = re.search(r'width:\s*(\d+)px', style)
+                match_h = re.search(r'height:\s*(\d+)px', style)
+                if (match_w and int(match_w.group(1)) < 24) or (match_h and int(match_h.group(1)) < 24):
+                    if "margin" not in style:
+                        issues.append(_issue(
+                            self.url, "touch-target-spacing", "violation", "moderate",
+                            _css_selector(elem), _snippet(elem),
+                            "Touch target may be smaller than 24px or missing adequate spacing. WCAG 2.2 requires at least 24px size or spacing.",
+                            "2.5.8", "AA", "keyboard",
+                            "Ensure the target is at least 24x24px or has enough spacing to prevent accidental activation."
+                        ))
+        return issues
+
+    def _check_timeout_warnings(self) -> list[dict]:
+        """Check for session timeout indicators without clear warning mechanisms."""
+        issues = []
+        timeout_words = ["session", "timeout", "expire", "logout"]
+        body_text = self.soup.get_text().lower()
+        
+        if any(w in body_text for w in timeout_words):
+            # Check for live regions or alerts
+            has_warning_mech = bool(self.soup.find(attrs={"aria-live": True}) or 
+                                    self.soup.find(attrs={"role": ["alert", "status", "timer"]}))
+            if not has_warning_mech:
+                issues.append(_issue(
+                    self.url, "timeout-no-warning", "needs-review", "serious",
+                    "<body>", "<body>",
+                    "Page appears to have session logic but no obvious accessible warning mechanism for timeouts.",
+                    "2.2.1", "A", "forms",
+                    "Provide a warning at least 20 seconds before a timeout occurs, allowing users to extend the session."
+                ))
+        return issues
+
+    def _check_auto_update_controls(self) -> list[dict]:
+        """Detect auto-updating content (live regions, carousels) lacking controls."""
+        issues = []
+        if self.soup.find("marquee"):
+            issues.append(_issue(
+                self.url, "marquee-used", "violation", "critical",
+                "<marquee>", "<marquee>...",
+                "The <marquee> element is obsolete and provides no control over moving content.",
+                "2.2.2", "A", "content",
+                "Remove <marquee> and use CSS/JS with pause/stop controls."
+            ))
+
+        # Carousel/Live region check
+        live_regions = self.soup.find_all(attrs={"aria-live": ["polite", "assertive"]})
+        for region in live_regions:
+            # Look for a button with "pause", "stop", or "hide" nearby
+            parent = region.find_parent()
+            if parent:
+                controls = parent.find_all("button")
+                has_stop = any(re.search(r'pause|stop|hide', str(c), re.I) for c in controls)
+                if not has_stop and len(region.get_text()) > 50:
+                    issues.append(_issue(
+                        self.url, "auto-update-no-control", "needs-review", "moderate",
+                        _css_selector(region), _snippet(region, 200),
+                        "Auto-updating content area lacks a visible pause or stop control.",
+                        "2.2.2", "A", "content",
+                        "Provide a mechanism to pause, stop, or hide content that updates automatically."
+                    ))
+        return issues
+
+    def _check_language_content_mismatch(self) -> list[dict]:
+        """Detect text blocks that may be in a different language than the page/element lang."""
+        issues = []
+        html_lang = self.soup.find("html").get("lang", "en").lower()[:2]
+        
+        # Simple heuristic for common non-English words if page is English
+        non_en_indicators = {"der", "die", "und", "dans", "avec", "pour", "este", "como"}
+        
+        for elem in self.soup.find_all(["p", "div", "section"]):
+            if elem.get("lang"): continue # Already has a lang attribute
+            
+            text = elem.get_text(strip=True).lower()
+            if len(text) > 100:
+                words = set(text.split())
+                if html_lang == "en" and any(w in words for w in non_en_indicators):
+                    issues.append(_issue(
+                        self.url, "lang-mismatch", "needs-review", "moderate",
+                        _css_selector(elem), _snippet(elem, 100),
+                        "Possible language mismatch. Content appears to be in a different language but lacks a 'lang' attribute.",
+                        "3.1.2", "AA", "html",
+                        "Add a lang attribute to the element (e.g., <div lang='de'>) to ensure correct screen reader pronunciation."
+                    ))
+        return issues
+
+    def _check_inaccessible_documents(self) -> list[dict]:
+        """Detect links to non-HTML documents (PDF, DOCX) without warnings."""
+        issues = []
+        doc_extensions = [".pdf", ".docx", ".xlsx", ".pptx", ".zip"]
+        for link in self.soup.find_all("a"):
+            href = link.get("href", "").lower()
+            if any(href.endswith(ext) for ext in doc_extensions):
+                text = link.get_text(strip=True).lower()
+                ext_found = next(ext for ext in doc_extensions if href.endswith(ext))
+                
+                # Check if the text mentions the format
+                if ext_found[1:] not in text:
+                    issues.append(_issue(
+                        self.url, "inaccessible-document-link", "best-practice", "moderate",
+                        _css_selector(link), _snippet(link),
+                        f"Link to {ext_found.upper()} document missing format warning. Users should be notified before downloading non-HTML content.",
+                        "2.4.4", "A", "navigation",
+                        f"Add ' ({ext_found[1:].upper()})' to the link text or an icon with a label."
+                    ))
+        return issues
+
+    def _check_pseudo_icon_accessibility(self) -> list[dict]:
+        """Detect icon elements (i, span) that likely use CSS pseudo-content but lack labels."""
+        issues = []
+        icon_classes = ["fa-", "icon-", "glyphicon-", "material-icons", "mdi-"]
+        for elem in self.soup.find_all(["i", "span", "em"]):
+            classes = elem.get("class", [])
+            if not isinstance(classes, list): classes = [classes]
+            
+            is_icon = any(any(ic in c for ic in icon_classes) for c in classes)
+            if is_icon:
+                has_label = bool(elem.get("aria-label") or elem.get("aria-labelledby") or elem.get_text(strip=True))
+                is_hidden = elem.get("aria-hidden") == "true"
+                
+                if not has_label and not is_hidden:
+                    # Check if it has a parent button/link with a label
+                    parent = elem.find_parent(["button", "a"])
+                    if parent:
+                        parent_label = bool(parent.get("aria-label") or parent.get("aria-labelledby") or parent.get_text(strip=True))
+                        if parent_label:
+                            continue
+
+                    issues.append(_issue(
+                        self.url, "unlabeled-icon", "violation", "serious",
+                        _css_selector(elem), _snippet(elem),
+                        "Icon element likely using CSS pseudo-content (::before/::after) has no accessible name or aria-hidden='true'.",
+                        "1.1.1", "A", "aria",
+                        "Add aria-hidden='true' if decorative, or provide a text label via aria-label."
+                    ))
+        return issues
+
+    def _check_visibility_mismatch(self) -> list[dict]:
+        """Detect elements with aria-hidden='false' but visually hidden via inline CSS."""
+        issues = []
+        hidden_styles = ["display: none", "display:none", "visibility: hidden", "visibility:hidden"]
+        for elem in self.soup.find_all(attrs={"aria-hidden": "false"}):
+            style = elem.get("style", "").lower()
+            if any(hs in style for hs in hidden_styles):
+                issues.append(_issue(
+                    self.url, "visibility-aria-mismatch", "violation", "serious",
+                    _css_selector(elem), _snippet(elem),
+                    "Element set to aria-hidden='false' but visually hidden via CSS. This creates a mismatch between screen readers and visual state.",
+                    "1.3.1", "A", "aria",
+                    "Remove aria-hidden='false' if the element is hidden, or ensure it is visible to all users."
+                ))
+        return issues
+
+    def _check_css_reordering(self) -> list[dict]:
+        """Flag inline styles that reorder content (flex-direction: *-reverse)."""
+        issues = []
+        reorder_styles = ["flex-direction: row-reverse", "flex-direction:row-reverse", 
+                          "flex-direction: column-reverse", "flex-direction:column-reverse"]
+        for elem in self.soup.find_all(style=True):
+            style = elem.get("style", "").lower()
+            if any(rs in style for rs in reorder_styles):
+                issues.append(_issue(
+                    self.url, "css-reordering", "needs-review", "moderate",
+                    _css_selector(elem), _snippet(elem),
+                    "Flex container uses row-reverse or column-reverse. This may cause focus order to differ from visual order.",
+                    "2.4.3", "A", "keyboard",
+                    "Verify that the tab order matches the visual reading order."
+                ))
+        return issues
+
+    def _check_placeholder_only_label(self) -> list[dict]:
+        """Flag inputs using placeholder as the ONLY label (WCAG 1.3.1, 3.3.2)."""
+        issues = []
+        for inp in self.soup.find_all(["input", "textarea"]):
+            inp_type = inp.get("type", "text")
+            if inp_type in ("hidden", "submit", "button", "reset", "image"):
+                continue
+            
+            placeholder = inp.get("placeholder")
+            if not placeholder:
+                continue
+
+            # Check if there is ANY valid label/name
+            has_real_label = False
+            inp_id = inp.get("id")
+            if inp_id and self.soup.find("label", attrs={"for": inp_id}):
+                has_real_label = True
+            
+            if not has_real_label:
+                has_real_label = bool(
+                    inp.get("aria-label") or 
+                    inp.get("aria-labelledby") or 
+                    inp.find_parent("label")
+                )
+            
+            if placeholder and not has_real_label:
+                issues.append(_issue(
+                    self.url, "placeholder-as-label", "violation", "serious",
+                    _css_selector(inp), _snippet(inp),
+                    f"Input uses placeholder '{placeholder}' as its only label. Placeholders disappear when typing and are not a substitute for semantic labels.",
+                    "1.3.1", "A", "forms",
+                    f'Add a <label for="{inp_id or "field-id"}">{placeholder}</label> or aria-label="{placeholder}".'
+                ))
+        return issues
+
+    def _check_broken_aria_references(self) -> list[dict]:
+        """Detect aria-labelledby/describedby pointing to missing or duplicate IDs."""
+        issues = []
+        # Find all unique IDs to check for duplicates
+        all_ids = [tag['id'] for tag in self.soup.find_all(id=True)]
+        id_counts = {}
+        for i in all_ids:
+            id_counts[i] = id_counts.get(i, 0) + 1
+
+        for tag in self.soup.find_all(attrs={"aria-labelledby": True}):
+            ref_ids = tag["aria-labelledby"].split()
+            for rid in ref_ids:
+                if rid not in id_counts:
+                    issues.append(_issue(
+                        self.url, "broken-aria-label", "violation", "serious",
+                        _css_selector(tag), _snippet(tag),
+                        f"aria-labelledby references non-existent ID '{rid}'.",
+                        "1.3.1", "A", "aria",
+                        f"Ensure an element with id='{rid}' exists on the page."
+                    ))
+                elif id_counts[rid] > 1:
+                    issues.append(_issue(
+                        self.url, "duplicate-aria-ref", "violation", "serious",
+                        _css_selector(tag), _snippet(tag),
+                        f"aria-labelledby references ID '{rid}' which is duplicated {id_counts[rid]} times on the page. References will be ambiguous.",
+                        "1.3.1", "A", "aria",
+                        "Ensure all IDs used in ARIA references are unique."
+                    ))
+
+        for tag in self.soup.find_all(attrs={"aria-describedby": True}):
+            ref_ids = tag["aria-describedby"].split()
+            for rid in ref_ids:
+                if rid not in id_counts:
+                    issues.append(_issue(
+                        self.url, "broken-aria-description", "violation", "serious",
+                        _css_selector(tag), _snippet(tag),
+                        f"aria-describedby references non-existent ID '{rid}'.",
+                        "1.3.1", "A", "aria",
+                        f"Ensure an element with id='{rid}' exists on the page."
+                    ))
         return issues
 
     # ── Skip Navigation ────────────────────────────────────────

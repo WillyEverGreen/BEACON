@@ -1,0 +1,57 @@
+{
+  "sources": [
+    {
+      "id": "act_testcases",
+      "tier": 1,
+      "kind": "json_url",
+      "url": "https://act-rules.github.io/testcases.json",
+      "parser": "act_testcases"
+    },
+    {
+      "id": "alphagov_tests",
+      "tier": 1,
+      "kind": "json_url",
+      "url": "https://raw.githubusercontent.com/alphagov/accessibility-tool-audit/gh-pages/tests.json",
+      "parser": "alphagov_tests"
+    },
+    {
+      "id": "kaggle_web_accessibility_compliance",
+      "tier": 1,
+      "kind": "local_file",
+      "path": "evaluation/kaggle_web_accessibility_compliance.json",
+      "parser": "generic_dataset_optional"
+    },
+    {
+      "id": "axe_core_fixtures",
+      "tier": 1,
+      "kind": "github_repo",
+      "repo": "dequelabs/axe-core",
+      "path": "test/integration/rules",
+      "parser": "repo_fixtures_stub"
+    },
+    {
+      "id": "axe_test_fixtures",
+      "tier": 1,
+      "kind": "github_repo",
+      "repo": "dequelabs/axe-test-fixtures",
+      "path": "/",
+      "parser": "repo_fixtures_stub"
+    },
+    {
+      "id": "testaro",
+      "tier": 2,
+      "kind": "github_repo",
+      "repo": "cvs-health/testaro",
+      "path": "/",
+      "parser": "repo_fixtures_stub"
+    },
+    {
+      "id": "qualweb_core",
+      "tier": 2,
+      "kind": "github_repo",
+      "repo": "qualweb/core",
+      "path": "/",
+      "parser": "repo_fixtures_stub"
+    }
+  ]
+}

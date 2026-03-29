@@ -116,9 +116,13 @@ class AuditIssue(BaseModel):
     needs_manual_review: bool = Field(default=False, description="True if confidence < 0.6")
 
     # ── Remediation ──
-    description: str = Field(default="")
+    description: str = Field(default="", description="Technical description or 'What is broken' in plain English")
+    human_impact: str = Field(default="", description="Who it affects and how (human-centric story)")
+    wcag_intent: str = Field(default="", description="Why this criterion exists and its importance")
+    test_procedure: str = Field(default="", description="Step-by-step verification procedure")
     suggested_fix: str = Field(default="")
-    code_fix: str = Field(default="", description="Ready-to-paste code snippet")
+    code_fix: str = Field(default="", description="Ready-to-paste Vanilla HTML/CSS/JS fix")
+    framework_fixes: dict[str, str] = Field(default_factory=dict, description="Fixes for React, Vue, Angular")
     fix_effort: str = Field(default="medium", description="low | medium | high")
 
     # ── Grouping ──
@@ -127,7 +131,7 @@ class AuditIssue(BaseModel):
 
     # ── Evidence ──
     evidence: dict = Field(default_factory=dict, description="Screenshots, computed styles, ARIA tree")
-    reproducibility: str = Field(default="", description="Steps to reproduce")
+    reproducibility: str = Field(default="", description="Legacy field for validation hints")
 
 
 class IssuePacket(BaseModel):
@@ -143,13 +147,17 @@ class IssuePacket(BaseModel):
 
 
 class RemediationPacket(BaseModel):
-    """Output from the RAG remediation pipeline."""
+    """Output from the RAG remediation pipeline (Audit Mastery schema)."""
     issue_id: str
-    explanation: str = Field(default="", description="Why this is an issue")
-    wcag_references: list[WCAGReference] = Field(default_factory=list)
-    code_fix: str = Field(default="", description="Ready-to-use fix")
+    explanation: dict[str, str] = Field(
+        default_checker=dict, 
+        description="Nested 6-part explanation: what_is_broken, impact, wcag_sc, intent, verification"
+    )
+    fixes: dict[str, str] = Field(
+        default_factory=dict, 
+        description="vanilla, react, vue, angular"
+    )
     practical_assets: list[PracticalAsset] = Field(default_factory=list)
-    validation_hint: str = Field(default="", description="How to verify the fix")
     confidence: float = Field(default=0.0, description="RAG's confidence in this remediation")
     needs_manual_review: bool = Field(default=False)
     sources: list[RetrievedSource] = Field(default_factory=list)

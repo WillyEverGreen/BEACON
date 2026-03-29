@@ -28,6 +28,29 @@ temp/
 tmp/
 rag_test_output.txt
 
+# Evaluation generated artifacts (keep source scripts, ignore run outputs)
+evaluation/benchmark_results*.json
+evaluation/benchmark_ingestion_report*.json
+evaluation/gate_*_run*.json
+evaluation/reliability_gate_report*.json
+evaluation/tmp_*.json
+evaluation/analysis_current.json
+evaluation/detection_tuning_guide.json
+evaluation/repo_validation_results.json
+
+# Local benchmark output artifacts
+full_musicblocks_audit.json
+full_musicblocks_report.md
+universal_audit_report.json
+ACCURACY_ANALYSIS.md
+
+# One-off local utility scripts
+check_accuracy.py
+failure_analysis.py
+fix_env_bom.py
+fix_home_env.py
+validate_issues.py
+
 # OS Files
 .DS_Store
 Thumbs.db

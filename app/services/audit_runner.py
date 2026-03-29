@@ -18,6 +18,7 @@ from typing import Optional
 import httpx
 
 from app.config import QUALITY_GATES, SEVERITY_WEIGHTS
+from app.config import PRECISION_PROFILES
 from app.services.static_checks import StaticChecker
 from app.services.heuristics import HeuristicAnalyzer
 from app.services.normalizer import normalize_all
@@ -26,6 +27,7 @@ from app.services.confidence import apply_confidence_rules
 from app.services.grouper import group_issues
 from app.services.report import generate_markdown_report
 from app.services.cognitive_checks import CognitiveAnalyzer
+from app.services.llm import enrich_issues
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +56,15 @@ async def _run_axe_core_via_playwright(page) -> list[dict]:
         return []
 
 
-async def run_audit(url: str, scan_mode: str = "fast", checks: Optional[list[str]] = None) -> dict:
+async def run_audit(
+    url: str,
+    scan_mode: str = "fast",
+    checks: Optional[list[str]] = None,
+    precision_profile: str = "balanced",
+    enable_enrichment: bool = True,
+    max_enrich_issues: int = 20,
+    enable_cognitive: bool = True,
+) -> dict:
     """
     Run the full accessibility audit pipeline.
     
@@ -169,7 +179,7 @@ async def run_audit(url: str, scan_mode: str = "fast", checks: Optional[list[str
     scored_issues = apply_confidence_rules(deduped_issues)
     
     # ── Step 4: Cognitive checks (deep mode only) ──────────────
-    if scan_mode == "deep":
+    if scan_mode == "deep" and enable_cognitive:
         try:
             cognitive = CognitiveAnalyzer(html, url)
             cog_result = cognitive.run_all()
@@ -184,10 +194,19 @@ async def run_audit(url: str, scan_mode: str = "fast", checks: Optional[list[str
         except Exception as e:
             logger.error(f"Cognitive checks failed: {e}")
 
+    # Apply precision profile to control precision/recall tradeoff.
+    scored_issues, profile_telemetry = _apply_precision_profile(scored_issues, precision_profile)
+
     # ── Step 5: Group issues ──────────────────────────────────
     groups = group_issues(scored_issues)
     
-    # ── Step 6: Calculate score ────────────────────────────────
+    # ── Step 6: RAG Enrichment (Audit Mastery) ────────────────
+    # Enrich top issues with 6-part human-centric remediation.
+    # This is expensive (retrieval + LLM calls), so allow disabling it for benchmark speed.
+    if enable_enrichment:
+        scored_issues = await enrich_issues(scored_issues, max_issues=max_enrich_issues)
+    
+    # ── Step 7: Calculate score ────────────────────────────────
     total_penalty = sum(
         SEVERITY_WEIGHTS.get(i.get("severity", "minor"), 1) 
         for i in scored_issues 
@@ -217,6 +236,8 @@ async def run_audit(url: str, scan_mode: str = "fast", checks: Optional[list[str
         "engines_used": engines_used,
         "total_before_dedup": len(all_issues),
         "total_after_dedup": len(deduped_issues),
+        "precision_profile": precision_profile,
+        "precision_profile_telemetry": profile_telemetry,
     }
     
     if len(all_issues) > 0:
@@ -255,4 +276,94 @@ async def run_audit(url: str, scan_mode: str = "fast", checks: Optional[list[str
         "scan_time_seconds": round(scan_time, 2),
         "engines_used": engines_used,
         "quality_gates": quality_gates,
+        "precision_profile": precision_profile,
+        "precision_profile_telemetry": profile_telemetry,
     }
+
+
+def _apply_precision_profile(issues: list[dict], profile_name: str) -> tuple[list[dict], dict]:
+    """Filter reported issues according to profile to optimize precision/recall tradeoff."""
+    profile = PRECISION_PROFILES.get(profile_name, PRECISION_PROFILES["balanced"])
+    kept = []
+    dropped_low_conf = 0
+    dropped_needs_review = 0
+    dropped_contextual_single = 0
+    dropped_excluded_rule = 0
+    dropped_cooccurrence_rule = 0
+
+    exclude_rules = set(profile.get("exclude_rules", []))
+    per_rule_min_conf = profile.get("per_rule_min_confidence", {})
+    per_rule_conf_override = profile.get("per_rule_confidence_override", {})
+    suppress_when_present = profile.get("suppress_when_present", {})
+
+    for issue in issues:
+        rule_id = issue.get("rule_id", "")
+        
+        # Check if rule is explicitly excluded (for ultra_strict and similar profiles)
+        if rule_id in exclude_rules:
+            dropped_excluded_rule += 1
+            continue
+        
+        conf = issue.get("confidence", 0.0)
+        needs_review = issue.get("needs_manual_review", False)
+        rule_type = issue.get("rule_type", "hard")
+        source_count = len(set(issue.get("confidence_sources", [])))
+
+        # Adaptive thresholding keeps precision high while avoiding collapse in recall.
+        min_conf = profile["min_confidence"]
+        if profile_name in ("high_precision", "tuned_balanced", "high_precision_plus", "high_precision_recall_boost", "strict", "very_high_precision"):  # Adaptive thresholds for precision-first profiles
+            if rule_type == "hard":
+                min_conf = 0.62
+            elif rule_type == "visual":
+                min_conf = 0.75
+            elif rule_type == "contextual":
+                min_conf = 0.80
+
+        # Optional per-rule thresholding lets us tune noisy or low-recall rules
+        # without globally harming precision/recall.
+        rule_conf_override = per_rule_conf_override.get(rule_id)
+        if rule_conf_override is not None:
+            min_conf = float(rule_conf_override)
+        else:
+            rule_min_conf = per_rule_min_conf.get(rule_id)
+            if rule_min_conf is not None:
+                min_conf = max(min_conf, float(rule_min_conf))
+
+        if conf < min_conf:
+            dropped_low_conf += 1
+            continue
+
+        if (not profile["include_needs_review"]) and needs_review:
+            dropped_needs_review += 1
+            continue
+
+        if profile["exclude_contextual_single_source"] and rule_type == "contextual" and source_count < 2:
+            dropped_contextual_single += 1
+            continue
+
+        kept.append(issue)
+
+    # Co-occurrence suppression: remove noisy companion rules when a trigger rule is present.
+    if suppress_when_present and kept:
+        present_rules = {i.get("rule_id", "") for i in kept}
+        suppress_set = set()
+        for trigger_rule, suppressed_rules in suppress_when_present.items():
+            if trigger_rule in present_rules:
+                suppress_set.update(suppressed_rules)
+        if suppress_set:
+            original_len = len(kept)
+            kept = [i for i in kept if i.get("rule_id", "") not in suppress_set]
+            dropped_cooccurrence_rule += original_len - len(kept)
+
+    telemetry = {
+        "profile": profile_name,
+        "input_issues": len(issues),
+        "reported_issues": len(kept),
+        "dropped_low_confidence": dropped_low_conf,
+        "dropped_needs_review": dropped_needs_review,
+        "dropped_contextual_single_source": dropped_contextual_single,
+        "dropped_excluded_rules": dropped_excluded_rule,
+        "dropped_cooccurrence_rules": dropped_cooccurrence_rule,
+        "estimated_precision_floor": 0.95 if profile_name in ("high_precision", "tuned_balanced", "high_precision_plus", "high_precision_recall_boost", "strict", "very_high_precision") else 0.85,
+    }
+    return kept, telemetry

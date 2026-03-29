@@ -4,7 +4,11 @@ Multi-signal formula: source reliability + signal strength + cross-engine agreem
 """
 import logging
 
-from app.config import CONFIDENCE_WEIGHTS, SOURCE_RELIABILITY_SCORES
+from app.config import (
+    CONFIDENCE_WEIGHTS,
+    SOURCE_RELIABILITY_SCORES,
+    RULE_TYPE_MAP,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +102,24 @@ def calculate_confidence(issue: dict) -> float:
         CONFIDENCE_WEIGHTS["evidence_quality"] * evidence_quality
     )
 
+    # Calibrate by rule type: hard checks are more objective, contextual less so.
+    rule_type = RULE_TYPE_MAP.get(issue.get("rule_id", ""), "hard")
+    if rule_type == "hard":
+        confidence += 0.03
+    elif rule_type == "visual":
+        confidence -= 0.02
+    elif rule_type == "contextual":
+        confidence -= 0.07
+
     return round(min(1.0, max(0.0, confidence)), 3)
+
+
+def _confidence_tier(confidence: float) -> str:
+    if confidence >= 0.85:
+        return "high"
+    if confidence >= 0.60:
+        return "medium"
+    return "low"
 
 
 def apply_confidence_rules(issues: list[dict]) -> list[dict]:
@@ -135,6 +156,8 @@ def apply_confidence_rules(issues: list[dict]) -> list[dict]:
             issue["needs_manual_review"] = True
 
         issue["confidence"] = confidence
+        issue["confidence_tier"] = _confidence_tier(confidence)
+        issue["rule_type"] = RULE_TYPE_MAP.get(issue.get("rule_id", ""), "hard")
 
         # Rule: confidence < 0.4 → downgrade severity
         if confidence < 0.4:

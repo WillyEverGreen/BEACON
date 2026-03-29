@@ -1,0 +1,650 @@
+{
+  "047fe0": {
+    "act_name": "Document has heading for non-repeated content",
+    "suggested_internal_ids": [
+      "empty-heading"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "09o5cg": {
+    "act_name": "Text has enhanced contrast",
+    "suggested_internal_ids": [
+      "text-spacing"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "0ssw9k": {
+    "act_name": "Scrollable element is keyboard accessible",
+    "suggested_internal_ids": [
+      "keyboard-trap"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "0va7u6": {
+    "act_name": "HTML graphics contain no text",
+    "suggested_internal_ids": [
+      "semantic-html"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "1ea59c": {
+    "act_name": "Video element visual content has audio description",
+    "suggested_internal_ids": [
+      "video-transcript"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "1ec09b": {
+    "act_name": "Video element visual content has strict accessible alternative",
+    "suggested_internal_ids": [
+      "video-transcript"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "23a2a8": {
+    "act_name": "Image has non-empty accessible name",
+    "suggested_internal_ids": [
+      "svg-no-accessible-name"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "24afc2": {
+    "act_name": "Letter spacing in style attributes is not !important",
+    "suggested_internal_ids": [
+      "letter-spacing"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "2779a5": {
+    "act_name": "HTML page has non-empty title",
+    "suggested_internal_ids": [
+      "empty-title"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "307n5z": {
+    "act_name": "Element with presentational children has no focusable content",
+    "suggested_internal_ids": [
+      "no-lang"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "36b590": {
+    "act_name": "Error message describes invalid form field value",
+    "suggested_internal_ids": [
+      "form-error"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "3e12e1": {
+    "act_name": "Block of repeated content is collapsible",
+    "suggested_internal_ids": [
+      "unsafe-external-link"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "46ca7f": {
+    "act_name": "Element marked as decorative is not exposed",
+    "suggested_internal_ids": [
+      "unsafe-external-link"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "4b1c6c": {
+    "act_name": "Iframe elements with identical accessible names have equivalent purpose",
+    "suggested_internal_ids": [
+      "link-purpose"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "4c31df": {
+    "act_name": "Audio or video element that plays automatically has a control mechanism",
+    "suggested_internal_ids": [
+      "video-transcript"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "4e8ab6": {
+    "act_name": "Element with role attribute has required states and properties",
+    "suggested_internal_ids": [
+      "aria-role"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "59796f": {
+    "act_name": "Image button has non-empty accessible name",
+    "suggested_internal_ids": [
+      "button-name"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "59br37": {
+    "act_name": "Zoomed text node is not clipped with CSS overflow",
+    "suggested_internal_ids": [
+      "text-spacing"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "5b7ae0": {
+    "act_name": "HTML page lang and xml:lang attributes have matching values",
+    "suggested_internal_ids": [
+      "semantic-html"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "5c01ea": {
+    "act_name": "ARIA state or property is permitted",
+    "suggested_internal_ids": [
+      "aria-role"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "5effbb": {
+    "act_name": "Link in context is descriptive",
+    "suggested_internal_ids": [
+      "empty-link"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "674b10": {
+    "act_name": "Role attribute has valid value",
+    "suggested_internal_ids": [
+      "aria-valid-attr-value"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "6a7281": {
+    "act_name": "ARIA state or property has valid value",
+    "suggested_internal_ids": [
+      "aria-valid-attr-value"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "6cfa84": {
+    "act_name": "Element with aria-hidden has no content in sequential focus navigation",
+    "suggested_internal_ids": [
+      "no-lang"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "73f2c2": {
+    "act_name": "Autocomplete attribute has valid value",
+    "suggested_internal_ids": [
+      "aria-valid-attr-value"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "7677a9": {
+    "act_name": "Device motion based changes to the content can also be created from the user interface",
+    "suggested_internal_ids": [
+      "unsafe-external-link"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "78fd32": {
+    "act_name": "Line height in style attributes is not !important",
+    "suggested_internal_ids": [
+      "line-height"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "7d6734": {
+    "act_name": "SVG element with explicit role has non-empty accessible name",
+    "suggested_internal_ids": [
+      "svg-no-accessible-name"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "80af7b": {
+    "act_name": "Focusable element has no keyboard trap",
+    "suggested_internal_ids": [
+      "keyboard-trap"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "80f0bf": {
+    "act_name": "Audio or video element avoids automatically playing audio",
+    "suggested_internal_ids": [
+      "video-transcript"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "8fc3b6": {
+    "act_name": "Object element rendering non-text content has non-empty accessible name",
+    "suggested_internal_ids": [
+      "svg-no-accessible-name"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "97a4e1": {
+    "act_name": "Button has non-empty accessible name",
+    "suggested_internal_ids": [
+      "button-name"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "9bd38c": {
+    "act_name": "Content has alternative for visual reference",
+    "suggested_internal_ids": [
+      "media-alternative"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "9e45ec": {
+    "act_name": "Word spacing in style attributes is not !important",
+    "suggested_internal_ids": [
+      "text-spacing"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "9eb3f6": {
+    "act_name": "DEPRECATED \u2014 Image filename is accessible name for image",
+    "suggested_internal_ids": [
+      "svg-no-accessible-name"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "a1b64e": {
+    "act_name": "Focusable element has no keyboard trap via standard navigation",
+    "suggested_internal_ids": [
+      "keyboard-trap"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "a25f45": {
+    "act_name": "Headers attribute specified on a cell refers to cells in the same table element",
+    "suggested_internal_ids": [
+      "table-caption"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "aaa1bf": {
+    "act_name": "Audio or video element that plays automatically has no audio that lasts more than 3 seconds",
+    "suggested_internal_ids": [
+      "no-lang"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "ab4d13": {
+    "act_name": "Video element content is media alternative for text",
+    "suggested_internal_ids": [
+      "media-alternative"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "ac7dc6": {
+    "act_name": "DEPRECATED \u2014 Video element visual-only content has description track",
+    "suggested_internal_ids": [
+      "video-transcript"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "afb423": {
+    "act_name": "Audio element content is media alternative for text",
+    "suggested_internal_ids": [
+      "media-alternative"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "afw4f7": {
+    "act_name": "Text has minimum contrast",
+    "suggested_internal_ids": [
+      "text-spacing"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "aizyf1": {
+    "act_name": "Link is descriptive",
+    "suggested_internal_ids": [
+      "empty-link"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "akn7bn": {
+    "act_name": "Iframe with negative tabindex has no interactive elements",
+    "suggested_internal_ids": [
+      "no-lang"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "b20e66": {
+    "act_name": "Links with identical accessible names have equivalent purpose",
+    "suggested_internal_ids": [
+      "link-purpose"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "b33eff": {
+    "act_name": "Orientation of the page is not restricted using CSS transform property",
+    "suggested_internal_ids": [
+      "unsafe-external-link"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "b40fd1": {
+    "act_name": "Document has a landmark with non-repeated content",
+    "suggested_internal_ids": [
+      "main-landmark"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "b49b2e": {
+    "act_name": "Heading is descriptive",
+    "suggested_internal_ids": [
+      "empty-heading"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "b4f0c3": {
+    "act_name": "Meta viewport allows for zoom",
+    "suggested_internal_ids": [
+      "meta-refresh"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "bc659a": {
+    "act_name": "Meta element has no refresh delay",
+    "suggested_internal_ids": [
+      "meta-refresh"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "bf051a": {
+    "act_name": "HTML page lang attribute has valid language tag",
+    "suggested_internal_ids": [
+      "semantic-html"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "bisz58": {
+    "act_name": "Meta element has no refresh delay (no exception)",
+    "suggested_internal_ids": [
+      "meta-refresh"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "c249d5": {
+    "act_name": "Device motion based changes to the content can be disabled",
+    "suggested_internal_ids": [
+      "unsafe-external-link"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "c3232f": {
+    "act_name": "Video element visual-only content has accessible alternative",
+    "suggested_internal_ids": [
+      "video-transcript"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "c487ae": {
+    "act_name": "Link has non-empty accessible name",
+    "suggested_internal_ids": [
+      "empty-link"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "c4a8a4": {
+    "act_name": "HTML page title is descriptive",
+    "suggested_internal_ids": [
+      "semantic-html"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "c5a4ea": {
+    "act_name": "Video element visual content has accessible alternative",
+    "suggested_internal_ids": [
+      "video-transcript"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "cae760": {
+    "act_name": "Iframe element has non-empty accessible name",
+    "suggested_internal_ids": [
+      "svg-no-accessible-name"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "cc0f0a": {
+    "act_name": "Form field label is descriptive",
+    "suggested_internal_ids": [
+      "form-label-missing"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "d0f69e": {
+    "act_name": "Table header cell has assigned cells",
+    "suggested_internal_ids": [
+      "table-header"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "d7ba54": {
+    "act_name": "Video element visual-only content has audio track alternative",
+    "suggested_internal_ids": [
+      "video-transcript"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "de46e4": {
+    "act_name": "Element with lang attribute has valid language tag",
+    "suggested_internal_ids": [
+      "invalid-lang"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "e6952f": {
+    "act_name": "Attribute is not duplicated",
+    "suggested_internal_ids": [
+      "aria-attribute"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "e7aa44": {
+    "act_name": "Audio element content has text alternative",
+    "suggested_internal_ids": [
+      "media-alternative"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "e88epe": {
+    "act_name": "Image not in the accessibility tree is decorative",
+    "suggested_internal_ids": [
+      "image-alt"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "eac66b": {
+    "act_name": "Video element auditory content has accessible alternative",
+    "suggested_internal_ids": [
+      "video-transcript"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "ebe86a": {
+    "act_name": "Focusable element has no keyboard trap via non-standard navigation",
+    "suggested_internal_ids": [
+      "keyboard-trap"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "ee13b5": {
+    "act_name": "Video element visual-only content has transcript",
+    "suggested_internal_ids": [
+      "video-transcript"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "efbfc7": {
+    "act_name": "Text content that changes automatically can be paused, stopped or hidden",
+    "suggested_internal_ids": [
+      "text-spacing"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "f196ce": {
+    "act_name": "DEPRECATED \u2014 Video element visual content has description track",
+    "suggested_internal_ids": [
+      "video-transcript"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "f51b46": {
+    "act_name": "Video element auditory content has captions",
+    "suggested_internal_ids": [
+      "video-transcript"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "fd26cf": {
+    "act_name": "Video element visual-only content is media alternative for text",
+    "suggested_internal_ids": [
+      "media-alternative"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "fd3a94": {
+    "act_name": "Links with identical accessible names and same context serve equivalent purpose",
+    "suggested_internal_ids": [
+      "link-purpose"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "ffbc54": {
+    "act_name": "No keyboard shortcut uses only printable characters",
+    "suggested_internal_ids": [
+      "no-keyboard"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "ffd0e9": {
+    "act_name": "Heading has non-empty accessible name",
+    "suggested_internal_ids": [
+      "empty-heading"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "m6b1q3": {
+    "act_name": "Menuitem has non-empty accessible name",
+    "suggested_internal_ids": [
+      "svg-no-accessible-name"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "off6ek": {
+    "act_name": "HTML element language subtag matches language",
+    "suggested_internal_ids": [
+      "semantic-html"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "oj04fd": {
+    "act_name": "Element in sequential focus order has visible focus",
+    "suggested_internal_ids": [
+      "focus-visible"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "qt1vmo": {
+    "act_name": "Image accessible name is descriptive",
+    "suggested_internal_ids": [
+      "svg-no-accessible-name"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "ucwvc8": {
+    "act_name": "HTML page language subtag matches default language",
+    "suggested_internal_ids": [
+      "semantic-html"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  },
+  "ye5d6e": {
+    "act_name": "Document has an instrument to move focus to non-repeated content",
+    "suggested_internal_ids": [
+      "focus-management"
+    ],
+    "confidence": "low",
+    "needs_review": true
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "total_unmapped_rules": 86,
+  "existing_mappings": 5,
+  "total_suggestions": 86,
+  "high_confidence": 0,
+  "medium_confidence": 5,
+  "low_confidence": 81,
+  "review_effort": {
+    "auto_accept": "0 entries",
+    "manual_review": "5 entries",
+    "investigation": "81 entries",
+    "total_work": "86 entries to adjudicate"
+  },
+  "impact_estimate": {
+    "if_all_accepted": "~91 total mappings (~100% coverage)",
+    "benchmark_unlock": "~1,134+ ACT test cases (currently 277 mapped)",
+    "expected_precision_gain": "60-85% adjudicated recall (up from 35%)"
+  },
+  "next_steps": [
+    "1. Auto-accept: Copy 0 high_confidence entries to act_rule_mapping.json",
+    "2. Review: Manually check 5 medium_confidence suggestions",
+    "3. Extend: Investigate 81 low_confidence rules (may add new types)",
+    "4. Rebuild: Run ingest_benchmark_sources.py again with expanded mapping",
+    "5. Re-benchmark: Run benchmark_precision_recall.py on full set (~280+ cases)",
+    "6. Target: Achieve \u00e2\u2030\u00a595% adjudicated precision on labeled benchmark set"
+  ]
+}

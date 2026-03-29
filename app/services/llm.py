@@ -2,6 +2,7 @@
 LLM service: Featherless AI (OpenAI-compatible) for query expansion
 and RAG response generation.
 """
+import asyncio
 import json
 import logging
 import re
@@ -73,39 +74,37 @@ async def expand_query_with_llm(query: str) -> list[str]:
 # ── Main RAG Generation ───────────────────────────────────────
 
 RAG_SYSTEM_PROMPT = """You are an expert web accessibility assistant specializing in WCAG 2.2 guidelines.
-You help developers fix accessibility issues by providing clear explanations, WCAG references, and ready-to-use code fixes.
-
-You MUST respond using the following context retrieved from the WCAG 2.2 guidelines and the wcag-aaa-web-design toolkit repository.
-
-Your response MUST be in valid JSON format with these exact fields:
+You help developers fix accessibility issues by providing clear explanations, WCAG rYour response MUST be in valid JSON format with these exact fields:
 {
-  "explanation": "Clear explanation of why this is an accessibility issue and what it means for users with disabilities",
-  "wcag_references": [
-    {
-      "criterion_id": "e.g. 1.4.3",
-      "name": "e.g. Contrast (Minimum)",
-      "level": "A or AA or AAA",
-      "description": "Brief description of what this criterion requires"
-    }
-  ],
-  "code_fix": "Complete, ready-to-use HTML/CSS/JS code snippet that resolves the issue. Include all necessary attributes, ARIA roles, and styles. Must be production-ready.",
+  "explanation": {
+    "what_is_broken": "One sentence, plain English description of the violation",
+    "impact": "Who it affects and how (human-centric story)",
+    "wcag_sc": "Success Criterion number and name",
+    "intent": "Why this criterion exists and its importance",
+    "verification": "Step-by-step test procedure (automated + manual)"
+  },
+  "fixes": {
+    "vanilla": "Plain HTML/CSS/JS fix specific to the element",
+    "react": "React component implementation of the fix",
+    "vue": "Vue component implementation of the fix",
+    "angular": "Angular component/template implementation of the fix"
+  },
   "practical_assets": [
     {
       "asset_type": "template OR aria-pattern OR script OR reference",
-      "name": "Name of the referenced resource from the toolkit",
+      "name": "Name of the resource",
       "content": "The relevant snippet or instruction from the toolkit"
     }
-  ],
-  "validation_hint": "How to verify the fix: describe automated checks (scripts) and manual checks the developer should perform"
+  ]
 }
 
 Rules:
-1. ALWAYS cite specific WCAG criterion IDs (e.g., 1.4.3, 2.1.1)
-2. ALWAYS provide a working code fix, not just explanations
-3. ALWAYS reference practical toolkit resources (templates, scripts, ARIA patterns) when available in context
-4. If the context mentions check_contrast.py or validate_accessibility.sh, reference them in validation_hint
-5. If ARIA patterns are relevant, include them in practical_assets
-6. Respond ONLY with valid JSON, no markdown, no explanation outside the JSON"""
+1. PLAIN ENGLISH FIRST: The 'what_is_broken' and 'impact' fields must be understandable by a non-technical person.
+2. SPECIFIC FIXES: The code fixes must use the actual element HTML provided in the query.
+3. FRAMEWORK AWARE: Always provide all 4 variants (vanilla, react, vue, angular).
+4. VERIFICATION: Provide a test procedure like '1. Inspect element... 2. Run axe... 3. Test with screen reader...'.
+5. ONLY VALID JSON: Respond only with the JSON object, no other text.
+"""
 
 
 RAG_USER_PROMPT = """RETRIEVED CONTEXT:
@@ -195,24 +194,29 @@ async def generate_rag_response(query: str, context_chunks: list[dict]) -> dict:
 
 
 def _validate_response(data: dict) -> dict:
-    """Validate and normalize the LLM response."""
-    result = {
-        "explanation": data.get("explanation", ""),
-        "wcag_references": [],
-        "code_fix": data.get("code_fix", ""),
-        "practical_assets": [],
-        "validation_hint": data.get("validation_hint", ""),
-    }
+    """Validate and normalize the LLM response for Audit Mastery."""
+    expl = data.get("explanation", {})
+    if not isinstance(expl, dict): expl = {"what_is_broken": str(expl)}
 
-    # Validate WCAG references
-    for ref in data.get("wcag_references", []):
-        if isinstance(ref, dict) and "criterion_id" in ref:
-            result["wcag_references"].append({
-                "criterion_id": ref.get("criterion_id", ""),
-                "name": ref.get("name", ""),
-                "level": ref.get("level", ""),
-                "description": ref.get("description", ""),
-            })
+    fixes = data.get("fixes", {})
+    if not isinstance(fixes, dict): fixes = {"vanilla": str(fixes)}
+
+    result = {
+        "explanation": {
+            "what_is_broken": expl.get("what_is_broken", ""),
+            "impact": expl.get("impact", ""),
+            "wcag_sc": expl.get("wcag_sc", ""),
+            "intent": expl.get("intent", ""),
+            "verification": expl.get("verification", ""),
+        },
+        "fixes": {
+            "vanilla": fixes.get("vanilla", ""),
+            "react": fixes.get("react", ""),
+            "vue": fixes.get("vue", ""),
+            "angular": fixes.get("angular", ""),
+        },
+        "practical_assets": [],
+    }
 
     # Validate practical assets
     for asset in data.get("practical_assets", []):
@@ -232,32 +236,35 @@ REMEDIATION_SYSTEM_PROMPT = """You are an expert web accessibility remediation e
 
 Your response MUST be valid JSON with these exact fields:
 {
-  "explanation": "Clear explanation of why this is an accessibility issue and the impact on users with disabilities",
-  "wcag_references": [
-    {
-      "criterion_id": "e.g. 1.4.3",
-      "name": "e.g. Contrast (Minimum)",
-      "level": "A or AA or AAA",
-      "description": "Brief description of what this criterion requires"
-    }
-  ],
-  "code_fix": "Complete, ready-to-paste HTML/CSS/JS code snippet that resolves the issue. Must be production-ready. Use the element selector from the issue to make the fix specific.",
+  "explanation": {
+    "what_is_broken": "One sentence, plain English description of the violation",
+    "impact": "Who it affects and how (human-centric story)",
+    "wcag_sc": "Success Criterion number and name",
+    "intent": "Why this criterion exists and its importance",
+    "verification": "Step-by-step test procedure (automated + manual)"
+  },
+  "fixes": {
+    "vanilla": "Plain HTML/CSS/JS fix specific to the element",
+    "react": "React component implementation of the fix",
+    "vue": "Vue component implementation of the fix",
+    "angular": "Angular component/template implementation of the fix"
+  },
   "practical_assets": [
     {
-      "asset_type": "template | aria-pattern | script | reference",
+      "asset_type": "template OR aria-pattern OR script OR reference",
       "name": "Name of the resource",
-      "content": "Relevant code snippet or instruction"
+      "content": "The relevant snippet or instruction from the toolkit"
     }
-  ],
-  "validation_hint": "How to verify the fix: specific steps for automated and manual testing"
+  ]
 }
 
 Rules:
-1. The code_fix MUST be specific to the element identified in the issue
-2. ALWAYS cite the specific WCAG criterion (e.g., 1.4.3, 2.1.1)
-3. Include ARIA patterns when relevant
-4. Reference practical toolkit resources from context when available
-5. Respond ONLY with valid JSON"""
+1. PLAIN ENGLISH FIRST: Prioritize human impact over technical jargon.
+2. ELEMENT-SPECIFIC: Use the provided HTML snippet to write the code fixes.
+3. FULL COVERAGE: Provide Vanilla, React, Vue, and Angular variants.
+4. VALIDATION: Include a clear test procedure in the explanation block.
+5. ONLY VALID JSON: No markdown backticks, no conversational filler.
+"""
 
 
 REMEDIATION_USER_PROMPT = """ACCESSIBILITY ISSUE:
@@ -364,10 +371,7 @@ async def generate_remediation(issue: dict, context_chunks: list[dict]) -> dict:
         }
 
 
-async def enrich_issues_with_remediation(
-    issues: list[dict],
-    max_issues: int = 10,
-) -> list[dict]:
+async def enrich_issues(issues: list[dict], max_issues: int = 20) -> list[dict]:
     """
     Enrich the top issues with RAG-backed remediation packets.
     Only processes the first max_issues (by severity) to stay within LLM budget.
@@ -381,12 +385,11 @@ async def enrich_issues_with_remediation(
         reverse=True,
     )
 
-    enriched_count = 0
-    for issue in sorted_issues[:max_issues]:
+    async def _enrich_task(issue):
         try:
             # Skip if already has a good code fix
             if issue.get("code_fix") and len(issue["code_fix"]) > 50:
-                continue
+                return False
 
             # Retrieve context
             context = await retrieve_for_issue(issue)
@@ -394,18 +397,37 @@ async def enrich_issues_with_remediation(
             # Generate remediation
             remediation = await generate_remediation(issue, context)
 
-            # Merge remediation into issue
-            if remediation.get("code_fix"):
-                issue["code_fix"] = remediation["code_fix"]
-            if remediation.get("explanation") and len(remediation["explanation"]) > len(issue.get("description", "")):
-                issue["suggested_fix"] = remediation["explanation"]
-            if remediation.get("validation_hint"):
-                issue["reproducibility"] = remediation["validation_hint"]
+            # Merge Audit Mastery fields into issue
+            if remediation.get("fixes"):
+                issue["code_fix"] = remediation["fixes"].get("vanilla", "")
+                issue["framework_fixes"] = remediation["fixes"]
+            
+            expl = remediation.get("explanation", {})
+            if expl.get("what_is_broken"):
+                issue["description"] = expl["what_is_broken"]
+                issue["human_impact"] = expl.get("impact", "")
+                issue["wcag_intent"] = expl.get("intent", "")
+                issue["test_procedure"] = expl.get("verification", "")
+                
+            if expl.get("wcag_sc"):
+                issue["wcag_criterion"] = expl["wcag_sc"]
 
-            enriched_count += 1
-
+            return True
         except Exception as e:
             logger.warning(f"Remediation enrichment failed for {issue.get('rule_id')}: {e}")
+            return False
 
-    logger.info(f"Enriched {enriched_count}/{min(max_issues, len(issues))} issues with RAG remediation")
+    # Prevent 429 Too Many Requests by limiting concurrency (Featherless AI limit is 4 units)
+    semaphore = asyncio.Semaphore(2)
+    
+    async def _safe_enrich(issue):
+        async with semaphore:
+            return await _enrich_task(issue)
+
+    # Parallelize top issues
+    targets = sorted_issues[:max_issues]
+    results = await asyncio.gather(*[_safe_enrich(i) for i in targets])
+    
+    enriched_count = sum(1 for r in results if r)
+    logger.info(f"Enriched {enriched_count}/{len(targets)} issues with RAG remediation")
     return issues
