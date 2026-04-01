@@ -1,0 +1,109 @@
+{
+  "baseline": "evaluation\\rule_level_metrics_strict_full.json",
+  "candidate": "evaluation\\rule_level_metrics_balanced_full.json",
+  "ratio": 2.0,
+  "safe_rules": [
+    "text-spacing",
+    "video-transcript",
+    "semantic-html",
+    "link-purpose",
+    "aria-valid-attr-value",
+    "missing-alt",
+    "th-no-scope",
+    "missing-autocomplete"
+  ],
+  "keep": [],
+  "reject": [
+    {
+      "rule_id": "aria-valid-attr-value",
+      "baseline": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 54
+      },
+      "candidate": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 54
+      },
+      "delta": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      }
+    },
+    {
+      "rule_id": "link-purpose",
+      "baseline": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 63
+      },
+      "candidate": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 63
+      },
+      "delta": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      }
+    },
+    {
+      "rule_id": "semantic-html",
+      "baseline": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 68
+      },
+      "candidate": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 68
+      },
+      "delta": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      }
+    },
+    {
+      "rule_id": "text-spacing",
+      "baseline": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 98
+      },
+      "candidate": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 98
+      },
+      "delta": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      }
+    },
+    {
+      "rule_id": "video-transcript",
+      "baseline": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 88
+      },
+      "candidate": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 88
+      },
+      "delta": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      }
+    }
+  ],
+  "neutral": []
+}

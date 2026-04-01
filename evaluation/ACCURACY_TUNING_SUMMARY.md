@@ -1,21 +1,23 @@
 # Accuracy Tuning Summary - DJ HACK Music Blocks Audit
 
-## 🎯 Primary Objective  
+## 🎯 Primary Objective
+
 Improve accessibility detection precision from **2.07% baseline** to **>30%** while maintaining reasonable recall.
 
 ## 📊 Results Comparison
 
-| Profile | Precision | Recall | TP | FP | FN | F1 |
-|---------|-----------|--------|----|----|----|----|
-| **balanced** | ? | ? | ? | ? | ? | ? |
-| **high_precision** (baseline) | 2.07% | 7.44% | 90 | 4,257 | 1,120 | 3.24% |
-| **medium_precision** (0.85 conf) | 1.16% | 7.44% | 90 | 7,652 | 1,120 | 2.01% |
-| **ultra_strict** (0.95 conf + exclusions) | 0.00% | 0.00% | 0 | 0 | 1,210 | 0.00% |
-| **strict** ⭐ NEW | **7.49%** | 2.15% | 26 | 321 | 1,184 | 3.34% |
+| Profile                                   | Precision | Recall | TP  | FP    | FN    | F1    |
+| ----------------------------------------- | --------- | ------ | --- | ----- | ----- | ----- |
+| **balanced**                              | ?         | ?      | ?   | ?     | ?     | ?     |
+| **high_precision** (baseline)             | 2.07%     | 7.44%  | 90  | 4,257 | 1,120 | 3.24% |
+| **medium_precision** (0.85 conf)          | 1.16%     | 7.44%  | 90  | 7,652 | 1,120 | 2.01% |
+| **ultra_strict** (0.95 conf + exclusions) | 0.00%     | 0.00%  | 0   | 0     | 1,210 | 0.00% |
+| **strict** ⭐ NEW                         | **7.49%** | 2.15%  | 26  | 321   | 1,184 | 3.34% |
 
 ## ✅ Key Achievement: STRICT PROFILE
 
 **The "strict" precision profile delivers:**
+
 - ✅ **7.49% precision** — **3.6x improvement** over baseline
 - ✅ **92.5% FP reduction** — Dropped from 4,257 → 321 false positives
 - ✅ Excludes 4 over-reported page-level WCAG rules:
@@ -32,6 +34,7 @@ Improve accessibility detection precision from **2.07% baseline** to **>30%** wh
 The 4 excluded rules accounted for **3,936 of 4,257 false positives (92.5%)**. These are WCAG page-level checks (like "must have main landmark" or "must have page title") that fire even on intentionally minimal test fixtures.
 
 **Why rules had both FPs and TPs:**
+
 - `no-headings`: 1,073 FPs but also 7 TPs
 - `no-title`: 992 FPs but also 5 TPs
 - Neither can be completely excluded; selective filtering by confidence helps
@@ -74,7 +77,7 @@ The 4 excluded rules accounted for **3,936 of 4,257 false positives (92.5%)**. T
 ### Code Changes
 
 1. **app/config.py**: Added `strict` and `medium_precision` profiles to PRECISION_PROFILES
-2. **app/services/audit_runner.py**: 
+2. **app/services/audit_runner.py**:
    - Updated adaptive thresholding to apply to both `high_precision` AND `strict` profiles
    - Implemented rule exclusion logic: `if rule_id in exclude_rules: continue`
    - Added `dropped_excluded_rules` telemetry
@@ -85,12 +88,14 @@ The 4 excluded rules accounted for **3,936 of 4,257 false positives (92.5%)**. T
 **Full benchmark scope:** 1,134 ACT test cases
 
 **Commands used:**
+
 ```bash
 python evaluation/benchmark_precision_recall.py evaluation/benchmark_cases.json \
     --profile strict --scan-mode fast --out evaluation/benchmark_results_strict.json
 ```
 
 **Metrics tracked:**
+
 - Micro Precision/Recall (all rules)
 - Adjudicated Precision/Recall (labeled subset)
 - Per-rule breakdown (TP/FP/FN)
@@ -113,14 +118,17 @@ python evaluation/benchmark_precision_recall.py evaluation/benchmark_cases.json 
 ## 📌 Recommendation
 
 **Use `strict` profile for:**
+
 - ✅ Production reporting (fewer false positives = higher user trust)
 - ✅ Compliance audits (precision matters more than recall)
 - ✅ Benchmarking against external sources
 
 **Use `high_precision` for:**
+
 - ✅ Initial discovery (broader coverage despite more FPs)
 - ✅ Development environments (catch more potential issues)
 
 **Avoid:**
+
 - ❌ `ultra_strict` (0% detection; too aggressive)
 - ❌ `medium_precision` (worse than baseline)

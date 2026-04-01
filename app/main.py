@@ -46,12 +46,13 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Accessibility Intelligence Engine",
     description=(
-        "Next-gen accessibility auditing API — multi-engine scanning (static + heuristic + "
+        "Production-grade accessibility auditing API — multi-engine scanning (static + heuristic + "
         "browser probes + axe-core), AI-powered cognitive analysis, confidence scoring, "
         "RAG-backed remediation with WCAG 2.2 + ARIA APG + COGA references. "
-        "Surpasses Lighthouse and axe-core in coverage, accuracy, and developer experience."
+        "Features async enrichment, parallel engines, self-learning fix library, "
+        "SSE streaming, global backpressure, and fix validation loops."
     ),
-    version="2.0.0",
+    version="3.0.0",
     lifespan=lifespan,
 )
 
@@ -120,12 +121,15 @@ async def root():
     """Root endpoint with API info."""
     return {
         "name": "Accessibility Intelligence Engine",
-        "version": "2.0.0",
-        "description": "Next-gen accessibility auditing platform surpassing Lighthouse and axe-core",
+        "version": "3.0.0",
+        "description": "Production-grade accessibility auditing platform with async RAG, parallel engines, self-learning fix library, and SSE streaming",
         "endpoints": {
             "POST /audit": "Run multi-engine accessibility audit (fast/deep mode)",
+            "POST /audit/stream": "SSE streaming audit with real-time progress events",
+            "GET /audit/enrichment/{id}": "Poll for background RAG enrichment results",
             "POST /audit/feedback": "Submit developer feedback for suggested fixes",
             "GET /audit/feedback/stats": "View aggregate feedback statistics",
+            "GET /audit/cache/stats": "Fix Library and Page Cache telemetry",
             "POST /rag": "Query the WCAG knowledge base (explanation + code fix + WCAG ref)",
             "GET /rag/topics": "List available filter topics/levels",
             "POST /ingest": "Ingest WCAG guidelines + repo into vector store",
@@ -135,5 +139,17 @@ async def root():
             "fast": "Static HTML + heuristic checks (≤15s)",
             "deep": "Full Playwright + browser probes + axe-core + cognitive analysis (≤120s)",
         },
+        "optimization_features": [
+            "Async RAG enrichment (non-blocking)",
+            "Parallel check engines (asyncio.gather)",
+            "Playwright circuit breaker (semaphore + timeout)",
+            "Global backpressure guard (auto-degrade at >20 concurrent)",
+            "LLM call batching (group by WCAG criterion)",
+            "Self-learning Fix Library (85% success gate)",
+            "Fix validation loop (rule-specific validators)",
+            "Page-level + DOM-structure caching (24h TTL)",
+            "SSE streaming for real-time progress",
+            "TTFI telemetry tracking",
+        ],
         "docs": "/docs",
     }

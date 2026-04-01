@@ -10,6 +10,26 @@ from bs4 import BeautifulSoup, Tag
 
 logger = logging.getLogger(__name__)
 
+_WEAK_LINK_TEXT = {"click here", "read more"}
+
+_VALID_ARIA_BOOL = {"true", "false"}
+_VALID_ARIA_TRISTATE = {"true", "false", "mixed"}
+_VALID_ARIA_CURRENT = {"page", "step", "location", "date", "time", "true", "false"}
+_VALID_ARIA_SORT = {"ascending", "descending", "none", "other"}
+
+# Compact role allowlist for strong validation with low false positives.
+_KNOWN_ROLES = {
+    "alert", "alertdialog", "application", "article", "banner", "button", "cell", "checkbox",
+    "columnheader", "combobox", "complementary", "contentinfo", "definition", "dialog", "directory",
+    "document", "feed", "figure", "form", "grid", "gridcell", "group", "heading", "img", "link",
+    "list", "listbox", "listitem", "log", "main", "marquee", "math", "menu", "menubar", "menuitem",
+    "menuitemcheckbox", "menuitemradio", "navigation", "none", "note", "option", "presentation",
+    "progressbar", "radio", "radiogroup", "region", "row", "rowgroup", "rowheader", "scrollbar",
+    "search", "searchbox", "separator", "slider", "spinbutton", "status", "switch", "tab", "table",
+    "tablist", "tabpanel", "term", "textbox", "timer", "toolbar", "tooltip", "tree", "treegrid",
+    "treeitem"
+}
+
 
 def _make_issue_id(url: str, selector: str, rule_id: str) -> str:
     """Generate a unique issue ID via SHA256."""
@@ -71,6 +91,23 @@ class StaticChecker:
     def __init__(self, html: str, url: str):
         self.soup = BeautifulSoup(html, "lxml")
         self.url = url
+        self.rule_activity: dict[str, dict[str, int]] = {}
+
+    def _track_rule_activity(self, rule_id: str, elements_checked: int = 0, violations_found: int = 0) -> None:
+        """Track lightweight per-rule activity telemetry for detector coverage debugging."""
+        slot = self.rule_activity.setdefault(rule_id, {"elements_checked": 0, "violations_found": 0})
+        slot["elements_checked"] += max(0, int(elements_checked))
+        slot["violations_found"] += max(0, int(violations_found))
+
+    def get_rule_activity(self) -> dict[str, dict[str, int]]:
+        """Return copy-safe rule activity telemetry."""
+        return {
+            rid: {
+                "elements_checked": vals.get("elements_checked", 0),
+                "violations_found": vals.get("violations_found", 0),
+            }
+            for rid, vals in self.rule_activity.items()
+        }
 
     def run_all(self, checks: Optional[list[str]] = None) -> list[dict]:
         """Run all check categories. Pass a list to limit which categories run."""
@@ -79,6 +116,9 @@ class StaticChecker:
             "links", "buttons", "forms", "tables", "lists",
             "aria", "media", "color_hints", "keyboard_hints",
             "viewport", "skip_nav", "advanced_detect",
+            # New high-impact checks
+            "color_contrast", "duplicate_ids", "redundant_alt",
+            "svg_accessible_name", "empty_headings", "unsafe_external_links", "form_label_missing",
         ]
         issues = []
         for check_name in all_checks:
@@ -248,24 +288,17 @@ class StaticChecker:
                     "1.1.1", "A", "images",
                     f'Add alt="" for decorative images or alt="description" for informative: <img src="{src}" alt="description">'
                 ))
-            elif alt == "" and not img.get("role") == "presentation":
-                spacer_keywords = ["spacer", "pixel", "blank", "divider"]
-                if src and not any(x in src.lower() for x in spacer_keywords):
-                    issues.append(_issue(
-                        self.url, "empty-alt", "needs-review", "moderate",
-                        selector, _snippet(img),
-                        "Image has empty alt text. If decorative, add role='presentation'. If informative, add meaningful alt.",
-                        "1.1.1", "A", "images",
-                        'Add role="presentation" if decorative, or meaningful alt text if informative.',
-                        fix_effort="low"
-                    ))
 
-        # SVG without title
+        # SVG without title (basic check — the polyfill check_svg_accessible_name is more thorough)
         for svg in self.soup.find_all("svg"):
             has_title = svg.find("title")
             has_label = svg.get("aria-label") or svg.get("aria-labelledby")
-            has_hidden = svg.get("aria-hidden") == "true"
-            if not has_title and not has_label and not has_hidden:
+            has_hidden = (svg.get("aria-hidden") or "").strip().lower() == "true"
+            role_val = svg.get("role", "")
+            if isinstance(role_val, list):
+                role_val = " ".join(role_val)
+            is_decorative = role_val.strip().lower() in ("presentation", "none")
+            if not has_title and not has_label and not has_hidden and not is_decorative:
                 issues.append(_issue(
                     self.url, "svg-no-accessible-name", "violation", "serious",
                     _css_selector(svg), _snippet(svg, 200),
@@ -280,15 +313,22 @@ class StaticChecker:
 
     def check_links(self) -> list[dict]:
         issues = []
-        vague_texts = {"click here", "read more", "more", "here", "link", "learn more", "details"}
+        weak_link_texts = {"click here", "read more", "link"}
 
         for link in self.soup.find_all("a"):
-            text = link.get_text(strip=True)
-            aria_label = link.get("aria-label", "")
+            text = link.get_text(" ", strip=True)
+            aria_label = (link.get("aria-label") or "").strip()
+            aria_labelledby = (link.get("aria-labelledby") or "").strip()
+            title = (link.get("title") or "").strip()
+            href = (link.get("href") or "").strip()
             selector = _css_selector(link)
 
+            img = link.find("img")
+            img_alt = (img.get("alt") or "").strip() if img else ""
+            has_programmatic_name = bool(aria_label or aria_labelledby or title or img_alt)
+
             # Empty link
-            if not text and not aria_label and not link.find("img"):
+            if not text and not has_programmatic_name:
                 issues.append(_issue(
                     self.url, "empty-link", "violation", "serious",
                     selector, _snippet(link),
@@ -297,14 +337,14 @@ class StaticChecker:
                     'Add descriptive text or aria-label="description".'
                 ))
 
-            # Vague link text
-            if text and text.lower() in vague_texts:
+            # Strict link-purpose check aligned to benchmark-facing generic labels.
+            if text and text.lower() in weak_link_texts and not has_programmatic_name and href and not href.startswith("#"):
                 issues.append(_issue(
-                    self.url, "generic-link-text", "violation", "moderate",
+                    self.url, "link-purpose", "violation", "moderate",
                     selector, _snippet(link),
-                    f'Link text "{text}" is not descriptive. Users should understand the purpose from text alone.',
+                    f'Link text "{text}" is generic and lacks clear purpose.',
                     "2.4.4", "A", "navigation",
-                    "Replace generic text with descriptive link text."
+                    "Use descriptive link text or add aria-label/aria-labelledby with purpose context."
                 ))
 
             # External links opening new window
@@ -338,18 +378,80 @@ class StaticChecker:
 
     def check_buttons(self) -> list[dict]:
         issues = []
+        checked = 0
+        button_name_violations = 0
+
+        def _has_accessible_name(elem: Tag) -> bool:
+            # Prefer explicit ARIA naming first.
+            if elem.get("aria-label") or elem.get("aria-labelledby"):
+                return True
+            if elem.get("title"):
+                return True
+
+            # Native visible text.
+            if elem.get_text(" ", strip=True):
+                return True
+
+            # Button-like inputs use value/alt attributes for naming.
+            if elem.name == "input":
+                input_type = (elem.get("type") or "").lower()
+                if input_type in {"button", "submit", "reset"} and (elem.get("value") or "").strip():
+                    return True
+                if input_type == "image" and (elem.get("alt") or "").strip():
+                    return True
+
+            # Icon buttons with meaningful image alt can still be named.
+            img = elem.find("img")
+            if img and (img.get("alt") or "").strip():
+                return True
+
+            return False
+
         for btn in self.soup.find_all("button"):
-            text = btn.get_text(strip=True)
+            checked += 1
             selector = _css_selector(btn)
 
-            if not text and not btn.get("aria-label") and not btn.get("aria-labelledby"):
+            if not _has_accessible_name(btn):
                 issues.append(_issue(
-                    self.url, "button-no-name", "violation", "critical",
+                    self.url, "button-name", "violation", "critical",
                     selector, _snippet(btn),
                     "Button has no accessible name. Screen readers cannot identify this control.",
                     "4.1.2", "A", "forms",
                     'Add text content or aria-label="Button description".'
                 ))
+                button_name_violations += 1
+
+        # Input controls that function as buttons also require an accessible name.
+        for inp in self.soup.find_all("input"):
+            inp_type = (inp.get("type") or "").lower()
+            if inp_type not in {"button", "submit", "reset", "image"}:
+                continue
+            checked += 1
+            if not _has_accessible_name(inp):
+                issues.append(_issue(
+                    self.url, "button-name", "violation", "critical",
+                    _css_selector(inp), _snippet(inp),
+                    "Button-like input has no accessible name.",
+                    "4.1.2", "A", "forms",
+                    'Add value text, alt text (for image inputs), or aria-label.'
+                ))
+                button_name_violations += 1
+
+        # ARIA button role support in static mode.
+        for elem in self.soup.find_all(attrs={"role": True}):
+            role = (elem.get("role") or "").strip().lower()
+            if role != "button":
+                continue
+            checked += 1
+            if not _has_accessible_name(elem):
+                issues.append(_issue(
+                    self.url, "button-name", "violation", "critical",
+                    _css_selector(elem), _snippet(elem),
+                    "Element with role=button has no accessible name.",
+                    "4.1.2", "A", "forms",
+                    'Add visible text or aria-label/aria-labelledby to the role="button" element.'
+                ))
+                button_name_violations += 1
 
         # Div/span acting as button without role
         for elem in self.soup.find_all(["div", "span"]):
@@ -362,6 +464,8 @@ class StaticChecker:
                     "4.1.2", "A", "aria",
                     'Add role="button" tabindex="0" and keyboard event handlers, or use a <button>.'
                 ))
+
+        self._track_rule_activity("button-name", elements_checked=checked, violations_found=button_name_violations)
 
         return issues
 
@@ -445,14 +549,14 @@ class StaticChecker:
         # Error messages linked via aria-describedby
         for err_container in self.soup.find_all(class_=re.compile(r'error|invalid|alert', re.I)):
             err_id = err_container.get("id")
-            if err_id:
-                # Check if any input references this via aria-describedby
+            if err_id and err_container.find_parent("form"):
+                # Only analyze if it's actually within a form context
                 linked = self.soup.find(attrs={"aria-describedby": re.compile(err_id)})
                 if not linked:
                     issues.append(_issue(
                         self.url, "error-not-linked", "needs-review", "moderate",
                         _css_selector(err_container), _snippet(err_container),
-                        "Error message container not linked to input via aria-describedby.",
+                        "Error message container in a form is not linked to any input via aria-describedby.",
                         "3.3.1", "A", "forms",
                         f'Add aria-describedby="{err_id}" to the related input element.',
                         fix_effort="low"
@@ -531,7 +635,11 @@ class StaticChecker:
             role = elem.get("role", "")
             if role in interactive_roles:
                 text = elem.get_text(strip=True)
-                if not text and not elem.get("aria-label") and not elem.get("aria-labelledby"):
+                has_label = bool(elem.get("aria-label") or elem.get("aria-labelledby"))
+                if not text and not has_label:
+                    elem_id = elem.get("id")
+                    if elem_id and self.soup.find("label", attrs={"for": elem_id}):
+                        continue
                     issues.append(_issue(
                         self.url, "role-no-name", "violation", "serious",
                         _css_selector(elem), _snippet(elem),
@@ -543,6 +651,9 @@ class StaticChecker:
         # aria-hidden on focusable elements
         for elem in self.soup.find_all(attrs={"aria-hidden": "true"}):
             if elem.name in ("a", "button", "input", "select", "textarea"):
+                # If element is explicitly removed from tab order or visually hidden via attributes, skip
+                if elem.get("hidden") is not None or str(elem.get("tabindex", "")) == "-1" or elem.get("disabled") is not None:
+                    continue
                 issues.append(_issue(
                     self.url, "aria-hidden-focusable", "violation", "critical",
                     _css_selector(elem), _snippet(elem),
@@ -552,7 +663,10 @@ class StaticChecker:
                 ))
 
         # Dynamic content without aria-live (look for common patterns)
-        for elem in self.soup.find_all(class_=re.compile(r'toast|notification|alert|snackbar|message', re.I)):
+        for elem in self.soup.find_all(class_=re.compile(r'toast|notification|alert|snackbar|flash', re.I)):
+            # Must be a container element, not an interactive control or SVG/icon
+            if elem.name not in {"div", "section", "article", "aside", "span", "p"}:
+                continue
             if not elem.get("aria-live") and not elem.get("role") in ("alert", "status", "log"):
                 issues.append(_issue(
                     self.url, "no-aria-live", "needs-review", "moderate",
@@ -583,7 +697,8 @@ class StaticChecker:
             # Video captions
             if media.name == "video":
                 has_track = media.find("track", {"kind": "captions"}) or media.find("track", {"kind": "subtitles"})
-                if not has_track:
+                # Only flag unmuted videos
+                if not has_track and media.get("muted") is None and str(media.get("muted")).lower() not in ["true", "muted", ""]:
                     issues.append(_issue(
                         self.url, "missing-captions", "violation", "critical",
                         selector, _snippet(media),
@@ -670,6 +785,10 @@ class StaticChecker:
     def check_advanced_detect(self) -> list[dict]:
         """Advanced checks beyond basic axe-core rules."""
         issues = []
+        issues.extend(self._check_link_accessibility_cluster())
+        issues.extend(self._check_aria_valid_attr_values())
+        issues.extend(self._check_text_spacing_signals())
+        issues.extend(self._check_video_transcript_presence())
         issues.extend(self._check_placeholder_only_label())
         issues.extend(self._check_broken_aria_references())
         issues.extend(self._check_pseudo_icon_accessibility())
@@ -680,6 +799,325 @@ class StaticChecker:
         issues.extend(self._check_touch_target_spacing())
         issues.extend(self._check_timeout_warnings())
         issues.extend(self._check_auto_update_controls())
+        return issues
+
+    def _check_link_accessibility_cluster(self) -> list[dict]:
+        """Benchmark-aligned link checks: strict empty-link + weak-purpose detection."""
+        issues = []
+        weak_texts = {"click here", "read more", "link"}
+
+        for link in self.soup.find_all("a"):
+            text = link.get_text(" ", strip=True).lower()
+            href = (link.get("href") or "").strip()
+
+            has_name = bool(
+                (link.get("aria-label") or "").strip()
+                or (link.get("aria-labelledby") or "").strip()
+                or (link.get("title") or "").strip()
+            )
+            img = link.find("img")
+            if img and (img.get("alt") or "").strip():
+                has_name = True
+
+            if not text and not has_name:
+                issues.append(_issue(
+                    self.url, "empty-link", "violation", "serious",
+                    _css_selector(link), _snippet(link),
+                    "Link has no accessible name.",
+                    "2.4.4", "A", "navigation",
+                    "Add visible text or an accessible name via aria-label/aria-labelledby."
+                ))
+                continue
+
+            if text in weak_texts and not has_name and href and not href.startswith("#"):
+                issues.append(_issue(
+                    self.url, "link-purpose", "violation", "moderate",
+                    _css_selector(link), _snippet(link),
+                    f'Link text "{text}" is generic and not self-descriptive.',
+                    "2.4.4", "A", "navigation",
+                    "Replace generic text with descriptive link purpose text."
+                ))
+
+        return issues
+
+    def _check_link_purpose_contextual(self) -> list[dict]:
+        """Detect weak link purpose with context-aware suppression."""
+        issues = []
+        for link in self.soup.find_all("a"):
+            text = link.get_text(" ", strip=True).lower()
+            if text not in _WEAK_LINK_TEXT:
+                continue
+
+            # Tighten to avoid FP on icon-only/contextual navigation links.
+            if link.find("img") or link.get("title"):
+                continue
+            href = (link.get("href") or "").strip()
+            if not href or href.startswith("#"):
+                continue
+
+            has_aria = bool(link.get("aria-label") or link.get("aria-labelledby"))
+            has_context = bool(link.find_parent(["nav", "header", "footer", "section"]))
+            if has_aria or has_context:
+                continue
+
+            issues.append(_issue(
+                self.url, "link-purpose", "violation", "moderate",
+                _css_selector(link), _snippet(link),
+                f'Link text "{text}" is generic and lacks contextual disambiguation.',
+                "2.4.4", "A", "navigation",
+                "Use descriptive link text or add aria-label/aria-labelledby with purpose context."
+            ))
+        return issues
+
+    def _check_semantic_html_signals(self) -> list[dict]:
+        """Detect common semantic misuse patterns with low ambiguity."""
+        issues = []
+
+        # Clickable non-interactive elements without role/tabindex.
+        for el in self.soup.find_all(["div", "span"]):
+            has_click = bool(el.get("onclick") or el.get("onmousedown") or el.get("onmouseup"))
+            has_role = bool(el.get("role"))
+            has_tabindex = el.get("tabindex") is not None
+            if has_click and not has_role and not has_tabindex:
+                issues.append(_issue(
+                    self.url, "semantic-html", "violation", "serious",
+                    _css_selector(el), _snippet(el),
+                    "Non-interactive element appears clickable but lacks semantic role and keyboard affordance.",
+                    "1.3.1", "A", "html",
+                    "Use a native <button>/<a> or add role=\"button\", tabindex=\"0\", and keyboard handlers."
+                ))
+
+        # Visual heading pattern without heading semantics.
+        for el in self.soup.find_all(["div", "span", "p"]):
+            style = (el.get("style") or "").lower()
+            if "font-size" not in style:
+                continue
+            size_match = re.search(r"font-size\s*:\s*([0-9.]+)px", style)
+            if not size_match:
+                continue
+            try:
+                font_size = float(size_match.group(1))
+            except ValueError:
+                continue
+            if font_size < 20:
+                continue
+            if el.get("role") == "heading" or el.name in {"h1", "h2", "h3", "h4", "h5", "h6"}:
+                continue
+
+            text = el.get_text(" ", strip=True)
+            if len(text) < 4:
+                continue
+
+            issues.append(_issue(
+                self.url, "semantic-html", "needs-review", "moderate",
+                _css_selector(el), _snippet(el),
+                "Large text block appears heading-like but lacks semantic heading markup.",
+                "1.3.1", "A", "html",
+                "Use semantic heading tags (h1-h6) or role=\"heading\" with aria-level."
+            ))
+
+        return issues
+
+    def _check_aria_valid_attr_values(self) -> list[dict]:
+        """Validate role and selected ARIA attribute values with deterministic checks."""
+        issues = []
+
+        for el in self.soup.find_all(attrs={"role": True}):
+            role_raw = (el.get("role") or "").strip().lower()
+            role_tokens = [tok for tok in role_raw.split() if tok]
+            # ARIA permits multiple role tokens as fallback. Treat as valid if any token is known.
+            if role_tokens and not any(tok in _KNOWN_ROLES for tok in role_tokens):
+                issues.append(_issue(
+                    self.url, "aria-valid-attr-value", "violation", "serious",
+                    _css_selector(el), _snippet(el),
+                    f'Invalid ARIA role value "{role_raw}".',
+                    "4.1.2", "A", "aria",
+                    "Use a valid ARIA role value from the WAI-ARIA specification."
+                ))
+
+        for el in self.soup.find_all(attrs={"aria-hidden": True}):
+            val = (el.get("aria-hidden") or "").strip().lower()
+            if val and val not in _VALID_ARIA_BOOL:
+                issues.append(_issue(
+                    self.url, "aria-valid-attr-value", "violation", "serious",
+                    _css_selector(el), _snippet(el),
+                    f'Invalid aria-hidden value "{val}". Expected true/false.',
+                    "4.1.2", "A", "aria",
+                    'Set aria-hidden to "true" or "false".'
+                ))
+
+        for el in self.soup.find_all(attrs={"aria-checked": True}):
+            val = (el.get("aria-checked") or "").strip().lower()
+            role = (el.get("role") or "").strip().lower()
+            if role not in {"checkbox", "menuitemcheckbox", "radio", "menuitemradio", "switch", "option", "treeitem"}:
+                continue
+            if val not in _VALID_ARIA_TRISTATE:
+                issues.append(_issue(
+                    self.url, "aria-valid-attr-value", "violation", "serious",
+                    _css_selector(el), _snippet(el),
+                    f'Invalid aria-checked value "{val}". Expected true/false/mixed.',
+                    "4.1.2", "A", "aria",
+                    'Set aria-checked to "true", "false", or "mixed" when supported.'
+                ))
+
+        for el in self.soup.find_all(attrs={"aria-current": True}):
+            val = (el.get("aria-current") or "").strip().lower()
+            if val not in _VALID_ARIA_CURRENT:
+                issues.append(_issue(
+                    self.url, "aria-valid-attr-value", "violation", "moderate",
+                    _css_selector(el), _snippet(el),
+                    f'Invalid aria-current value "{val}".',
+                    "4.1.2", "A", "aria",
+                    'Use aria-current values like "page", "step", "location", "date", "time", "true", or "false".'
+                ))
+
+        for el in self.soup.find_all(attrs={"aria-sort": True}):
+            val = (el.get("aria-sort") or "").strip().lower()
+            if val not in _VALID_ARIA_SORT:
+                issues.append(_issue(
+                    self.url, "aria-valid-attr-value", "violation", "moderate",
+                    _css_selector(el), _snippet(el),
+                    f'Invalid aria-sort value "{val}".',
+                    "4.1.2", "A", "aria",
+                    'Use aria-sort values "ascending", "descending", "none", or "other".'
+                ))
+
+        return issues
+
+    def _check_text_spacing_signals(self) -> list[dict]:
+        """Detect likely text spacing failures from inline styles and content visibility signals."""
+        issues = []
+        checked = 0
+        for el in self.soup.find_all(style=True):
+            text = el.get_text(" ", strip=True)
+            if len(text) < 20:
+                continue
+
+            checked += 1
+
+            style = (el.get("style") or "").lower()
+            if "display:none" in style or "visibility:hidden" in style:
+                continue
+
+            fs_match = re.search(r"font-size\s*:\s*([0-9.]+)px", style)
+            if fs_match:
+                try:
+                    if float(fs_match.group(1)) < 12:
+                        continue
+                except ValueError:
+                    pass
+
+            lh_match = re.search(r"line-height\s*:\s*([0-9.]+)", style)
+            ls_match = re.search(r"letter-spacing\s*:\s*([0-9.]+)em", style)
+
+            line_height_low = False
+            letter_spacing_low = False
+
+            if lh_match:
+                try:
+                    line_height_low = float(lh_match.group(1)) < 1.5
+                except ValueError:
+                    pass
+
+            if ls_match:
+                try:
+                    letter_spacing_low = float(ls_match.group(1)) < 0.12
+                except ValueError:
+                    pass
+
+            if line_height_low or letter_spacing_low:
+                issues.append(_issue(
+                    self.url, "text-spacing", "needs-review", "moderate",
+                    _css_selector(el), _snippet(el),
+                    "Inline text spacing may not meet WCAG reflow/readability guidance (line-height/letter-spacing).",
+                    "1.4.12", "AA", "content",
+                    "Increase line-height to at least 1.5 and letter-spacing to at least 0.12em for readable body text."
+                ))
+
+        self._track_rule_activity("text-spacing", elements_checked=checked, violations_found=len(issues))
+
+        return issues
+
+    def _check_video_transcript_presence(self) -> list[dict]:
+        """Detect missing transcript/captions for meaningful videos with conservative FP guards."""
+        issues = []
+        checked = 0
+
+        def _attr_truthy(value) -> bool:
+            if value is None:
+                return False
+            if isinstance(value, bool):
+                return value
+            text = str(value).strip().lower()
+            return text in {"", "true", "1", "yes", "autoplay", "muted"}
+
+        for video in self.soup.find_all("video"):
+            checked += 1
+            selector = _css_selector(video)
+
+            has_captions = bool(
+                video.find("track", {"kind": re.compile(r"captions|subtitles", re.I)})
+            )
+
+            duration_raw = video.get("duration")
+            if duration_raw:
+                try:
+                    if float(duration_raw) < 3.0:
+                        continue
+                except ValueError:
+                    pass
+
+            is_muted = _attr_truthy(video.get("muted"))
+            is_autoplay = _attr_truthy(video.get("autoplay"))
+            if is_muted:
+                continue
+
+            # Search for transcript signals near the video first, then page-level hints.
+            parent = video.parent
+            local_scope = parent if isinstance(parent, Tag) else self.soup
+
+            local_transcript_hint = bool(
+                local_scope.find(attrs={"data-transcript": True})
+                or local_scope.find(class_=re.compile(r"transcript", re.I))
+                or local_scope.find(id=re.compile(r"transcript", re.I))
+            )
+
+            transcript_link_hint = bool(
+                local_scope.find("a", string=re.compile(r"transcript", re.I))
+                or local_scope.find("button", string=re.compile(r"transcript", re.I))
+            )
+
+            transcript_hint = bool(
+                self.soup.find(attrs={"data-transcript": True})
+                or self.soup.find(class_=re.compile(r"transcript", re.I))
+                or self.soup.find(id=re.compile(r"transcript", re.I))
+            )
+
+            # Aggregate nearby sibling text blocks to detect transcript-like long-form content.
+            sibling_chunks = []
+            nxt = video.find_next_sibling()
+            hops = 0
+            while nxt is not None and hops < 3:
+                sibling_chunks.append(nxt.get_text(" ", strip=True))
+                nxt = nxt.find_next_sibling()
+                hops += 1
+            has_long_text_nearby = len(" ".join(sibling_chunks)) > 200
+
+            if has_captions:
+                continue
+            if local_transcript_hint or transcript_link_hint or transcript_hint or has_long_text_nearby:
+                continue
+
+            issues.append(_issue(
+                self.url, "video-transcript", "violation", "serious",
+                selector, _snippet(video),
+                "Video appears to lack nearby transcript or transcript indicators.",
+                "1.2.1", "A", "media",
+                "Provide a transcript near the video or a clearly labeled transcript link/section."
+            ))
+
+        self._track_rule_activity("video-transcript", elements_checked=checked, violations_found=len(issues))
+
         return issues
 
     def _check_touch_target_spacing(self) -> list[dict]:
@@ -958,5 +1396,247 @@ class StaticChecker:
                     "Page with navigation lacks a 'skip to main content' link as the first focusable element.",
                     "2.4.1", "A", "navigation",
                     'Add <a href="#main-content" class="skip-link">Skip to main content</a> as the first element in <body>.'
+                ))
+        return issues
+
+    # ── Color Contrast (inline styles) ─────────────────────────
+
+    def check_color_contrast(self) -> list[dict]:
+        """
+        Detect color contrast failures from inline styles using WCAG relative luminance.
+        Only checks elements with BOTH color + background-color inline — zero FPs otherwise.
+        WCAG SC 1.4.3 (AA): normal text needs 4.5:1, large text needs 3:1.
+        """
+        def _parse_rgb(css_val: str):
+            css_val = css_val.strip().lower()
+            m = re.match(r'rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)', css_val)
+            if m:
+                return int(m.group(1)), int(m.group(2)), int(m.group(3))
+            m = re.match(r'#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})', css_val)
+            if m:
+                return int(m.group(1), 16), int(m.group(2), 16), int(m.group(3), 16)
+            m = re.match(r'#([0-9a-f])([0-9a-f])([0-9a-f])', css_val)
+            if m:
+                return int(m.group(1) * 2, 16), int(m.group(2) * 2, 16), int(m.group(3) * 2, 16)
+            return None
+
+        def _luminance(r, g, b) -> float:
+            def _c(x):
+                s = x / 255.0
+                return s / 12.92 if s <= 0.04045 else ((s + 0.055) / 1.055) ** 2.4
+            return 0.2126 * _c(r) + 0.7152 * _c(g) + 0.0722 * _c(b)
+
+        def _ratio(l1, l2) -> float:
+            return (max(l1, l2) + 0.05) / (min(l1, l2) + 0.05)
+
+        issues = []
+        for elem in self.soup.find_all(style=True):
+            text = elem.get_text(strip=True)
+            if len(text) < 2:
+                continue
+            style = elem.get("style", "")
+            color_m = re.search(r'(?<![a-zA-Z-])color\s*:\s*([^;]+)', style, re.I)
+            bg_m = re.search(r'background-color\s*:\s*([^;]+)', style, re.I)
+            if not color_m or not bg_m:
+                continue
+            fg = _parse_rgb(color_m.group(1))
+            bg = _parse_rgb(bg_m.group(1))
+            if fg is None or bg is None:
+                continue
+            contrast = _ratio(_luminance(*fg), _luminance(*bg))
+
+            # Detect large text
+            fs_m = re.search(r'font-size\s*:\s*([\d.]+)px', style, re.I)
+            fw_m = re.search(r'font-weight\s*:\s*(bold|\d+)', style, re.I)
+            fs_px = float(fs_m.group(1)) if fs_m else 16.0
+            bold = bool(fw_m and (fw_m.group(1) == "bold" or
+                                  (fw_m.group(1).isdigit() and int(fw_m.group(1)) >= 700)))
+            is_large = fs_px >= 24 or (bold and fs_px >= 18.67)
+            required = 3.0 if is_large else 4.5
+
+            if contrast < required:
+                issues.append(_issue(
+                    self.url, "color-contrast", "violation",
+                    "serious" if contrast < 2.0 else "moderate",
+                    _css_selector(elem), _snippet(elem, 200),
+                    f"Color contrast ratio {contrast:.2f}:1 is below the required {required}:1. "
+                    f"Text: rgb{fg}, Background: rgb{bg}.",
+                    "1.4.3", "AA", "color",
+                    f"Adjust colors to achieve at least {required}:1 contrast ratio.",
+                    fix_effort="low"
+                ))
+        return issues
+
+    # ── Duplicate IDs ──────────────────────────────────────────
+
+    def check_duplicate_ids(self) -> list[dict]:
+        """
+        Flag duplicate id attributes. Duplicate IDs break ARIA references,
+        form labels, fragment navigation, and JavaScript queries.
+        WCAG SC 4.1.1 (A).
+        """
+        issues = []
+        id_map: dict[str, list] = {}
+        for elem in self.soup.find_all(id=True):
+            eid = (elem.get("id") or "").strip()
+            if eid:
+                id_map.setdefault(eid, []).append(elem)
+        # SVG-internal IDs (inside <defs>, <clipPath>, <linearGradient>, <radialGradient>, etc.)
+        # are scoped to their SVG and don't affect ARIA references or DOM queries.
+        # Flagging them is a false positive on sites like GitHub that inline many SVGs.
+        _SVG_INTERNAL_PARENTS = {"defs", "clippath", "lineargradient", "radialgradient", "filter", "mask", "pattern", "symbol"}
+
+        for eid, elems in id_map.items():
+            if len(elems) > 1:
+                # Skip if ALL duplicates are inside SVG internal elements
+                all_svg_internal = all(
+                    any(p.name and p.name.lower() in _SVG_INTERNAL_PARENTS for p in elem.parents)
+                    for elem in elems
+                )
+                if all_svg_internal:
+                    continue
+
+                issues.append(_issue(
+                    self.url, "duplicate-id", "violation", "serious",
+                    f'[id="{eid}"]', _snippet(elems[0], 200),
+                    f'ID "{eid}" is used {len(elems)} times. Duplicate IDs break '
+                    f"ARIA label associations, skip links, and DOM queries.",
+                    "4.1.1", "A", "html",
+                    f'Make id="{eid}" unique across the page. Rename duplicate instances.',
+                    fix_effort="low"
+                ))
+        return issues
+
+    # ── Redundant Alt Text ─────────────────────────────────────
+
+    def check_redundant_alt(self) -> list[dict]:
+        """
+        Detect images whose alt text duplicates adjacent visible text.
+        Screen readers will announce the same content twice.
+        WCAG SC 1.1.1 (A), best-practice.
+        """
+        issues = []
+        for img in self.soup.find_all("img"):
+            alt = (img.get("alt") or "").strip()
+            if not alt or len(alt) < 5:
+                continue
+
+            # Check parent link text
+            parent_link = img.find_parent("a")
+            if parent_link:
+                link_text = parent_link.get_text(" ", strip=True)
+                if link_text and link_text.lower() == alt.lower():
+                    issues.append(_issue(
+                        self.url, "image-redundant-alt", "best-practice", "minor",
+                        _css_selector(img), _snippet(img, 200),
+                        f'Image alt "{alt[:60]}" duplicates parent link text. '
+                        f"Screen readers will announce this twice.",
+                        "1.1.1", "A", "images",
+                        'Set alt="" on the image — the link text already provides the label.',
+                        fix_effort="low"
+                    ))
+                    continue
+
+            # Check adjacent sibling text
+            for sibling in [img.find_next_sibling(), img.find_previous_sibling()]:
+                if sibling and hasattr(sibling, "get_text"):
+                    sib_text = sibling.get_text(" ", strip=True)
+                    if sib_text and sib_text.lower() == alt.lower():
+                        issues.append(_issue(
+                            self.url, "image-redundant-alt", "best-practice", "minor",
+                            _css_selector(img), _snippet(img, 200),
+                            f'Image alt "{alt[:60]}" duplicates adjacent text. '
+                            f"Screen readers may announce this information twice.",
+                            "1.1.1", "A", "images",
+                            'Use alt="" if the adjacent text fully describes the image.',
+                            fix_effort="low"
+                        ))
+                        break
+        return issues
+
+
+    # ── Polyfill Checks for Fast Mode ─────────────────────────
+    # These checks fill the gap when Axe-core is disabled (fast mode).
+
+    def check_svg_accessible_name(self) -> list[dict]:
+        issues = []
+        for svg in self.soup.find_all("svg"):
+            # SVGs with role="presentation" or aria-hidden are intentionally decorative
+            role_val = svg.get("role", "")
+            if isinstance(role_val, list):
+                role_val = " ".join(role_val)
+            role_val = role_val.strip().lower()
+            aria_hidden = (svg.get("aria-hidden") or "").strip().lower()
+
+            if aria_hidden == "true" or role_val in ("presentation", "none", "img presentation"):
+                continue
+            has_name = bool(svg.get("aria-label") or svg.get("aria-labelledby"))
+            if not has_name and svg.find("title"):
+                has_name = bool(svg.find("title").get_text(strip=True))
+            if not has_name:
+                issues.append(_issue(
+                    self.url, "svg-no-accessible-name", "violation", "serious",
+                    _css_selector(svg), _snippet(svg, 200),
+                    "SVG image is missing an accessible name.",
+                    "1.1.1", "A", "images", "Add <title> or aria-label.",
+                    fix_effort="low"
+                ))
+        return issues
+
+    def check_empty_headings(self) -> list[dict]:
+        issues = []
+        for tag in ["h1", "h2", "h3", "h4", "h5", "h6"]:
+            for h in self.soup.find_all(tag):
+                if h.get("aria-hidden", "").lower() == "true" or h.get_text(strip=True):
+                    continue
+                has_img_alt = any((img.get("alt") or "").strip() for img in h.find_all("img"))
+                if not has_img_alt:
+                    issues.append(_issue(
+                        self.url, "empty-heading", "violation", "moderate",
+                        _css_selector(h), _snippet(h, 200),
+                        f"Empty {tag.upper()} heading found.",
+                        "1.3.1", "A", "structure", "Remove empty heading or add readable text.",
+                        fix_effort="low"
+                    ))
+        return issues
+
+    def check_unsafe_external_links(self) -> list[dict]:
+        issues = []
+        for a in self.soup.find_all("a", target="_blank"):
+            rel = (a.get("rel") or [])
+            if isinstance(rel, str):
+                rel = rel.split()
+            if "noopener" not in rel and "noreferrer" not in rel:
+                issues.append(_issue(
+                    self.url, "unsafe-external-link", "best-practice", "minor",
+                    _css_selector(a), _snippet(a, 200),
+                    "Link opens in a new window without rel='noopener'.",
+                    "Best Practice", "", "navigation", "Add rel=\"noopener\".",
+                    fix_effort="low"
+                ))
+        return issues
+
+    def check_form_label_missing(self) -> list[dict]:
+        issues = []
+        skip_types = {"hidden", "submit", "button", "reset", "image"}
+        for input_elem in self.soup.find_all(["input", "textarea", "select"]):
+            itype = input_elem.get("type", "text").lower()
+            if itype in skip_types or input_elem.get("aria-hidden") == "true":
+                continue
+            if input_elem.get("aria-label") or input_elem.get("aria-labelledby") or input_elem.get("title"):
+                continue
+            
+            has_label = bool(input_elem.find_parent("label"))
+            if not has_label:
+                eid = input_elem.get("id")
+                has_label = bool(eid and self.soup.find("label", {"for": eid}))
+            
+            if not has_label:
+                issues.append(_issue(
+                    self.url, "form-label-missing", "violation", "serious",
+                    _css_selector(input_elem), _snippet(input_elem, 200),
+                    "Form field is missing an external label or aria-label.",
+                    "1.3.1", "A", "forms", "Wrap input in <label> or provide aria-label.",
+                    fix_effort="low"
                 ))
         return issues

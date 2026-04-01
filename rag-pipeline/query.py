@@ -1,22 +1,48 @@
 from rank_bm25 import BM25Okapi
-from sentence_transformers import SentenceTransformer
 import chromadb, functools, time, logging, re
 
-# ── LOGGING SETUP ─────────────────────────────────────────────
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+from model_registry import get_embedding_model, get_bm25_cache, get_rerank_model
+
 logger = logging.getLogger("rag-query")
 
-# ── Model Loading (CrossEncoder REMOVED entirely) ─────────────
-embedder  = SentenceTransformer("all-MiniLM-L6-v2")
-client    = chromadb.PersistentClient("./chroma_db")
-col       = client.get_collection("accessibility_kb")
+# ── Named Constants ───────────────────────────────────────────
+RRF_K = 60
+NOISE_GUARD_MIN_WORD_LEN = 3
+CONFIDENCE_CONSENSUS_THRESHOLD = 0.25
+LOW_CONFIDENCE_CHUNK_LIMIT = 1
+MAX_CONTEXT_CHUNKS = 5          # Hard cap: prevents latency/cost/hallucination from over-long prompts
+CHROMA_PERSIST_DIR = "./chroma_db"
+CHROMA_COLLECTION = "accessibility_kb"
+
+# ── Lazy ChromaDB connection ──────────────────────────────────
+_chroma_client = None
+_chroma_col = None
+
+
+def _get_chroma_collection():
+    """Lazy-init ChromaDB collection with error recovery."""
+    global _chroma_client, _chroma_col
+    if _chroma_col is not None:
+        return _chroma_col
+    try:
+        _chroma_client = chromadb.PersistentClient(CHROMA_PERSIST_DIR)
+        _chroma_col = _chroma_client.get_collection(CHROMA_COLLECTION)
+        return _chroma_col
+    except Exception as e:
+        logger.error(f"ChromaDB connection failed: {e}")
+        return None
+
 
 # ── CACHED BM25 INDEX (built ONCE, not per query) ────────────
-_bm25_cache = {}
+_bm25_cache = get_bm25_cache()
 
 def _get_bm25():
     """Load corpus + build BM25 index exactly once, then cache."""
     if "index" not in _bm25_cache:
+        col = _get_chroma_collection()
+        if col is None:
+            logger.warning("ChromaDB unavailable — BM25 index empty")
+            return None, [], []
         t0 = time.time()
         all_items = col.get(include=["documents", "metadatas"])
         corpus = all_items["documents"]
@@ -115,7 +141,9 @@ ISSUE_QUERY_MAP = {
 
 @functools.lru_cache(maxsize=256)
 def _cached_embed(query: str):
-    return tuple(embedder.encode(query, normalize_embeddings=True).tolist())
+    """Cache embedding vectors to avoid re-encoding repeated queries."""
+    model = get_embedding_model()
+    return tuple(model.encode(query, normalize_embeddings=True).tolist())
 
 def expand_query(issue_id: str, raw: str) -> str:
     return ISSUE_QUERY_MAP.get(issue_id, f"WCAG accessibility: {raw}")
@@ -135,11 +163,21 @@ def hybrid_retrieve(query: str, top_k: int = 15) -> list[dict]:
     and return the top 5 without any heavy CrossEncoder processing.
     """
     # ── Vector search (fast: ChromaDB ANN) ──
+    col = _get_chroma_collection()
+    if col is None:
+        logger.warning("ChromaDB unavailable — returning empty results")
+        return []
+
     emb = list(_cached_embed(query))
-    vec_results = col.query(
-        query_embeddings=[emb], n_results=top_k,
-        include=["documents","metadatas","distances"]
-    )
+    try:
+        vec_results = col.query(
+            query_embeddings=[emb], n_results=top_k,
+            include=["documents","metadatas","distances"]
+        )
+    except Exception as e:
+        logger.error(f"ChromaDB query failed: {e}")
+        return []
+
     if not vec_results["documents"] or not vec_results["documents"][0]:
         return []
         
@@ -158,7 +196,7 @@ def hybrid_retrieve(query: str, top_k: int = 15) -> list[dict]:
 
     # ── Option A: Reciprocal Rank Fusion (RRF) ──
     # The math that makes the Bi-Encoder so powerful without a reranker
-    def rrfScore(rank, k=60): return 1 / (k + rank + 1)
+    def rrfScore(rank, k=RRF_K): return 1 / (k + rank + 1)
 
     scores = {}
     for rank, doc in enumerate(vec_docs):
@@ -185,7 +223,7 @@ def hybrid_retrieve(query: str, top_k: int = 15) -> list[dict]:
     if is_code_query(query):
         return results
 
-    words = [w.lower() for w in query.split() if len(w) > 3]
+    words = [w.lower() for w in query.split() if len(w) > NOISE_GUARD_MIN_WORD_LEN]
     if words:
         has_overlap = False
         query_words = set(words)
@@ -206,11 +244,24 @@ def hybrid_retrieve(query: str, top_k: int = 15) -> list[dict]:
 
 def rerank(query: str, candidates: list[dict], top_n: int = 5) -> list[dict]:
     """
-    Option A applied: The heavy CrossEncoder is dead. 
-    This function now just passes the pre-fused Bi-Encoder scores forward 
-    so that we don't break the existing API interface in `llm.py`.
+    Rerank candidates using a heavy CrossEncoder.
+    Fuses bi-encoder retrieval results with lexical BM25, then re-orders them
+    to put the absolute most relevant at position #1.
     """
-    return candidates[:top_n]
+    if not candidates:
+        return []
+    try:
+        reranker = get_rerank_model()
+        # Form (query, document) pairs for the model
+        pairs = [(query, c["text"]) for c in candidates]
+        scores = reranker.predict(pairs)
+        
+        # Zip scores with candidates and sort by score descending
+        ranked = sorted(zip(scores, candidates), key=lambda x: x[0], reverse=True)
+        return [c for _, c in ranked[:top_n]]
+    except Exception as e:
+        logger.error(f"Reranking failed: {e}. Falling back to default top-N.")
+        return candidates[:top_n]
 
 
 def answer(issue_id: str, raw_description: str, element_html: str,
@@ -229,11 +280,15 @@ def answer(issue_id: str, raw_description: str, element_html: str,
         norm_score = top_n[0]["score"] / sum_scores if sum_scores else 0
         
         # Calibration: 0.25 is a strict heuristic for significant ranking consensus
-        if norm_score < 0.25:
+        if norm_score < CONFIDENCE_CONSENSUS_THRESHOLD:
             confidence = "LOW"
-            logger.warning(f"Low retrieval confidence ({norm_score:.2f}). Falling back to safe 1-chunk limit.")
-            top_n = top_n[:1]  # Limit context to avoid hallucinating on weak assumptions
+            logger.warning(f"Low retrieval confidence ({norm_score:.2f}). Falling back to safe {LOW_CONFIDENCE_CHUNK_LIMIT}-chunk limit.")
+            top_n = top_n[:LOW_CONFIDENCE_CHUNK_LIMIT]
         
+    # Enforce max context limit: too many chunks = latency + cost + hallucination risk
+    if top_n:
+        top_n = top_n[:MAX_CONTEXT_CHUNKS]
+
     context    = "\n\n---\n\n".join(c["text"] for c in top_n)
     sources    = [c["meta"].get("url","") for c in top_n]
     wcag_scs   = list({sc for c in top_n

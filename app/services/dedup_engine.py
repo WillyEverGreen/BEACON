@@ -13,9 +13,9 @@ def _dedup_key(issue: dict) -> str:
     Generate a dedup key from (url, element/selector, rule_id).
     Normalizes selectors by stripping whitespace and lowering.
     """
-    url = issue.get("page_url", "").lower().rstrip("/")
-    element = issue.get("element", "").strip().lower()
-    rule_id = issue.get("rule_id", "").strip().lower()
+    url = str(issue.get("page_url", "")).lower().rstrip("/")
+    element = str(issue.get("element", "")).strip().lower()
+    rule_id = str(issue.get("rule_id", "")).strip().lower()
     return f"{url}|{element}|{rule_id}"
 
 

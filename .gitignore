@@ -16,6 +16,7 @@ serviceAccountKey.json
 # Databases & Vector Stores
 chroma_db/
 data/
+feedback_data/
 
 # Local Only Repos & Submodules
 axe-core/
@@ -38,19 +39,7 @@ evaluation/analysis_current.json
 evaluation/detection_tuning_guide.json
 evaluation/repo_validation_results.json
 
-# Local benchmark output artifacts
-full_musicblocks_audit.json
-full_musicblocks_report.md
-universal_audit_report.json
-ACCURACY_ANALYSIS.md
-
-# One-off local utility scripts
-check_accuracy.py
-failure_analysis.py
-fix_env_bom.py
-fix_home_env.py
-validate_issues.py
-
 # OS Files
 .DS_Store
 Thumbs.db
+

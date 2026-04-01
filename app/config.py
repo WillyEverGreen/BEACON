@@ -128,6 +128,23 @@ PRECISION_PROFILES = {
                 "aria-valid-attr-value": 0.60,
             },
         },
+        # Second-pass profile family:
+        # strict/balanced/exploratory are tuned via app/data/rule_quality_policy.json.
+        "high_precision_recall_strict": {
+            "min_confidence": 0.75,
+            "include_needs_review": False,
+            "exclude_contextual_single_source": True,
+        },
+        "high_precision_recall_balanced": {
+            "min_confidence": 0.75,
+            "include_needs_review": False,
+            "exclude_contextual_single_source": True,
+        },
+        "high_precision_recall_exploratory": {
+            "min_confidence": 0.75,
+            "include_needs_review": False,
+            "exclude_contextual_single_source": True,
+        },
         # Medium-precision mode: higher confidence threshold without rule exclusions
         # Aims for ~30-50% precision by raising min_confidence from 0.75 to 0.85
         "medium_precision": {
@@ -138,21 +155,104 @@ PRECISION_PROFILES = {
 }
 
 # ── Confidence Weights ──────────────────────────────────────────
+# Source reliability reduced to 35% (was 40%) to accommodate user_impact (5%).
+# This ensures high-disability-impact issues (e.g. missing-alt for blind users)
+# consistently score higher than lower-impact noise.
 
 CONFIDENCE_WEIGHTS = {
-    "source_reliability": 0.30,
-    "signal_strength": 0.25,
-    "cross_engine_agreement": 0.25,
-    "evidence_quality": 0.20,
+    "source_reliability":     0.35,
+    "signal_strength":        0.25,
+    "cross_engine_agreement": 0.15,
+    "evidence_quality":       0.20,
+    "user_impact":            0.05,   # NEW: boosts life-critical disability issues
 }
 
-SOURCE_RELIABILITY_SCORES = {
-    "axe-core": 0.9,
-    "static": 0.85,
-    "browser-probe": 0.8,
-    "heuristic": 0.5,
-    "cognitive": 0.6,
+# ── User Impact Scores per Rule ─────────────────────────────────
+# 0.0 – 1.0; higher = blocks more / more-vulnerable user populations.
+# Used as the 5th confidence signal so blocking issues surface above noise.
+USER_IMPACT_SCORES: dict[str, float] = {
+    # Blind / Screen reader users
+    "missing-alt":            1.0,
+    "empty-alt":              0.9,
+    "missing-label":          1.0,
+    "button-no-name":         1.0,
+    "role-no-name":           0.9,
+    "svg-no-accessible-name": 0.85,
+    "no-headings":            0.8,
+    "no-h1":                  0.7,
+    # Keyboard / Motor-impairment users
+    "no-focus-style":         0.9,
+    "keyboard-unreachable":   1.0,
+    "focus-trap":             1.0,
+    "positive-tabindex":      0.7,
+    # Low-vision users
+    "color-contrast":         0.9,
+    "color-contrast-enhanced":0.85,
+    "small-font-size":        0.7,
+    # Cognitive / all users
+    "empty-link":             0.8,
+    "generic-link-text":      0.7,
+    "missing-skip-link":      0.75,
+    # Deaf users
+    "missing-captions":       0.9,
+    "missing-transcript":     0.85,
+    "_default":               0.5,   # fallback
 }
+
+# ── Human Impact Summaries ──────────────────────────────────────
+# Simple, non-technical explanations for product managers/designers.
+IMPACT_SUMMARIES: dict[str, str] = {
+    # Blind / Screen reader users
+    "missing-alt":            "Screen reader users cannot understand this image without a text description.",
+    "empty-alt":              "Screen reader users may miss the meaning of this meaningful image, or have to listen to the filename.",
+    "missing-label":          "Screen reader users cannot clearly understand what this form input expects.",
+    "button-no-name":         "Screen reader users don't know what clicking this button will do.",
+    "role-no-name":           "Screen reader users don't know the purpose of this interactive element.",
+    "svg-no-accessible-name": "Screen reader users cannot perceive or interact with this SVG graphic.",
+    "no-headings":            "Without headings, screen reader users cannot quickly navigate and skim the page.",
+    "no-h1":                  "Screen reader users lack the main title context to understand what this page is about.",
+    # Keyboard / Motor-impairment users
+    "no-focus-style":         "Keyboard-only users (e.g. users with motor impairments) cannot see which element is currently selected.",
+    "keyboard-unreachable":   "Keyboard-only users are completely blocked from clicking or reaching this element.",
+    "focus-trap":             "Keyboard-only users are trapped here and cannot navigate away without a mouse.",
+    "positive-tabindex":      "Keyboard users will jump awkwardly around the page, breaking logical navigation flow.",
+    # Low-vision users
+    "color-contrast":         "Low-vision users or users in glare will struggle to read this text.",
+    "color-contrast-enhanced":"Low-vision users may struggle reading this text without higher contrast.",
+    "small-font-size":        "Low-vision users will struggle to read this very small text.",
+    # Cognitive / all users
+    "empty-link":             "Users don't know where this link goes because there's no visible or screen-reader text.",
+    "generic-link-text":      "Users reading out of context (like 'Click here') don't know where this link goes.",
+    "missing-skip-link":      "Keyboard users are forced to repeatedly tab through all navigation before reaching content.",
+    # Deaf users
+    "missing-captions":       "Deaf or hard-of-hearing users cannot consume this video/audio content.",
+    "missing-transcript":     "Deaf or hard-of-hearing users cannot consume this audio content.",
+    "_default":               "This issue creates friction for users with disabilities interacting with your app.",
+}
+
+
+SOURCE_RELIABILITY_SCORES = {
+    "axe-core":      0.95,
+    "static":        0.90,
+    "browser-probe": 0.85,
+    "heuristic":     0.50,
+    "cognitive":     0.60,  # Experimental — lower baseline, isolated to deep mode
+}
+
+# ── Cache Observability Counters ────────────────────────────────
+# Real-time hit/miss tracking per cache tier. Exposed via GET /audit/cache/stats.
+# Without this, you cannot verify that caching is actually working at scale.
+CACHE_STATS: dict[str, int] = {
+    "page_hits":   0,
+    "page_misses": 0,
+    "dom_hits":    0,
+    "dom_misses":  0,
+    "llm_hits":    0,
+    "llm_misses":  0,
+    "fix_hits":    0,
+    "fix_misses":  0,
+}
+
 
 # ── Severity Weights (for scoring) ─────────────────────────────
 
@@ -161,6 +261,31 @@ SEVERITY_WEIGHTS = {
     "serious": 5,
     "moderate": 2,
     "minor": 1,
+}
+
+# ── Scoring Configuration ───────────────────────────────────────
+# Prevents a single noisy rule (e.g. 'region') from collapsing the
+# score to 0 by capping the maximum penalty contribution per rule_id.
+
+SCORING_CONFIG = {
+    # Max penalty points any single rule_id can contribute to the score.
+    # With 338 region violations at 2 pts each = 676 → score 0. Cap at 15.
+    "max_penalty_per_rule": 15,
+
+    # Max total penalty per severity tier across ALL rules.
+    "max_penalty_per_severity": {
+        "critical": 30,
+        "serious": 25,
+        "moderate": 20,
+        "minor": 10,
+    },
+
+    # Grouped axe issues (is_grouped=True) count as 1 finding for scoring
+    # regardless of affected_count.
+    "grouped_issue_weight": 1.0,
+
+    # Starting score ceiling (before penalties)
+    "score_max": 100,
 }
 
 # ── Domain Classification ──────────────────────────────────────
@@ -178,6 +303,7 @@ RULE_DOMAIN_MAP = {
     "generic-link-text": "navigation",
     "unsafe-external-link": "navigation",
     "button-no-name": "forms",
+    "button-name": "forms",
     "role-no-name": "aria",
     "no-lang": "structure",
     "no-title": "structure",
@@ -216,6 +342,7 @@ RULE_TYPE_MAP = {
     "missing-label": "hard",
     "empty-link": "hard",
     "button-no-name": "hard",
+    "button-name": "hard",
     "no-lang": "hard",
     "no-title": "hard",
     "missing-captions": "hard",

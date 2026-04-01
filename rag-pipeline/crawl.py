@@ -1,11 +1,13 @@
 # crawl.py
-import asyncio, hashlib, json
+import asyncio, hashlib, json, logging
 from pathlib import Path
 from crawl4ai import AsyncWebCrawler
 from urllib.parse import urlparse
 from config import SOURCES, ALLOWED_DOMAINS
 
 from collections import deque
+
+logger = logging.getLogger("rag.crawl")
 
 async def crawl_source(source):
     visited = set()
@@ -27,7 +29,7 @@ async def crawl_source(source):
             if out.exists():
                 try:
                     data = json.loads(out.read_text(encoding="utf-8", errors="ignore"))
-                    print(f"  [SKIP] {url}")
+                    logger.debug(f"[SKIP] {url}")
                     for link in data.get("links", []):
                         href = link.get("href", "")
                         if href and href not in visited:

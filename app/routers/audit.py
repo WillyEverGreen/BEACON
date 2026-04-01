@@ -1,8 +1,13 @@
 """
 Audit router: run accessibility audits on URLs, submit feedback.
+Includes SSE streaming for real-time audit progress.
 """
+import asyncio
+import json
 import logging
-from fastapi import APIRouter, HTTPException
+import time
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from app.models import (
     AuditRequest, AuditResponse, AuditIssue, IssueGroup,
     CognitiveScore, FeedbackRequest, FeedbackResponse,
@@ -101,6 +106,10 @@ async def audit_url(request: AuditRequest):
             scan_time_seconds=result.get("scan_time_seconds", 0),
             engines_used=result.get("engines_used", []),
             quality_gates=result.get("quality_gates", {}),
+            enrichment_status=result.get("enrichment_status", "complete"),
+            audit_id=result.get("audit_id", ""),
+            priority_ranking=result.get("priority_ranking", []),
+            cognitive_mode=result.get("cognitive_mode", "off"),
         )
 
     except Exception as e:
@@ -136,3 +145,98 @@ async def feedback_stats():
     except Exception as e:
         logger.error(f"Feedback stats error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/enrichment/{audit_id}")
+async def get_enrichment(audit_id: str):
+    """
+    Poll for background RAG enrichment results.
+    Returns status: 'pending' | 'complete' | 'failed' | 'not_found'
+    """
+    from app.services.audit_runner import get_enriched_results
+    return get_enriched_results(audit_id)
+
+
+@router.post("/stream")
+async def audit_stream(request: AuditRequest):
+    """
+    SSE streaming audit endpoint.
+    Streams real-time progress events as the audit executes:
+      - {"event": "started", "scan_mode": "..."}
+      - {"event": "fetching", "progress": 10}
+      - {"event": "engines_running", "progress": 30}
+      - {"event": "scoring", "progress": 70}
+      - {"event": "complete", "progress": 100, "result": {...}}
+    """
+    async def event_generator():
+        try:
+            # Phase 1: Started
+            yield f"data: {json.dumps({'event': 'started', 'scan_mode': request.scan_mode.value, 'progress': 5})}\n\n"
+            await asyncio.sleep(0.05)
+
+            # Phase 2: Fetching
+            yield f"data: {json.dumps({'event': 'fetching', 'url': request.url, 'progress': 10})}\n\n"
+
+            # Phase 3: Run the full audit
+            yield f"data: {json.dumps({'event': 'engines_running', 'progress': 30})}\n\n"
+
+            start = time.time()
+            result = await run_audit(
+                url=request.url,
+                scan_mode=request.scan_mode.value,
+                checks=request.checks,
+            )
+            elapsed = round(time.time() - start, 2)
+
+            # Phase 4: Scoring
+            yield f"data: {json.dumps({'event': 'scoring', 'progress': 70, 'issues_found': result.get('total_issues', 0)})}\n\n"
+            await asyncio.sleep(0.05)
+
+            # Phase 5: Complete
+            yield f"data: {json.dumps({'event': 'complete', 'progress': 100, 'scan_time': elapsed, 'score': result.get('score', 0), 'total_issues': result.get('total_issues', 0), 'enrichment_status': result.get('enrichment_status', 'complete'), 'audit_id': result.get('audit_id', ''), 'summary': result.get('summary', '')})}\n\n"
+
+        except Exception as e:
+            logger.error(f"SSE audit error: {e}", exc_info=True)
+            yield f"data: {json.dumps({'event': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
+
+
+@router.get("/cache/stats")
+async def cache_stats():
+    """
+    Returns cache observability telemetry for all 4 tiers:
+    - page (URL-level cache)
+    - dom  (structural hash cache)
+    - llm  (LLM response cache)
+    - fix  (Fix Library cache)
+
+    Also returns hit_rate per tier to see if caching is actually working.
+    """
+    from app.services.fix_cache import get_cache_stats
+    from app.config import CACHE_STATS
+
+    fix_stats = get_cache_stats()
+
+    # Build hit-rate summaries per tier
+    def hit_rate(hits: int, misses: int) -> float:
+        total = hits + misses
+        return round(hits / total, 3) if total > 0 else 0.0
+
+    # Sync fix cache counters into CACHE_STATS for unified reporting
+    CACHE_STATS["fix_hits"]   = fix_stats.get("hit_count", 0)
+    CACHE_STATS["fix_misses"] = fix_stats.get("miss_count", 0)
+
+    return {
+        "cache_hit_rates": {
+            "page": hit_rate(CACHE_STATS["page_hits"], CACHE_STATS["page_misses"]),
+            "dom":  hit_rate(CACHE_STATS["dom_hits"],  CACHE_STATS["dom_misses"]),
+            "llm":  hit_rate(CACHE_STATS["llm_hits"],  CACHE_STATS["llm_misses"]),
+            "fix":  hit_rate(CACHE_STATS["fix_hits"],  CACHE_STATS["fix_misses"]),
+        },
+        "raw_counters": CACHE_STATS,
+        "fix_library":  fix_stats,
+    }

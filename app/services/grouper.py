@@ -18,7 +18,7 @@ def _get_rule_family(rule_id: str) -> str:
         "heading": ["no-headings", "no-h1", "multiple-h1", "heading-skip", "empty-heading"],
         "label": ["missing-label", "vague-label", "label-clarity"],
         "link": ["empty-link", "generic-link-text", "short-link-text", "unsafe-external-link", "link-no-underline"],
-        "button": ["button-no-name", "vague-button-text", "clickable-no-role"],
+        "button": ["button-no-name", "button-name", "vague-button-text", "clickable-no-role"],
         "aria": ["role-no-name", "aria-hidden-focusable", "no-aria-live", "aria-tree-no-name"],
         "contrast": ["color-contrast", "color-contrast-enhanced", "small-font-size"],
         "keyboard": ["positive-tabindex", "keyboard-unreachable", "no-focus-style", "focus-trap"],

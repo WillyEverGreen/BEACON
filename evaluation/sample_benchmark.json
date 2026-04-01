@@ -3,16 +3,8 @@
     {
       "name": "musicblocks home",
       "url": "https://musicblocks.sugarlabs.org/",
-      "expected_rule_ids": [
-        "empty-link",
-        "missing-label",
-        "button-no-name"
-      ],
-      "known_valid_rule_ids": [
-        "empty-link",
-        "missing-label",
-        "button-no-name"
-      ],
+      "expected_rule_ids": ["empty-link", "missing-label", "button-no-name"],
+      "known_valid_rule_ids": ["empty-link", "missing-label", "button-no-name"],
       "known_invalid_rule_ids": [
         "no-headings",
         "svg-no-accessible-name",

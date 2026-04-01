@@ -10,6 +10,7 @@ from enum import Enum
 # ── Enums ───────────────────────────────────────────────────────
 
 class ScanMode(str, Enum):
+    MINIMAL = "minimal"  # Static + basic heuristics only. Fastest, most debuggable.
     FAST = "fast"
     DEEP = "deep"
 
@@ -113,10 +114,12 @@ class AuditIssue(BaseModel):
     # ── Confidence ──
     confidence: float = Field(default=1.0, description="0.0 – 1.0")
     confidence_sources: list[str] = Field(default_factory=list, description="e.g. ['axe-core', 'heuristic']")
+    confidence_reason: str = Field(default="", description="Human-readable reason for the confidence score")
     needs_manual_review: bool = Field(default=False, description="True if confidence < 0.6")
 
     # ── Remediation ──
     description: str = Field(default="", description="Technical description or 'What is broken' in plain English")
+    impact_summary: str = Field(default="", description="Simple, non-technical explanation of why this matters to the user")
     human_impact: str = Field(default="", description="Who it affects and how (human-centric story)")
     wcag_intent: str = Field(default="", description="Why this criterion exists and its importance")
     test_procedure: str = Field(default="", description="Step-by-step verification procedure")
@@ -200,16 +203,29 @@ class AuditResponse(BaseModel):
     """Full audit response with enriched metadata."""
     url: str
     scan_mode: str = "fast"
+    cognitive_mode: str = Field(default="off", description="off | experimental")
     total_issues: int
     issues: list[AuditIssue]
+    priority_ranking: list[dict] = Field(
+        default_factory=list,
+        description="Top-5 rule groups to fix first, ranked by impact × frequency × visibility"
+    )
     groups: list[IssueGroup] = Field(default_factory=list)
     score: float = Field(default=0.0, description="Accessibility score 0-100")
+    score_display_context: str = Field(default="", description="Important caveat for perfect scores")
+    expected_score_after_fix: float = Field(default=0.0, description="Score if top priorities are fixed")
+    score_improvement: float = Field(default=0.0, description="Potential score boost")
+    degraded_mode: bool = Field(default=False, description="True if one or more requested engines failed or skipped")
+    skipped_components: list[str] = Field(default_factory=list, description="e.g., ['playwright', 'llm']")
+    degradation_reason: Optional[str] = Field(default=None, description="Reason for degradation")
     cognitive_scores: Optional[CognitiveScore] = None
     summary: str = ""
     markdown_report: str = Field(default="", description="Full markdown report")
     scan_time_seconds: float = Field(default=0.0)
     engines_used: list[str] = Field(default_factory=list)
     quality_gates: dict = Field(default_factory=dict)
+    enrichment_status: str = Field(default="complete", description="complete | pending | failed")
+    audit_id: str = Field(default="", description="Unique ID for this audit run to poll for enrichment")
 
 
 class FeedbackResponse(BaseModel):

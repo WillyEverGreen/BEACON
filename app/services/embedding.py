@@ -1,26 +1,29 @@
 """
 Embedding service using sentence-transformers (local, no API key needed).
+
+Uses the shared model from rag-pipeline/model_registry.py to avoid
+loading the same ~90MB model multiple times.
 """
 import logging
+import sys
+import os
 from typing import Optional
+
 from sentence_transformers import SentenceTransformer
 
-from app.config import settings
+# Ensure rag-pipeline is importable
+_rag_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "rag-pipeline"))
+if _rag_path not in sys.path:
+    sys.path.insert(0, _rag_path)
+
+from model_registry import get_embedding_model as _get_shared_model
 
 logger = logging.getLogger(__name__)
 
-# Module-level model cache
-_model: Optional[SentenceTransformer] = None
-
 
 def get_model() -> SentenceTransformer:
-    """Get or initialize the embedding model (cached)."""
-    global _model
-    if _model is None:
-        logger.info(f"Loading embedding model: {settings.embedding_model}")
-        _model = SentenceTransformer(settings.embedding_model)
-        logger.info(f"Model loaded. Dimension: {_model.get_sentence_embedding_dimension()}")
-    return _model
+    """Get the shared embedding model (singleton via model_registry)."""
+    return _get_shared_model()
 
 
 def generate_embeddings(texts: list[str], batch_size: int = 64) -> list[list[float]]:

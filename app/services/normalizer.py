@@ -86,6 +86,24 @@ AXE_CATEGORY_MAP = {
 }
 
 
+# ── Rule Translation Map ──────────────────────────────────────
+# Maps internal engine/axe IDs to standard ACT benchmark expects.
+RULE_TRANSLATIONS = {
+    "svg-img-alt": "svg-no-accessible-name",
+    "link-name": "link-purpose",
+    "image-redundant-alt": "redundant-alt",
+}
+
+# ── High-Frequency Rules that should be grouped ───────────────
+AXE_GROUPABLE_RULES = {
+    "region", "list", "listitem", "definition-list", "landmark-unique",
+    "landmark-one-main", "landmark-no-duplicate-banner",
+    "landmark-no-duplicate-contentinfo", "landmark-no-duplicate-main",
+    "landmark-banner-is-top-level", "landmark-contentinfo-is-top-level",
+    "landmark-main-is-top-level", "form-field-multiple-labels",
+}
+
+
 def _make_issue_id(url: str, selector: str, rule_id: str) -> str:
     """Generate unique issue ID."""
     raw = f"{url}|{selector}|{rule_id}"
@@ -95,25 +113,60 @@ def _make_issue_id(url: str, selector: str, rule_id: str) -> str:
 def normalize_axe_results(axe_violations: list[dict], url: str) -> list[dict]:
     """
     Convert axe-core violation results into unified AuditIssue dicts.
-    
-    axe-core violations format:
-    [{
-        "id": "color-contrast",
-        "impact": "serious",
-        "description": "...",
-        "help": "...",
-        "helpUrl": "...",
-        "nodes": [{"html": "...", "target": ["selector"], "failureSummary": "..."}]
-    }]
+    Groupable rules produce one representative issue with affected_count.
     """
+    import hashlib
     issues = []
     for violation in axe_violations:
-        rule_id = violation.get("id", "unknown")
+        raw_rule_id = violation.get("id", "unknown")
+        rule_id = RULE_TRANSLATIONS.get(raw_rule_id, raw_rule_id)
         severity = AXE_SEVERITY_MAP.get(violation.get("impact", "moderate"), "moderate")
-        wcag_info = AXE_WCAG_MAP.get(rule_id, ("", ""))
-        category = AXE_CATEGORY_MAP.get(rule_id, "general")
+        wcag_info = AXE_WCAG_MAP.get(raw_rule_id, ("", ""))
+        category = AXE_CATEGORY_MAP.get(raw_rule_id, "general")
+        nodes = violation.get("nodes", [])
 
-        for node in violation.get("nodes", []):
+        if raw_rule_id in AXE_GROUPABLE_RULES and nodes:
+            affected = len(nodes)
+            first = nodes[0]
+            targets = first.get("target", [])
+            selector = targets[0] if targets else ""
+            html_snippet = first.get("html", "")[:500]
+            
+            desc = violation.get("description", "")
+            if affected > 1:
+                desc = f"{desc} ({affected} elements affected)"
+                
+            issues.append({
+                "issue_id": _make_issue_id(url, f"{rule_id}:grouped", rule_id),
+                "rule_id": rule_id,
+                "is_grouped": True,
+                "issue_type": "violation",
+                "element": f"{affected} elements" if affected > 1 else selector,
+                "html_snippet": html_snippet,
+                "page_url": url,
+                "severity": severity,
+                "wcag_criterion": wcag_info[0],
+                "wcag_level": wcag_info[1],
+                "category": category,
+                "confidence": 0.9,
+                "confidence_sources": ["axe-core"],
+                "needs_manual_review": False,
+                "description": desc,
+                "suggested_fix": violation.get("help", ""),
+                "code_fix": first.get("failureSummary", ""),
+                "fix_effort": "medium" if affected > 10 else "low",
+                "group_id": "",
+                "domain": RULE_DOMAIN_MAP.get(raw_rule_id, ""),
+                "evidence": {
+                    "axe_help_url": violation.get("helpUrl", ""),
+                    "axe_tags": violation.get("tags", []),
+                    "affected_count": affected,
+                },
+                "reproducibility": "",
+            })
+            continue
+
+        for node in nodes:
             targets = node.get("target", [])
             selector = targets[0] if targets else ""
             html_snippet = node.get("html", "")[:500]
@@ -121,6 +174,7 @@ def normalize_axe_results(axe_violations: list[dict], url: str) -> list[dict]:
             issues.append({
                 "issue_id": _make_issue_id(url, selector, rule_id),
                 "rule_id": rule_id,
+                "is_grouped": False,
                 "issue_type": "violation",
                 "element": selector,
                 "html_snippet": html_snippet,

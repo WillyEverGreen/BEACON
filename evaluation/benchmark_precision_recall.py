@@ -118,6 +118,7 @@ async def _run_case(case: dict, profile: str, scan_mode: str) -> dict:
         "adjudicated_metrics": adjudicated_metrics,
         "scan_summary": result.get("summary", ""),
         "precision_profile_telemetry": result.get("precision_profile_telemetry", {}),
+        "rule_activity": result.get("rule_activity", {}),
     }
 
 
@@ -199,7 +200,7 @@ async def _run_all(benchmark: dict, profile: str, scan_mode: str) -> dict:
 def main():
     parser = argparse.ArgumentParser(description="Benchmark accessibility precision/recall")
     parser.add_argument("benchmark_file", help="Path to benchmark JSON")
-    parser.add_argument("--profile", choices=["balanced", "tuned_balanced", "high_precision", "high_precision_plus", "high_precision_recall_boost", "strict", "very_high_precision", "medium_precision", "ultra_strict"], default="high_precision")
+    parser.add_argument("--profile", choices=["balanced", "tuned_balanced", "high_precision", "high_precision_plus", "high_precision_recall_boost", "high_precision_recall_strict", "high_precision_recall_balanced", "high_precision_recall_exploratory", "strict", "very_high_precision", "medium_precision", "ultra_strict"], default="high_precision")
     parser.add_argument("--scan-mode", choices=["fast", "deep"], default="deep")
     parser.add_argument("--out", default="evaluation/benchmark_results.json")
     args = parser.parse_args()

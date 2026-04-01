@@ -24,12 +24,14 @@ def _make_issue(url, rule_id, issue_type, severity, element, html_snippet,
                 description, wcag_criterion, wcag_level, category,
                 suggested_fix, evidence=None, fix_effort="medium"):
     issue_id = hashlib.sha256(f"{url}|{element}|{rule_id}".encode()).hexdigest()[:16]
+    element_str = str(element) if element is not None else ""
+    snippet_str = str(html_snippet) if html_snippet is not None else ""
     return {
         "issue_id": issue_id,
         "rule_id": rule_id,
         "issue_type": issue_type,
-        "element": element,
-        "html_snippet": html_snippet[:500] if html_snippet else "",
+        "element": element_str,
+        "html_snippet": snippet_str[:500] if snippet_str else "",
         "page_url": url,
         "severity": severity,
         "wcag_criterion": wcag_criterion,
@@ -98,6 +100,7 @@ class BrowserProber:
                     self._probe_focus_styles,
                     self._probe_responsive_reflow,
                     self._probe_zoom,
+                    self._probe_text_spacing_computed_style,
                     self._probe_viewport_zoom_meta,
                     self._probe_aria_tree,
                 ]
@@ -262,7 +265,7 @@ class BrowserProber:
         try:
             # Simulate 200% zoom by setting viewport to half size
             await page.set_viewport_size({"width": 640, "height": 360})
-            await page.evaluate("document.body.style.zoom = '2'")
+            await page.evaluate("() => { if (document.body) document.body.style.zoom = '2'; }")
             await page.wait_for_timeout(500)
 
             # Check for overflow
@@ -283,11 +286,118 @@ class BrowserProber:
                 ))
 
             # Reset
-            await page.evaluate("document.body.style.zoom = '1'")
+            await page.evaluate("() => { if (document.body) document.body.style.zoom = '1'; }")
             await page.set_viewport_size({"width": 1280, "height": 720})
 
         except Exception as e:
             logger.warning(f"Zoom probe error: {e}")
+
+        return issues
+
+    async def _probe_text_spacing_computed_style(self, page) -> list[dict]:
+        """Detect text-spacing issues using computed styles with conservative guards."""
+        issues = []
+        try:
+            findings = await page.evaluate(
+                """
+                () => {
+                    const results = [];
+                    const selectors = 'p, li, td, th, blockquote, article p, section p, div, span';
+                    const nodes = Array.from(document.querySelectorAll(selectors));
+
+                    const weakSet = new Set();
+
+                    const visible = (el, style) => {
+                        if (!el) return false;
+                        if (style.display === 'none' || style.visibility === 'hidden') return false;
+                        if (parseFloat(style.opacity || '1') === 0) return false;
+                        const rect = el.getBoundingClientRect();
+                        return rect.width > 0 && rect.height > 0;
+                    };
+
+                    const makeSelector = (el) => {
+                        const tag = (el.tagName || '').toLowerCase();
+                        const id = el.id ? `#${el.id}` : '';
+                        const cls = (el.className && typeof el.className === 'string')
+                            ? '.' + el.className.trim().split(/\\s+/).slice(0, 2).join('.')
+                            : '';
+                        return `${tag}${id}${cls}`;
+                    };
+
+                    for (const el of nodes) {
+                        if (!el || !el.tagName) continue;
+                        if (el.closest('button, nav, input, select, textarea, [role="button"], [role="navigation"]')) {
+                            continue;
+                        }
+
+                        const text = (el.innerText || '').trim();
+                        if (text.length < 40) continue;
+
+                        const style = window.getComputedStyle(el);
+                        if (!visible(el, style)) continue;
+
+                        const fontSize = parseFloat(style.fontSize || '0');
+                        const lineHeight = parseFloat(style.lineHeight || '0');
+
+                        // Ignore tiny UI text to reduce false positives.
+                        if (!Number.isFinite(fontSize) || fontSize < 12) continue;
+                        if (!Number.isFinite(lineHeight) || lineHeight <= 0) continue;
+
+                        const lsRaw = style.letterSpacing || 'normal';
+                        if (lsRaw === 'normal') continue;
+                        const lsPx = parseFloat(lsRaw);
+                        if (!Number.isFinite(lsPx)) continue;
+
+                        const lineHeightRatio = lineHeight / fontSize;
+                        const letterSpacingEm = lsPx / fontSize;
+
+                        if (lineHeightRatio < 1.5 && letterSpacingEm < 0.12) {
+                            const key = makeSelector(el) + '|' + text.slice(0, 40);
+                            if (weakSet.has(key)) continue;
+                            weakSet.add(key);
+
+                            results.push({
+                                selector: makeSelector(el),
+                                snippet: (el.outerHTML || '').slice(0, 280),
+                                fontSize,
+                                lineHeight,
+                                lineHeightRatio,
+                                letterSpacingPx: lsPx,
+                                letterSpacingEm,
+                            });
+                        }
+                    }
+
+                    return results.slice(0, 20);
+                }
+                """
+            )
+
+            for item in findings:
+                issues.append(_make_issue(
+                    self.url,
+                    "text-spacing",
+                    "violation",
+                    "moderate",
+                    item.get("selector", "<element>"),
+                    item.get("snippet", ""),
+                    "Computed style indicates insufficient text spacing for robust readability.",
+                    "1.4.12",
+                    "AA",
+                    "content",
+                    "Increase line-height to at least 1.5 and letter-spacing to at least 0.12em for visible body text.",
+                    evidence={
+                        "font_size_px": item.get("fontSize"),
+                        "line_height_px": item.get("lineHeight"),
+                        "line_height_ratio": item.get("lineHeightRatio"),
+                        "letter_spacing_px": item.get("letterSpacingPx"),
+                        "letter_spacing_em": item.get("letterSpacingEm"),
+                    },
+                    fix_effort="low",
+                ))
+
+        except Exception as e:
+            logger.warning(f"Text spacing probe error: {e}")
 
         return issues
 

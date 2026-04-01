@@ -8,7 +8,10 @@ from app.config import (
     CONFIDENCE_WEIGHTS,
     SOURCE_RELIABILITY_SCORES,
     RULE_TYPE_MAP,
+    USER_IMPACT_SCORES,
+    IMPACT_SUMMARIES,
 )
+
 
 logger = logging.getLogger(__name__)
 
@@ -77,29 +80,42 @@ def _calc_evidence_quality(issue: dict) -> float:
     return min(1.0, score)
 
 
+def _calc_user_impact(issue: dict) -> float:
+    """
+    How blocking is this issue for affected disability groups? (0.0–1.0)
+    Missing alt for blind users = 1.0. Minor contrast = 0.5 (default).
+    This ensures life-critical violations surface above noise.
+    """
+    rule_id = issue.get("rule_id", "")
+    return USER_IMPACT_SCORES.get(rule_id, USER_IMPACT_SCORES["_default"])
+
+
 def calculate_confidence(issue: dict) -> float:
     """
-    Calculate calibrated confidence score using multi-signal formula:
-    
+    Calculate calibrated confidence score using 5-signal formula:
+
     confidence = (
-        0.30 × source_reliability     +
+        0.35 × source_reliability     +
         0.25 × signal_strength         +
-        0.25 × cross_engine_agreement  +
-        0.20 × evidence_quality
+        0.15 × cross_engine_agreement  +
+        0.20 × evidence_quality        +
+        0.05 × user_impact             ← NEW: boosts blocking disability issues
     )
     """
     sources = issue.get("confidence_sources", [])
 
     source_reliability = _calc_source_reliability(sources)
-    signal_strength = _calc_signal_strength(issue)
-    cross_agreement = _calc_cross_engine_agreement(sources)
-    evidence_quality = _calc_evidence_quality(issue)
+    signal_strength    = _calc_signal_strength(issue)
+    cross_agreement    = _calc_cross_engine_agreement(sources)
+    evidence_quality   = _calc_evidence_quality(issue)
+    user_impact        = _calc_user_impact(issue)
 
     confidence = (
-        CONFIDENCE_WEIGHTS["source_reliability"] * source_reliability +
-        CONFIDENCE_WEIGHTS["signal_strength"] * signal_strength +
-        CONFIDENCE_WEIGHTS["cross_engine_agreement"] * cross_agreement +
-        CONFIDENCE_WEIGHTS["evidence_quality"] * evidence_quality
+        CONFIDENCE_WEIGHTS["source_reliability"]     * source_reliability +
+        CONFIDENCE_WEIGHTS["signal_strength"]        * signal_strength    +
+        CONFIDENCE_WEIGHTS["cross_engine_agreement"] * cross_agreement    +
+        CONFIDENCE_WEIGHTS["evidence_quality"]       * evidence_quality   +
+        CONFIDENCE_WEIGHTS["user_impact"]            * user_impact
     )
 
     # Calibrate by rule type: hard checks are more objective, contextual less so.
@@ -180,6 +196,36 @@ def apply_confidence_rules(issues: list[dict]) -> list[dict]:
         if confidence < 0.6:
             issue["needs_manual_review"] = True
 
+        # Generate Confidence Explanation (Reasoning)
+        unique_sources_list = list(unique_sources)
+        reason_parts = []
+        if len(unique_sources_list) >= 3:
+            reason_parts.append(f"Confirmed by 3+ engines ({', '.join(unique_sources_list)})")
+        elif len(unique_sources_list) == 2:
+            reason_parts.append(f"Cross-verified by 2 engines ({', '.join(unique_sources_list)})")
+        else:
+            engine = unique_sources_list[0] if unique_sources_list else "unknown"
+            if engine == "heuristic":
+                reason_parts.append("Heuristic match only (needs manual review)")
+            elif engine == "axe-core":
+                reason_parts.append("Axe-core deterministic check")
+            else:
+                reason_parts.append(f"Single engine detection ({engine})")
+        
+        repro_score = _calc_evidence_quality(issue)
+        if repro_score >= 0.6:
+            reason_parts.append("with strong code evidence.")
+        elif repro_score >= 0.3:
+            reason_parts.append("with partial evidence.")
+        else:
+            reason_parts.append("with minimal evidence.")
+            
+        issue["confidence_reason"] = " ".join(reason_parts)
+        
+        # Attach Human Impact Summary
+        rule_id = issue.get("rule_id", "")
+        issue["impact_summary"] = IMPACT_SUMMARIES.get(rule_id, IMPACT_SUMMARIES["_default"])
+
     # Log summary
     avg_confidence = sum(i.get("confidence", 0) for i in issues) / len(issues) if issues else 0
     needs_review = sum(1 for i in issues if i.get("needs_manual_review"))
@@ -188,5 +234,36 @@ def apply_confidence_rules(issues: list[dict]) -> list[dict]:
         f"avg confidence={avg_confidence:.2f}, "
         f"{needs_review} flagged for manual review"
     )
+
+    return _boost_cross_engine_agreement(issues)
+
+
+def _boost_cross_engine_agreement(issues: list[dict]) -> list[dict]:
+    """
+    Boost confidence when multiple engines independently find the same rule_id.
+    E.g. both static and axe-core report 'missing-label' → both get confidence ≥ 0.92.
+    This makes cross-corroborated issues surface above single-source noise.
+    """
+    from collections import defaultdict
+
+    # Build rule_id → set of engines that reported it
+    rule_sources: dict[str, set] = defaultdict(set)
+    for issue in issues:
+        rule_id = issue.get("rule_id", "")
+        for src in issue.get("confidence_sources", []):
+            rule_sources[rule_id].add(src)
+
+    # Apply boost for rules confirmed by 2+ independent engines
+    for issue in issues:
+        rule_id = issue.get("rule_id", "")
+        confirming = rule_sources.get(rule_id, set())
+        if len(confirming) >= 2:
+            current = issue.get("confidence", 0.0)
+            # Strong boost: 2 engines → floor at 0.92
+            issue["confidence"] = max(current, 0.92)
+            issue["confidence_tier"] = "high"
+            logger.debug(
+                f"Cross-engine boost: {rule_id} confirmed by {confirming} → confidence={issue['confidence']}"
+            )
 
     return issues

@@ -1,0 +1,569 @@
+{
+  "BBC News": {
+    "name": "BBC News",
+    "url": "https://bbc.com/news",
+    "score": 25.0,
+    "total_issues": 22,
+    "scan_time_seconds": 1.3190019130706787,
+    "degraded_mode": false,
+    "issues": [
+      {
+        "rule_id": "missing-alt",
+        "severity": "critical"
+      },
+      {
+        "rule_id": "svg-no-accessible-name",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "svg-no-accessible-name",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "svg-no-accessible-name",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "missing-label",
+        "severity": "critical"
+      },
+      {
+        "rule_id": "placeholder-as-label",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "lang-mismatch",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "lang-mismatch",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "lang-mismatch",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "lang-mismatch",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "lang-mismatch",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "lang-mismatch",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "lang-mismatch",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "lang-mismatch",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "lang-mismatch",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "lang-mismatch",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "lang-mismatch",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "lang-mismatch",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "duplicate-id",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "duplicate-id",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "form-label-missing",
+        "severity": "serious"
+      }
+    ]
+  },
+  "Stripe Docs": {
+    "name": "Stripe Docs",
+    "url": "https://stripe.com/docs",
+    "score": 44.0,
+    "total_issues": 13,
+    "scan_time_seconds": 20.246349811553955,
+    "degraded_mode": false,
+    "issues": [
+      {
+        "rule_id": "no-main-landmark",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "no-nav-landmark",
+        "severity": "minor"
+      },
+      {
+        "rule_id": "no-header-landmark",
+        "severity": "minor"
+      },
+      {
+        "rule_id": "svg-no-accessible-name",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "svg-no-accessible-name",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "button-name",
+        "severity": "critical"
+      },
+      {
+        "rule_id": "button-name",
+        "severity": "critical"
+      },
+      {
+        "rule_id": "role-no-name",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "role-no-name",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "positive-tabindex",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "text-spacing",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "timeout-no-warning",
+        "severity": "serious"
+      }
+    ]
+  },
+  "NHS UK": {
+    "name": "NHS UK",
+    "url": "https://www.nhs.uk/",
+    "score": 95.0,
+    "total_issues": 1,
+    "scan_time_seconds": 0.9364771842956543,
+    "degraded_mode": false,
+    "issues": [
+      {
+        "rule_id": "svg-no-accessible-name",
+        "severity": "serious"
+      }
+    ]
+  },
+  "Hacker News": {
+    "name": "Hacker News",
+    "url": "https://news.ycombinator.com/",
+    "score": 38.0,
+    "total_issues": 42,
+    "scan_time_seconds": 1.6567094326019287,
+    "degraded_mode": false,
+    "issues": [
+      {
+        "rule_id": "no-main-landmark",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "no-nav-landmark",
+        "severity": "minor"
+      },
+      {
+        "rule_id": "no-header-landmark",
+        "severity": "minor"
+      },
+      {
+        "rule_id": "no-footer-landmark",
+        "severity": "minor"
+      },
+      {
+        "rule_id": "no-headings",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "missing-alt",
+        "severity": "critical"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "missing-label",
+        "severity": "critical"
+      },
+      {
+        "rule_id": "table-no-headers",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "table-no-caption",
+        "severity": "minor"
+      },
+      {
+        "rule_id": "table-no-headers",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "table-no-caption",
+        "severity": "minor"
+      },
+      {
+        "rule_id": "form-label-missing",
+        "severity": "serious"
+      }
+    ]
+  },
+  "Airbnb": {
+    "name": "Airbnb",
+    "url": "https://airbnb.com",
+    "score": 64.0,
+    "total_issues": 8,
+    "scan_time_seconds": 3.2555594444274902,
+    "degraded_mode": false,
+    "issues": [
+      {
+        "rule_id": "missing-alt",
+        "severity": "critical"
+      },
+      {
+        "rule_id": "svg-no-accessible-name",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "unsafe-external-link",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "no-aria-live",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "text-spacing",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "broken-aria-description",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "unlabeled-icon",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "duplicate-id",
+        "severity": "serious"
+      }
+    ]
+  },
+  "MDN Web Docs": {
+    "name": "MDN Web Docs",
+    "url": "https://developer.mozilla.org",
+    "score": 76.0,
+    "total_issues": 5,
+    "scan_time_seconds": 1.5631687641143799,
+    "degraded_mode": false,
+    "issues": [
+      {
+        "rule_id": "no-main-landmark",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "svg-no-accessible-name",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "unsafe-external-link",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "empty-link",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "button-name",
+        "severity": "critical"
+      }
+    ]
+  },
+  "Chase Bank": {
+    "name": "Chase Bank",
+    "url": "https://chase.com",
+    "score": 77.0,
+    "total_issues": 7,
+    "scan_time_seconds": 2.191927194595337,
+    "degraded_mode": false,
+    "issues": [
+      {
+        "rule_id": "empty-heading",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "svg-no-accessible-name",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "unsafe-external-link",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "link-no-underline",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "link-no-underline",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "link-no-underline",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "duplicate-id",
+        "severity": "serious"
+      }
+    ]
+  },
+  "Mayo Clinic": {
+    "name": "Mayo Clinic",
+    "url": "https://mayoclinic.org",
+    "score": 50.0,
+    "total_issues": 14,
+    "scan_time_seconds": 3.1405081748962402,
+    "degraded_mode": false,
+    "issues": [
+      {
+        "rule_id": "svg-no-accessible-name",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "button-name",
+        "severity": "critical"
+      },
+      {
+        "rule_id": "no-aria-live",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "aria-valid-attr-value",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "aria-valid-attr-value",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "inaccessible-document-link",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "inaccessible-document-link",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "inaccessible-document-link",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "inaccessible-document-link",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "duplicate-id",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "duplicate-id",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "duplicate-id",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "duplicate-id",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "duplicate-id",
+        "severity": "serious"
+      }
+    ]
+  },
+  "Coursera": {
+    "name": "Coursera",
+    "url": "https://coursera.org",
+    "score": 85.0,
+    "total_issues": 5,
+    "scan_time_seconds": 7.167730331420898,
+    "degraded_mode": false,
+    "issues": [
+      {
+        "rule_id": "no-header-landmark",
+        "severity": "minor"
+      },
+      {
+        "rule_id": "svg-no-accessible-name",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "missing-skip-link",
+        "severity": "moderate"
+      },
+      {
+        "rule_id": "broken-aria-description",
+        "severity": "serious"
+      },
+      {
+        "rule_id": "inaccessible-document-link",
+        "severity": "moderate"
+      }
+    ]
+  },
+  "Bloomberg": {
+    "name": "Bloomberg",
+    "url": "https://bloomberg.com",
+    "score": 0.0,
+    "total_issues": 0,
+    "scan_time_seconds": 17.978899240493774,
+    "degraded_mode": false,
+    "issues": []
+  }
+}

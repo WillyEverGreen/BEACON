@@ -94,7 +94,7 @@ async def main():
     store_chunks(embedded)
     
     print("=" * 60)
-    print("✅ FREH INGESTION COMPLETE. RUN `python rag-pipeline/verify.py` to check coverage.")
+    print("✅ FRESH INGESTION COMPLETE. RUN `python rag-pipeline/verify.py` to check coverage.")
 
 if __name__ == "__main__":
     asyncio.run(main())
