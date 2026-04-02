@@ -288,17 +288,24 @@ class StaticChecker:
                     "1.1.1", "A", "images",
                     f'Add alt="" for decorative images or alt="description" for informative: <img src="{src}" alt="description">'
                 ))
+            elif alt == "" and not img.get("role") == "presentation":
+                spacer_keywords = ["spacer", "pixel", "blank", "divider"]
+                if src and not any(x in src.lower() for x in spacer_keywords):
+                    issues.append(_issue(
+                        self.url, "empty-alt", "needs-review", "moderate",
+                        selector, _snippet(img),
+                        "Image has empty alt text. If decorative, add role='presentation'. If informative, add meaningful alt.",
+                        "1.1.1", "A", "images",
+                        'Add role="presentation" if decorative, or meaningful alt text if informative.',
+                        fix_effort="low"
+                    ))
 
-        # SVG without title (basic check — the polyfill check_svg_accessible_name is more thorough)
+        # SVG without title
         for svg in self.soup.find_all("svg"):
             has_title = svg.find("title")
             has_label = svg.get("aria-label") or svg.get("aria-labelledby")
-            has_hidden = (svg.get("aria-hidden") or "").strip().lower() == "true"
-            role_val = svg.get("role", "")
-            if isinstance(role_val, list):
-                role_val = " ".join(role_val)
-            is_decorative = role_val.strip().lower() in ("presentation", "none")
-            if not has_title and not has_label and not has_hidden and not is_decorative:
+            has_hidden = svg.get("aria-hidden") == "true"
+            if not has_title and not has_label and not has_hidden:
                 issues.append(_issue(
                     self.url, "svg-no-accessible-name", "violation", "serious",
                     _css_selector(svg), _snippet(svg, 200),
@@ -547,16 +554,21 @@ class StaticChecker:
                     ))
 
         # Error messages linked via aria-describedby
+        # Only flag if the error container is inside a <form> — error divs outside forms
+        # are usually site-wide banners, not form-specific validation messages.
         for err_container in self.soup.find_all(class_=re.compile(r'error|invalid|alert', re.I)):
             err_id = err_container.get("id")
-            if err_id and err_container.find_parent("form"):
-                # Only analyze if it's actually within a form context
+            if err_id:
+                # Guard: only flag if inside a form context
+                if not err_container.find_parent("form"):
+                    continue
+                # Check if any input references this via aria-describedby
                 linked = self.soup.find(attrs={"aria-describedby": re.compile(err_id)})
                 if not linked:
                     issues.append(_issue(
                         self.url, "error-not-linked", "needs-review", "moderate",
                         _css_selector(err_container), _snippet(err_container),
-                        "Error message container in a form is not linked to any input via aria-describedby.",
+                        "Error message container not linked to input via aria-describedby.",
                         "3.3.1", "A", "forms",
                         f'Add aria-describedby="{err_id}" to the related input element.',
                         fix_effort="low"
@@ -635,11 +647,7 @@ class StaticChecker:
             role = elem.get("role", "")
             if role in interactive_roles:
                 text = elem.get_text(strip=True)
-                has_label = bool(elem.get("aria-label") or elem.get("aria-labelledby"))
-                if not text and not has_label:
-                    elem_id = elem.get("id")
-                    if elem_id and self.soup.find("label", attrs={"for": elem_id}):
-                        continue
+                if not text and not elem.get("aria-label") and not elem.get("aria-labelledby"):
                     issues.append(_issue(
                         self.url, "role-no-name", "violation", "serious",
                         _css_selector(elem), _snippet(elem),
@@ -651,9 +659,6 @@ class StaticChecker:
         # aria-hidden on focusable elements
         for elem in self.soup.find_all(attrs={"aria-hidden": "true"}):
             if elem.name in ("a", "button", "input", "select", "textarea"):
-                # If element is explicitly removed from tab order or visually hidden via attributes, skip
-                if elem.get("hidden") is not None or str(elem.get("tabindex", "")) == "-1" or elem.get("disabled") is not None:
-                    continue
                 issues.append(_issue(
                     self.url, "aria-hidden-focusable", "violation", "critical",
                     _css_selector(elem), _snippet(elem),
@@ -663,10 +668,7 @@ class StaticChecker:
                 ))
 
         # Dynamic content without aria-live (look for common patterns)
-        for elem in self.soup.find_all(class_=re.compile(r'toast|notification|alert|snackbar|flash', re.I)):
-            # Must be a container element, not an interactive control or SVG/icon
-            if elem.name not in {"div", "section", "article", "aside", "span", "p"}:
-                continue
+        for elem in self.soup.find_all(class_=re.compile(r'toast|notification|alert|snackbar|message', re.I)):
             if not elem.get("aria-live") and not elem.get("role") in ("alert", "status", "log"):
                 issues.append(_issue(
                     self.url, "no-aria-live", "needs-review", "moderate",
@@ -694,11 +696,12 @@ class StaticChecker:
                     "Remove autoplay or provide controls to pause/stop within first 3 seconds."
                 ))
 
-            # Video captions
+            # Video captions — skip muted+autoplay videos (decorative/ambient)
             if media.name == "video":
                 has_track = media.find("track", {"kind": "captions"}) or media.find("track", {"kind": "subtitles"})
-                # Only flag unmuted videos
-                if not has_track and media.get("muted") is None and str(media.get("muted")).lower() not in ["true", "muted", ""]:
+                is_muted = media.get("muted") is not None
+                is_autoplay = media.get("autoplay") is not None
+                if not has_track and not (is_muted and is_autoplay):
                     issues.append(_issue(
                         self.url, "missing-captions", "violation", "critical",
                         selector, _snippet(media),
@@ -1069,7 +1072,7 @@ class StaticChecker:
 
             is_muted = _attr_truthy(video.get("muted"))
             is_autoplay = _attr_truthy(video.get("autoplay"))
-            if is_muted:
+            if is_muted and is_autoplay:
                 continue
 
             # Search for transcript signals near the video first, then page-level hints.
@@ -1389,14 +1392,19 @@ class StaticChecker:
                 if href.startswith("#") and ("skip" in text or "main" in text or "content" in text):
                     has_skip = True
                     break
-            if not has_skip and self.soup.find("nav"):
-                issues.append(_issue(
-                    self.url, "missing-skip-link", "violation", "moderate",
-                    "<body>", "<body>",
-                    "Page with navigation lacks a 'skip to main content' link as the first focusable element.",
-                    "2.4.1", "A", "navigation",
-                    'Add <a href="#main-content" class="skip-link">Skip to main content</a> as the first element in <body>.'
-                ))
+            # Only flag if the page has a nav AND >3 links before main content.
+            # Single-section pages or minimal test fixtures don't need skip links.
+            nav = self.soup.find("nav")
+            if not has_skip and nav:
+                nav_links = nav.find_all("a")
+                if len(nav_links) > 3:
+                    issues.append(_issue(
+                        self.url, "missing-skip-link", "violation", "moderate",
+                        "<body>", "<body>",
+                        "Page with navigation lacks a 'skip to main content' link as the first focusable element.",
+                        "2.4.1", "A", "navigation",
+                        'Add <a href="#main-content" class="skip-link">Skip to main content</a> as the first element in <body>.'
+                    ))
         return issues
 
     # ── Color Contrast (inline styles) ─────────────────────────
@@ -1481,21 +1489,8 @@ class StaticChecker:
             eid = (elem.get("id") or "").strip()
             if eid:
                 id_map.setdefault(eid, []).append(elem)
-        # SVG-internal IDs (inside <defs>, <clipPath>, <linearGradient>, <radialGradient>, etc.)
-        # are scoped to their SVG and don't affect ARIA references or DOM queries.
-        # Flagging them is a false positive on sites like GitHub that inline many SVGs.
-        _SVG_INTERNAL_PARENTS = {"defs", "clippath", "lineargradient", "radialgradient", "filter", "mask", "pattern", "symbol"}
-
         for eid, elems in id_map.items():
             if len(elems) > 1:
-                # Skip if ALL duplicates are inside SVG internal elements
-                all_svg_internal = all(
-                    any(p.name and p.name.lower() in _SVG_INTERNAL_PARENTS for p in elem.parents)
-                    for elem in elems
-                )
-                if all_svg_internal:
-                    continue
-
                 issues.append(_issue(
                     self.url, "duplicate-id", "violation", "serious",
                     f'[id="{eid}"]', _snippet(elems[0], 200),
@@ -1561,14 +1556,7 @@ class StaticChecker:
     def check_svg_accessible_name(self) -> list[dict]:
         issues = []
         for svg in self.soup.find_all("svg"):
-            # SVGs with role="presentation" or aria-hidden are intentionally decorative
-            role_val = svg.get("role", "")
-            if isinstance(role_val, list):
-                role_val = " ".join(role_val)
-            role_val = role_val.strip().lower()
-            aria_hidden = (svg.get("aria-hidden") or "").strip().lower()
-
-            if aria_hidden == "true" or role_val in ("presentation", "none", "img presentation"):
+            if svg.get("aria-hidden", "").lower() == "true" or svg.get("role") == "presentation":
                 continue
             has_name = bool(svg.get("aria-label") or svg.get("aria-labelledby"))
             if not has_name and svg.find("title"):

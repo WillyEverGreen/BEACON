@@ -338,7 +338,7 @@ async def run_audit(
         deduped_issues = deduplicate(all_issues)
         
         # Apply confidence scoring
-        scored_issues = apply_confidence_rules(deduped_issues)
+        scored_issues = apply_confidence_rules(deduped_issues, html)
         
         # ── Step 4: Cognitive checks (deep mode only) ──────────────
         if scan_mode == "deep" and enable_cognitive:
@@ -558,7 +558,7 @@ def _apply_precision_profile(issues: list[dict], profile_name: str) -> tuple[lis
 
         # Adaptive thresholding keeps precision high while avoiding collapse in recall.
         min_conf = profile["min_confidence"]
-        if profile_name in ("high_precision", "tuned_balanced", "high_precision_plus", "high_precision_recall_boost", "high_precision_recall_strict", "high_precision_recall_balanced", "high_precision_recall_exploratory", "strict", "very_high_precision"):  # Adaptive thresholds for precision-first profiles
+        if profile_name in ("high_precision", "tuned_balanced", "high_precision_plus", "high_precision_recall_boost", "high_precision_recall_strict", "high_precision_recall_balanced", "high_precision_recall_exploratory", "very_high_precision"):  # Adaptive thresholds for precision-first profiles
             if rule_type == "hard":
                 min_conf = 0.62
             elif rule_type == "visual":
@@ -611,6 +611,6 @@ def _apply_precision_profile(issues: list[dict], profile_name: str) -> tuple[lis
         "dropped_contextual_single_source": dropped_contextual_single,
         "dropped_excluded_rules": dropped_excluded_rule,
         "dropped_cooccurrence_rules": dropped_cooccurrence_rule,
-        "estimated_precision_floor": 0.95 if profile_name in ("high_precision", "tuned_balanced", "high_precision_plus", "high_precision_recall_boost", "high_precision_recall_strict", "high_precision_recall_balanced", "high_precision_recall_exploratory", "strict", "very_high_precision") else 0.85,
+        "estimated_precision_floor": 0.95 if profile_name in ("high_precision", "tuned_balanced", "high_precision_plus", "high_precision_recall_boost", "high_precision_recall_strict", "high_precision_recall_balanced", "high_precision_recall_exploratory", "very_high_precision") else 0.85,
     }
     return kept, telemetry

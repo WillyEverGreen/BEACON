@@ -61,9 +61,9 @@ def _evict_oldest():
 
 _load_cache()
 
-def get_url_hash(url: str, scan_mode: str) -> str:
-    """Hash the URL and scan mode."""
-    key = f"{url}::{scan_mode}"
+def get_url_hash(url: str, scan_mode: str, precision_profile: str = "balanced") -> str:
+    """Hash the URL, scan mode, and precision profile."""
+    key = f"{url}::{scan_mode}::{precision_profile}"
     return hashlib.md5(key.encode("utf-8")).hexdigest()
 
 def clean_html_for_hash(html: str) -> str:
@@ -88,9 +88,9 @@ def clean_html_for_hash(html: str) -> str:
     cleaned = re.sub(r'\s+', ' ', cleaned).strip()
     return cleaned
 
-def get_dom_hash(cleaned_html: str, scan_mode: str) -> str:
-    """Hash the cleaned DOM structure and scan mode."""
-    key = f"{cleaned_html}::{scan_mode}"
+def get_dom_hash(cleaned_html: str, scan_mode: str, precision_profile: str = "balanced") -> str:
+    """Hash the cleaned DOM structure, scan mode, and precision profile."""
+    key = f"{cleaned_html}::{scan_mode}::{precision_profile}"
     return hashlib.md5(key.encode("utf-8")).hexdigest()
 
 def check_cache(cache_key: str, max_age_seconds: int = 86400) -> Optional[dict]:

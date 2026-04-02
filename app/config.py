@@ -6,6 +6,7 @@ from pydantic_settings import BaseSettings
 from typing import Optional
 
 
+
 # ── Quality Gate Constants ──────────────────────────────────────
 
 QUALITY_GATES = {
@@ -43,115 +44,97 @@ PRECISION_PROFILES = {
         "include_needs_review": True,
         "exclude_contextual_single_source": False,
     },
-    # Ultra-strict mode: only highest-confidence issues, excludes over-reported page-level checks
-    # Used for benchmarking against external sources (reduces false positives from ~4k to ~100)
+    # Ultra-strict mode: only highest-confidence issues.
+    # Page-level rules are now handled by the fragment detector instead of hard exclusion.
     "ultra_strict": {
         "min_confidence": 0.95,
         "include_needs_review": False,
         "exclude_contextual_single_source": True,
+    },
+    # Strict mode: high confidence, page-level FPs handled by fragment detector dynamically.
+    "strict": {
+        "min_confidence": 0.75,
+        "include_needs_review": False,
+        "exclude_contextual_single_source": True,
+    },
+    # Very-high-precision mode: aggressively filters but lets fragment detector handle page-level rules.
+    "very_high_precision": {
+        "min_confidence": 0.75,
+        "include_needs_review": False,
+        "exclude_contextual_single_source": True,
         "exclude_rules": [
-            "no-main-landmark",  # Too aggressive on test fixtures
-            "no-headings",       # Page-level check; many valid minimal pages
-            "no-title",          # Embedded tests may not have title
-            "no-lang",           # Similar page-level context issue
+            "missing-captions",
+            "autoplay-media",
+            "missing-skip-link",
+            "th-no-scope",
+            "missing-autocomplete",
         ],
     },
-        # Strict mode: excludes 4 over-reported rules at normal high_precision confidence
-        # Aims for ~25-35% precision by removing ~3,900 false positives from page-level WCAG checks
-        "strict": {
-            "min_confidence": 0.75,
-            "include_needs_review": False,
-            "exclude_contextual_single_source": True,
-            "exclude_rules": [
-                "no-main-landmark",
-                "no-headings",
-                "no-title",
-                "no-lang",
-            ],
+    # High-precision-plus: reduce dominant false positives with per-rule confidence caps
+    # while keeping recall-critical rules available.
+    "high_precision_plus": {
+        "min_confidence": 0.75,
+        "include_needs_review": False,
+        "exclude_contextual_single_source": True,
+        # Keep hard exclusions to the worst page-level noise generators only.
+        "exclude_rules": [
+            "no-main-landmark",
+            "no-title",
+        ],
+        # Require stronger evidence for historically noisy rules instead of full exclusion.
+        "per_rule_min_confidence": {
+            "no-lang": 0.95,
+            "missing-captions": 0.92,
+            "autoplay-media": 0.92,
+            "missing-skip-link": 0.92,
+            "th-no-scope": 0.90,
+            "missing-autocomplete": 0.90,
         },
-        # Very-high-precision mode: aggressively suppresses historically noisy rules.
-        # Intended for production triage where false positives are more costly than misses.
-        "very_high_precision": {
-            "min_confidence": 0.75,
-            "include_needs_review": False,
-            "exclude_contextual_single_source": True,
-            "exclude_rules": [
-                "no-main-landmark",
-                "no-headings",
-                "no-title",
-                "no-lang",
-                "missing-captions",
-                "autoplay-media",
-                "missing-skip-link",
-                "th-no-scope",
-                "missing-autocomplete",
-            ],
+    },
+    # High-precision-recall-boost: remove biggest structural FP generators
+    # while lowering thresholds on top FN-heavy rules.
+    "high_precision_recall_boost": {
+        "min_confidence": 0.75,
+        "include_needs_review": False,
+        "exclude_contextual_single_source": True,
+        "exclude_rules": [
+            "no-main-landmark",
+            "no-title",
+        ],
+        "per_rule_confidence_override": {
+            "text-spacing": 0.55,
+            "video-transcript": 0.55,
+            "svg-no-accessible-name": 0.55,
+            "semantic-html": 0.55,
+            "link-purpose": 0.55,
+            "empty-link": 0.55,
+            "aria-valid-attr-value": 0.60,
         },
-        # High-precision-plus: reduce dominant false positives with per-rule confidence caps
-        # while keeping recall-critical rules available.
-        "high_precision_plus": {
-            "min_confidence": 0.75,
-            "include_needs_review": False,
-            "exclude_contextual_single_source": True,
-            # Keep hard exclusions to the worst page-level noise generators only.
-            "exclude_rules": [
-                "no-main-landmark",
-                "no-title",
-            ],
-            # Require stronger evidence for historically noisy rules instead of full exclusion.
-            "per_rule_min_confidence": {
-                "no-lang": 0.95,
-                "missing-captions": 0.92,
-                "autoplay-media": 0.92,
-                "missing-skip-link": 0.92,
-                "th-no-scope": 0.90,
-                "missing-autocomplete": 0.90,
-            },
-        },
-        # High-precision-recall-boost: remove biggest structural FP generators
-        # while lowering thresholds on top FN-heavy rules.
-        "high_precision_recall_boost": {
-            "min_confidence": 0.75,
-            "include_needs_review": False,
-            "exclude_contextual_single_source": True,
-            "exclude_rules": [
-                "no-main-landmark",
-                "no-title",
-            ],
-            "per_rule_confidence_override": {
-                "text-spacing": 0.55,
-                "video-transcript": 0.55,
-                "svg-no-accessible-name": 0.55,
-                "semantic-html": 0.55,
-                "link-purpose": 0.55,
-                "empty-link": 0.55,
-                "aria-valid-attr-value": 0.60,
-            },
-        },
-        # Second-pass profile family:
-        # strict/balanced/exploratory are tuned via app/data/rule_quality_policy.json.
-        "high_precision_recall_strict": {
-            "min_confidence": 0.75,
-            "include_needs_review": False,
-            "exclude_contextual_single_source": True,
-        },
-        "high_precision_recall_balanced": {
-            "min_confidence": 0.75,
-            "include_needs_review": False,
-            "exclude_contextual_single_source": True,
-        },
-        "high_precision_recall_exploratory": {
-            "min_confidence": 0.75,
-            "include_needs_review": False,
-            "exclude_contextual_single_source": True,
-        },
-        # Medium-precision mode: higher confidence threshold without rule exclusions
-        # Aims for ~30-50% precision by raising min_confidence from 0.75 to 0.85
-        "medium_precision": {
-            "min_confidence": 0.85,
-            "include_needs_review": False,
-            "exclude_contextual_single_source": True,
-        },
+    },
+    # Second-pass profile family:
+    # strict/balanced/exploratory are tuned via app/data/rule_quality_policy.json.
+    "high_precision_recall_strict": {
+        "min_confidence": 0.75,
+        "include_needs_review": False,
+        "exclude_contextual_single_source": True,
+    },
+    "high_precision_recall_balanced": {
+        "min_confidence": 0.75,
+        "include_needs_review": False,
+        "exclude_contextual_single_source": True,
+    },
+    "high_precision_recall_exploratory": {
+        "min_confidence": 0.75,
+        "include_needs_review": False,
+        "exclude_contextual_single_source": True,
+    },
+    # Medium-precision mode: higher confidence threshold without rule exclusions
+    # Aims for ~30-50% precision by raising min_confidence from 0.75 to 0.85
+    "medium_precision": {
+        "min_confidence": 0.85,
+        "include_needs_review": False,
+        "exclude_contextual_single_source": True,
+    },
 }
 
 # ── Confidence Weights ──────────────────────────────────────────
@@ -165,69 +148,6 @@ CONFIDENCE_WEIGHTS = {
     "cross_engine_agreement": 0.15,
     "evidence_quality":       0.20,
     "user_impact":            0.05,   # NEW: boosts life-critical disability issues
-}
-
-# ── User Impact Scores per Rule ─────────────────────────────────
-# 0.0 – 1.0; higher = blocks more / more-vulnerable user populations.
-# Used as the 5th confidence signal so blocking issues surface above noise.
-USER_IMPACT_SCORES: dict[str, float] = {
-    # Blind / Screen reader users
-    "missing-alt":            1.0,
-    "empty-alt":              0.9,
-    "missing-label":          1.0,
-    "button-no-name":         1.0,
-    "role-no-name":           0.9,
-    "svg-no-accessible-name": 0.85,
-    "no-headings":            0.8,
-    "no-h1":                  0.7,
-    # Keyboard / Motor-impairment users
-    "no-focus-style":         0.9,
-    "keyboard-unreachable":   1.0,
-    "focus-trap":             1.0,
-    "positive-tabindex":      0.7,
-    # Low-vision users
-    "color-contrast":         0.9,
-    "color-contrast-enhanced":0.85,
-    "small-font-size":        0.7,
-    # Cognitive / all users
-    "empty-link":             0.8,
-    "generic-link-text":      0.7,
-    "missing-skip-link":      0.75,
-    # Deaf users
-    "missing-captions":       0.9,
-    "missing-transcript":     0.85,
-    "_default":               0.5,   # fallback
-}
-
-# ── Human Impact Summaries ──────────────────────────────────────
-# Simple, non-technical explanations for product managers/designers.
-IMPACT_SUMMARIES: dict[str, str] = {
-    # Blind / Screen reader users
-    "missing-alt":            "Screen reader users cannot understand this image without a text description.",
-    "empty-alt":              "Screen reader users may miss the meaning of this meaningful image, or have to listen to the filename.",
-    "missing-label":          "Screen reader users cannot clearly understand what this form input expects.",
-    "button-no-name":         "Screen reader users don't know what clicking this button will do.",
-    "role-no-name":           "Screen reader users don't know the purpose of this interactive element.",
-    "svg-no-accessible-name": "Screen reader users cannot perceive or interact with this SVG graphic.",
-    "no-headings":            "Without headings, screen reader users cannot quickly navigate and skim the page.",
-    "no-h1":                  "Screen reader users lack the main title context to understand what this page is about.",
-    # Keyboard / Motor-impairment users
-    "no-focus-style":         "Keyboard-only users (e.g. users with motor impairments) cannot see which element is currently selected.",
-    "keyboard-unreachable":   "Keyboard-only users are completely blocked from clicking or reaching this element.",
-    "focus-trap":             "Keyboard-only users are trapped here and cannot navigate away without a mouse.",
-    "positive-tabindex":      "Keyboard users will jump awkwardly around the page, breaking logical navigation flow.",
-    # Low-vision users
-    "color-contrast":         "Low-vision users or users in glare will struggle to read this text.",
-    "color-contrast-enhanced":"Low-vision users may struggle reading this text without higher contrast.",
-    "small-font-size":        "Low-vision users will struggle to read this very small text.",
-    # Cognitive / all users
-    "empty-link":             "Users don't know where this link goes because there's no visible or screen-reader text.",
-    "generic-link-text":      "Users reading out of context (like 'Click here') don't know where this link goes.",
-    "missing-skip-link":      "Keyboard users are forced to repeatedly tab through all navigation before reaching content.",
-    # Deaf users
-    "missing-captions":       "Deaf or hard-of-hearing users cannot consume this video/audio content.",
-    "missing-transcript":     "Deaf or hard-of-hearing users cannot consume this audio content.",
-    "_default":               "This issue creates friction for users with disabilities interacting with your app.",
 }
 
 
@@ -371,6 +291,79 @@ RULE_TYPE_MAP = {
     "error-message-quality": "contextual",
     "jargon": "contextual",
     "nav-complexity": "contextual",
+}
+
+# ── Page-Level Rules (Fragment Detector) ──────────────────────────
+# These rules expect a complete HTML document. When scanning fragments
+# (test fixtures, components, embeds), they generate massive false positives.
+# The confidence engine applies a penalty when the document is incomplete.
+
+PAGE_LEVEL_RULES = {
+    "no-lang", "no-title", "no-headings", "no-main-landmark",
+    "no-h1", "no-nav-landmark", "no-header-landmark", "no-footer-landmark",
+    "missing-skip-link",
+}
+
+# ── User Impact Scores ─────────────────────────────────────────────
+# How blocking is this issue for affected disability groups? (0.0–1.0)
+# Used in the 5-signal confidence formula.
+
+USER_IMPACT_SCORES = {
+    # Critical: completely blocks a user group
+    "missing-alt": 1.0,
+    "missing-label": 1.0,
+    "button-name": 0.95,
+    "empty-link": 0.9,
+    "aria-hidden-focusable": 0.95,
+    "no-lang": 0.85,
+    "missing-captions": 0.9,
+    "keyboard-unreachable": 1.0,
+    "no-focus-style": 0.8,
+    "viewport-zoom-disabled": 0.9,
+
+    # Serious: significant barrier
+    "no-title": 0.7,
+    "no-headings": 0.7,
+    "no-main-landmark": 0.6,
+    "svg-no-accessible-name": 0.85,
+    "color-contrast": 0.8,
+    "heading-skip": 0.6,
+    "table-no-headers": 0.7,
+    "broken-aria-label": 0.8,
+    "placeholder-as-label": 0.75,
+
+    # Moderate: degraded experience
+    "link-purpose": 0.5,
+    "unsafe-external-link": 0.3,
+    "alt-quality": 0.4,
+    "positive-tabindex": 0.5,
+    "text-spacing": 0.4,
+    "responsive-reflow": 0.6,
+
+    # Default fallback
+    "_default": 0.5,
+}
+
+# ── Impact Summaries (Plain English) ──────────────────────────────
+# Short human-readable descriptions of who is blocked and why.
+
+IMPACT_SUMMARIES = {
+    "missing-alt": "Blind users cannot perceive this image at all. Screen readers will either skip it or announce the file name.",
+    "missing-label": "Screen reader users cannot identify this form field. They will hear 'edit text' with no context.",
+    "button-name": "Screen reader users hear 'button' with no description. They cannot determine what this control does.",
+    "empty-link": "Screen reader users hear 'link' with no destination. Keyboard users cannot determine where this navigates.",
+    "no-lang": "Screen readers may use the wrong pronunciation language, making all content unintelligible.",
+    "missing-captions": "Deaf and hard-of-hearing users cannot access video content without captions.",
+    "keyboard-unreachable": "Users who cannot use a mouse are completely blocked from reaching this interactive element.",
+    "no-focus-style": "Keyboard users cannot see which element is currently focused, making navigation impossible.",
+    "viewport-zoom-disabled": "Users with low vision cannot zoom in to read content.",
+    "no-title": "Screen readers announce nothing when the page loads. Users cannot identify which page they are on.",
+    "no-headings": "Screen reader users cannot navigate by headings, forcing them to listen to the entire page linearly.",
+    "color-contrast": "Users with low vision or color blindness may not be able to read this text.",
+    "svg-no-accessible-name": "Blind users cannot perceive SVG graphics without an accessible name.",
+    "heading-skip": "Screen reader users may miss content sections when heading levels are skipped.",
+    "link-purpose": "Users cannot determine where a link goes without reading surrounding context.",
+    "_default": "This issue may create a barrier for users with disabilities.",
 }
 
 

@@ -10,6 +10,7 @@ from app.config import (
     RULE_TYPE_MAP,
     USER_IMPACT_SCORES,
     IMPACT_SUMMARIES,
+    PAGE_LEVEL_RULES,
 )
 
 
@@ -90,7 +91,35 @@ def _calc_user_impact(issue: dict) -> float:
     return USER_IMPACT_SCORES.get(rule_id, USER_IMPACT_SCORES["_default"])
 
 
-def calculate_confidence(issue: dict) -> float:
+def document_completeness_score(html: str) -> float:
+    """
+    Score 0.0–1.0 based on how structurally complete the HTML document is.
+    Full pages score ~1.0. Test fixtures / fragments score ~0.2.
+    This lets us penalize page-level rules on fragments without bluntly excluding them.
+    """
+    if not html:
+        return 0.0
+    html_lower = html.lower()
+    signals = 0
+    if "<html" in html_lower:
+        signals += 1
+    if "<head" in html_lower:
+        signals += 1
+    if "<body" in html_lower:
+        signals += 1
+    if "<title" in html_lower:
+        signals += 1
+    if "lang=" in html_lower:
+        signals += 1
+    # Real pages are substantially larger than test fixtures
+    if len(html) > 2000:
+        signals += 1
+    if len(html) > 10000:
+        signals += 1
+    return min(1.0, signals / 5.0)
+
+
+def calculate_confidence(issue: dict, html: str = "") -> float:
     """
     Calculate calibrated confidence score using 5-signal formula:
 
@@ -99,8 +128,11 @@ def calculate_confidence(issue: dict) -> float:
         0.25 × signal_strength         +
         0.15 × cross_engine_agreement  +
         0.20 × evidence_quality        +
-        0.05 × user_impact             ← NEW: boosts blocking disability issues
+        0.05 × user_impact
     )
+
+    Fragment penalty: page-level rules on incomplete documents get a heavy
+    confidence reduction so they are filtered by precision profiles automatically.
     """
     sources = issue.get("confidence_sources", [])
 
@@ -127,6 +159,22 @@ def calculate_confidence(issue: dict) -> float:
     elif rule_type == "contextual":
         confidence -= 0.07
 
+    # ── Fragment Penalty ────────────────────────────────────────────────
+    # Page-level rules (no-lang, no-title, etc.) on HTML fragments are almost
+    # always false positives. Apply a graduated penalty based on how incomplete
+    # the document is. This replaces the old blunt exclude_rules approach.
+    rule_id = issue.get("rule_id", "")
+    if html and rule_id in PAGE_LEVEL_RULES:
+        completeness = document_completeness_score(html)
+        if completeness < 0.6:
+            # Scale penalty: completeness 0.0 → -0.45; completeness 0.59 → -0.07
+            penalty = 0.45 * (1.0 - completeness / 0.6)
+            confidence -= penalty
+            logger.debug(
+                f"Fragment penalty: {rule_id} completeness={completeness:.2f} "
+                f"penalty=-{penalty:.2f} → confidence={confidence:.3f}"
+            )
+
     return round(min(1.0, max(0.0, confidence)), 3)
 
 
@@ -138,9 +186,13 @@ def _confidence_tier(confidence: float) -> str:
     return "low"
 
 
-def apply_confidence_rules(issues: list[dict]) -> list[dict]:
+def apply_confidence_rules(issues: list[dict], html: str = "") -> list[dict]:
     """
     Apply confidence scoring and rules engine to all issues.
+    
+    Args:
+        issues: List of normalized accessibility issues.
+        html: Raw HTML of the audited page (used by the fragment detector).
     
     Rules:
     - Heuristic-only → auto-set issue_type = "needs-review"
@@ -148,6 +200,7 @@ def apply_confidence_rules(issues: list[dict]) -> list[dict]:
     - confidence < 0.2 → auto-set needs_manual_review, exclude from score
     - ≥2 engines agree → auto-set confidence = max(confidence, 0.8)
     - ≥3 engines agree → auto-confirm: confidence = 0.95
+    - Fragment penalty: page-level rules on incomplete HTML get reduced confidence
     """
     severity_order = ["minor", "moderate", "serious", "critical"]
 
@@ -155,8 +208,8 @@ def apply_confidence_rules(issues: list[dict]) -> list[dict]:
         sources = issue.get("confidence_sources", [])
         unique_sources = set(sources)
 
-        # Calculate confidence
-        confidence = calculate_confidence(issue)
+        # Calculate confidence (with fragment detection)
+        confidence = calculate_confidence(issue, html=html)
 
         # Rule: ≥3 engines → auto-confirm
         if len(unique_sources) >= 3:

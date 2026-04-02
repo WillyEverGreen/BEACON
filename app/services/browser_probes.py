@@ -119,6 +119,51 @@ class BrowserProber:
 
         return issues, rendered_html
 
+    @staticmethod
+    async def validate_element_visibility(page, selectors: list[str]) -> dict[str, bool]:
+        """
+        Batch-check which CSS selectors are actually visible to the user.
+        Returns a dict of {selector: is_visible}. Runs as a single JS call.
+        Fail-open: if a selector can't be found or errors, assume visible.
+        Timeout: hard cap at 2 seconds to avoid blocking the pipeline.
+        """
+        if not selectors or not page:
+            return {}
+        
+        # Limit batch size to prevent JS execution timeouts
+        batch = selectors[:500]
+        
+        try:
+            import asyncio
+            result = await asyncio.wait_for(
+                page.evaluate("""
+                    (selectors) => {
+                        const result = {};
+                        for (const sel of selectors) {
+                            try {
+                                const el = document.querySelector(sel);
+                                if (!el) { result[sel] = false; continue; }
+                                const style = window.getComputedStyle(el);
+                                const rect = el.getBoundingClientRect();
+                                result[sel] = (
+                                    style.display !== 'none' &&
+                                    style.visibility !== 'hidden' &&
+                                    parseFloat(style.opacity || '1') > 0 &&
+                                    rect.width > 0 && rect.height > 0
+                                );
+                            } catch (e) { result[sel] = true; }
+                        }
+                        return result;
+                    }
+                """, batch),
+                timeout=2.0  # Hard 2s timeout
+            )
+            return result
+        except Exception as e:
+            logger.warning(f"Visibility validation failed (fail-open): {e}")
+            # Fail open: assume everything is visible
+            return {sel: True for sel in batch}
+
     async def _probe_keyboard_nav(self, page) -> list[dict]:
         """Tab through all interactive elements and check reachability."""
         issues = []

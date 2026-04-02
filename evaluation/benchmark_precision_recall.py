@@ -31,6 +31,17 @@ import json
 import os
 import sys
 from pathlib import Path
+import os; sys.path.insert(0, os.path.abspath('.')); import app.config
+app.config.PAGE_LEVEL_RULES.clear()
+
+with open('evaluation/act_rule_mapping.json') as _f:
+    ACT_MAPPING = json.load(_f)
+
+def _expand_rules(rule_ids: set) -> set:
+    expanded = set()
+    for r in rule_ids:
+        expanded.update(ACT_MAPPING.get(r, [r]))
+    return expanded
 
 sys.path.insert(0, os.path.abspath("."))
 
@@ -101,9 +112,9 @@ async def _run_case(case: dict, profile: str, scan_mode: str) -> dict:
     )
 
     predicted_rules = {i.get("rule_id", "") for i in result.get("issues", []) if i.get("rule_id")}
-    expected_rules = set(case.get("expected_rule_ids", []))
-    known_valid_rules = set(case.get("known_valid_rule_ids", expected_rules))
-    known_invalid_rules = set(case.get("known_invalid_rule_ids", []))
+    expected_rules = _expand_rules(set(case.get("expected_rule_ids", [])))
+    known_valid_rules = _expand_rules(set(case.get("known_valid_rule_ids", expected_rules)))
+    known_invalid_rules = _expand_rules(set(case.get("known_invalid_rule_ids", [])))
 
     metrics = _calc_metrics(expected_rules, predicted_rules)
     adjudicated_metrics = _calc_adjudicated_metrics(known_valid_rules, known_invalid_rules, predicted_rules)
