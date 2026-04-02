@@ -95,6 +95,8 @@ class HeuristicAnalyzer:
             "check_weak_error_messages",
             "check_label_clarity",
             "check_sensory_language",
+            "check_coga_usability",
+            "check_action_fatigue",
         ]:
             try:
                 method = getattr(self, method_name)
@@ -262,4 +264,45 @@ class HeuristicAnalyzer:
                     ))
                     break  # One warning per page
 
+        return issues
+
+    def check_coga_usability(self) -> list[dict]:
+        """COGA Usability: Wall of text detection."""
+        issues = []
+        body = self.soup.find("body")
+        if not body:
+            return issues
+        for p in self.soup.find_all("p"):
+            text = p.get_text(strip=True)
+            word_count = len(text.split())
+            if word_count > 150:
+                issues.append(_make_issue(
+                    self.url, "coga-wall-of-text", "needs-review", "minor",
+                    "p", str(p)[:200],
+                    f"Paragraph is very long ({word_count} words). Consider breaking it up with headings or lists for cognitive accessibility.",
+                    "3.1.5", "AAA", "cognitive",
+                    "Break up long blocks of text to improve readability.",
+                    fix_effort="medium"
+                ))
+        return issues
+
+    def check_action_fatigue(self) -> list[dict]:
+        """COGA Usability: Detect excessive generic buttons."""
+        issues = []
+        buttons = self.soup.find_all("button")
+        generic_count = 0
+        for btn in buttons:
+            text = btn.get_text(strip=True).lower()
+            if text in VAGUE_BUTTON_PATTERNS:
+                generic_count += 1
+                
+        if generic_count > 5:
+            issues.append(_make_issue(
+                self.url, "coga-action-fatigue", "needs-review", "minor",
+                "<body>", "",
+                f"Page contains {generic_count} generic buttons (e.g. 'OK', 'Submit'). This can cause action fatigue or confusion.",
+                "3.3.2", "A", "cognitive",
+                "Use specific, descriptive calls to action for buttons.",
+                fix_effort="medium"
+            ))
         return issues

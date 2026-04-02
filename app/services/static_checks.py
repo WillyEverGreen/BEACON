@@ -119,6 +119,7 @@ class StaticChecker:
             # New high-impact checks
             "color_contrast", "duplicate_ids", "redundant_alt",
             "svg_accessible_name", "empty_headings", "unsafe_external_links", "form_label_missing",
+            "accessible_auth", "redundant_entry", "aria_apg_patterns", "semantic_depth"
         ]
         issues = []
         for check_name in all_checks:
@@ -781,6 +782,126 @@ class StaticChecker:
                     "1.4.4", "AA", "content",
                     'Remove maximum-scale=1 and user-scalable=no from viewport meta tag.'
                 ))
+        return issues
+
+    # ── WCAG 2.2 & ARIA APG & Semantics ────────────────────────
+
+    def check_accessible_auth(self) -> list[dict]:
+        """WCAG 3.3.7 Accessible Authentication (Minimum)."""
+        issues = []
+        for form in self.soup.find_all("form"):
+            password_inputs = form.find_all("input", type="password")
+            for pw in password_inputs:
+                if pw.get("autocomplete") not in ("current-password", "new-password"):
+                    issues.append(_issue(
+                        self.url, "missing-autocomplete-auth", "violation", "serious",
+                        _css_selector(pw), _snippet(pw),
+                        "Password input is missing required autocomplete attribute to support password managers (cognitive aid).",
+                        "3.3.7", "AA", "forms",
+                        'Add autocomplete="current-password" or "new-password".'
+                    ))
+        return issues
+
+    def check_redundant_entry(self) -> list[dict]:
+        """WCAG 3.3.9 Redundant Entry."""
+        issues = []
+        name_groups = {}
+        for inp in self.soup.find_all("input"):
+            inp_type = inp.get("type", "text")
+            if inp_type in ("radio", "checkbox", "hidden", "submit", "button", "reset"):
+                continue
+            name = inp.get("name")
+            if name:
+                name_groups.setdefault(name, []).append(inp)
+                
+        for name, inputs in name_groups.items():
+            if len(inputs) > 1:
+                issues.append(_issue(
+                    self.url, "redundant-entry", "needs-review", "moderate",
+                    f'input[name="{name}"]', _snippet(inputs[0]),
+                    f"Multiple text inputs with the name '{name}'. Check if this requires redundant data entry.",
+                    "3.3.9", "A", "forms",
+                    "Provide an option to auto-populate previously entered data (e.g., 'Same as shipping').",
+                    fix_effort="high"
+                ))
+        return issues
+
+    def check_aria_apg_patterns(self) -> list[dict]:
+        """Validate composite ARIA implementations against APG (ARIA Authoring Practices)."""
+        issues = []
+        for tablist in self.soup.find_all(attrs={"role": "tablist"}):
+            tabs = tablist.find_all(attrs={"role": "tab"})
+            if not tabs:
+                issues.append(_issue(
+                    self.url, "apg-tablist-missing-tabs", "violation", "serious",
+                    _css_selector(tablist), _snippet(tablist),
+                    'element role="tablist" has no children with role="tab".',
+                    "4.1.2", "A", "aria",
+                    'Ensure tablist contains tab elements.'
+                ))
+            for tab in tabs:
+                controls = tab.get("aria-controls")
+                if not controls:
+                    issues.append(_issue(
+                        self.url, "apg-tab-missing-controls", "violation", "moderate",
+                        _css_selector(tab), _snippet(tab),
+                        'Tab element is missing aria-controls pointing to its tabpanel.',
+                        "4.1.2", "A", "aria",
+                        'Add aria-controls="panel-id" to the tab.'
+                    ))
+                elif not self.soup.find(id=controls):
+                    issues.append(_issue(
+                        self.url, "apg-tab-broken-controls", "violation", "serious",
+                        _css_selector(tab), _snippet(tab),
+                        f'Tab aria-controls="{controls}" points to a missing element.',
+                        "4.1.2", "A", "aria",
+                        'Ensure the referenced tabpanel exists in the DOM.'
+                    ))
+        for btn in self.soup.find_all(attrs={"aria-expanded": True}):
+            if not btn.get("aria-controls"):
+                issues.append(_issue(
+                    self.url, "apg-expanded-missing-controls", "needs-review", "moderate",
+                    _css_selector(btn), _snippet(btn),
+                    'aria-expanded element is missing aria-controls to identify the collapsible area.',
+                    "4.1.2", "A", "aria",
+                    'Add aria-controls="region-id".'
+                ))
+        for dialog in self.soup.find_all(attrs={"role": ["dialog", "alertdialog"]}):
+            if not dialog.get("aria-labelledby") and not dialog.get("aria-label"):
+                issues.append(_issue(
+                    self.url, "apg-dialog-no-name", "violation", "serious",
+                    _css_selector(dialog), _snippet(dialog),
+                    'Dialog/modal is missing an accessible name.',
+                    "4.1.2", "A", "aria",
+                    'Add aria-labelledby pointing to the modal title or an aria-label.'
+                ))
+            if dialog.get("aria-modal") != "true":
+                issues.append(_issue(
+                    self.url, "apg-dialog-not-modal", "needs-review", "minor",
+                    _css_selector(dialog), _snippet(dialog),
+                    'Dialog should typically have aria-modal="true" to indicate it traps focus.',
+                    "4.1.2", "A", "aria",
+                    'Add aria-modal="true" if this is a modal dialog.'
+                ))
+        return issues
+
+    def check_semantic_depth(self) -> list[dict]:
+        """MDN Semantic depth: catch div-itis."""
+        issues = []
+        for div in self.soup.find_all("div"):
+            if div.get("role"):
+                continue
+            text = div.get_text(strip=True)
+            if len(text.split()) > 200:
+                if not div.find_parent(["article", "section", "main", "aside", "nav"]):
+                    issues.append(_issue(
+                        self.url, "div-itis-missing-semantics", "needs-review", "minor",
+                        _css_selector(div), _snippet(div, 200),
+                        'Large block of content wrapped in generic <div> without semantic landmarks.',
+                        "1.3.1", "A", "structure",
+                        'Replace generic <div> with <article>, <section>, or <main> as appropriate.',
+                        fix_effort="medium"
+                    ))
         return issues
 
     # ── Advanced Detection Mastery (The Hidden 10) ─────────────

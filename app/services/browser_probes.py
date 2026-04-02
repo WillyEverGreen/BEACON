@@ -103,6 +103,8 @@ class BrowserProber:
                     self._probe_text_spacing_computed_style,
                     self._probe_viewport_zoom_meta,
                     self._probe_aria_tree,
+                    self._probe_target_size,
+                    self._probe_focus_obscurance,
                 ]
 
                 for probe in probe_methods:
@@ -489,3 +491,114 @@ class BrowserProber:
 
         for child in node.get("children", []):
             self._check_tree_node(child, issues, depth + 1)
+
+    async def _probe_target_size(self, page) -> list[dict]:
+        """WCAG 2.5.8 Target Size Minimum: Ensure interactive targets are at least 24x24px."""
+        issues = []
+        try:
+            findings = await page.evaluate(
+                """
+                () => {
+                    const results = [];
+                    const interactives = document.querySelectorAll('a[href], button, [role="button"], input[type="submit"], input[type="button"]');
+                    for (const el of Array.from(interactives)) {
+                        const style = window.getComputedStyle(el);
+                        if (style.display === 'none' || style.visibility === 'hidden') continue;
+                        const rect = el.getBoundingClientRect();
+                        if (rect.width > 0 && rect.height > 0) {
+                            if (rect.width < 24 || rect.height < 24) {
+                                results.push({
+                                    tag: el.tagName.toLowerCase(),
+                                    id: el.id ? '#' + el.id : '',
+                                    text: (el.textContent || '').trim().substring(0, 30),
+                                    html: (el.outerHTML || '').slice(0, 150),
+                                    w: rect.width,
+                                    h: rect.height
+                                });
+                            }
+                        }
+                    }
+                    return results.slice(0, 20);
+                }
+                """
+            )
+            for item in findings:
+                selector = item["tag"] + item["id"]
+                issues.append(_make_issue(
+                    self.url, "target-size-minimum", "violation", "moderate",
+                    selector, item["html"],
+                    f"Interactive element is too small ({item['w']}x{item['h']}px). Must be at least 24x24px.",
+                    "2.5.8", "AA", "target",
+                    "Increase the padding, min-width, and min-height of the target to at least 24px.",
+                    evidence={"width": item["w"], "height": item["h"]}
+                ))
+        except Exception as e:
+            logger.warning(f"Target size probe error: {e}")
+        return issues
+
+    async def _probe_focus_obscurance(self, page) -> list[dict]:
+        """WCAG 2.4.11 Focus Obscured (Minimum): Ensure focused elements are not completely hidden by fixed/sticky content."""
+        issues = []
+        try:
+            interactive_count = await page.evaluate(
+                "() => document.querySelectorAll('a[href], button, input:not([type=\"hidden\"]), select, textarea, [tabindex]:not([tabindex=\"-1\"])').length"
+            )
+            if interactive_count == 0:
+                return issues
+
+            max_tabs = min(interactive_count * 2, 50)
+            obscured_found = 0
+
+            for i in range(max_tabs):
+                await page.keyboard.press("Tab")
+                await page.wait_for_timeout(50)
+                
+                obscured = await page.evaluate("""
+                    () => {
+                        const el = document.activeElement;
+                        if (!el || el === document.body) return null;
+                        
+                        const rect = el.getBoundingClientRect();
+                        if (rect.width === 0 || rect.height === 0) return null;
+                        
+                        const cx = rect.left + rect.width / 2;
+                        const cy = rect.top + rect.height / 2;
+                        
+                        if (cx < 0 || cy < 0 || cx > window.innerWidth || cy > window.innerHeight) {
+                            return null;
+                        }
+                        
+                        const topEl = document.elementFromPoint(cx, cy);
+                        if (!topEl) return null;
+                        
+                        if (topEl !== el && !topEl.contains(el) && !el.contains(topEl)) {
+                            const style = window.getComputedStyle(topEl);
+                            if (style.position === 'fixed' || style.position === 'sticky') {
+                                return {
+                                    tag: el.tagName.toLowerCase(),
+                                    id: el.id ? '#' + el.id : '',
+                                    text: (el.textContent || '').trim().substring(0, 30),
+                                    html: (el.outerHTML || '').slice(0, 150),
+                                    obscuredBy: topEl.tagName.toLowerCase() + (topEl.id ? '#' + topEl.id : '') + '.' + topEl.className
+                                };
+                            }
+                        }
+                        return null;
+                    }
+                """)
+                if obscured:
+                    selector = obscured["tag"] + obscured["id"]
+                    issues.append(_make_issue(
+                        self.url, "focus-obscured", "violation", "serious",
+                        selector, obscured["html"],
+                        f"Focused element is hidden behind a sticky/fixed element ({obscured['obscuredBy']}).",
+                        "2.4.11", "AA", "keyboard",
+                        "Ensure scroll-padding-top is applied or sticky headers don't cover focused elements.",
+                        evidence={"obscured_by": obscured["obscuredBy"]}
+                    ))
+                    obscured_found += 1
+                    if obscured_found >= 5:
+                        break
+        except Exception as e:
+            logger.warning(f"Focus obscurance probe error: {e}")
+        return issues
