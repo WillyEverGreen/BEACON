@@ -1,0 +1,112 @@
+[
+  {
+    "url": "https://example.com",
+    "score": 87.0,
+    "issues": 8,
+    "filtered": 0,
+    "top_rules": {
+      "no-main-landmark": 1,
+      "no-nav-landmark": 1,
+      "no-header-landmark": 1
+    }
+  },
+  {
+    "url": "https://www.w3.org",
+    "score": 51.0,
+    "issues": 14,
+    "filtered": 0,
+    "top_rules": {
+      "empty-alt": 3,
+      "div-itis-missing-semantics": 2,
+      "empty-link": 1
+    }
+  },
+  {
+    "url": "https://news.ycombinator.com",
+    "score": 0.0,
+    "issues": 292,
+    "filtered": 1,
+    "top_rules": {
+      "color-contrast": 238,
+      "empty-link": 30,
+      "target-size-minimum": 3
+    }
+  },
+  {
+    "url": "https://www.wikipedia.org",
+    "score": 73.0,
+    "issues": 9,
+    "filtered": 1,
+    "top_rules": {
+      "multiple-h1": 1,
+      "empty-alt": 1,
+      "unsafe-external-link": 1
+    }
+  },
+  {
+    "url": "https://www.a11yproject.com/",
+    "score": 61.0,
+    "issues": 9,
+    "filtered": 1,
+    "top_rules": {
+      "clickable-no-role": 2,
+      "svg-no-accessible-name": 1,
+      "keyboard-unreachable": 1
+    }
+  },
+  {
+    "url": "https://github.com",
+    "score": 0.0,
+    "issues": 57,
+    "filtered": 2,
+    "top_rules": {
+      "duplicate-id": 11,
+      "text-spacing": 5,
+      "empty-alt": 4
+    }
+  },
+  {
+    "url": "https://developer.mozilla.org",
+    "score": 66.0,
+    "issues": 11,
+    "filtered": 1,
+    "top_rules": {
+      "div-itis-missing-semantics": 3,
+      "no-focus-style": 2,
+      "no-main-landmark": 1
+    }
+  },
+  {
+    "url": "https://stackoverflow.com",
+    "score": 0.0,
+    "issues": 43,
+    "filtered": 2,
+    "top_rules": {
+      "div-itis-missing-semantics": 5,
+      "heading-skip": 4,
+      "duplicate-id": 3
+    }
+  },
+  {
+    "url": "https://www.apple.com",
+    "score": 0.0,
+    "issues": 51,
+    "filtered": 2,
+    "top_rules": {
+      "target-size-minimum": 15,
+      "duplicate-id": 9,
+      "text-spacing": 7
+    }
+  },
+  {
+    "url": "https://www.microsoft.com",
+    "score": 15.0,
+    "issues": 42,
+    "filtered": 2,
+    "top_rules": {
+      "apg-expanded-missing-controls": 17,
+      "no-focus-style": 4,
+      "empty-alt": 3
+    }
+  }
+]
