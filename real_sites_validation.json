@@ -1,7 +1,7 @@
 [
   {
     "url": "https://example.com",
-    "score": 87.0,
+    "score": 92.6,
     "issues": 8,
     "filtered": 0,
     "top_rules": {
@@ -12,29 +12,29 @@
   },
   {
     "url": "https://www.w3.org",
-    "score": 51.0,
-    "issues": 14,
+    "score": 85.4,
+    "issues": 11,
     "filtered": 0,
     "top_rules": {
-      "empty-alt": 3,
-      "div-itis-missing-semantics": 2,
-      "empty-link": 1
+      "empty-alt": 1,
+      "empty-link": 1,
+      "missing-captions": 1
     }
   },
   {
     "url": "https://news.ycombinator.com",
-    "score": 0.0,
-    "issues": 292,
+    "score": 69.6,
+    "issues": 20,
     "filtered": 1,
     "top_rules": {
-      "color-contrast": 238,
-      "empty-link": 30,
-      "target-size-minimum": 3
+      "no-main-landmark": 1,
+      "no-nav-landmark": 1,
+      "no-header-landmark": 1
     }
   },
   {
     "url": "https://www.wikipedia.org",
-    "score": 73.0,
+    "score": 89.0,
     "issues": 9,
     "filtered": 1,
     "top_rules": {
@@ -45,68 +45,68 @@
   },
   {
     "url": "https://www.a11yproject.com/",
-    "score": 61.0,
-    "issues": 9,
+    "score": 89.4,
+    "issues": 8,
     "filtered": 1,
     "top_rules": {
-      "clickable-no-role": 2,
       "svg-no-accessible-name": 1,
+      "clickable-no-role": 1,
       "keyboard-unreachable": 1
     }
   },
   {
     "url": "https://github.com",
-    "score": 0.0,
-    "issues": 57,
+    "score": 68.2,
+    "issues": 24,
     "filtered": 2,
     "top_rules": {
-      "duplicate-id": 11,
-      "text-spacing": 5,
-      "empty-alt": 4
+      "multiple-h1": 1,
+      "heading-skip": 1,
+      "empty-alt": 1
     }
   },
   {
     "url": "https://developer.mozilla.org",
-    "score": 66.0,
-    "issues": 11,
+    "score": 90.1,
+    "issues": 8,
     "filtered": 1,
     "top_rules": {
-      "div-itis-missing-semantics": 3,
-      "no-focus-style": 2,
-      "no-main-landmark": 1
+      "no-main-landmark": 1,
+      "svg-no-accessible-name": 1,
+      "div-itis-missing-semantics": 1
     }
   },
   {
     "url": "https://stackoverflow.com",
-    "score": 0.0,
-    "issues": 43,
+    "score": 63.9,
+    "issues": 26,
     "filtered": 2,
     "top_rules": {
-      "div-itis-missing-semantics": 5,
-      "heading-skip": 4,
-      "duplicate-id": 3
+      "multiple-h1": 1,
+      "heading-skip": 1,
+      "empty-heading": 1
     }
   },
   {
     "url": "https://www.apple.com",
-    "score": 0.0,
-    "issues": 51,
+    "score": 80.8,
+    "issues": 15,
     "filtered": 2,
     "top_rules": {
-      "target-size-minimum": 15,
-      "duplicate-id": 9,
-      "text-spacing": 7
+      "no-header-landmark": 1,
+      "empty-alt": 1,
+      "svg-no-accessible-name": 1
     }
   },
   {
     "url": "https://www.microsoft.com",
-    "score": 15.0,
-    "issues": 42,
+    "score": 81.6,
+    "issues": 16,
     "filtered": 2,
     "top_rules": {
-      "apg-expanded-missing-controls": 17,
-      "no-focus-style": 4,
-      "empty-alt": 3
+      "empty-alt": 1,
+      "empty-link": 1,
+      "unsafe-external-link": 1
     }
   }
 ]

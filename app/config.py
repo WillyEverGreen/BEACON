@@ -177,10 +177,10 @@ CACHE_STATS: dict[str, int] = {
 # ── Severity Weights (for scoring) ─────────────────────────────
 
 SEVERITY_WEIGHTS = {
-    "critical": 10,
-    "serious": 5,
-    "moderate": 2,
-    "minor": 1,
+    "critical": 3.0,
+    "serious": 2.5,
+    "moderate": 1.5,
+    "minor": 1.0,
 }
 
 # ── Scoring Configuration ───────────────────────────────────────
@@ -190,7 +190,7 @@ SEVERITY_WEIGHTS = {
 SCORING_CONFIG = {
     # Max penalty points any single rule_id can contribute to the score.
     # With 338 region violations at 2 pts each = 676 → score 0. Cap at 15.
-    "max_penalty_per_rule": 15,
+    "max_penalty_per_rule": 4.0,
 
     # Max total penalty per severity tier across ALL rules.
     "max_penalty_per_severity": {

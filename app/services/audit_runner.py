@@ -35,10 +35,10 @@ from app.services.page_cache import (
     get_url_hash, clean_html_for_hash, get_dom_hash, check_cache, save_to_cache
 )
 from app.services.prioritizer import prioritize_issues
+from app.services.aggregator import aggregate_issues
 
 logger = logging.getLogger(__name__)
 
-# Global state for backpressure and async tasks
 _browser_semaphore = asyncio.Semaphore(3)
 _enrichment_tasks: dict[str, asyncio.Task] = {}
 _enriched_results: dict[str, dict] = {}
@@ -358,7 +358,8 @@ async def run_audit(
 
         # Apply precision profile
         scored_issues, profile_telemetry = _apply_precision_profile(scored_issues, precision_profile)
-
+        # ── Step 4.25: Aggregate identical rules ─────────────────────
+        scored_issues, compression_telemetry = aggregate_issues(scored_issues)
         # ── Step 4.5: Prioritize issues (NEW) ────────────────────────
         # Computes priority_score per issue and builds a top-5 "fix first" list.
         # Formula: impact × frequency × visibility × confidence
@@ -392,7 +393,7 @@ async def run_audit(
             _enrichment_tasks[audit_id] = task
 
         # ── Step 7: Calculate score (capped, per-rule) ─────────────
-        score = _calculate_score(scored_issues)
+        score, score_explanation = _calculate_score(scored_issues, degraded_mode=degraded_mode)
         
         # ── Step 8: Generate report ────────────────────────────────
         scan_time = time.time() - start_time
@@ -418,6 +419,7 @@ async def run_audit(
             "total_after_dedup": len(deduped_issues),
             "precision_profile": precision_profile,
             "precision_profile_telemetry": profile_telemetry,
+            "compression_telemetry": compression_telemetry,
             "rule_activity": static_rule_activity,
             "ttfi_ms": ttfi_ms,
             "active_audits": _active_audits,
@@ -434,7 +436,7 @@ async def run_audit(
         # ── Step 7: Calculate Expected Score Improvement ───────────────
         top_rule_ids = {r["rule_id"] for r in priority_ranking}
         issues_after_fix = [i for i in scored_issues if i.get("rule_id") not in top_rule_ids]
-        expected_score_after_fix = _calculate_score(issues_after_fix) if scored_issues else 100.0
+        expected_score_after_fix, _ = _calculate_score(issues_after_fix, degraded_mode=degraded_mode) if scored_issues else (100.0, {})
         score_improvement = expected_score_after_fix - score
 
         # ── Build summary ──────────────────────────────────────────
@@ -463,6 +465,7 @@ async def run_audit(
             "priority_ranking": priority_ranking,   # Top-5 "fix these first" list
             "groups": groups,
             "score": score,
+            "score_explanation": score_explanation,
             "score_display_context": f"No issues detected across {len(engines_used)} active engine(s). Note: This does not guarantee full WCAG AA conformance." if score == 100.0 else "",
             "expected_score_after_fix": round(expected_score_after_fix, 1),
             "score_improvement": round(score_improvement, 1),
@@ -496,35 +499,77 @@ async def run_audit(
         _active_audits = max(0, _active_audits - 1)
 
 
-def _calculate_score(issues: list[dict]) -> float:
+def _calculate_score(issues: list[dict], degraded_mode: bool = False) -> tuple[float, dict]:
     """
     Calculate accessibility score (0-100) using capped per-rule penalties.
-
-    Without capping, a single noisy rule (e.g. axe 'region', 325 nodes)
-    produces 325x2=650 penalty, collapsing the score to 0.
-    With capping, each rule_id contributes at most max_penalty_per_rule points.
+    Returns (score, explanation_layer_dict).
     """
-    max_per_rule: int = SCORING_CONFIG["max_penalty_per_rule"]
+    max_per_rule: float = float(SCORING_CONFIG["max_penalty_per_rule"])
 
     # Accumulate per-rule penalties
     rule_penalty: dict[str, float] = {}
+    rule_details: dict[str, dict] = {}
+    
     for issue in issues:
         if issue.get("needs_manual_review") and issue.get("confidence", 0) < 0.4:
             continue
+        
         rule_id = issue.get("rule_id", "unknown")
         sev = issue.get("severity", "minor")
-        weight = float(SEVERITY_WEIGHTS.get(sev, 1))
+        confidence = float(issue.get("confidence", 1.0))
+        rule_type = issue.get("rule_type", "hard")
+        
+        weight = float(SEVERITY_WEIGHTS.get(sev, 1.0))
+        
+        # Apply confidence penalty weighting
+        weight *= confidence
+        
+        # Apply visual rules weighting
+        if rule_type == "visual":
+            weight *= 0.7
+            
         # Grouped axe issues count as 1 finding regardless of affected_count
         if issue.get("is_grouped"):
-            weight = SCORING_CONFIG["grouped_issue_weight"] * weight
+            weight = float(SCORING_CONFIG.get("grouped_issue_weight", 1.0)) * weight
+            
         rule_penalty[rule_id] = rule_penalty.get(rule_id, 0.0) + weight
+        if rule_id not in rule_details:
+            rule_details[rule_id] = {"type": rule_type, "severity": sev, "raw_penalty": 0.0, "capped_penalty": 0.0}
+        rule_details[rule_id]["raw_penalty"] += weight
 
-    # Apply per-rule cap
-    total_penalty = sum(min(p, max_per_rule) for p in rule_penalty.values())
+    # Apply per-rule cap and build explanation
+    total_penalty = 0.0
+    for rule, p in rule_penalty.items():
+        capped = min(p, max_per_rule)
+        rule_details[rule]["capped_penalty"] = capped
+        total_penalty += capped
 
     score = max(0.0, min(100.0, 100.0 - total_penalty))
+    
+    explanation = {
+        "base_score": 100.0,
+        "total_penalty_applied": round(total_penalty, 2),
+        "degraded_mode_penalty": 0.0,
+        "capped_rules_count": sum(1 for d in rule_details.values() if d["raw_penalty"] > max_per_rule),
+        "penalty_breakdown": {k: round(v["capped_penalty"], 2) for k, v in sorted(rule_details.items(), key=lambda item: item[1]["capped_penalty"], reverse=True)[:5]}
+    }
+    
+    # Degraded mode reduction
+    if degraded_mode:
+        explanation["degraded_mode_penalty"] = round(score * 0.15, 2)
+        score *= 0.85
+        
+    # Hard floor to prevent "0 = completely broken" for otherwise usable sites
+    if score < 15.0 and total_penalty > 0:
+        explanation["floor_applied"] = True
+        score = 15.0
+        
+    # Only return 100 if there were literally no penalties (or floating point exactly matches)
+    if total_penalty == 0 and not degraded_mode:
+        score = 100.0
+
     logger.debug(f"Score calculation: {len(rule_penalty)} rules, penalty={total_penalty:.1f} -> score={score:.1f}")
-    return round(score, 1)
+    return round(score, 1), explanation
 
 
 def _apply_precision_profile(issues: list[dict], profile_name: str) -> tuple[list[dict], dict]:
