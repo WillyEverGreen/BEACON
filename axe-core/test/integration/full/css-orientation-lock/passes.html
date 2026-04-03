@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>css orientation lock test</title>
+    <meta charset="utf8" />
+    <script src="/node_modules/mocha/mocha.js"></script>
+    <script src="/node_modules/chai/chai.js"></script>
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="/node_modules/mocha/mocha.css"
+    />
+    <script>
+      mocha.setup({
+        timeout: 50000,
+        ui: 'bdd'
+      });
+      var assert = chai.assert;
+    </script>
+    <script src="/axe.js"></script>
+  </head>
+  <body>
+    <div id="mocha"></div>
+    <div class="someDiv">some div content</div>
+    <div id="shadow-fixture"></div>
+    <script src="/test/testutils.js"></script>
+    <script src="passes.js"></script>
+    <script src="/test/integration/adapter.js"></script>
+    <div id="additional"></div>
+    <script>
+      // only way to get a 2nd html element on the page is to create it with createElement
+      // if you try to do it through the html parser it won't work
+      var root = document.createElement('html');
+      document.getElementById('additional').append(root);
+    </script>
+  </body>
+</html>

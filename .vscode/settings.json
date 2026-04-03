@@ -1,4 +1,13 @@
 {
     "python-envs.defaultEnvManager": "ms-python.python:conda",
-    "python-envs.defaultPackageManager": "ms-python.python:conda"
+    "python-envs.defaultPackageManager": "ms-python.python:conda",
+    "github.copilot.chat.mcp.servers": {
+        "stitch": {
+            "type": "http",
+            "url": "https://stitch.googleapis.com/mcp",
+            "headers": {
+                "X-Goog-Api-Key": "AQ.Ab8RN6LuFUgNu98j1dusIAJ8FDfLEQ69Up4Dt4W47FrsSnvLrA"
+            }
+        }
+    }
 }

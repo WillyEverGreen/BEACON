@@ -1,0 +1,301 @@
+@import url("https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800&f[]=satoshi@400,500,700&display=swap");
+@import "tailwindcss";
+
+/* ────────────────────────────────────────────────────────────────
+   BEACON Design System
+   Landing page: warm yellow neobrutalism
+   Dashboard: 
+      - Light mode matching the neo-brutalism design (hard shadows, dot grid)
+      - Dark mode using sleek glassmorphism
+   ──────────────────────────────────────────────────────────────── */
+
+@theme inline {
+  --color-background: var(--paper);
+  --color-foreground: var(--ink);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Satoshi", "Segoe UI", sans-serif;
+}
+
+.font-cabinet {
+  font-family: "Cabinet Grotesk", "Satoshi", sans-serif;
+}
+
+/* ── Light Mode (Neo-brutalism) ───────────────────────────────── */
+:root {
+  --yellow: #ffe17c;
+  --charcoal: #171e19;
+  --sage: #b7c6c2;
+  --ink: #000000;
+  --paper: #ffffff;
+  --dot-size: 32px;
+  
+  --shadow-sm: 4px 4px 0px 0px #000000;
+  --shadow-lg: 8px 8px 0px 0px #000000;
+  --shadow-xl: 12px 12px 0px 0px #000000;
+
+  /* Dashboard specific light tokens */
+  --beacon-bg: #FFFFFF;
+  --beacon-sidebar-bg: #0A0A0B; /* Sidebar remains dark in light mode */
+  --beacon-surface: #FFFFFF;
+  --beacon-card-bg: #FFFFFF;
+  --beacon-border: #000000;
+  --beacon-primary: #E8A838;
+  --beacon-primary-dim: rgba(232, 168, 56, 0.15);
+  --beacon-text: #000000;
+  --beacon-text-soft: #333333;
+  --beacon-text-muted: #555555;
+  --beacon-success: #3BD16F;
+  --beacon-warning: #E8A838;
+  --beacon-error: #E84855;
+  
+  /* Hard brutalism box shadow for cards */
+  --beacon-card-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
+  --beacon-card-hover: 6px 6px 0px 0px rgba(0,0,0,1);
+  --beacon-btn-shadow: 2px 2px 0px 0px rgba(0,0,0,1);
+}
+
+/* ── Dark Mode (Glassmorphism) ────────────────────────────────── */
+.dark {
+  --beacon-bg: #0A0A0B;
+  --beacon-sidebar-bg: #0A0A0B;
+  --beacon-surface: #111113;
+  --beacon-card-bg: #141416;
+  --beacon-border: #2A2A2E;
+  --beacon-primary: #E8A838;
+  --beacon-primary-dim: rgba(232, 168, 56, 0.12);
+  --beacon-text: #EDEDEF;
+  --beacon-text-soft: #B0B0B5;
+  --beacon-text-muted: #7A7A7E;
+  
+  /* Soft glassmorphism shadows */
+  --beacon-card-shadow: 0px 4px 12px 0px rgba(0, 0, 0, 0.3);
+  --beacon-card-hover: 0px 6px 16px 0px rgba(0, 0, 0, 0.5);
+  --beacon-btn-shadow: none;
+}
+
+/* ── Light Mode Background Elements ────────────────────────────── */
+:root:not(.dark) .beacon-layout-wrapper {
+  background-color: var(--beacon-bg);
+  background-image: radial-gradient(circle at 1px 1px, rgba(0,0,0,0.08) 1.5px, transparent 0);
+  background-size: var(--dot-size) var(--dot-size);
+}
+
+/* ── Landing Page Components ───────────────────────────────────── */
+.dot-yellow {
+  background-color: var(--yellow);
+  background-image: radial-gradient(circle at 1px 1px, rgba(0,0,0,0.1) 1.5px, transparent 0);
+  background-size: var(--dot-size) var(--dot-size);
+}
+.neo-panel { border: 2px solid var(--ink); box-shadow: var(--shadow-sm); }
+.neo-panel-lg { border: 2px solid var(--ink); box-shadow: var(--shadow-lg); }
+.neo-panel-xl { border: 2px solid var(--ink); box-shadow: var(--shadow-xl); }
+.neo-btn {
+  border: 2px solid var(--ink);
+  border-radius: 0.75rem;
+  box-shadow: var(--shadow-lg);
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease;
+}
+.neo-btn:hover { transform: translate(4px, 4px); box-shadow: var(--shadow-sm); }
+.neo-btn:active { transform: translate(6px, 6px); box-shadow: 0px 0px 0px 0px #000000; }
+.marquee-track { animation: marquee 28s linear infinite; }
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+/* ── Dashboard Components ──────────────────────────────────────── */
+
+/* Base container for dashboard layout */
+.beacon-layout-wrapper {
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* Glass card (Dark) / Solid brutalist Card (Light) */
+.glass-card {
+  background: var(--beacon-card-bg);
+  border: 1px solid var(--beacon-border);
+  border-radius: 8px;
+  box-shadow: var(--beacon-card-shadow);
+  transition: all 0.2s ease;
+}
+:root:not(.dark) .glass-card {
+  border: 2px solid var(--beacon-border);
+}
+
+/* Stat cards (score displays) */
+.stat-card {
+  background: var(--beacon-surface);
+  border: 1px solid var(--beacon-border);
+  border-radius: 6px;
+  box-shadow: var(--beacon-card-shadow);
+  transition: all 0.2s ease;
+}
+:root:not(.dark) .stat-card {
+  border: 2px solid var(--beacon-border);
+}
+.stat-card:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: var(--beacon-card-hover);
+}
+.dark .stat-card:hover {
+  border-color: var(--beacon-primary);
+  transform: translateY(-2px);
+}
+
+/* Primary button (Solid color, sharp hover) */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: var(--beacon-primary);
+  color: #000000;
+  border: 1px solid var(--beacon-border);
+  box-shadow: var(--beacon-btn-shadow);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+:root:not(.dark) .btn-primary {
+  border: 2px solid var(--beacon-border);
+}
+.btn-primary:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: var(--beacon-card-shadow);
+}
+.dark .btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0px 4px 12px rgba(232, 168, 56, 0.3);
+}
+
+.btn-primary:active {
+  transform: translate(1px, 1px);
+  box-shadow: none;
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Secondary button */
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: var(--beacon-surface);
+  color: var(--beacon-text);
+  border: 1px solid var(--beacon-border);
+  box-shadow: var(--beacon-btn-shadow);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+:root:not(.dark) .btn-secondary {
+  border: 2px solid var(--beacon-border);
+}
+.btn-secondary:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: var(--beacon-card-shadow);
+}
+.dark .btn-secondary:hover {
+  border-color: var(--beacon-text-muted);
+  transform: translateY(-1px);
+}
+.btn-secondary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Sidebar link (Sidebar is always dark) */
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  color: #7A7A7E;
+  text-decoration: none;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+.sidebar-link:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: #EDEDEF;
+}
+.sidebar-link.active {
+  background: rgba(232, 168, 56, 0.12);
+  color: var(--beacon-primary);
+}
+
+/* Severity badges */
+.severity-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+:root:not(.dark) .severity-badge { border-width: 1px; color: #000; box-shadow: 1px 1px 0px #000; }
+:root:not(.dark) .severity-critical { background: var(--beacon-error); border-color: #000; }
+:root:not(.dark) .severity-serious { background: var(--beacon-warning); border-color: #000; }
+:root:not(.dark) .severity-moderate { background: #ffe17c; border-color: #000; }
+:root:not(.dark) .severity-minor { background: var(--beacon-success); border-color: #000; }
+
+.dark .severity-critical { background: rgba(232, 72, 85, 0.15); color: #E84855; border: 1px solid rgba(232, 72, 85, 0.3); }
+.dark .severity-serious { background: rgba(232, 125, 62, 0.15); color: #E87D3E; border: 1px solid rgba(232, 125, 62, 0.3); }
+.dark .severity-moderate { background: rgba(232, 168, 56, 0.15); color: #E8A838; border: 1px solid rgba(232, 168, 56, 0.3); }
+.dark .severity-minor { background: rgba(59, 209, 111, 0.15); color: #3BD16F; border: 1px solid rgba(59, 209, 111, 0.3); }
+
+/* Input */
+.beacon-input {
+  background: var(--beacon-surface);
+  border: 1px solid var(--beacon-border);
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--beacon-text);
+  outline: none;
+  transition: border-color 0.15s ease;
+  box-shadow: inset 1px 1px 3px rgba(0,0,0,0.05);
+}
+:root:not(.dark) .beacon-input {
+  border: 2px solid var(--beacon-border);
+}
+.beacon-input::placeholder { color: var(--beacon-text-muted); }
+.beacon-input:focus { border-color: var(--beacon-primary); }
+
+/* Animations */
+@keyframes fade-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.animate-fade-in { animation: fade-in 0.3s ease-out; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.animate-spin { animation: spin 1s linear infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--beacon-bg); }
+::-webkit-scrollbar-thumb { background: var(--beacon-text-muted); border-radius: 4px; border: 2px solid var(--beacon-bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--beacon-text-soft); }

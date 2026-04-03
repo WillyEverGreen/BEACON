@@ -1,0 +1,116 @@
+{
+  "benchmark_file": "evaluation\\benchmark_cases_20.json",
+  "scan_mode": "fast",
+  "metric": "micro",
+  "repeats": 3,
+  "thresholds": {
+    "min_precision": 0.1,
+    "min_recall": 0.2
+  },
+  "profiles": [
+    {
+      "profile": "high_precision",
+      "passed": true,
+      "thresholds": {
+        "min_precision": 0.1,
+        "min_recall": 0.2
+      },
+      "summary": {
+        "precision": {
+          "min": 0.1273,
+          "max": 0.1273,
+          "mean": 0.1273,
+          "stdev": 0.0
+        },
+        "recall": {
+          "min": 0.35,
+          "max": 0.35,
+          "mean": 0.35,
+          "stdev": 0.0
+        },
+        "f1": {
+          "min": 0.1867,
+          "max": 0.1867,
+          "mean": 0.1867,
+          "stdev": 0.0
+        },
+        "runs": 3
+      },
+      "run_files": [
+        "evaluation\\gate_high_precision_run1.json",
+        "evaluation\\gate_high_precision_run2.json",
+        "evaluation\\gate_high_precision_run3.json"
+      ]
+    },
+    {
+      "profile": "strict",
+      "passed": false,
+      "thresholds": {
+        "min_precision": 0.1,
+        "min_recall": 0.2
+      },
+      "summary": {
+        "precision": {
+          "min": 0.0,
+          "max": 0.0,
+          "mean": 0.0,
+          "stdev": 0.0
+        },
+        "recall": {
+          "min": 0.0,
+          "max": 0.0,
+          "mean": 0.0,
+          "stdev": 0.0
+        },
+        "f1": {
+          "min": 0.0,
+          "max": 0.0,
+          "mean": 0.0,
+          "stdev": 0.0
+        },
+        "runs": 3
+      },
+      "run_files": [
+        "evaluation\\gate_strict_run1.json",
+        "evaluation\\gate_strict_run2.json",
+        "evaluation\\gate_strict_run3.json"
+      ]
+    },
+    {
+      "profile": "balanced",
+      "passed": false,
+      "thresholds": {
+        "min_precision": 0.1,
+        "min_recall": 0.2
+      },
+      "summary": {
+        "precision": {
+          "min": 0.0619,
+          "max": 0.0619,
+          "mean": 0.0619,
+          "stdev": 0.0
+        },
+        "recall": {
+          "min": 0.35,
+          "max": 0.35,
+          "mean": 0.35,
+          "stdev": 0.0
+        },
+        "f1": {
+          "min": 0.1053,
+          "max": 0.1053,
+          "mean": 0.1053,
+          "stdev": 0.0
+        },
+        "runs": 3
+      },
+      "run_files": [
+        "evaluation\\gate_balanced_run1.json",
+        "evaluation\\gate_balanced_run2.json",
+        "evaluation\\gate_balanced_run3.json"
+      ]
+    }
+  ],
+  "recommended_profile": "high_precision",
+  "gate_passed": true
+}

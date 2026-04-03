@@ -1,0 +1,54 @@
+{
+  "summary": {
+    "cases": 1134,
+    "precision": 0.0207,
+    "recall": 0.0744,
+    "tp": 90,
+    "fp": 4257,
+    "fn": 1120
+  },
+  "false_positives": {
+    "no-main-landmark": 1101,
+    "no-headings": 1073,
+    "no-title": 992,
+    "no-lang": 770,
+    "missing-captions": 102,
+    "svg-no-accessible-name": 30,
+    "autoplay-media": 27,
+    "missing-skip-link": 27,
+    "missing-alt": 23,
+    "th-no-scope": 22,
+    "missing-label": 15,
+    "missing-autocomplete": 15,
+    "role-no-name": 13,
+    "button-no-name": 12,
+    "table-no-headers": 9
+  },
+  "false_negatives": {
+    "text-spacing": 98,
+    "video-transcript": 88,
+    "svg-no-accessible-name": 83,
+    "semantic-html": 68,
+    "link-purpose": 63,
+    "aria-valid-attr-value": 54,
+    "empty-link": 53,
+    "media-alternative": 50,
+    "keyboard-trap": 43,
+    "meta-refresh": 40,
+    "unsafe-external-link": 39,
+    "aria-role": 38,
+    "empty-heading": 37,
+    "aria-required-parent": 34,
+    "form-label-missing": 31
+  },
+  "true_positives": {
+    "no-lang": 39,
+    "no-main-landmark": 13,
+    "empty-heading": 9,
+    "svg-no-accessible-name": 8,
+    "no-headings": 7,
+    "empty-link": 5,
+    "no-title": 5,
+    "missing-label": 4
+  }
+}

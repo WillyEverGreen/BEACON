@@ -167,12 +167,59 @@ Submit an accessibility issue and receive a highly specific code fix powered by 
 
 ---
 
+### 4. Start Dashboard (Frontend)
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+The dashboard will be available at `http://localhost:3000`.
+
+---
+
+## 🚀 Roadmap to Production (YC Level)
+
+BEACON is currently in **Hackathon Prototype** stage. To achieve enterprise-grade scale and performance, the following roadmap is in progress:
+
+- [ ] **⚙️ Performance Optimization**
+    - Transition to **Asynchronous Persistence** (Postgres/Supabase) to eliminate JSON I/O blocking.
+    - Implement **Lazy Scanning Payloads** (Metadata-first loading) to reduce dashboard latency.
+    - Add **Result Pagination** and virtualized lists for high-volume audit histories.
+
+- [ ] **🛡️ AI & Quality Gates (RAG Checking)**
+    - Implement an automated **"Linter-in-the-Loop"** for AI suggestions to verify code fixes before they reach the user.
+    - Scale the **Cognitive Heuristics** engine to include multi-user behavioral simulation.
+
+- [ ] **🔐 Security & Multi-Tenancy**
+    - Integrate **NextAuth.js / Clerk** for secure team-based login and organization management.
+    - Implement **Encrypted Secret Storage** for user-provided API keys.
+
+- [ ] **📊 Collaborative Auditing**
+    - Add **Team Workspaces & Role-Based Access Control (RBAC)**.
+    - Real-time scan synchronization via **WebSockets**.
+
+- [ ] **🔌 CI/CD Integrations**
+    - Official **GitHub Action** & **Vercel Plugin** for automated accessibility regression testing.
+
+---
+
+## 🏗️ Integrated Architecture
+
+BEACON is now a fully integrated platform consisting of a **FastAPI backend** (Intelligence Engine) and a **Next.js frontend** (Operational Dashboard).
+
+- **Data Persistence**: Uses a local JSON-based storage (`app/data/`) to track projects and scan history across sessions without requiring a heavy database setup.
+- **Real-time UX**: Features a polling-based scanning interface with Neo-Brutalist design tokens, support for Light/Dark modes, and deep-link results.
+
+---
+
 ## 📁 Repository Structure
 
-- 🏭 `/app/` - Production FastAPI server, Core Multi-Engine logic (`static_checks.py`), and response schemas.
-- 🧠 `/rag-pipeline/` - Core extraction, embedding, filtering, and retrieval algorithms.
-- 📊 `/evaluation/` - Automated benchmarks, latency tests, and the LLM Golden Matrix metric harness.
-- 🧪 `/tests/` - Diagnostic scripts, real-world site validation outputs, and adversarial test data.
-- 📚 `/corpus/` - Local Markdown/HTML engineering documents explicitly injected into the chunker.
+- 🏭 `/app/` - Production FastAPI server & Core Engine logic.
+- 🎨 `/frontend/` - Next.js 15+ Dashboard with Tailwind 4 & Neo-Brutalism UI.
+- 🧠 `/rag-pipeline/` - Core extraction, embedding, and retrieval algorithms.
+- 📊 `/evaluation/` - Automated benchmarks & latency tests.
+- 🧪 `/tests/` - Diagnostic scripts and validation data.
+- 📚 `/corpus/` - Local engineering docs for RAG injection.
 
 <p align="center"><i>Building for a Web Without Barriers.</i></p>
