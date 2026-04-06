@@ -117,8 +117,14 @@ _(Ensure a `.env` file exists in the root directory with your LLM API keys)_
 ### 3. Ingest & Start Server
 
 ```bash
-# Build the ChromaDB vector store
+# Build/update the ChromaDB vector store (incremental by default)
 python run_ingestion.py
+
+# Optional: full rebuild when needed
+python run_ingestion.py --hard-reset
+
+# Optional: fail CI if configured sources or WCAG coverage have gaps
+python run_ingestion.py --strict-coverage
 
 # Boot the BEACON RAG brain & API endpoints
 uvicorn app.main:app --reload --port 8000

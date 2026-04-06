@@ -1,0 +1,381 @@
+{
+  "timestamp": "2026-04-06T01:33:34.968489",
+  "total_time": 163.12,
+  "configuration": {
+    "scan_modes": [
+      "fast",
+      "deep"
+    ],
+    "rag_enabled": true,
+    "cognitive_enabled": false,
+    "max_enrich_issues": 20
+  },
+  "summary": {
+    "total_sites": 10,
+    "successful": 10,
+    "errors": 0,
+    "met_expectations": 5,
+    "spas_detected": 10,
+    "rag_enriched_sites": 0
+  },
+  "results": [
+    {
+      "name": "Apple",
+      "url": "https://www.apple.com/",
+      "purpose": "Near-perfect accessibility \u2014 baseline for false positive detection",
+      "expected": "Should score 85-95 with minimal issues",
+      "fast": {
+        "score": 88.4,
+        "issues": 9,
+        "time": 1.04,
+        "engines": [
+          "static",
+          "heuristic"
+        ],
+        "rag_enriched": 0
+      },
+      "deep": {
+        "score": 83.2,
+        "issues": 13,
+        "time": 23.09,
+        "engines": [
+          "browser-probe",
+          "static",
+          "heuristic",
+          "axe-core"
+        ],
+        "rag_enriched": 0,
+        "spa_framework": null,
+        "is_spa": true
+      },
+      "analysis": {
+        "improvement_pct": 44.4,
+        "met_expectations": false,
+        "notes": ""
+      },
+      "error": null
+    },
+    {
+      "name": "Wikipedia",
+      "url": "https://www.wikipedia.org/",
+      "purpose": "Rich semantic HTML with proper landmarks and headings",
+      "expected": "Should score 90+ due to excellent semantic structure",
+      "fast": {
+        "score": 0.0,
+        "issues": 0,
+        "time": 0.34,
+        "engines": [],
+        "rag_enriched": 0
+      },
+      "deep": {
+        "score": 88.5,
+        "issues": 9,
+        "time": 0.0,
+        "engines": [
+          "browser-probe",
+          "static",
+          "heuristic",
+          "axe-core",
+          "cognitive"
+        ],
+        "rag_enriched": 0,
+        "spa_framework": null,
+        "is_spa": true
+      },
+      "analysis": {
+        "improvement_pct": 0,
+        "met_expectations": false,
+        "notes": ""
+      },
+      "error": null
+    },
+    {
+      "name": "Twitter/X",
+      "url": "https://twitter.com/",
+      "purpose": "Notorious SPA with dynamic content \u2014 tests JS rendering",
+      "expected": "Should detect as React SPA, handle dynamic content",
+      "fast": {
+        "score": 93.1,
+        "issues": 6,
+        "time": 13.92,
+        "engines": [
+          "static",
+          "heuristic"
+        ],
+        "rag_enriched": 0
+      },
+      "deep": {
+        "score": 90.3,
+        "issues": 8,
+        "time": 33.2,
+        "engines": [
+          "browser-probe",
+          "static",
+          "heuristic",
+          "axe-core"
+        ],
+        "rag_enriched": 0,
+        "spa_framework": null,
+        "is_spa": true
+      },
+      "analysis": {
+        "improvement_pct": 33.3,
+        "met_expectations": true,
+        "notes": ""
+      },
+      "error": null
+    },
+    {
+      "name": "GOV.UK",
+      "url": "https://www.gov.uk/",
+      "purpose": "Gold standard in accessibility \u2014 validates scoring scale",
+      "expected": "Should score 95+ as accessibility benchmark",
+      "fast": {
+        "score": 93.3,
+        "issues": 5,
+        "time": 0.71,
+        "engines": [
+          "static",
+          "heuristic"
+        ],
+        "rag_enriched": 0
+      },
+      "deep": {
+        "score": 87.5,
+        "issues": 9,
+        "time": 12.57,
+        "engines": [
+          "browser-probe",
+          "static",
+          "heuristic",
+          "axe-core"
+        ],
+        "rag_enriched": 0,
+        "spa_framework": null,
+        "is_spa": true
+      },
+      "analysis": {
+        "improvement_pct": 80.0,
+        "met_expectations": false,
+        "notes": ""
+      },
+      "error": null
+    },
+    {
+      "name": "Amazon",
+      "url": "https://www.amazon.com/",
+      "purpose": "Complex, ad-heavy, mixed accessibility \u2014 real issues",
+      "expected": "Should find 15-30 real issues, score 60-75",
+      "fast": {
+        "score": 82.6,
+        "issues": 15,
+        "time": 2.7,
+        "engines": [
+          "static",
+          "heuristic"
+        ],
+        "rag_enriched": 0
+      },
+      "deep": {
+        "score": 70.6,
+        "issues": 23,
+        "time": 56.45,
+        "engines": [
+          "browser-probe",
+          "static",
+          "heuristic",
+          "axe-core"
+        ],
+        "rag_enriched": 0,
+        "spa_framework": null,
+        "is_spa": true
+      },
+      "analysis": {
+        "improvement_pct": 53.3,
+        "met_expectations": true,
+        "notes": ""
+      },
+      "error": null
+    },
+    {
+      "name": "Reddit",
+      "url": "https://www.reddit.com/",
+      "purpose": "SPA with infinite scroll \u2014 dynamic landmark detection",
+      "expected": "Should handle dynamic loading, detect as React SPA",
+      "fast": {
+        "score": 94.5,
+        "issues": 5,
+        "time": 0.61,
+        "engines": [
+          "static",
+          "heuristic"
+        ],
+        "rag_enriched": 0
+      },
+      "deep": {
+        "score": 78.9,
+        "issues": 15,
+        "time": 51.6,
+        "engines": [
+          "browser-probe",
+          "static",
+          "heuristic",
+          "axe-core"
+        ],
+        "rag_enriched": 0,
+        "spa_framework": null,
+        "is_spa": true
+      },
+      "analysis": {
+        "improvement_pct": 200.0,
+        "met_expectations": true,
+        "notes": ""
+      },
+      "error": null
+    },
+    {
+      "name": "NY Times",
+      "url": "https://www.nytimes.com/",
+      "purpose": "Paywalls, overlays, modals \u2014 interrupted flow handling",
+      "expected": "Should handle overlays gracefully, find modal issues",
+      "fast": {
+        "score": 87.8,
+        "issues": 8,
+        "time": 3.56,
+        "engines": [
+          "static",
+          "heuristic"
+        ],
+        "rag_enriched": 0
+      },
+      "deep": {
+        "score": 56.2,
+        "issues": 30,
+        "time": 41.24,
+        "engines": [
+          "browser-probe",
+          "static",
+          "heuristic",
+          "axe-core"
+        ],
+        "rag_enriched": 0,
+        "spa_framework": null,
+        "is_spa": true
+      },
+      "analysis": {
+        "improvement_pct": 275.0,
+        "met_expectations": true,
+        "notes": ""
+      },
+      "error": null
+    },
+    {
+      "name": "Craigslist",
+      "url": "https://www.craigslist.org/",
+      "purpose": "Old-school HTML, no JS \u2014 semantic simplicity test",
+      "expected": "Should score well (80-90), fast scan sufficient",
+      "fast": {
+        "score": 83.9,
+        "issues": 12,
+        "time": 7.26,
+        "engines": [
+          "static",
+          "heuristic"
+        ],
+        "rag_enriched": 0
+      },
+      "deep": {
+        "score": 77.3,
+        "issues": 16,
+        "time": 35.57,
+        "engines": [
+          "browser-probe",
+          "static",
+          "heuristic",
+          "axe-core"
+        ],
+        "rag_enriched": 0,
+        "spa_framework": null,
+        "is_spa": true
+      },
+      "analysis": {
+        "improvement_pct": 33.3,
+        "met_expectations": false,
+        "notes": ""
+      },
+      "error": null
+    },
+    {
+      "name": "web.dev",
+      "url": "https://web.dev/",
+      "purpose": "Google's accessibility-focused dev site \u2014 high bar",
+      "expected": "Should score 90-95+, minimal issues",
+      "fast": {
+        "score": 87.3,
+        "issues": 9,
+        "time": 2.72,
+        "engines": [
+          "static",
+          "heuristic"
+        ],
+        "rag_enriched": 0
+      },
+      "deep": {
+        "score": 76.5,
+        "issues": 16,
+        "time": 18.63,
+        "engines": [
+          "browser-probe",
+          "static",
+          "heuristic",
+          "axe-core"
+        ],
+        "rag_enriched": 0,
+        "spa_framework": null,
+        "is_spa": true
+      },
+      "analysis": {
+        "improvement_pct": 77.8,
+        "met_expectations": false,
+        "notes": ""
+      },
+      "error": null
+    },
+    {
+      "name": "Facebook",
+      "url": "https://www.facebook.com/",
+      "purpose": "Heavily obfuscated SPA \u2014 stress test for false positives",
+      "expected": "Should detect as React SPA, avoid false positives",
+      "fast": {
+        "score": 89.6,
+        "issues": 8,
+        "time": 2.55,
+        "engines": [
+          "static",
+          "heuristic"
+        ],
+        "rag_enriched": 0
+      },
+      "deep": {
+        "score": 85.3,
+        "issues": 12,
+        "time": 16.01,
+        "engines": [
+          "browser-probe",
+          "static",
+          "heuristic",
+          "axe-core"
+        ],
+        "rag_enriched": 0,
+        "spa_framework": null,
+        "is_spa": true
+      },
+      "analysis": {
+        "improvement_pct": 50.0,
+        "met_expectations": true,
+        "notes": ""
+      },
+      "error": null
+    }
+  ]
+}

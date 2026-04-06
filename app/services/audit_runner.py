@@ -47,6 +47,53 @@ _MAX_CONCURRENT_AUDITS = 20
 
 _RULE_QUALITY_POLICY_CACHE: dict[str, Any] | None = None
 
+
+def _upgrade_cached_deep_result(result: dict, requested_mode: str) -> dict:
+    """Backfill degradation metadata for older cached deep scans lacking browser evidence."""
+    if requested_mode != "deep":
+        return result
+
+    engines_used = result.get("engines_used") or []
+    has_browser_evidence = "browser-probe" in engines_used or "axe-core" in engines_used
+    if has_browser_evidence:
+        return result
+
+    # If this was already marked degraded, keep it untouched.
+    if result.get("degraded_mode") is True:
+        return result
+
+    result["degraded_mode"] = True
+    result["degradation_reason"] = (
+        result.get("degradation_reason")
+        or "Deep scan requested, but browser engines did not execute. Results are based on static HTML analysis only."
+    )
+
+    skipped = set(result.get("skipped_components") or [])
+    skipped.update(["browser_probes", "axe-core"])
+    result["skipped_components"] = sorted(skipped)
+
+    summary = result.get("summary") or ""
+    if "DEGRADED" not in summary.upper():
+        if " | Engines:" in summary:
+            summary = summary.replace(" | Engines:", " | ⚠️ DEGRADED | Engines:")
+        elif summary:
+            summary = f"{summary} | ⚠️ DEGRADED"
+        result["summary"] = summary
+
+    # Apply conservative degraded penalty once for legacy cached results.
+    score = result.get("score")
+    if isinstance(score, (int, float)) and score is not None:
+        adjusted = round(max(0.0, float(score) * 0.85), 1)
+        result["score"] = adjusted
+
+        score_explanation = result.get("score_explanation")
+        if not isinstance(score_explanation, dict):
+            score_explanation = {}
+        score_explanation["degraded_mode_penalty"] = round(float(score) - adjusted, 2)
+        result["score_explanation"] = score_explanation
+
+    return result
+
 def get_enriched_results(audit_id: str) -> dict:
     """Return enrichment status or results if complete, else pending block."""
     res = _enriched_results.get(audit_id)
@@ -158,6 +205,7 @@ async def run_audit(
     url_hash = get_url_hash(url, scan_mode)
     cached_res = check_cache(url_hash)
     if cached_res:
+        cached_res = _upgrade_cached_deep_result(cached_res, scan_mode)
         logger.info(f"Page Cache HIT (URL) for {url}")
         cached_res["cache_hit"] = True
         return cached_res
@@ -203,17 +251,34 @@ async def run_audit(
         cognitive_scores = None
 
         # ── Step 1: Fetch / Render page ────────────────────────────
+        browser_probe_metadata = {}
+        
         if scan_mode == "deep":
             # Try Playwright for deep scan
             try:
                 from app.services.browser_probes import BrowserProber, _PLAYWRIGHT_AVAILABLE
                 if _PLAYWRIGHT_AVAILABLE:
-                    prober = BrowserProber(url, timeout=30000)
-                    browser_issues, rendered_html = await prober.run_all()
+                    prober = BrowserProber(url, timeout=30000, max_retries=2)
+                    probe_result = await prober.run_all()
+                    
+                    # Handle both old (2-tuple) and new (3-tuple) return signatures
+                    if len(probe_result) == 3:
+                        browser_issues, rendered_html, browser_probe_metadata = probe_result
+                    else:
+                        browser_issues, rendered_html = probe_result
+                        browser_probe_metadata = {}
+                    
                     if rendered_html:
                         html = rendered_html
                         engines_used.append("browser-probe")
-                        logger.info(f"Deep scan: Playwright rendered page, {len(browser_issues)} browser probe issues")
+                        
+                        # Log SPA detection for debugging
+                        spa_framework = browser_probe_metadata.get("spa_framework")
+                        is_spa = browser_probe_metadata.get("is_spa", False)
+                        if is_spa:
+                            logger.info(f"Deep scan: SPA detected ({spa_framework or 'generic'}), {len(browser_issues)} browser probe issues")
+                        else:
+                            logger.info(f"Deep scan: Playwright rendered page, {len(browser_issues)} browser probe issues")
                 else:
                     logger.info("Playwright not available — falling back to httpx for deep scan")
                     degraded_mode = True
@@ -251,6 +316,7 @@ async def run_audit(
         dom_hash = get_dom_hash(clean_html_for_hash(html), scan_mode)
         cached_dom_res = check_cache(dom_hash)
         if cached_dom_res:
+            cached_dom_res = _upgrade_cached_deep_result(cached_dom_res, scan_mode)
             logger.info(f"Page Cache HIT (DOM Hash) for {url}")
             cached_dom_res["cache_hit"] = True
             return cached_dom_res
@@ -259,26 +325,29 @@ async def run_audit(
         def run_static():
             try:
                 checker = StaticChecker(html, url)
-                return checker.run_all(checks), "static", checker.get_rule_activity()
+                return checker.run_all(checks), "static", {
+                    "executed": True,
+                    "rule_activity": checker.get_rule_activity(),
+                }
             except Exception as e:
                 logger.error(f"Static checks failed: {e}")
-                return [], "static", {}
+                return [], "static", {"executed": False, "rule_activity": {}}
 
         def run_heuristic():
             try:
                 analyzer = HeuristicAnalyzer(html, url)
-                return analyzer.run_all(), "heuristic", None
+                return analyzer.run_all(), "heuristic", {"executed": True}
             except Exception as e:
                 logger.error(f"Heuristic checks failed: {e}")
-                return [], "heuristic", None
+                return [], "heuristic", {"executed": False}
 
         async def run_axe():
             if scan_mode != "deep":
-                return [], "axe-core", None
+                return [], "axe-core", {"executed": False}
             try:
                 from app.services.browser_probes import _PLAYWRIGHT_AVAILABLE
                 if not _PLAYWRIGHT_AVAILABLE:
-                    return [], "axe-core", None
+                    return [], "axe-core", {"executed": False}
                 try:
                     # Circuit breaker & backpressure guard (25s max wait)
                     async with asyncio.timeout(25):
@@ -290,15 +359,15 @@ async def run_audit(
                                 try:
                                     await page.goto(url, timeout=20000, wait_until="domcontentloaded")
                                     v = await _run_axe_core_via_playwright(page)
-                                    return v, "axe-core", None
+                                    return v, "axe-core", {"executed": True}
                                 finally:
                                     await browser.close()
                 except TimeoutError:
                     logger.warning("axe-core timed out (blocked by semaphore or page load).")
-                    return [], "axe-core", None
+                    return [], "axe-core", {"executed": False}
             except Exception as e:
                 logger.warning(f"axe-core execution failed: {e}")
-                return [], "axe-core", None
+                return [], "axe-core", {"executed": False}
 
         # Execute all 3 rule engines concurrently
         t_static = asyncio.to_thread(run_static)
@@ -313,15 +382,30 @@ async def run_audit(
                 continue
                 
             engine_issues, engine_name, extra = res
-            if engine_issues:
+            engine_meta = extra if isinstance(extra, dict) else {}
+            if engine_meta.get("executed") and engine_name not in engines_used:
                 engines_used.append(engine_name)
-                if engine_name == "static":
-                    static_issues = engine_issues
-                    static_rule_activity = extra
-                elif engine_name == "heuristic":
-                    heuristic_issues = engine_issues
-                elif engine_name == "axe-core":
-                    axe_violations = engine_issues
+
+            if engine_name == "static":
+                static_issues = engine_issues
+                static_rule_activity = engine_meta.get("rule_activity", {})
+            elif engine_name == "heuristic":
+                heuristic_issues = engine_issues
+            elif engine_name == "axe-core":
+                axe_violations = engine_issues
+
+        # If deep scan requested but browser engines did not execute, mark degraded.
+        if scan_mode == "deep":
+            used_set = set(engines_used)
+            if "browser-probe" not in used_set and "axe-core" not in used_set:
+                degraded_mode = True
+                skipped_components.extend(["browser_probes", "axe-core"])
+                if not degradation_reason:
+                    degradation_reason = (
+                        "Deep scan requested, but browser engines did not execute. "
+                        "Results are based on static HTML analysis only."
+                    )
+                logger.warning("Deep scan degraded to static-only path (no browser engines executed).")
 
         ttfi_ms = int((time.time() - start_time) * 1000)
 
@@ -483,6 +567,10 @@ async def run_audit(
             "rule_activity": static_rule_activity,
             "enrichment_status": enrichment_status,
             "audit_id": audit_id,
+            # World-class SPA detection metadata
+            "browser_probe_metadata": browser_probe_metadata,
+            "spa_framework": browser_probe_metadata.get("spa_framework"),
+            "is_spa": browser_probe_metadata.get("is_spa", False),
         }
         
         # ── Step 8: Cache Write Policy ─────────────────────────────────

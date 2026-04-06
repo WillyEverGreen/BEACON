@@ -51,7 +51,7 @@ export default function ProjectDetailPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"overview" | "issues" | "priority">("overview");
   const [scanning, setScanning] = useState(false);
-  const [scanStatus, setScanStatus] = useState<"idle" | "scanning" | "completed">("idle");
+  const [scanStatus, setScanStatus] = useState<"idle" | "scanning" | "completed" | "failed">("idle");
   const [scanMode, setScanMode] = useState("fast");
   const [expandedIssue, setExpandedIssue] = useState<string | null>(null);
   const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
@@ -74,9 +74,10 @@ export default function ProjectDetailPage() {
   }, []);
 
   const latestScan: any = uniqueScans.find((s: any) => s.status === "completed") || null;
+  const latestFailedScan: any = uniqueScans.find((s: any) => s.status === "failed") || null;
 
   // Load project + scans
-  const loadData = useCallback(async (isImmediate = false) => {
+  const loadData = useCallback(async (scanOutcome: "completed" | "failed" | null = null) => {
     try {
       const [proj, scanList] = await Promise.all([
         api.getProject(projectId),
@@ -85,8 +86,8 @@ export default function ProjectDetailPage() {
       setProject(proj);
       setScans(scanList);
       
-      if (isImmediate) {
-        setScanStatus("completed");
+      if (scanOutcome) {
+        setScanStatus(scanOutcome);
         setTimeout(() => setScanStatus("idle"), 5000);
       }
     } catch (e) { console.error(e); }
@@ -109,22 +110,25 @@ export default function ProjectDetailPage() {
           if (progress.status === "completed" || progress.status === "failed") {
             setScanning(false);
             if (pollRef.current) clearInterval(pollRef.current);
-            await loadData(true);
+            await loadData(progress.status === "failed" ? "failed" : "completed");
           }
         } catch (err) { 
           console.error("Polling error:", err);
-          setPollErrorCount(prev => prev + 1);
           // If we fail 10 times in a row, auto-stop to prevent hanging
-          if (pollErrorCount >= 10) {
-             setScanning(false);
-             setScanStatus("idle");
-             if (pollRef.current) clearInterval(pollRef.current);
-          }
+          setPollErrorCount((prev) => {
+            const next = prev + 1;
+            if (next >= 10) {
+              setScanning(false);
+              setScanStatus("failed");
+              if (pollRef.current) clearInterval(pollRef.current);
+            }
+            return next;
+          });
         }
       }, 2000);
     }
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [scans, projectId, loadData, scanning]);
+  }, [scans, projectId, loadData]);
 
   // Start a new scan
   async function startScan() {
@@ -144,13 +148,15 @@ export default function ProjectDetailPage() {
       const hasActive = scanList.some((s: any) => s.status === "scanning");
       if (!hasActive) {
          setScanning(false);
-         setScanStatus("completed");
+         const latestResult = scanList[0];
+         const outcome = latestResult?.status === "failed" ? "failed" : "completed";
+         setScanStatus(outcome);
          setTimeout(() => setScanStatus("idle"), 5000);
       }
     } catch (e) {
       console.error(e);
       setScanning(false);
-      setScanStatus("idle");
+      setScanStatus("failed");
     }
   }
 
@@ -284,6 +290,23 @@ export default function ProjectDetailPage() {
         </div>
       )}
 
+      {scanStatus === "failed" && (
+        <div className="fixed bottom-8 right-8 z-50 animate-slide-in">
+          <div className="bg-[var(--beacon-error)] text-white py-4 px-5 rounded-lg font-bold flex items-center justify-between gap-6 shadow-[6px_6px_0px_#000] border-[3px] border-black max-w-[680px]">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">⚠️</span>
+              <span className="tracking-wide">{latestFailedScan?.summary || "Scan failed. Please verify the target URL and retry."}</span>
+            </div>
+            <button
+              onClick={() => setScanStatus("idle")}
+              className="text-xs uppercase tracking-tighter opacity-80 hover:opacity-100 font-extrabold pb-0.5 border-b-2 border-white/40 hover:border-white transition-colors"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
 
       {/* ── Score Strip (Neo-brutalism layout) ────────────────── */}
       {latestScan && (
@@ -334,7 +357,20 @@ export default function ProjectDetailPage() {
       </div>
 
       {/* ── No Scan State ─────────────────────────────────────── */}
-      {!latestScan && !scanning && (
+      {!latestScan && !scanning && latestFailedScan && (
+        <div className="glass-card p-24 text-center border-l-[6px] border-l-[var(--beacon-error)]">
+          <p className="text-5xl mb-4">⚠️</p>
+          <h2 className="text-3xl font-extrabold mb-3">Latest scan failed</h2>
+          <p className="text-base text-[var(--beacon-text-muted)] font-medium mb-3 max-w-3xl mx-auto">
+            {latestFailedScan.summary || "The scan could not complete."}
+          </p>
+          <p className="text-sm text-[var(--beacon-text-muted)] font-medium max-w-3xl mx-auto">
+            Verify the site is reachable and allows automated requests, then run a new scan.
+          </p>
+        </div>
+      )}
+
+      {!latestScan && !scanning && !latestFailedScan && (
         <div className="glass-card p-24 text-center">
           <IconScan className="w-16 h-16 mx-auto mb-6 text-[var(--beacon-text-muted)]" />
           <h2 className="text-3xl font-extrabold mb-3">No scan results</h2>

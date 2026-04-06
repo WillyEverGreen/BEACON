@@ -42,6 +42,55 @@ CHROMA_PERSIST_DIR: str = "./chroma_db"
 CHROMA_COLLECTION: str = "accessibility_kb"
 
 
+def get_coverage_details() -> dict:
+    """
+    Collect detailed WCAG coverage stats from the vector store.
+
+    Returns:
+        {
+            "ok": bool,
+            "covered_count": int,
+            "total": int,
+            "missing": list[str],
+            "error": str,
+        }
+    """
+    details = {
+        "ok": False,
+        "covered_count": 0,
+        "total": len(WCAG_22_ALL_SC),
+        "missing": list(WCAG_22_ALL_SC),
+        "error": "",
+    }
+
+    try:
+        client = chromadb.PersistentClient(path=CHROMA_PERSIST_DIR)
+        collection = client.get_collection(CHROMA_COLLECTION)
+    except Exception as e:
+        details["error"] = f"Cannot connect to ChromaDB: {e}"
+        return details
+
+    try:
+        all_meta = collection.get(include=["metadatas"])["metadatas"]
+    except Exception as e:
+        details["error"] = f"Failed to read metadatas: {e}"
+        return details
+
+    covered: set[str] = set()
+    for meta in all_meta:
+        if not isinstance(meta, dict):
+            continue
+        for sc in str(meta.get("wcag_sc", "")).split(","):
+            if sc.strip():
+                covered.add(sc.strip())
+
+    missing: list[str] = [sc for sc in WCAG_22_ALL_SC if sc not in covered]
+    details["missing"] = missing
+    details["covered_count"] = len(WCAG_22_ALL_SC) - len(missing)
+    details["ok"] = not missing
+    return details
+
+
 def verify_coverage() -> bool:
     """
     Verify that the vector store covers all 86 WCAG 2.2 success criteria.
@@ -50,30 +99,18 @@ def verify_coverage() -> bool:
         True if full coverage (86/86), False otherwise.
         Logs missing SC IDs as warnings.
     """
-    try:
-        client = chromadb.PersistentClient(path=CHROMA_PERSIST_DIR)
-        collection = client.get_collection(CHROMA_COLLECTION)
-    except Exception as e:
-        logger.error(f"Cannot connect to ChromaDB: {e}")
+    details = get_coverage_details()
+    if details["error"]:
+        logger.error(details["error"])
         return False
 
-    all_meta = collection.get(include=["metadatas"])["metadatas"]
-    covered: set[str] = set()
-    for meta in all_meta:
-        for sc in meta.get("wcag_sc", "").split(","):
-            if sc.strip():
-                covered.add(sc.strip())
-
-    missing: list[str] = [sc for sc in WCAG_22_ALL_SC if sc not in covered]
-    coverage_count = len(WCAG_22_ALL_SC) - len(missing)
-
-    logger.info(f"WCAG 2.2 coverage: {coverage_count}/{len(WCAG_22_ALL_SC)}")
-    if missing:
-        logger.warning(f"Missing SC: {missing}")
+    logger.info(f"WCAG 2.2 coverage: {details['covered_count']}/{details['total']}")
+    if details["missing"]:
+        logger.warning(f"Missing SC: {details['missing']}")
         return False
-    else:
-        logger.info("Full WCAG 2.2 coverage confirmed (86/86).")
-        return True
+
+    logger.info("Full WCAG 2.2 coverage confirmed (86/86).")
+    return True
 
 
 if __name__ == "__main__":

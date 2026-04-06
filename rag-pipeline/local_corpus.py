@@ -23,13 +23,15 @@ def process_local_corpus(corpus_dir: str = "../corpus/wcag-aaa-web-design"):
                 content = filepath.read_text(encoding="utf-8", errors="ignore")
                 if not content.strip():
                     continue
+
+                rel_path = filepath.relative_to(corpus_path).as_posix()
                 
                 # Emulate Phase 2 extractor output
                 extracted_docs.append({
-                    "url": f"local://{filepath.name}",
+                    "url": f"local://{rel_path}",
                     "silo": "toolkit",
                     "text": content,
-                    "title": filepath.name
+                    "title": rel_path
                 })
             except Exception as e:
                 print(f"Failed to read {filepath}: {e}")
