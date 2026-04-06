@@ -42,14 +42,15 @@ flowchart LR
 
 ## Scan Modes
 
-| Mode | Purpose | Typical Engines |
-| :--- | :--- | :--- |
-| minimal | quickest deterministic baseline | static + heuristic only |
-| fast | rapid production checks | static + heuristic |
-| deep | comprehensive page analysis | static + heuristic + browser + axe + cognitive |
-| max | deepest interactive exploration | deep + interaction and scroll exploration layers |
+| Mode    | Purpose                         | Typical Engines                                  |
+| :------ | :------------------------------ | :----------------------------------------------- |
+| minimal | quickest deterministic baseline | static + heuristic only                          |
+| fast    | rapid production checks         | static + heuristic                               |
+| deep    | comprehensive page analysis     | static + heuristic + browser + axe + cognitive   |
+| max     | deepest interactive exploration | deep + interaction and scroll exploration layers |
 
 In max mode, quality gate metadata includes execution proof fields such as:
+
 - playwright_invoked
 - interaction_phase_ran
 - scroll_phase_ran
