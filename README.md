@@ -180,6 +180,7 @@ cd frontend
 npm install
 npm run dev
 ```
+
 The dashboard will be available at `http://localhost:3000`.
 
 ---
@@ -189,24 +190,24 @@ The dashboard will be available at `http://localhost:3000`.
 BEACON is currently in **Hackathon Prototype** stage. To achieve enterprise-grade scale and performance, the following roadmap is in progress:
 
 - [ ] **⚙️ Performance Optimization**
-    - Transition to **Asynchronous Persistence** (Postgres/Supabase) to eliminate JSON I/O blocking.
-    - Implement **Lazy Scanning Payloads** (Metadata-first loading) to reduce dashboard latency.
-    - Add **Result Pagination** and virtualized lists for high-volume audit histories.
+  - Transition to **Asynchronous Persistence** (Postgres/Supabase) to eliminate JSON I/O blocking.
+  - Implement **Lazy Scanning Payloads** (Metadata-first loading) to reduce dashboard latency.
+  - Add **Result Pagination** and virtualized lists for high-volume audit histories.
 
 - [ ] **🛡️ AI & Quality Gates (RAG Checking)**
-    - Implement an automated **"Linter-in-the-Loop"** for AI suggestions to verify code fixes before they reach the user.
-    - Scale the **Cognitive Heuristics** engine to include multi-user behavioral simulation.
+  - Implement an automated **"Linter-in-the-Loop"** for AI suggestions to verify code fixes before they reach the user.
+  - Scale the **Cognitive Heuristics** engine to include multi-user behavioral simulation.
 
 - [ ] **🔐 Security & Multi-Tenancy**
-    - Integrate **NextAuth.js / Clerk** for secure team-based login and organization management.
-    - Implement **Encrypted Secret Storage** for user-provided API keys.
+  - Integrate **NextAuth.js / Clerk** for secure team-based login and organization management.
+  - Implement **Encrypted Secret Storage** for user-provided API keys.
 
 - [ ] **📊 Collaborative Auditing**
-    - Add **Team Workspaces & Role-Based Access Control (RBAC)**.
-    - Real-time scan synchronization via **WebSockets**.
+  - Add **Team Workspaces & Role-Based Access Control (RBAC)**.
+  - Real-time scan synchronization via **WebSockets**.
 
 - [ ] **🔌 CI/CD Integrations**
-    - Official **GitHub Action** & **Vercel Plugin** for automated accessibility regression testing.
+  - Official **GitHub Action** & **Vercel Plugin** for automated accessibility regression testing.
 
 ---
 
