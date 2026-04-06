@@ -1,232 +1,189 @@
-<div align="center">
-  <img src="beacon.png" alt="BEACON Logo" width="200" style="border-radius: 50%;">
-  <h1>🌍 BEACON (Intelligence Engine)</h1>
-  <p><b>The advanced Multi-Engine Auditing Pipeline & Accessibility RAG Engine powering the BEACON automated remediation platform.</b></p>
+﻿# BEACON Accessibility Intelligence Engine
 
-  <p>
-    <a href="#-performance-benchmarks"><img src="https://img.shields.io/badge/Coverage-100%25%20WCAG%202.2-success?style=flat-square" alt="WCAG Coverage"></a>
-    <a href="#-quick-start-conda-setup"><img src="https://img.shields.io/badge/Python-3.11%2B-blue?style=flat-square&logo=python" alt="Python Version"></a>
-    <a href="#1-the-multi-engine-auditor"><img src="https://img.shields.io/badge/Engines-Static%20%7C%20Heuristic%20%7C%20Browser-orange?style=flat-square" alt="Engines"></a>
-    <a href="#2-the-5-variable-fix-first-prioritization-engine"><img src="https://img.shields.io/badge/Status-Production%20Ready-success?style=flat-square" alt="Status"></a>
-  </p>
-</div>
+BEACON is a FastAPI-based accessibility auditing platform with multi-engine scanning, RAG-backed remediation, observability, and API-key RBAC.
 
-<br/>
+## Architecture
 
-> **BEACON** is a production-grade, ultra-low latency RAG engine and advanced **Multi-Engine Accessibility Auditor**.
-> Unlike generic vector-search wrappers or standard CI linters, BEACON combines **Static, Heuristic, and Browser-based** auditing with a heavily optimized **Bi-Encoder Reciprocal Rank Fusion (RRF)** retrieval layer to act like a human consultant: dismissing false positives while identifying and fixing high-confidence violations.
+```mermaid
+flowchart LR
+    C[Client or Frontend] --> API[FastAPI API Layer]
+    API --> AUTH[API Key Middleware RBAC]
+    API --> ORCH[Scan Mode Orchestrator]
 
----
+    ORCH --> CRAWL[Crawlers\nSitemap, BFS, DOM]
+    ORCH --> PAR[Parallel Site Runner]
+    PAR --> PAGE[Page Auditor\nMulti-state]
 
-## ⚡ Performance Benchmarks (Top 1% Architecture)
+    PAGE --> ENG[Audit Engines\nStatic, Heuristic, Browser, Axe, Cognitive]
+    PAGE --> ENRICH[Enrichment Pipeline\nLLM + Fix Cache]
 
-| Metric                   |  Performance   | Note                                                                      |
-| :----------------------- | :------------: | :------------------------------------------------------------------------ |
-| ⏱️ **Retrieval Latency** |  **`0.08s`**   | 60x faster than standard Cross-Encoder reranking                          |
-| 🎯 **Audit Precision**   | **`100% Adj`** | Zero false-positive rate on standalone HTML fragments via balanced gating |
-| 📚 **WCAG Coverage**     |   **`100%`**   | Deterministically verified across 86/86 AAA criteria & WCAG 2.2           |
-| 🛡️ **Real World (Deep)** |  **`10/10`**   | Successfully bypasses CSPs/WAFs to render full DOMs natively              |
-| 🏎️ **Real World (Fast)** |  **`< 1.0s`**  | Scans and scores production sites (apple.com, w3.org) in sub-second time  |
+    ENRICH --> RAG[RAG Retrieval\nBM25 + Vector]
+    RAG --> VDB[(ChromaDB)]
 
----
-
-## 🧮 Proprietary Scoring & Prioritization Logic
-
-BEACON doesn't just list 500 errors; it calculates a holistic health score and prioritizes exactly what to fix first.
-
-### 1. The Holistic Accessibility Score (0-100)
-
-A single noisy rule (e.g., a missing `alt` tag repeated 300 times in a footer) normally drops generic accessibility scores to 0. BEACON uses a **capped penalty model**:
-
-- 🔴 **Critical=4**, 🟠 **Serious=3**, 🟡 **Moderate=2**, 🔵 **Minor=1**.
-- 📉 **Per-Rule Cap**: No single rule can reduce the score by more than the `max_penalty_per_rule` threshold. This ensures proportional scoring.
-
-### 2. The 5-Variable "Fix-First" Prioritization
-
-BEACON computes a `priority_score` for every issue to generate a Top-5 **"Fix First"** action plan:
-
-> `priority_score = impact × frequency × visibility × confidence × effort`
-
-- 🚨 **Impact**: Critical issues multiply up.
-- 👁️ **Visibility**: Hard violations (syntax) > Visual violations > Contextual heuristics.
-- 🤝 **Confidence**: Based on our 5-Signal Formula (Source + Signal + Agreement + Evidence + User Impact).
-- 🟢 **Effort**: Low-hanging fruit gets an immediate `1.2x` boost to encourage quick wins.
-- 📈 **Impact Projection**: BEACON projects the **`expected_score_after_fix`**, showing developers exactly how many points their score will jump if they merge the suggested fixes.
-
----
-
-## 🧠 Core Architecture Pipelines
-
-<details open>
-<summary><b>1. The Multi-Engine Auditor</b> <i>(Click to expand)</i></summary>
-<br>
-
-BEACON scales based on the target and load:
-
-- 🏃‍♂️ **`scan_mode="fast"` (~0.5 - 1.5s):** Lightning-fast parser for structural HTML/ARIA entirely natively using `BeautifulSoup` + Heuristics. Perfect for CI/CD gates.
-- 🕵️ **`scan_mode="deep"` (~10 - 15s):** Spins up a headless `Playwright` browser to fully render CSS, compute bounding boxes, and execute Axe-core alongside custom Python probes (WCAG 2.2 Target Size/Color Contrast).
-- ⚙️ **`scan_mode="minimal"`:** Disables browser/RAG/cognitive analysis entirely for maximum throughput debugging.
-
-</details>
-
-<details>
-<summary><b>2. The Ingestion Engine</b> <i>(Click to expand)</i></summary>
-<br>
-
-A deterministic, reproducible 8-stage data pipeline mapping chaotic HTML specs into a high-precision knowledge base across four **Knowledge Silos**:
-
-1.  **Axe-Core Formal Rules:** Directly ingests Deque University's algorithms.
-2.  **WebAIM & WCAG Spec:** Scrapes official W3C structural mappings.
-3.  **MDN Web & ARIA Spec:** Ingests Mozilla Developer Network semantic HTML5 docs.
-4.  **Local AAA Engineering Corpus:** Explicitly maps pre-written perfect AAA components (`corpus/wcag-aaa-web-design`).
-
-</details>
-
-<details>
-<summary><b>3. The Retrieval Engine</b> <i>(Click to expand)</i></summary>
-<br>
-
-- 🧠 **Dense Vectors:** `all-MiniLM-L6-v2` handles semantic meaning.
-- 🔍 **Sparse Lexical Index:** `BM25` (cached globally in RAM) handles exact keyword matches.
-- 🧬 **Reciprocal Rank Fusion (RRF):** Fuses sparse and dense scores mathematically to drop the heavy Cross-Encoder latency penalty.
-
-</details>
-
----
-
-## 🛠️ Quick Start
-
-> We strongly recommend using **Miniconda** to ensure that `sentence-transformers`, `chromadb`, and networking dependencies execute perfectly in an isolated environment.
-
-### 1. Initialize Environment
-
-```bash
-conda create -n beacon_env python=3.11 -y
-conda activate beacon_env
+    API --> DB[(SQLite via SQLAlchemy)]
+    API --> OBS[Telemetry and Alerts]
+    OBS --> MET[Prometheus Metrics Endpoint]
 ```
 
-### 2. Install Dependencies
+## Repository Layout
+
+- `app/`: backend API, audit engines, crawlers, security, observability
+- `alembic/`: DB migration scripts
+- `corpus/`: source corpus used for ingestion and RAG
+- `tests/`: unit, integration, and regression tests
+- `.github/workflows/ci.yml`: CI pipeline
+- `.env.example`: environment variable template
+- `Dockerfile`: production container build
+
+## Setup
+
+### 1. Prerequisites
+
+- Python 3.10+ (3.11 recommended)
+- pip
+- Optional for deep and max browser scans: Playwright Chromium
+
+### 2. Configure Environment
+
+Create your local environment file from the template:
+
+```bash
+cp .env.example .env
+```
+
+Update at minimum:
+
+- `FEATHERLESS_API_KEY`
+- `BOOTSTRAP_VIEWER_API_KEY`
+- `BOOTSTRAP_AUDITOR_API_KEY`
+- `BOOTSTRAP_ADMIN_API_KEY`
+
+### 3. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
+```
+
+Optional browser support:
+
+```bash
+pip install playwright
 playwright install chromium
 ```
 
-_(Ensure a `.env` file exists in the root directory with your LLM API keys)_
-
-### 3. Ingest & Start Server
+### 4. Run the API
 
 ```bash
-# Build/update the ChromaDB vector store (incremental by default)
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+### 5. Optional: Ingest Corpus
+
+```bash
 python run_ingestion.py
-
-# Optional: full rebuild when needed
-python run_ingestion.py --hard-reset
-
-# Optional: fail CI if configured sources or WCAG coverage have gaps
-python run_ingestion.py --strict-coverage
-
-# Boot the BEACON RAG brain & API endpoints
-uvicorn app.main:app --reload --port 8000
 ```
 
----
+## Docker
 
-## 🌐 Core API References
-
-### `POST /audit/url` - Multi-Engine Auditing
-
-Trigger the automated scanning pipeline. Emits a `scan_mode`.
-
-```json
-// Request
-{
-  "url": "https://example.com",
-  "scan_mode": "fast"
-}
-// Response
-{
-  "total_issues": 3,
-  "score": 92.5,
-  "priority_ranking": [...],
-  "issues": [...]
-}
-```
-
-### `POST /rag` - Fix Generation
-
-Submit an accessibility issue and receive a highly specific code fix powered by the BEACON RAG backend.
-
-```json
-// Request
-{
-  "query": "text contrast is too low on my website",
-  "filters": {"topic": "contrast", "level": "AA"}
-}
-// Response
-{
-  "explanation": "Low contrast ratio fails WCAG 1.4.3...",
-  "code_fix": "/* CSS fix */ .text { color: #333; background: #fff; }",
-  "confidence": "HIGH"
-}
-```
-
----
-
-### 4. Start Dashboard (Frontend)
+### Build
 
 ```bash
-cd frontend
-npm install
-npm run dev
+docker build -t beacon:latest .
 ```
 
-The dashboard will be available at `http://localhost:3000`.
+Enable Playwright in image:
 
----
+```bash
+docker build --build-arg INSTALL_PLAYWRIGHT=true -t beacon:latest .
+```
 
-## 🚀 Roadmap to Production (YC Level)
+### Run
 
-BEACON is currently in **Hackathon Prototype** stage. To achieve enterprise-grade scale and performance, the following roadmap is in progress:
+```bash
+docker run --rm -p 8000:8000 --env-file .env beacon:latest
+```
 
-- [ ] **⚙️ Performance Optimization**
-  - Transition to **Asynchronous Persistence** (Postgres/Supabase) to eliminate JSON I/O blocking.
-  - Implement **Lazy Scanning Payloads** (Metadata-first loading) to reduce dashboard latency.
-  - Add **Result Pagination** and virtualized lists for high-volume audit histories.
+## API Usage
 
-- [ ] **🛡️ AI & Quality Gates (RAG Checking)**
-  - Implement an automated **"Linter-in-the-Loop"** for AI suggestions to verify code fixes before they reach the user.
-  - Scale the **Cognitive Heuristics** engine to include multi-user behavioral simulation.
+Authentication uses API keys via either header:
 
-- [ ] **🔐 Security & Multi-Tenancy**
-  - Integrate **NextAuth.js / Clerk** for secure team-based login and organization management.
-  - Implement **Encrypted Secret Storage** for user-provided API keys.
+- `Authorization: Bearer <key>`
+- `X-API-Key: <key>`
 
-- [ ] **📊 Collaborative Auditing**
-  - Add **Team Workspaces & Role-Based Access Control (RBAC)**.
-  - Real-time scan synchronization via **WebSockets**.
+### Health
 
-- [ ] **🔌 CI/CD Integrations**
-  - Official **GitHub Action** & **Vercel Plugin** for automated accessibility regression testing.
+```bash
+curl http://localhost:8000/health
+```
 
----
+### Audit URL
 
-## 🏗️ Integrated Architecture
+```bash
+curl -X POST http://localhost:8000/audit \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <AUDITOR_KEY>" \
+  -d '{
+    "url": "https://example.com",
+    "scan_mode": "fast"
+  }'
+```
 
-BEACON is now a fully integrated platform consisting of a **FastAPI backend** (Intelligence Engine) and a **Next.js frontend** (Operational Dashboard).
+### Streamed Audit (SSE)
 
-- **Data Persistence**: Uses a local JSON-based storage (`app/data/`) to track projects and scan history across sessions without requiring a heavy database setup.
-- **Real-time UX**: Features a polling-based scanning interface with Neo-Brutalist design tokens, support for Light/Dark modes, and deep-link results.
+```bash
+curl -N -X POST http://localhost:8000/audit/stream \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <AUDITOR_KEY>" \
+  -d '{
+    "url": "https://example.com",
+    "scan_mode": "deep"
+  }'
+```
 
----
+### Metrics
 
-## 📁 Repository Structure
+```bash
+curl -H "Authorization: Bearer <ADMIN_KEY>" http://localhost:8000/metrics
+```
 
-- 🏭 `/app/` - Production FastAPI server & Core Engine logic.
-- 🎨 `/frontend/` - Next.js 15+ Dashboard with Tailwind 4 & Neo-Brutalism UI.
-- 🧠 `/rag-pipeline/` - Core extraction, embedding, and retrieval algorithms.
-- 📊 `/evaluation/` - Automated benchmarks & latency tests.
-- 🧪 `/tests/` - Diagnostic scripts and validation data.
-- 📚 `/corpus/` - Local engineering docs for RAG injection.
+### History
 
-<p align="center"><i>Building for a Web Without Barriers.</i></p>
+```bash
+curl -G http://localhost:8000/history \
+  -H "Authorization: Bearer <VIEWER_KEY>" \
+  --data-urlencode "url=https://example.com" \
+  --data-urlencode "limit=20"
+```
+
+## CI Pipeline
+
+The workflow in `.github/workflows/ci.yml` runs these jobs:
+
+- `lint`: Ruff (blocking) + MyPy (advisory)
+- `unit`: unit tests with coverage gate
+- `integration`: integration tests
+- `security`: pip-audit, Bandit, Gitleaks action
+- `benchmark_smoke`: benchmark smoke script + quality gates
+- `build` (main branch): Docker image build
+
+To run a local CI parity check:
+
+```bash
+ruff check . --select E9,F63,F7,F82
+mypy app --strict --ignore-missing-imports
+pytest tests/unit -v --cov=app --cov-report=xml --cov-fail-under=40
+pytest tests/integration -v
+pytest tests/regression -v
+bandit -r app -ll
+pip-audit -r requirements.txt --desc
+python tests/scripts/benchmark_smoke_ci.py
+```
+
+Note: the MyPy command is currently informational in CI (non-blocking) while strict typing debt is being worked down.
+
+## Secrets Policy
+
+- Do not commit `.env`.
+- Do not commit service-account private keys.
+- Keep API keys in environment variables or your secret manager.
+- Rotate bootstrap keys before any shared environment deployment.

@@ -1,8 +1,8 @@
-# BEACON Mastery Architecture v2.0
+# BEACON Mastery Architecture v2.1
 ## Production-Grade Accessibility Intelligence Engine
 
 > **Status**: Production-ready core. Experimental extensions clearly labelled.
-> **Last Updated**: 2026-04-02 — Post YC-feedback hardening.
+> **Last Updated**: 2026-04-06 — Reliability hardening and max-mode validation.
 
 ---
 
@@ -23,9 +23,9 @@ Developer / CI Tool
 │                                                                    │
 │  ┌────────────────────────────────────────────────────────────┐  │
 │  │         SCAN MODE ROUTER                                    │  │
-│  │  minimal ──► Static + Heuristics only   (~1-3s, max debug) │  │
 │  │  fast    ──► Static + Heuristics        (~5-15s, no AI)    │  │
 │  │  deep    ──► All engines + RAG + LLM    (~30-120s, full)   │  │
+│  │  max     ──► Deep + interaction/scroll  (~60-300s, broad)  │  │
 │  └────────────────────────────────────────────────────────────┘  │
 │                       │                                            │
 │          ┌────────────┼──────────────────────┐                   │
@@ -33,20 +33,20 @@ Developer / CI Tool
 │   ┌─────────────┐  ┌───────────────┐  ┌────────────────────┐    │
 │   │Static Engine│  │Heuristic Eng. │  │ Browser Probes     │    │
 │   │(static_     │  │(heuristics.py)│  │ (browser_probes.py)│    │
-│   │ checks.py)  │  │               │  │ [deep only]        │    │
+│   │ checks.py)  │  │               │  │ [deep/max]         │    │
 │   │ 77KB rules  │  │Pattern match  │  │ Playwright renders │    │
 │   └─────────────┘  └───────────────┘  └────────────────────┘    │
 │          │                                     │                  │
 │          │              ┌──────────────────────┘                  │
 │          ▼              ▼                                         │
 │   ┌─────────────────────────────────────────────────┐            │
-│   │               Axe-core Engine [deep only]        │            │
+│   │               Axe-core Engine [deep/max]         │            │
 │   │   Playwright + axe.run() → violations[]          │            │
 │   └─────────────────────────────────────────────────┘            │
 │                          │                                        │
 │                          ▼                                        │
 │   ┌─────────────────────────────────────────────────┐            │
-│   │       Cognitive Engine [deep, experimental]      │            │
+│   │     Cognitive Engine [deep/max, experimental]    │            │
 │   │   Readability + Jargon + Form UX + COGA checks   │            │
 │   │   cognitive_mode = "experimental"                │            │
 │   └─────────────────────────────────────────────────┘            │
@@ -123,6 +123,8 @@ Developer / CI Tool
               ├─ cognitive_mode: "experimental"     ← NEW
               ├─ degraded_mode: true                ← NEW (Failure Visibility)
               ├─ skipped_components: ["playwright"] ← NEW
+              ├─ quality_gates.max_mode_validation  ← NEW (phase execution proof)
+              ├─ invariant_safe_score_applied       ← NEW (non-zero output guard)
               └─ enrichment_status: "pending" (SSE)
 ```
 
@@ -155,6 +157,7 @@ Developer / CI Tool
 | :--- | :--- | :--- |
 | **Minimal scan mode** | `scan_mode="minimal"` disables browser/RAG/cognitive | ✅ NEW |
 | **Fast vs Deep modes** | httpx-only vs Playwright render | ✅ |
+| **Max exploration mode** | Deep + SPA interaction/scroll exploration + auth fallback | ✅ NEW |
 | **Async SSE streaming** | Report instant; AI enrichment streams later | ✅ |
 | **Global backpressure** | Auto-degrade deep→fast at >20 concurrent audits | ✅ |
 | **LLM batching** | Group issues by WCAG criterion → 1 call | ✅ |
@@ -163,6 +166,16 @@ Developer / CI Tool
 | **RAG context limit** | `MAX_CONTEXT_CHUNKS = 5` hard cap | ✅ NEW |
 | **BM25 index cache** | Built once at startup, never rebuilt | ✅ |
 | **Playwright circuit breaker** | Semaphore(3) + 25s timeout | ✅ |
+
+---
+
+## ✅ 3.1 Reliability Guardrails (2026-04 Hotfix)
+
+- **Hard output invariants**: audited results cannot return zero-score + zero-issue payloads.
+- **Safe score fallback**: if pages were audited and score is invalid/non-positive, a bounded non-zero score is applied.
+- **Enrichment isolation**: base audit payload stays valid even if async enrichment fails later.
+- **Site-result repairs**: single-page and aggregate payloads are repaired if page counts or site_score become invalid.
+- **Stale-cache rejection**: poisoned legacy cache entries are discarded and recomputed (URL cache + DOM cache).
 
 ---
 

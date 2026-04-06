@@ -2,7 +2,7 @@
 Configuration settings loaded from .env file.
 Includes scan mode definitions and quality gate thresholds.
 """
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 
 
@@ -17,6 +17,136 @@ QUALITY_GATES = {
     "coverage_delta_min": 0.20,       # ≥20% more findings than Lighthouse
     "duplicate_rate_max": 0.05,       # ≤5% duplicate issues after dedup
     "false_positive_rate_max": 0.10,  # ≤10% FP rate
+}
+
+
+# ── Crawler Discovery Configuration ───────────────────────────
+
+CRAWLER_URL_RULES = {
+    "binary_extensions": [
+        ".pdf", ".jpg", ".jpeg", ".png", ".gif", ".svg", ".mp4", ".mp3",
+        ".zip", ".gz", ".tar", ".woff", ".woff2", ".ttf", ".eot", ".ico",
+    ],
+    "tracking_params": [
+        "fbclid", "gclid", "mc_eid", "_ga", "ref", "source",
+    ],
+    "skip_href_prefixes": [
+        "mailto:", "tel:", "javascript:", "data:", "#",
+    ],
+    "skip_path_fragments": [
+        "/cdn-cgi/", "/__webpack/", "/static/chunk", "/node_modules/", "/.well-known/",
+    ],
+    "priority_path_keywords": [
+        "/checkout", "/cart", "/basket", "/payment", "/order",
+        "/login", "/signin", "/signup", "/register", "/auth",
+        "/contact", "/help", "/support", "/accessibility", "/faq",
+        "/search", "/results", "/product", "/item", "/listing",
+        "/form", "/apply", "/booking", "/schedule", "/subscribe",
+        "/dashboard", "/account", "/profile", "/settings",
+    ],
+}
+
+
+CRAWLER_CONFIG = {
+    "sitemap": {
+        "timeout_seconds": 8,
+        "default_max_pages": 200,
+        "fallback_paths": [
+            "/sitemap.xml",
+            "/sitemap_index.xml",
+            "/sitemap-index.xml",
+            "/sitemaps/sitemap.xml",
+        ],
+        "default_priority": 0.5,
+        "priority_boost": 0.3,
+    },
+    "bfs": {
+        "default_max_depth": 3,
+        "default_max_pages": 100,
+        "default_concurrency": 5,
+        "timeout_seconds": 15,
+        "default_priority": 0.5,
+    },
+    "dom": {
+        "default_max_pages": 30,
+        "concurrency": 2,
+        "page_timeout_seconds": 20,
+        "network_idle_timeout_ms": 12000,
+        "ready_state_timeout_ms": 5000,
+        "interaction_budget_per_page": 5,
+        "early_stop_min_interactions": 2,
+        "scroll_steps": 2,
+        "interaction_wait_ms": 800,
+        "scroll_wait_ms": 1000,
+        "max_click_candidates": 10,
+        "default_priority": 0.5,
+    },
+    "orchestrator": {
+        "scan_modes": {
+            "fast": {
+                "cap": 10,
+                "sitemap_max_pages": 10,
+                "sitemap_timeout_seconds": 8,
+                "bfs_max_depth": 1,
+                "bfs_max_pages": 10,
+                "use_dom": False,
+            },
+            "deep": {
+                "cap": 50,
+                "sitemap_max_pages": 50,
+                "bfs_max_depth": 3,
+                "bfs_max_pages": 30,
+                "use_dom": False,
+            },
+            "max": {
+                "cap": 150,
+                "sitemap_max_pages": 100,
+                "bfs_max_depth": 4,
+                "bfs_max_pages": 60,
+                "dom_max_pages": 30,
+                "use_dom": True,
+            },
+        },
+        "cross_crawler_agreement_boost": 0.2,
+        "shallow_depth_boost": 0.1,
+        "shallow_depth_threshold": 2,
+    },
+}
+
+
+# ── Audit Pipeline Configuration ──────────────────────────────
+
+AUDIT_PIPELINE_CONFIG = {
+    "parallel_runner": {
+        "concurrency_by_mode": {
+            "fast": 5,
+            "deep": 3,
+            "max": 2,
+        },
+        "max_concurrent_site_audits": 4,
+        "page_timeout_stage1_seconds": {
+            "fast": 15,
+            "deep": 30,
+            "max": 60,
+        },
+        "page_timeout_stage2_seconds": {
+            "fast": 5,
+            "deep": 15,
+            "max": 30,
+        },
+        "global_sla_seconds": {
+            "fast": 45,
+            "deep": 120,
+            "max": 300,
+        },
+        "partial_summary_every_pages": 1,
+        "event_buffer_max": 1000,
+    },
+    "journey_simulation": {
+        "max_journeys": 3,
+        "max_steps_per_journey": 4,
+        "max_candidate_urls": 200,
+    },
 }
 
 # ── Precision Profiles ─────────────────────────────────────────
@@ -165,12 +295,16 @@ SOURCE_RELIABILITY_SCORES = {
 CACHE_STATS: dict[str, int] = {
     "page_hits":   0,
     "page_misses": 0,
+    "page_writes": 0,
     "dom_hits":    0,
     "dom_misses":  0,
+    "dom_writes":  0,
     "llm_hits":    0,
     "llm_misses":  0,
+    "llm_writes":  0,
     "fix_hits":    0,
     "fix_misses":  0,
+    "fix_writes":  0,
 }
 
 
@@ -368,6 +502,15 @@ IMPACT_SUMMARIES = {
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=(".env", ".env.local"),
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    schema_version: str = "3.1"
+
     # Featherless AI (OpenAI-compatible API)
     featherless_api_key: str = ""
     featherless_model: str = "Qwen/Qwen2.5-Coder-32B-Instruct"
@@ -381,24 +524,57 @@ class Settings(BaseSettings):
     chroma_persist_dir: str = "./chroma_db"
 
     # Backend
-    backend_host: str = "0.0.0.0"
+    backend_host: str = "0.0.0.0"  # nosec B104
     backend_port: int = 8000
     backend_cors_origins: str = "http://localhost:3000"
+    backend_log_level: str = "INFO"
 
     # Firebase
     firebase_project_id: str = ""
 
+    # Database
+    db_url: str = "sqlite:///./beacon.db"
+    db_echo: bool = False
+
+    # Observability + telemetry
+    metrics_window_size: int = 1000
+    logs_dir: str = "./logs"
+    telemetry_filename: str = "telemetry.jsonl"
+    app_log_filename: str = "app.log"
+
+    # Alerting
+    alert_webhook_url: str = ""
+    timeout_spike_threshold: float = 0.02
+    enrichment_fallback_spike_threshold: float = 0.10
+    long_running_audit_seconds: float = 180.0
+    llm_failure_burst_count: int = 3
+    llm_failure_burst_window_seconds: int = 300
+
+    # API authentication
+    auth_enabled: bool = True
+    auth_key_store_path: str = "./app/data/api_keys.json"
+    bootstrap_viewer_api_key: str = "beacon-viewer-dev"
+    bootstrap_auditor_api_key: str = "beacon-auditor-dev"
+    bootstrap_admin_api_key: str = "beacon-admin-dev"
+
     # Scan defaults
     default_scan_mode: str = "fast"
+
+    # Enrichment + RAG controls
+    enrichment_enable_llm_cache: bool = True
+    llm_cache_max_entries: int = 2000
+    enrichment_max_concurrency: int = 2
+    enrichment_retry_attempts: int = 3
+    enrichment_retry_base_delay_seconds: float = 0.4
+    enrichment_retry_max_delay_seconds: float = 3.0
+    max_tokens_per_audit: int = 12000
+    max_llm_cost_per_audit: float = 2.5
+    llm_prompt_cost_per_1k_tokens: float = 0.0
+    llm_completion_cost_per_1k_tokens: float = 0.0
 
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.backend_cors_origins.split(",")]
-
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        extra = "ignore"
 
 
 settings = Settings()

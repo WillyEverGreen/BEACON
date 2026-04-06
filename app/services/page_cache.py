@@ -59,12 +59,16 @@ def _evict_oldest():
         _page_cache.pop(key, None)
     logger.info(f"Page Cache evicted {evict_count} oldest entries (max {_MAX_CACHE_ENTRIES})")
 
+
+def _inc_counter(counter_key: str) -> None:
+    CACHE_STATS[counter_key] = int(CACHE_STATS.get(counter_key, 0) or 0) + 1
+
 _load_cache()
 
 def get_url_hash(url: str, scan_mode: str, precision_profile: str = "balanced") -> str:
     """Hash the URL, scan mode, and precision profile."""
     key = f"{url}::{scan_mode}::{precision_profile}"
-    return hashlib.md5(key.encode("utf-8")).hexdigest()
+    return hashlib.sha256(key.encode("utf-8")).hexdigest()
 
 def clean_html_for_hash(html: str) -> str:
     """
@@ -91,23 +95,24 @@ def clean_html_for_hash(html: str) -> str:
 def get_dom_hash(cleaned_html: str, scan_mode: str, precision_profile: str = "balanced") -> str:
     """Hash the cleaned DOM structure, scan mode, and precision profile."""
     key = f"{cleaned_html}::{scan_mode}::{precision_profile}"
-    return hashlib.md5(key.encode("utf-8")).hexdigest()
+    return hashlib.sha256(key.encode("utf-8")).hexdigest()
 
-def check_cache(cache_key: str, max_age_seconds: int = 86400) -> Optional[dict]:
+def check_cache(cache_key: str, max_age_seconds: int = 86400, *, tier: str = "page") -> Optional[dict]:
     """Retrieve result if it exists and is fresh."""
+    tier_key = "dom" if tier == "dom" else "page"
+
     entry = _page_cache.get(cache_key)
     if not entry:
-        # Determine tier from caller context (best-effort key prefix heuristic)
-        CACHE_STATS["page_misses"] += 1
+        _inc_counter(f"{tier_key}_misses")
         return None
 
     age = time.time() - entry.get("timestamp", 0)
     if age > max_age_seconds:
         _page_cache.pop(cache_key, None)
-        CACHE_STATS["page_misses"] += 1
+        _inc_counter(f"{tier_key}_misses")
         return None
 
-    CACHE_STATS["page_hits"] += 1
+    _inc_counter(f"{tier_key}_hits")
     return entry.get("result")
 
 def save_to_cache(url_hash: str, dom_hash: str, result: dict):
@@ -117,8 +122,10 @@ def save_to_cache(url_hash: str, dom_hash: str, result: dict):
         "result": result
     }
     _page_cache[url_hash] = entry
+    _inc_counter("page_writes")
     if dom_hash:
         _page_cache[dom_hash] = entry
+        _inc_counter("dom_writes")
     
     _evict_oldest()
     _save_cache()

@@ -9,11 +9,17 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+from app.config import CACHE_STATS
+
 logger = logging.getLogger(__name__)
 
 # Persistent local cache for the hackathon (could act as Redis fallback)
 CACHE_FILE = Path(__file__).resolve().parents[1] / "data" / "fix_library.json"
 _fix_library = {}
+_cache_stats = {
+    "hit_count": 0,
+    "miss_count": 0,
+}
 
 def _load_cache():
     global _fix_library
@@ -49,10 +55,10 @@ def normalize_html_pattern(html_snippet: str) -> str:
     return pattern.strip()
 
 def get_cache_key(rule_id: str, html_snippet: str) -> str:
-    """Generate MD5 hash of rule_id + normalized pattern."""
+    """Generate stable SHA-256 hash of rule_id + normalized pattern."""
     normalized = normalize_html_pattern(html_snippet)
     key_str = f"{rule_id}::{normalized}"
-    return hashlib.md5(key_str.encode("utf-8")).hexdigest()
+    return hashlib.sha256(key_str.encode("utf-8")).hexdigest()
 
 def get_cached_fix(rule_id: str, html_snippet: str) -> Optional[dict]:
     """Retrieve a previously generated fix if it meets the success criteria."""
@@ -60,6 +66,7 @@ def get_cached_fix(rule_id: str, html_snippet: str) -> Optional[dict]:
     match = _fix_library.get(key)
     
     if not match:
+        _cache_stats["miss_count"] += 1
         return None
         
     # Check success threshold before blindly reusing
@@ -69,6 +76,7 @@ def get_cached_fix(rule_id: str, html_snippet: str) -> Optional[dict]:
     
     # Needs to be a high-confidence fix to bypass LLM
     if success_rate > 0.85:
+        _cache_stats["hit_count"] += 1
         # Increment usage
         match["times_used"] = times_used + 1
         # Optimistically assume success unless explicit feedback rejects it
@@ -78,6 +86,7 @@ def get_cached_fix(rule_id: str, html_snippet: str) -> Optional[dict]:
         _save_cache()
         return match.get("remediation_data")
         
+    _cache_stats["miss_count"] += 1
     return None
 
 def store_fix(rule_id: str, html_snippet: str, remediation_data: dict, confidence: float = 0.9):
@@ -111,6 +120,7 @@ def store_fix(rule_id: str, html_snippet: str, remediation_data: dict, confidenc
             "validated": False,
             "validation_reason": validation.get("reason", ""),
         }
+        CACHE_STATS["fix_writes"] = int(CACHE_STATS.get("fix_writes", 0) or 0) + 1
         _save_cache()
         return
     
@@ -124,6 +134,7 @@ def store_fix(rule_id: str, html_snippet: str, remediation_data: dict, confidenc
         "validated": True,
         "validation_reason": validation.get("reason", ""),
     }
+    CACHE_STATS["fix_writes"] = int(CACHE_STATS.get("fix_writes", 0) or 0) + 1
     _save_cache()
 
 
@@ -155,5 +166,7 @@ def get_cache_stats() -> dict:
         "total_cached_fixes": total,
         "validated_fixes": validated,
         "high_confidence_fixes": high_confidence,
+        "hit_count": _cache_stats["hit_count"],
+        "miss_count": _cache_stats["miss_count"],
     }
 

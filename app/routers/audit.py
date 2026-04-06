@@ -35,6 +35,7 @@ async def audit_url(request: AuditRequest):
             url=request.url,
             scan_mode=request.scan_mode.value,
             checks=request.checks,
+            max_pages=request.max_pages,
         )
 
         # Build issue models
@@ -184,6 +185,7 @@ async def audit_stream(request: AuditRequest):
                 url=request.url,
                 scan_mode=request.scan_mode.value,
                 checks=request.checks,
+                max_pages=request.max_pages,
             )
             elapsed = round(time.time() - start, 2)
 

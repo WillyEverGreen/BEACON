@@ -16,7 +16,7 @@ import asyncio
 import hashlib
 import logging
 import re
-from typing import Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -283,7 +283,68 @@ class BrowserProber:
         
         return False
 
-    async def run_all(self) -> tuple[list[dict], Optional[str], dict]:
+    async def _run_max_exploration(self, page, framework: Optional[str]) -> dict[str, Any]:
+        """Run bounded interaction/scroll exploration for max mode and auth-wall fallback."""
+        metadata: dict[str, Any] = {
+            "interaction_phase_ran": False,
+            "scroll_phase_ran": False,
+            "exploration_layer_ran": False,
+            "login_wall_detected": False,
+            "auth_fallback_attempted": False,
+            "auth_fallback_used": False,
+            "auth_fallback_url": "",
+            "exploration_quality": {},
+            "route_change": {},
+            "modal": {},
+            "lazy_load": {},
+            "fallback_html": "",
+        }
+
+        try:
+            from app.audit.dynamic_handling import (
+                attempt_public_fallback_scan,
+                detect_login_wall,
+                dismiss_cookie_banner,
+            )
+            from app.audit.exploration import SPAStrategyPack
+
+            await dismiss_cookie_banner(page)
+
+            current_url = str(getattr(page, "url", self.url) or self.url)
+            auth_state = await detect_login_wall(page, current_url=current_url)
+            if auth_state.get("requires_auth"):
+                metadata["login_wall_detected"] = True
+                metadata["auth_fallback_attempted"] = True
+                fallback = await attempt_public_fallback_scan(page, self.url)
+                metadata["auth_fallback_used"] = bool(fallback.get("used", False))
+                metadata["auth_fallback_url"] = str(fallback.get("fallback_url", ""))
+                fallback_html = str(fallback.get("html", "") or "")
+                if fallback_html.strip():
+                    metadata["fallback_html"] = fallback_html
+
+            strategy = SPAStrategyPack(
+                seed_url=self.url,
+                interaction_budget=5,
+                max_route_clicks=3,
+                route_settle_ms=1000,
+                scroll_wait_ms=1000,
+                lazy_scroll_steps=3,
+            )
+            exploration = await strategy.run_exploration(page, detected_framework=framework)
+
+            metadata["exploration_layer_ran"] = True
+            metadata["interaction_phase_ran"] = True
+            metadata["scroll_phase_ran"] = True
+            metadata["exploration_quality"] = exploration.get("exploration_quality", {})
+            metadata["route_change"] = exploration.get("route_change", {})
+            metadata["modal"] = exploration.get("modal", {})
+            metadata["lazy_load"] = exploration.get("lazy_load", {})
+        except Exception as e:
+            logger.warning(f"Max-mode exploration failed: {e}")
+
+        return metadata
+
+    async def run_all(self, scan_mode: str = "deep") -> tuple[list[dict], Optional[str], dict]:
         """
         Run all browser probes with world-class SPA support.
         
@@ -305,6 +366,13 @@ class BrowserProber:
             "probes_executed": [],
             "probes_failed": [],
             "shadow_dom_detected": False,
+            "interaction_phase_ran": False,
+            "scroll_phase_ran": False,
+            "exploration_layer_ran": False,
+            "login_wall_detected": False,
+            "auth_fallback_attempted": False,
+            "auth_fallback_used": False,
+            "auth_fallback_url": "",
         }
 
         try:
@@ -372,6 +440,14 @@ class BrowserProber:
 
                 # Capture rendered HTML (including shadow DOM content if possible)
                 rendered_html = await page.content()
+
+                # Max mode runs explicit interaction/scroll exploration and auth-wall fallback.
+                if str(scan_mode).lower() == "max":
+                    max_meta = await self._run_max_exploration(page, framework)
+                    metadata.update({k: v for k, v in max_meta.items() if k != "fallback_html"})
+                    fallback_html = str(max_meta.get("fallback_html", "") or "")
+                    if fallback_html.strip():
+                        rendered_html = fallback_html
                 
                 # If Shadow DOM present, try to extract its content
                 if has_shadow_dom:

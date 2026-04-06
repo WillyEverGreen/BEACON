@@ -6,39 +6,44 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse
 
 from app.config import settings
+from app.db.base import init_db
+from app.db.repository import get_audit_history
 from app.models import HealthResponse
+from app.observability import configure_logging, render_prometheus_metrics, trigger_test_alert
 from app.routers import rag, audit, dashboard_api
+from app.security.auth import APIKeyMiddleware, bootstrap_auth_store
 from app.services.vector_store import get_chunks_count
 from app.services.ingestion import run_full_ingestion
 from app.services.vector_store import upsert_chunks, reset_collection
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
+configure_logging()
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """App startup/shutdown lifecycle."""
-    logger.info("ðŸš€ Accessibility Intelligence Engine starting...")
+    logger.info("Accessibility Intelligence Engine starting")
     logger.info(f"LLM Model: {settings.featherless_model}")
     logger.info(f"Embedding Model: {settings.embedding_model}")
     logger.info(f"Vector Store: {settings.vector_store}")
 
+    init_db()
+    bootstrap_auth_store()
+
     chunks_count = get_chunks_count()
     if chunks_count == 0:
-        logger.info("ðŸ“¦ Vector store is empty. Run POST /ingest to populate it.")
+        logger.info("Vector store is empty. Run POST /ingest to populate it.")
     else:
-        logger.info(f"âœ… Vector store has {chunks_count} chunks ready.")
+        logger.info(f"Vector store has {chunks_count} chunks ready.")
 
     yield
 
-    logger.info("ðŸ‘‹ Accessibility Intelligence Engine shutting down.")
+    logger.info("Accessibility Intelligence Engine shutting down")
 
 
 # â”€â”€ App Setup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -65,6 +70,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+if bool(getattr(settings, "auth_enabled", True)):
+    app.add_middleware(APIKeyMiddleware)
+
 # Routers
 app.include_router(rag.router)
 app.include_router(audit.router)
@@ -82,6 +90,28 @@ async def health_check():
         chunks_count=get_chunks_count(),
         llm_model=settings.featherless_model,
     )
+
+
+@app.get("/metrics", response_class=PlainTextResponse)
+async def metrics_endpoint():
+    """Prometheus metrics from the in-memory sliding telemetry window."""
+    payload = render_prometheus_metrics()
+    return PlainTextResponse(payload, media_type="text/plain; version=0.0.4")
+
+
+@app.get("/history")
+async def history_endpoint(url: str, limit: int = 20):
+    """Return persisted longitudinal score history for a specific URL."""
+    return {
+        "url": url,
+        "history": get_audit_history(url, limit=limit),
+    }
+
+
+@app.post("/test/trigger_alert")
+async def trigger_alert_endpoint():
+    """Admin utility endpoint to validate outbound alert webhook wiring."""
+    return await trigger_test_alert()
 
 
 @app.post("/ingest")
@@ -123,6 +153,7 @@ async def root():
     return {
         "name": "Accessibility Intelligence Engine",
         "version": "3.0.0",
+        "schema_version": getattr(settings, "schema_version", "3.1"),
         "description": "Production-grade accessibility auditing platform with async RAG, parallel engines, self-learning fix library, and SSE streaming",
         "endpoints": {
             "POST /audit": "Run multi-engine accessibility audit (fast/deep mode)",
@@ -139,6 +170,7 @@ async def root():
         "scan_modes": {
             "fast": "Static HTML + heuristic checks (â‰¤15s)",
             "deep": "Full Playwright + browser probes + axe-core + cognitive analysis (â‰¤120s)",
+            "max": "Extended exploration mode with broader coverage budget",
         },
         "optimization_features": [
             "Async RAG enrichment (non-blocking)",

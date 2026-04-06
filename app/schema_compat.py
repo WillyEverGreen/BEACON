@@ -113,6 +113,7 @@ def audit_issue_to_accessibility_issue(issue: dict) -> dict:
         "wcag_intent": issue.get("wcag_intent", ""),
         "test_procedure": issue.get("test_procedure", ""),
         "framework_fixes": issue.get("framework_fixes", {}),
+        "fix": issue.get("fix", {}),
     }
 
 

@@ -6,11 +6,11 @@ import asyncio
 import json
 import logging
 import re
-from typing import Optional
+from typing import Any, Optional
 from openai import AsyncOpenAI
 
-from app.config import settings
-from app.services.fix_cache import get_cached_fix, store_fix
+from app.config import CACHE_STATS, settings
+from app.services.fix_cache import get_cache_key, get_cached_fix, store_fix
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +90,9 @@ def _get_fallback_remediation(issue: dict) -> dict:
 
 # Async client (cached)
 _client: Optional[AsyncOpenAI] = None
+_llm_response_cache: dict[str, dict[str, Any]] = {}
+_ENRICHMENT_SEMAPHORE: Optional[asyncio.Semaphore] = None
+_ENRICHMENT_SEMAPHORE_LIMIT = 0
 
 
 def get_client() -> AsyncOpenAI:
@@ -101,6 +104,133 @@ def get_client() -> AsyncOpenAI:
             base_url=settings.featherless_base_url,
         )
     return _client
+
+
+def _estimate_llm_cost(prompt_tokens: int, completion_tokens: int) -> float:
+    prompt_rate = max(0.0, float(getattr(settings, "llm_prompt_cost_per_1k_tokens", 0.0) or 0.0))
+    completion_rate = max(0.0, float(getattr(settings, "llm_completion_cost_per_1k_tokens", 0.0) or 0.0))
+    return round(
+        (max(0, int(prompt_tokens)) / 1000.0) * prompt_rate
+        + (max(0, int(completion_tokens)) / 1000.0) * completion_rate,
+        6,
+    )
+
+
+def _normalize_usage(response_usage: Any) -> dict[str, float | int]:
+    prompt_tokens = int(getattr(response_usage, "prompt_tokens", 0) or 0)
+    completion_tokens = int(getattr(response_usage, "completion_tokens", 0) or 0)
+    total_tokens = int(getattr(response_usage, "total_tokens", prompt_tokens + completion_tokens) or 0)
+    return {
+        "prompt_tokens": prompt_tokens,
+        "completion_tokens": completion_tokens,
+        "total_tokens": total_tokens,
+        "estimated_cost_usd": _estimate_llm_cost(prompt_tokens, completion_tokens),
+    }
+
+
+def _enrichment_semaphore() -> asyncio.Semaphore:
+    global _ENRICHMENT_SEMAPHORE, _ENRICHMENT_SEMAPHORE_LIMIT
+    limit = max(1, int(getattr(settings, "enrichment_max_concurrency", 2) or 2))
+    if _ENRICHMENT_SEMAPHORE is None or _ENRICHMENT_SEMAPHORE_LIMIT != limit:
+        _ENRICHMENT_SEMAPHORE = asyncio.Semaphore(limit)
+        _ENRICHMENT_SEMAPHORE_LIMIT = limit
+    return _ENRICHMENT_SEMAPHORE
+
+
+def _llm_cache_key(issue: dict) -> str:
+    return get_cache_key(issue.get("rule_id", "unknown"), issue.get("html_snippet", ""))
+
+
+def _get_llm_cached_remediation(issue: dict) -> Optional[dict]:
+    if not bool(getattr(settings, "enrichment_enable_llm_cache", True)):
+        return None
+    return _llm_response_cache.get(_llm_cache_key(issue))
+
+
+def _store_llm_cached_remediation(issue: dict, remediation: dict) -> None:
+    if not bool(getattr(settings, "enrichment_enable_llm_cache", True)):
+        return
+
+    key = _llm_cache_key(issue)
+    max_entries = max(1, int(getattr(settings, "llm_cache_max_entries", 2000) or 2000))
+    if len(_llm_response_cache) >= max_entries and key not in _llm_response_cache:
+        # Keep eviction cheap and deterministic for repeatable tests.
+        oldest_key = next(iter(_llm_response_cache), None)
+        if oldest_key is not None:
+            _llm_response_cache.pop(oldest_key, None)
+
+    _llm_response_cache[key] = remediation
+    CACHE_STATS["llm_writes"] = int(CACHE_STATS.get("llm_writes", 0) or 0) + 1
+
+
+def _framework_hints(fixes: dict[str, Any] | None) -> dict[str, str]:
+    src = fixes if isinstance(fixes, dict) else {}
+    return {
+        "vanilla": str(src.get("vanilla", "")),
+        "react": str(src.get("react", "")),
+        "vue": str(src.get("vue", "")),
+        "angular": str(src.get("angular", "")),
+    }
+
+
+def _build_fix_object(issue: dict, fixes: dict[str, str]) -> dict[str, Any]:
+    return {
+        "description": str(issue.get("description", "") or "").strip(),
+        "before": str(issue.get("html_snippet", "") or "").strip()[:500],
+        "after": str(fixes.get("vanilla", "") or "").strip(),
+        "framework_hints": _framework_hints(fixes),
+    }
+
+
+def _fix_object_valid(fix: dict[str, Any]) -> bool:
+    if not isinstance(fix, dict):
+        return False
+
+    description = str(fix.get("description", "") or "").strip()
+    before = str(fix.get("before", "") or "").strip()
+    after = str(fix.get("after", "") or "").strip()
+    framework_hints = fix.get("framework_hints")
+
+    if not isinstance(framework_hints, dict):
+        return False
+    if not description or not before or not after:
+        return False
+    for key in ("vanilla", "react", "vue", "angular"):
+        if key not in framework_hints:
+            return False
+    return True
+
+
+def _apply_remediation_to_issue(issue: dict, remediation: dict, source: str) -> None:
+    fixes = _framework_hints(remediation.get("fixes", {}))
+    issue["code_fix"] = fixes.get("vanilla", "")
+    issue["framework_fixes"] = fixes
+
+    expl = remediation.get("explanation", {})
+    if isinstance(expl, dict):
+        if expl.get("what_is_broken"):
+            issue["description"] = expl.get("what_is_broken", issue.get("description", ""))
+        if expl.get("impact"):
+            issue["human_impact"] = expl.get("impact", "")
+        if expl.get("intent"):
+            issue["wcag_intent"] = expl.get("intent", "")
+        if expl.get("verification"):
+            issue["test_procedure"] = expl.get("verification", "")
+        if expl.get("wcag_sc"):
+            issue["wcag_criterion"] = expl.get("wcag_sc", issue.get("wcag_criterion", ""))
+
+    fix_obj = _build_fix_object(issue, issue.get("framework_fixes", {}))
+    if not _fix_object_valid(fix_obj):
+        if not str(fix_obj.get("description", "") or "").strip():
+            fix_obj["description"] = str(issue.get("description", "") or "Accessibility issue requires remediation.").strip()
+        if not str(fix_obj.get("before", "") or "").strip():
+            fix_obj["before"] = str(issue.get("element", "") or "<unknown-element>").strip()
+        if not str(fix_obj.get("after", "") or "").strip():
+            fix_obj["after"] = str(issue.get("suggested_fix", "") or issue.get("code_fix", "") or "Refer to WCAG techniques for compliant remediation.").strip()
+        fix_obj["framework_hints"] = _framework_hints(issue.get("framework_fixes", {}))
+
+    issue["fix"] = fix_obj
+    issue["_enrichment_source"] = source
 
 
 # ── Query Expansion ────────────────────────────────────────────
@@ -488,8 +618,18 @@ async def generate_remediation(issue: dict, context_chunks: list[dict]) -> dict:
         }
 
 
-async def generate_remediation_batch(issues_group: list[dict], context_str: str, wcag_criterion: str) -> list[dict]:
+async def generate_remediation_batch(
+    issues_group: list[dict],
+    context_str: str,
+    wcag_criterion: str,
+) -> tuple[list[dict], dict[str, float | int]]:
     client = get_client()
+    usage = {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "estimated_cost_usd": 0.0,
+    }
     
     # Build list of HTML snippets
     snippets = []
@@ -514,6 +654,7 @@ async def generate_remediation_batch(issues_group: list[dict], context_str: str,
             temperature=0.2,
             timeout=40.0,
         )
+        usage = _normalize_usage(getattr(response, "usage", None))
 
         text = response.choices[0].message.content.strip()
         
@@ -531,20 +672,25 @@ async def generate_remediation_batch(issues_group: list[dict], context_str: str,
                 if len(parsed_array) != len(issues_group):
                     logger.warning(f"Batch generation length mismatch! Expected {len(issues_group)}, got {len(parsed_array)}. Using partial results.")
                 validated_results = [_validate_response(item) for item in parsed_array]
-                return validated_results
+                return validated_results, usage
             
         logger.warning("Could not parse batch remediation response as JSON array")
-        return []
+        return [], usage
 
     except Exception as e:
         logger.error(f"Batch remediation generation failed: {e}")
-        return []
+        return [], usage
 
 
-async def enrich_issues(issues: list[dict], max_issues: int = 20) -> list[dict]:
-    """
-    Enrich the top issues using FixCache and batched RAG remediation.
-    """
+async def enrich_issues(
+    issues: list[dict],
+    max_issues: int = 20,
+    *,
+    max_tokens_per_audit: Optional[int] = None,
+    max_llm_cost_per_audit: Optional[float] = None,
+    return_meta: bool = False,
+) -> list[dict] | tuple[list[dict], dict[str, Any]]:
+    """Enrich the top issues using cache-first and bounded batched RAG remediation."""
     from app.services.retrieval import retrieve_for_issue
 
     severity_order = {"critical": 4, "serious": 3, "moderate": 2, "minor": 1}
@@ -554,124 +700,194 @@ async def enrich_issues(issues: list[dict], max_issues: int = 20) -> list[dict]:
         reverse=True,
     )[:max_issues]
 
-    cache_misses = []
-    enriched_count = 0
+    max_token_budget = int(
+        settings.max_tokens_per_audit if max_tokens_per_audit is None else max_tokens_per_audit
+    )
+    max_cost_budget = float(
+        settings.max_llm_cost_per_audit if max_llm_cost_per_audit is None else max_llm_cost_per_audit
+    )
 
-    # 1. Check FixCache first
+    enrichment_meta: dict[str, Any] = {
+        "cache": {
+            "llm_hits": 0,
+            "llm_misses": 0,
+            "fix_hits": 0,
+            "fix_misses": 0,
+        },
+        "llm": {
+            "calls": 0,
+            "retries": 0,
+        },
+        "budget": {
+            "max_tokens_per_audit": max_token_budget,
+            "max_llm_cost_per_audit": max_cost_budget,
+            "tokens_used": 0,
+            "cost_used": 0.0,
+            "budget_exhausted": max_token_budget <= 0 or max_cost_budget <= 0,
+        },
+    }
+
+    cache_misses: list[dict] = []
+    enriched_count = 0
+    semaphore = _enrichment_semaphore()
+    budget_lock = asyncio.Lock()
+
+    def _apply_rule_fallback(group_issues: list[dict], source: str) -> int:
+        applied = 0
+        for issue in group_issues:
+            fallback = _get_fallback_remediation(issue)
+            _apply_remediation_to_issue(issue, fallback, source)
+            applied += 1
+        return applied
+
+    async def _budget_available() -> bool:
+        async with budget_lock:
+            token_budget_ok = max_token_budget > 0 and enrichment_meta["budget"]["tokens_used"] < max_token_budget
+            cost_budget_ok = max_cost_budget > 0 and enrichment_meta["budget"]["cost_used"] < max_cost_budget
+            available = token_budget_ok and cost_budget_ok
+            if not available:
+                enrichment_meta["budget"]["budget_exhausted"] = True
+            return available
+
+    async def _record_usage(usage: dict[str, float | int]) -> None:
+        async with budget_lock:
+            enrichment_meta["budget"]["tokens_used"] += int(usage.get("total_tokens", 0) or 0)
+            enrichment_meta["budget"]["cost_used"] = round(
+                float(enrichment_meta["budget"]["cost_used"]) + float(usage.get("estimated_cost_usd", 0.0) or 0.0),
+                6,
+            )
+            if (
+                enrichment_meta["budget"]["tokens_used"] >= max_token_budget
+                or enrichment_meta["budget"]["cost_used"] >= max_cost_budget
+            ):
+                enrichment_meta["budget"]["budget_exhausted"] = True
+
+    # 1) Strict cache-first chain: LLM cache -> Fix Library -> LLM call
     for issue in sorted_issues:
-        # Skip if already has a good code fix
-        if issue.get("code_fix") and len(issue["code_fix"]) > 50:
+        if issue.get("code_fix") and len(str(issue.get("code_fix", ""))) > 50:
+            _apply_remediation_to_issue(
+                issue,
+                {
+                    "explanation": {
+                        "what_is_broken": issue.get("description", ""),
+                        "impact": issue.get("human_impact", ""),
+                        "wcag_sc": issue.get("wcag_criterion", ""),
+                        "intent": issue.get("wcag_intent", ""),
+                        "verification": issue.get("test_procedure", ""),
+                    },
+                    "fixes": issue.get("framework_fixes", {"vanilla": issue.get("code_fix", "")}),
+                },
+                source="existing_fix",
+            )
             continue
-            
+
+        llm_cached = _get_llm_cached_remediation(issue)
+        if llm_cached:
+            CACHE_STATS["llm_hits"] = CACHE_STATS.get("llm_hits", 0) + 1
+            enrichment_meta["cache"]["llm_hits"] += 1
+            _apply_remediation_to_issue(issue, llm_cached, source="llm_cache")
+            enriched_count += 1
+            continue
+
+        CACHE_STATS["llm_misses"] = CACHE_STATS.get("llm_misses", 0) + 1
+        enrichment_meta["cache"]["llm_misses"] += 1
+
         rule_id = issue.get("rule_id", "unknown")
         html_snippet = issue.get("html_snippet", "")
-        
         cached_fix = get_cached_fix(rule_id, html_snippet)
         if cached_fix:
-            # Apply cached fix
-            issue["code_fix"] = cached_fix.get("fixes", {}).get("vanilla", "")
-            issue["framework_fixes"] = cached_fix.get("fixes", {})
-            expl = cached_fix.get("explanation", {})
-            issue["description"] = expl.get("what_is_broken", issue.get("description", ""))
-            issue["human_impact"] = expl.get("impact", "")
-            issue["wcag_intent"] = expl.get("intent", "")
-            issue["test_procedure"] = expl.get("verification", "")
-            issue["wcag_criterion"] = expl.get("wcag_sc", issue.get("wcag_criterion", ""))
+            CACHE_STATS["fix_hits"] = CACHE_STATS.get("fix_hits", 0) + 1
+            enrichment_meta["cache"]["fix_hits"] += 1
+            _apply_remediation_to_issue(issue, cached_fix, source="fix_library_cache")
+            _store_llm_cached_remediation(issue, cached_fix)
             enriched_count += 1
-        else:
-            cache_misses.append(issue)
+            continue
+
+        CACHE_STATS["fix_misses"] = CACHE_STATS.get("fix_misses", 0) + 1
+        enrichment_meta["cache"]["fix_misses"] += 1
+        cache_misses.append(issue)
 
     if not cache_misses:
         logger.info(f"All {len(sorted_issues)} issues fulfilled from cache.")
+        if return_meta:
+            return issues, enrichment_meta
         return issues
 
-    # 2. Batch misses by criterion
-    grouped_misses = {}
+    # 2) Batch misses by criterion
+    grouped_misses: dict[str, list[dict]] = {}
     for issue in cache_misses:
-        # Best effort group by WCAG criterion or rule_id
         group_key = issue.get("wcag_criterion") or issue.get("rule_id") or "unknown"
         grouped_misses.setdefault(group_key, []).append(issue)
 
-    semaphore = asyncio.Semaphore(2)
-
-    async def process_batch(group_key: str, group_iss: list[dict]):
+    async def process_batch(group_key: str, group_iss: list[dict]) -> int:
         async with semaphore:
             try:
-                # Retrieve context (use the first issue as representative for the group)
-                context_chunks = await retrieve_for_issue(group_iss[0])
-                
-                # Format context string (context_chunks is list[dict] with content, metadata, score)
-                context_parts = []
-                for chunk in context_chunks:
-                    context_parts.append(chunk.get('content', ''))
+                if not await _budget_available():
+                    return _apply_rule_fallback(group_iss, "rule_fallback_budget")
+
+                try:
+                    context_chunks = await retrieve_for_issue(group_iss[0])
+                except Exception:
+                    context_chunks = []
+
+                context_parts = [chunk.get("content", "") for chunk in context_chunks]
                 context_str = "\n\n---\n\n".join(context_parts) if context_parts else "No reference material."
-                
-                # Generate batched array
-                results = await generate_remediation_batch(group_iss, context_str, group_key)
+
+                attempts = max(1, int(getattr(settings, "enrichment_retry_attempts", 3) or 3))
+                base_delay = max(0.0, float(getattr(settings, "enrichment_retry_base_delay_seconds", 0.4) or 0.4))
+                max_delay = max(base_delay, float(getattr(settings, "enrichment_retry_max_delay_seconds", 3.0) or 3.0))
+
+                results: list[dict] = []
+                for attempt in range(attempts):
+                    if not await _budget_available():
+                        break
+
+                    enrichment_meta["llm"]["calls"] += 1
+                    batch_results, usage = await generate_remediation_batch(group_iss, context_str, group_key)
+                    await _record_usage(usage)
+
+                    if batch_results:
+                        results = batch_results
+                        break
+
+                    if attempt < attempts - 1:
+                        enrichment_meta["llm"]["retries"] += 1
+                        delay = min(max_delay, base_delay * (2 ** attempt))
+                        if delay > 0:
+                            await asyncio.sleep(delay)
+
                 if not results:
-                    # LLM returned nothing — use rule-based fallback
-                    logger.warning(f"LLM returned empty for batch '{group_key}'. Applying rule-based fallback.")
-                    fallback_count = 0
-                    for issue in group_iss:
-                        fb = _get_fallback_remediation(issue)
-                        fixes = fb.get("fixes", {})
-                        if fixes:
-                            issue["code_fix"] = fixes.get("vanilla", "")
-                            issue["framework_fixes"] = fixes
-                            expl = fb.get("explanation", {})
-                            if isinstance(expl, dict) and expl.get("what_is_broken"):
-                                issue["description"] = expl["what_is_broken"]
-                                issue["human_impact"] = expl.get("impact", "")
-                            issue["_enrichment_source"] = "rule_fallback"
-                            fallback_count += 1
-                    return fallback_count
-                    
+                    source = "rule_fallback_budget" if enrichment_meta["budget"]["budget_exhausted"] else "rule_fallback"
+                    logger.warning(f"LLM unavailable for batch '{group_key}'. Applying {source} remediation.")
+                    return _apply_rule_fallback(group_iss, source)
+
                 saved_count = 0
                 for idx, issue in enumerate(group_iss):
                     if idx >= len(results):
-                        break  # Partial batch — LLM returned fewer than expected
+                        break
+
                     remediation = results[idx]
-                    
-                    # Apply
-                    fixes = remediation.get("fixes", {})
-                    issue["code_fix"] = fixes.get("vanilla", "")
-                    issue["framework_fixes"] = fixes
-                    
-                    expl = remediation.get("explanation", {})
-                    if expl.get("what_is_broken"):
-                        issue["description"] = expl["what_is_broken"]
-                        issue["human_impact"] = expl.get("impact", "")
-                        issue["wcag_intent"] = expl.get("intent", "")
-                        issue["test_procedure"] = expl.get("verification", "")
-                        issue["wcag_criterion"] = expl.get("wcag_sc", issue.get("wcag_criterion", ""))
-                    
-                    issue["_enrichment_source"] = "llm"
-                    # Store to cache for future audits
+                    _apply_remediation_to_issue(issue, remediation, source="llm")
+                    _store_llm_cached_remediation(issue, remediation)
                     store_fix(issue.get("rule_id", "unknown"), issue.get("html_snippet", ""), remediation)
                     saved_count += 1
-                    
+
                 return saved_count
             except Exception as e:
                 logger.error(f"LLM batch failed for {group_key}: {e}. Applying rule-based fallback.")
-                fallback_count = 0
-                for issue in group_iss:
-                    fb = _get_fallback_remediation(issue)
-                    fixes = fb.get("fixes", {})
-                    if fixes:
-                        issue["code_fix"] = fixes.get("vanilla", "")
-                        issue["framework_fixes"] = fixes
-                        expl = fb.get("explanation", {})
-                        if isinstance(expl, dict) and expl.get("what_is_broken"):
-                            issue["description"] = expl["what_is_broken"]
-                            issue["human_impact"] = expl.get("impact", "")
-                        issue["_enrichment_source"] = "rule_fallback"
-                        fallback_count += 1
-                return fallback_count
+                return _apply_rule_fallback(group_iss, "rule_fallback")
 
     batch_tasks = [process_batch(k, v) for k, v in grouped_misses.items()]
     batch_results = await asyncio.gather(*batch_tasks)
-    
     enriched_count += sum(batch_results)
-    logger.info(f"Enriched {enriched_count}/{len(sorted_issues)} issues ({len(sorted_issues) - len(cache_misses)} from cache)")
-    
+
+    logger.info(
+        f"Enriched {enriched_count}/{len(sorted_issues)} issues "
+        f"({len(sorted_issues) - len(cache_misses)} from cache, "
+        f"{enrichment_meta['budget']['tokens_used']} tokens, "
+        f"${enrichment_meta['budget']['cost_used']:.4f})"
+    )
+
+    if return_meta:
+        return issues, enrichment_meta
     return issues

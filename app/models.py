@@ -2,9 +2,11 @@
 Pydantic request/response models for the Accessibility Intelligence Engine.
 Extended schemas for multi-engine auditing, RAG remediation, and feedback.
 """
-from pydantic import BaseModel, Field
-from typing import Optional
+from pydantic import BaseModel, Field, field_validator
+from typing import Any, Optional
 from enum import Enum
+
+from app.security.url_validator import URLValidationError, validate_public_url
 
 
 # ── Enums ───────────────────────────────────────────────────────
@@ -13,6 +15,7 @@ class ScanMode(str, Enum):
     MINIMAL = "minimal"  # Static + basic heuristics only. Fastest, most debuggable.
     FAST = "fast"
     DEEP = "deep"
+    MAX = "max"
 
 
 class Severity(str, Enum):
@@ -53,15 +56,33 @@ class RAGRequest(BaseModel):
 
 
 class AuditRequest(BaseModel):
-    url: str = Field(..., description="URL to audit for accessibility")
+    url: str = Field(
+        ...,
+        max_length=2048,
+        description="URL to audit for accessibility",
+    )
     scan_mode: ScanMode = Field(
         default=ScanMode.FAST,
-        description="Scan mode: 'fast' (static+axe, ≤15s) or 'deep' (full Playwright, ≤120s)"
+        description="Scan mode: 'fast', 'deep', or 'max'"
+    )
+    max_pages: Optional[int] = Field(
+        default=None,
+        ge=1,
+        le=200,
+        description="Optional page cap for multi-page scan orchestration",
     )
     checks: Optional[list[str]] = Field(
         default=None,
         description="Specific checks to run: contrast, aria, headings, forms, etc."
     )
+
+    @field_validator("url")
+    @classmethod
+    def validate_audit_url(cls, value: str) -> str:
+        try:
+            return validate_public_url(value)
+        except URLValidationError as exc:
+            raise ValueError(str(exc)) from exc
 
 
 class FeedbackRequest(BaseModel):
@@ -126,6 +147,10 @@ class AuditIssue(BaseModel):
     suggested_fix: str = Field(default="")
     code_fix: str = Field(default="", description="Ready-to-paste Vanilla HTML/CSS/JS fix")
     framework_fixes: dict[str, str] = Field(default_factory=dict, description="Fixes for React, Vue, Angular")
+    fix: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Structured fix object containing description, before/after diff, and framework hints",
+    )
     fix_effort: str = Field(default="medium", description="low | medium | high")
 
     # ── Grouping ──

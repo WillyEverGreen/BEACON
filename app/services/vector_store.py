@@ -99,12 +99,12 @@ def upsert_chunks(chunks: list[dict]) -> int:
     # Track existing content hashes
     existing_hashes = set()
     for doc in store["documents"]:
-        content_hash = hashlib.md5(doc.encode("utf-8")).hexdigest()
+        content_hash = hashlib.sha256(doc.encode("utf-8")).hexdigest()
         existing_hashes.add(content_hash)
 
     for i, chunk in enumerate(chunks):
         content = chunk["content"]
-        content_hash = hashlib.md5(content.encode("utf-8")).hexdigest()
+        content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
 
         # Skip explicit ID existing OR content hash existing
         source = chunk["metadata"].get("source", "unknown")

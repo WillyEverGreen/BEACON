@@ -156,6 +156,11 @@ app/data/*.json
 !app/data/.gitkeep
 chroma_db/
 data/ingestion_report.json
+beacon.db
+logs/
+execution_state.json
+tests/diagnostics/benchmark_smoke_report.json
+tests/diagnostics/ten_site_run_*.json
 
 # Node / Frontend
 node_modules/
