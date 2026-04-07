@@ -5,7 +5,8 @@ Parses rendered DOM and checks against the full WCAG checklist.
 import hashlib
 import logging
 import re
-from typing import Optional
+from typing import Any, Optional
+from urllib.parse import urlsplit, urlunsplit
 from bs4 import BeautifulSoup, Tag
 
 logger = logging.getLogger(__name__)
@@ -91,23 +92,129 @@ class StaticChecker:
     def __init__(self, html: str, url: str):
         self.soup = BeautifulSoup(html, "lxml")
         self.url = url
-        self.rule_activity: dict[str, dict[str, int]] = {}
+        self.rule_activity: dict[str, dict[str, Any]] = {}
 
-    def _track_rule_activity(self, rule_id: str, elements_checked: int = 0, violations_found: int = 0) -> None:
+    def _track_rule_activity(
+        self,
+        rule_id: str,
+        elements_checked: int = 0,
+        violations_found: int = 0,
+        confidence_bucket: Optional[str] = None,
+        sample_elements_checked: Optional[list[str]] = None,
+        sample_violations: Optional[list[str]] = None,
+        count_towards_total: bool = True,
+    ) -> None:
         """Track lightweight per-rule activity telemetry for detector coverage debugging."""
-        slot = self.rule_activity.setdefault(rule_id, {"elements_checked": 0, "violations_found": 0})
+        slot = self.rule_activity.setdefault(
+            rule_id,
+            {
+                "elements_checked": 0,
+                "violations_found": 0,
+                "confidence_bucket": {"high": 0, "medium": 0, "low": 0},
+                "sample_elements_checked": [],
+                "sample_violations": [],
+            },
+        )
         slot["elements_checked"] += max(0, int(elements_checked))
-        slot["violations_found"] += max(0, int(violations_found))
+        if count_towards_total:
+            slot["violations_found"] += max(0, int(violations_found))
 
-    def get_rule_activity(self) -> dict[str, dict[str, int]]:
+        buckets = slot.setdefault("confidence_bucket", {"high": 0, "medium": 0, "low": 0})
+        if confidence_bucket in {"high", "medium", "low"}:
+            buckets[confidence_bucket] = max(0, int(buckets.get(confidence_bucket, 0))) + max(0, int(violations_found))
+
+        checked_samples = slot.setdefault("sample_elements_checked", [])
+        for sample in sample_elements_checked or []:
+            if not isinstance(sample, str):
+                continue
+            clean = sample.strip()
+            if not clean or clean in checked_samples:
+                continue
+            if len(checked_samples) >= 5:
+                break
+            checked_samples.append(clean)
+
+        violation_samples = slot.setdefault("sample_violations", [])
+        for sample in sample_violations or []:
+            if not isinstance(sample, str):
+                continue
+            clean = sample.strip()
+            if not clean or clean in violation_samples:
+                continue
+            if len(violation_samples) >= 5:
+                break
+            violation_samples.append(clean)
+
+    def get_rule_activity(self) -> dict[str, dict[str, Any]]:
         """Return copy-safe rule activity telemetry."""
         return {
             rid: {
                 "elements_checked": vals.get("elements_checked", 0),
                 "violations_found": vals.get("violations_found", 0),
+                "firing_status": "FIRING" if int(vals.get("violations_found", 0) or 0) > 0 else "NOT FIRING",
+                "confidence_bucket": {
+                    "high": (vals.get("confidence_bucket") or {}).get("high", 0),
+                    "medium": (vals.get("confidence_bucket") or {}).get("medium", 0),
+                    "low": (vals.get("confidence_bucket") or {}).get("low", 0),
+                },
+                "sample_elements_checked": list(vals.get("sample_elements_checked") or []),
+                "sample_violations": list(vals.get("sample_violations") or []),
+                "violations": list(vals.get("sample_violations") or []),
             }
             for rid, vals in self.rule_activity.items()
         }
+
+    @staticmethod
+    def _style_hides_element(style_value: str) -> bool:
+        style = re.sub(r"\s+", "", (style_value or "").lower())
+        return (
+            "display:none" in style
+            or "visibility:hidden" in style
+            or "content-visibility:hidden" in style
+        )
+
+    @staticmethod
+    def _style_has_display_none(style_value: str) -> bool:
+        style = re.sub(r"\s+", "", (style_value or "").lower())
+        return "display:none" in style
+
+    def _is_hidden_for_static(self, elem: Optional[Tag]) -> bool:
+        current = elem
+        while isinstance(current, Tag):
+            if current.has_attr("hidden"):
+                return True
+            if str(current.get("aria-hidden") or "").strip().lower() == "true":
+                return True
+            if self._style_hides_element(str(current.get("style") or "")):
+                return True
+            parent = current.parent
+            current = parent if isinstance(parent, Tag) else None
+        return False
+
+    def _is_visible_for_static(self, elem: Optional[Tag]) -> bool:
+        return isinstance(elem, Tag) and not self._is_hidden_for_static(elem)
+
+    def _is_hidden_for_group3(self, elem: Optional[Tag]) -> bool:
+        current = elem
+        while isinstance(current, Tag):
+            if str(current.get("aria-hidden") or "").strip().lower() == "true":
+                return True
+            if self._style_has_display_none(str(current.get("style") or "")):
+                return True
+            parent = current.parent
+            current = parent if isinstance(parent, Tag) else None
+        return False
+
+    def _is_visible_for_group3(self, elem: Optional[Tag]) -> bool:
+        return isinstance(elem, Tag) and not self._is_hidden_for_group3(elem)
+
+    def _has_sectioning_context(self, elem: Tag) -> bool:
+        current = elem.parent
+        while isinstance(current, Tag):
+            if current.name in {"section", "article", "aside", "nav"}:
+                return True
+            current = current.parent if isinstance(current.parent, Tag) else None
+        return False
 
     def run_all(self, checks: Optional[list[str]] = None) -> list[dict]:
         """Run all check categories. Pass a list to limit which categories run."""
@@ -135,17 +242,26 @@ class StaticChecker:
 
     def check_language(self) -> list[dict]:
         issues = []
+        checked = 0
+        missing_lang_violations = 0
+        sample_elements_checked: list[str] = []
+        sample_violations: list[str] = []
+
         html_tag = self.soup.find("html")
         if html_tag:
-            lang = html_tag.get("lang", "")
+            checked = 1
+            sample_elements_checked.append("<html>")
+            lang = str(html_tag.get("lang", "")).strip()
             if not lang:
                 issues.append(_issue(
-                    self.url, "no-lang", "violation", "serious",
+                    self.url, "missing-lang", "violation", "serious",
                     "<html>", "<html>", 
                     "HTML element is missing the lang attribute. Screen readers need this to select correct pronunciation.",
                     "3.1.1", "A", "html",
                     'Add lang attribute: <html lang="en">'
                 ))
+                missing_lang_violations += 1
+                sample_violations.append("<html>")
             elif len(lang) < 2:
                 issues.append(_issue(
                     self.url, "invalid-lang", "violation", "serious",
@@ -154,6 +270,16 @@ class StaticChecker:
                     "3.1.1", "A", "html",
                     'Use a valid language code like "en", "es", "fr".'
                 ))
+
+        self._track_rule_activity(
+            "missing-lang",
+            elements_checked=checked,
+            violations_found=missing_lang_violations,
+            confidence_bucket="high",
+            sample_elements_checked=sample_elements_checked,
+            sample_violations=sample_violations,
+        )
+
         return issues
 
     def check_title(self) -> list[dict]:
@@ -171,10 +297,45 @@ class StaticChecker:
 
     def check_landmarks(self) -> list[dict]:
         issues = []
-        has_main = bool(self.soup.find("main") or self.soup.find(attrs={"role": "main"}))
-        has_nav = bool(self.soup.find("nav") or self.soup.find(attrs={"role": "navigation"}))
-        has_header = bool(self.soup.find("header") or self.soup.find(attrs={"role": "banner"}))
-        has_footer = bool(self.soup.find("footer") or self.soup.find(attrs={"role": "contentinfo"}))
+
+        def _dedupe_nodes(nodes: list[Tag]) -> list[Tag]:
+            seen: set[int] = set()
+            out: list[Tag] = []
+            for node in nodes:
+                key = id(node)
+                if key in seen:
+                    continue
+                seen.add(key)
+                out.append(node)
+            return out
+
+        visible_main_landmarks = _dedupe_nodes(
+            [n for n in self.soup.find_all("main") if self._is_visible_for_static(n)]
+            + [
+                n
+                for n in self.soup.find_all(attrs={"role": re.compile(r"(^|\s)main(\s|$)", re.I)})
+                if self._is_visible_for_static(n)
+            ]
+        )
+        visible_nav_landmarks = _dedupe_nodes(
+            [n for n in self.soup.find_all("nav") if self._is_visible_for_static(n)]
+            + [
+                n
+                for n in self.soup.find_all(attrs={"role": re.compile(r"(^|\s)navigation(\s|$)", re.I)})
+                if self._is_visible_for_static(n)
+            ]
+        )
+
+        has_main = bool(visible_main_landmarks)
+        has_nav = bool(visible_nav_landmarks)
+        has_header = bool(
+            [n for n in self.soup.find_all("header") if self._is_visible_for_static(n)]
+            or [n for n in self.soup.find_all(attrs={"role": "banner"}) if self._is_visible_for_static(n)]
+        )
+        has_footer = bool(
+            [n for n in self.soup.find_all("footer") if self._is_visible_for_static(n)]
+            or [n for n in self.soup.find_all(attrs={"role": "contentinfo"}) if self._is_visible_for_static(n)]
+        )
 
         if not has_main:
             issues.append(_issue(
@@ -208,6 +369,83 @@ class StaticChecker:
                 "1.3.1", "A", "html",
                 "Add a <footer> element for site-wide footer content."
             ))
+
+        # Group 2 deterministic landmark-role checks.
+        landmark_roles_checked = 2
+        landmark_roles_high_violations = 0
+        landmark_roles_medium_logs = 0
+        landmark_samples_checked: list[str] = []
+        landmark_samples_high: list[str] = []
+        landmark_samples_medium: list[str] = []
+
+        if len(visible_main_landmarks) == 0:
+            issues.append(_issue(
+                self.url, "landmark-roles", "violation", "serious",
+                "<body>", "<body>",
+                "Page has no visible main landmark.",
+                "1.3.1", "A", "html",
+                "Add one visible <main> element (or role=\"main\") around primary content."
+            ))
+            landmark_roles_high_violations += 1
+            if len(landmark_samples_high) < 5:
+                landmark_samples_high.append("missing visible main landmark")
+        elif len(visible_main_landmarks) > 1:
+            first_main = visible_main_landmarks[0]
+            issues.append(_issue(
+                self.url, "landmark-roles", "violation", "serious",
+                _css_selector(first_main), _snippet(first_main),
+                f"Page has {len(visible_main_landmarks)} visible main landmarks. Exactly one main landmark is allowed.",
+                "1.3.1", "A", "html",
+                "Keep a single main landmark and move non-primary regions to complementary/navigation/region landmarks."
+            ))
+            landmark_roles_high_violations += 1
+            if len(landmark_samples_high) < 5:
+                landmark_samples_high.append(_snippet(first_main, 200))
+
+        if len(visible_nav_landmarks) == 0:
+            landmark_roles_medium_logs += 1
+            if len(landmark_samples_medium) < 5:
+                landmark_samples_medium.append("missing visible nav landmark")
+        elif len(visible_nav_landmarks) > 1:
+            unlabeled_nav = 0
+            for nav in visible_nav_landmarks:
+                label = (
+                    (nav.get("aria-label") or "").strip()
+                    or (nav.get("aria-labelledby") or "").strip()
+                    or (nav.get("title") or "").strip()
+                )
+                if not label:
+                    unlabeled_nav += 1
+            if unlabeled_nav > 1:
+                landmark_roles_medium_logs += 1
+                if len(landmark_samples_medium) < 5:
+                    landmark_samples_medium.append(_snippet(visible_nav_landmarks[0], 200))
+
+        if len(landmark_samples_checked) < 5:
+            landmark_samples_checked.append(f"main_landmarks={len(visible_main_landmarks)}")
+        if len(landmark_samples_checked) < 5:
+            landmark_samples_checked.append(f"navigation_landmarks={len(visible_nav_landmarks)}")
+
+        self._track_rule_activity(
+            "landmark-roles",
+            elements_checked=landmark_roles_checked,
+            violations_found=landmark_roles_high_violations,
+            confidence_bucket="high",
+            sample_elements_checked=landmark_samples_checked,
+            sample_violations=landmark_samples_high,
+        )
+        if landmark_roles_medium_logs > 0:
+            self._track_rule_activity(
+                "landmark-roles",
+                violations_found=landmark_roles_medium_logs,
+                confidence_bucket="medium",
+                sample_violations=landmark_samples_medium,
+                count_towards_total=False,
+            )
+
+        if landmark_roles_medium_logs > 0:
+            logger.debug("Group2 landmark-roles medium signals: %s", ", ".join(landmark_samples_medium[:3]))
+
         return issues
 
     # ── Headings ───────────────────────────────────────────────
@@ -215,52 +453,105 @@ class StaticChecker:
     def check_headings(self) -> list[dict]:
         issues = []
         headings = self.soup.find_all(re.compile(r'^h[1-6]$'))
+        visible_headings = [h for h in headings if self._is_visible_for_static(h)]
 
-        if not headings:
+        missing_h1_checked = 0
+        missing_h1_high = 0
+        missing_h1_medium = 0
+        missing_h1_checked_samples: list[str] = []
+        missing_h1_high_samples: list[str] = []
+        missing_h1_medium_samples: list[str] = []
+
+        multiple_h1_checked = 0
+        multiple_h1_high = 0
+        multiple_h1_medium = 0
+        multiple_h1_checked_samples: list[str] = []
+        multiple_h1_high_samples: list[str] = []
+        multiple_h1_medium_samples: list[str] = []
+
+        heading_order_checked = 0
+        heading_order_violations = 0
+        heading_order_checked_samples: list[str] = []
+        heading_order_violation_samples: list[str] = []
+
+        if not visible_headings:
             issues.append(_issue(
                 self.url, "no-headings", "violation", "serious",
                 "<body>", "<body>",
-                "Page has no headings. Headings are essential for screen reader navigation.",
+                "Page has no visible headings. Headings are essential for screen reader navigation.",
                 "1.3.1", "A", "html",
-                "Add semantic headings (h1-h6). Each page should have exactly one h1."
-            ))
-            return issues
-
-        # h1 count
-        h1s = self.soup.find_all("h1")
-        if len(h1s) == 0:
-            issues.append(_issue(
-                self.url, "no-h1", "violation", "serious",
-                "<body>", "<body>",
-                "Page is missing an h1 heading.",
-                "1.3.1", "A", "html",
-                "Add an h1 element as the main heading of the page."
-            ))
-        elif len(h1s) > 1:
-            issues.append(_issue(
-                self.url, "multiple-h1", "violation", "moderate",
-                f"{len(h1s)} h1 elements", f"{len(h1s)} h1 elements found",
-                f"Page has {len(h1s)} h1 headings. Best practice is one h1 per page.",
-                "1.3.1", "A", "html",
-                "Use only one h1 per page. Use h2-h6 for subsections."
+                "Add semantic headings (h1-h6). Each page should have exactly one visible h1."
             ))
 
-        # Heading order
-        prev_level = 0
-        for h in headings:
-            level = int(h.name[1])
-            if level > prev_level + 1 and prev_level > 0:
-                issues.append(_issue(
-                    self.url, "heading-skip", "violation", "moderate",
-                    _css_selector(h), _snippet(h),
-                    f"Heading level skipped: {h.name} follows h{prev_level}.",
-                    "1.3.1", "A", "html",
-                    f"Use h{prev_level + 1} instead of {h.name}, or add intermediate headings."
-                ))
-            prev_level = level
+        all_h1s = self.soup.find_all("h1")
+        visible_h1s = [h for h in all_h1s if self._is_visible_for_static(h)]
+
+        if headings:
+            missing_h1_checked += 1
+            multiple_h1_checked += 1
+            if len(missing_h1_checked_samples) < 5:
+                missing_h1_checked_samples.append(f"visible_h1_count={len(visible_h1s)}")
+            if len(multiple_h1_checked_samples) < 5:
+                multiple_h1_checked_samples.append(f"visible_h1_count={len(visible_h1s)}")
+
+            if len(visible_h1s) == 0:
+                if len(all_h1s) > 0:
+                    missing_h1_medium += 1
+                    if len(missing_h1_medium_samples) < 5:
+                        missing_h1_medium_samples.append("h1 exists but appears hidden")
+                else:
+                    issues.append(_issue(
+                        self.url, "missing-h1", "violation", "serious",
+                        "<body>", "<body>",
+                        "Page is missing a visible h1 heading.",
+                        "1.3.1", "A", "html",
+                        "Add a visible h1 element as the main heading of the page."
+                    ))
+                    missing_h1_high += 1
+                    if len(missing_h1_high_samples) < 5:
+                        missing_h1_high_samples.append("<body>")
+
+            if len(visible_h1s) > 1:
+                h1_in_sectioning = [self._has_sectioning_context(h1) for h1 in visible_h1s]
+                if all(h1_in_sectioning):
+                    multiple_h1_medium += 1
+                    if len(multiple_h1_medium_samples) < 5:
+                        multiple_h1_medium_samples.append("multiple visible h1 in sectioning contexts")
+                else:
+                    issues.append(_issue(
+                        self.url, "multiple-h1", "violation", "moderate",
+                        f"{len(visible_h1s)} visible h1 elements", f"{len(visible_h1s)} visible h1 elements found",
+                        f"Page has {len(visible_h1s)} visible h1 headings outside clear sectioning context.",
+                        "1.3.1", "A", "html",
+                        "Use one visible page-level h1, or place additional h1 headings inside clear section/article regions."
+                    ))
+                    multiple_h1_high += 1
+                    if len(multiple_h1_high_samples) < 5:
+                        multiple_h1_high_samples.append(f"visible_h1_count={len(visible_h1s)}")
+
+        # Heading order (only meaningful when at least two visible headings exist).
+        if len(visible_headings) >= 2:
+            prev_level = 0
+            for h in visible_headings:
+                heading_order_checked += 1
+                level = int(h.name[1])
+                if len(heading_order_checked_samples) < 5:
+                    heading_order_checked_samples.append(f"{_css_selector(h)} level={level}")
+                if level > prev_level + 1 and prev_level > 0:
+                    issues.append(_issue(
+                        self.url, "heading-order", "violation", "moderate",
+                        _css_selector(h), _snippet(h),
+                        f"Heading level skipped upward: {h.name} follows h{prev_level}.",
+                        "1.3.1", "A", "html",
+                        f"Use h{prev_level + 1} instead of {h.name}, or add intermediate headings."
+                    ))
+                    heading_order_violations += 1
+                    if len(heading_order_violation_samples) < 5:
+                        heading_order_violation_samples.append(_snippet(h, 200))
+                prev_level = level
 
         # Empty headings
-        for h in headings:
+        for h in visible_headings:
             if not h.get_text(strip=True):
                 issues.append(_issue(
                     self.url, "empty-heading", "violation", "serious",
@@ -270,50 +561,148 @@ class StaticChecker:
                     f"Add descriptive text to the {h.name} element or remove it."
                 ))
 
+        self._track_rule_activity(
+            "missing-h1",
+            elements_checked=missing_h1_checked,
+            violations_found=missing_h1_high,
+            confidence_bucket="high",
+            sample_elements_checked=missing_h1_checked_samples,
+            sample_violations=missing_h1_high_samples,
+        )
+        if missing_h1_medium > 0:
+            self._track_rule_activity(
+                "missing-h1",
+                violations_found=missing_h1_medium,
+                confidence_bucket="medium",
+                sample_violations=missing_h1_medium_samples,
+                count_towards_total=False,
+            )
+
+        self._track_rule_activity(
+            "multiple-h1",
+            elements_checked=multiple_h1_checked,
+            violations_found=multiple_h1_high,
+            confidence_bucket="high",
+            sample_elements_checked=multiple_h1_checked_samples,
+            sample_violations=multiple_h1_high_samples,
+        )
+        if multiple_h1_medium > 0:
+            self._track_rule_activity(
+                "multiple-h1",
+                violations_found=multiple_h1_medium,
+                confidence_bucket="medium",
+                sample_violations=multiple_h1_medium_samples,
+                count_towards_total=False,
+            )
+
+        self._track_rule_activity(
+            "heading-order",
+            elements_checked=heading_order_checked,
+            violations_found=heading_order_violations,
+            confidence_bucket="high",
+            sample_elements_checked=heading_order_checked_samples,
+            sample_violations=heading_order_violation_samples,
+        )
+
         return issues
 
     # ── Images ─────────────────────────────────────────────────
 
     def check_images(self) -> list[dict]:
         issues = []
+        missing_alt_checked = 0
+        missing_alt_high_violations = 0
+        missing_alt_medium_logs = 0
+        sample_elements_checked: list[str] = []
+        sample_high_violations: list[str] = []
+        sample_medium_logs: list[str] = []
+
+        def _to_int(raw: Any) -> Optional[int]:
+            try:
+                return int(str(raw).strip())
+            except (TypeError, ValueError):
+                return None
+
         for img in self.soup.find_all("img"):
-            alt = img.get("alt")
-            src = img.get("src", "")
-            selector = _css_selector(img)
+            try:
+                selector = _css_selector(img)
+                src = img.get("src", "")
 
-            if alt is None:
-                issues.append(_issue(
-                    self.url, "missing-alt", "violation", "critical",
-                    selector, _snippet(img),
-                    "Image is missing alt attribute. Screen readers cannot describe this image.",
-                    "1.1.1", "A", "images",
-                    f'Add alt="" for decorative images or alt="description" for informative: <img src="{src}" alt="description">'
-                ))
-            elif alt == "" and not img.get("role") == "presentation":
+                if not self._is_visible_for_group3(img):
+                    missing_alt_medium_logs += 1
+                    if len(sample_medium_logs) < 5:
+                        sample_medium_logs.append(_snippet(img, 200))
+                    continue
+
+                alt = img.get("alt")
+                role = str(img.get("role") or "").strip().lower()
+                aria_hidden = str(img.get("aria-hidden") or "").strip().lower() == "true"
+                width = _to_int(img.get("width"))
+                height = _to_int(img.get("height"))
+
+                missing_alt_checked += 1
+                if len(sample_elements_checked) < 5:
+                    sample_elements_checked.append(f'{selector} src="{src[:80]}"')
+
                 spacer_keywords = ["spacer", "pixel", "blank", "divider"]
-                if src and not any(x in src.lower() for x in spacer_keywords):
-                    issues.append(_issue(
-                        self.url, "empty-alt", "needs-review", "moderate",
-                        selector, _snippet(img),
-                        "Image has empty alt text. If decorative, add role='presentation'. If informative, add meaningful alt.",
-                        "1.1.1", "A", "images",
-                        'Add role="presentation" if decorative, or meaningful alt text if informative.',
-                        fix_effort="low"
-                    ))
+                likely_spacer = bool(src and any(x in src.lower() for x in spacer_keywords))
+                tracking_pixel = width == 1 and height == 1
+                likely_decorative = role in {"presentation", "none"} or likely_spacer or tracking_pixel
 
-        # SVG without title
-        for svg in self.soup.find_all("svg"):
-            has_title = svg.find("title")
-            has_label = svg.get("aria-label") or svg.get("aria-labelledby")
-            has_hidden = svg.get("aria-hidden") == "true"
-            if not has_title and not has_label and not has_hidden:
-                issues.append(_issue(
-                    self.url, "svg-no-accessible-name", "violation", "serious",
-                    _css_selector(svg), _snippet(svg, 200),
-                    "SVG element has no accessible name. Add a <title> child or aria-label.",
-                    "1.1.1", "A", "images",
-                    'Add <title>Description</title> inside the SVG or aria-label="description".'
-                ))
+                # Group 3 confidence policy: missing alt is a high-confidence violation.
+                if alt is None:
+                    if likely_decorative:
+                        missing_alt_medium_logs += 1
+                        if len(sample_medium_logs) < 5:
+                            sample_medium_logs.append(_snippet(img, 200))
+                    else:
+                        issues.append(_issue(
+                            self.url, "missing-alt", "violation", "critical",
+                            selector, _snippet(img),
+                            "Image is missing alt attribute. Screen readers cannot describe this image.",
+                            "1.1.1", "A", "images",
+                            f'Add alt="" for decorative images or alt="description" for informative: <img src="{src}" alt="description">'
+                        ))
+                        missing_alt_high_violations += 1
+                        if len(sample_high_violations) < 5:
+                            sample_high_violations.append(_snippet(img, 200))
+                    continue
+
+                # Group 3 confidence policy: empty alt is ambiguous and tracked as medium confidence.
+                if alt == "":
+                    missing_alt_medium_logs += 1
+                    if len(sample_medium_logs) < 5:
+                        sample_medium_logs.append(_snippet(img, 200))
+
+                    if role not in {"presentation", "none"} and not aria_hidden and src and not likely_spacer and not tracking_pixel:
+                        issues.append(_issue(
+                            self.url, "empty-alt", "needs-review", "moderate",
+                            selector, _snippet(img),
+                            "Image has empty alt text. If decorative, add role='presentation'. If informative, add meaningful alt.",
+                            "1.1.1", "A", "images",
+                            'Add role="presentation" if decorative, or meaningful alt text if informative.',
+                            fix_effort="low"
+                        ))
+            except Exception as exc:
+                logger.debug("Group3 missing-alt check skipped image due to error: %s", exc)
+                continue
+
+        self._track_rule_activity(
+            "missing-alt",
+            elements_checked=missing_alt_checked,
+            violations_found=missing_alt_high_violations,
+            confidence_bucket="high",
+            sample_elements_checked=sample_elements_checked,
+            sample_violations=sample_high_violations,
+        )
+        if missing_alt_medium_logs > 0:
+            self._track_rule_activity(
+                "missing-alt",
+                violations_found=missing_alt_medium_logs,
+                confidence_bucket="medium",
+                sample_violations=sample_medium_logs,
+                count_towards_total=False,
+            )
 
         return issues
 
@@ -321,19 +710,67 @@ class StaticChecker:
 
     def check_links(self) -> list[dict]:
         issues = []
-        weak_link_texts = {"click here", "read more", "link"}
+        weak_link_texts = set(_WEAK_LINK_TEXT) | {"link", "learn more", "more", "details"}
+        ambiguous_purpose_texts = weak_link_texts | {"contact us", "about us", "call us"}
+        checked = 0
+        link_purpose_violations = 0
+        sample_elements_checked: list[str] = []
+        sample_violations: list[str] = []
+        link_rows: list[dict[str, Any]] = []
+
+        def _normalize_href(raw_href: str) -> str:
+            href = (raw_href or "").strip()
+            if not href:
+                return ""
+            parts = urlsplit(href)
+            path = parts.path or ""
+            if path != "/":
+                path = path.rstrip("/")
+            return urlunsplit((parts.scheme.lower(), parts.netloc.lower(), path, parts.query, ""))
+
+        def _labelledby_text(elem: Tag) -> str:
+            ref_ids = str(elem.get("aria-labelledby") or "").strip().split()
+            if not ref_ids:
+                return ""
+            chunks: list[str] = []
+            for ref_id in ref_ids:
+                target = self.soup.find(id=ref_id)
+                if not target:
+                    continue
+                txt = target.get_text(" ", strip=True)
+                if txt:
+                    chunks.append(txt)
+            return " ".join(chunks).strip()
 
         for link in self.soup.find_all("a"):
+            checked += 1
             text = link.get_text(" ", strip=True)
             aria_label = (link.get("aria-label") or "").strip()
-            aria_labelledby = (link.get("aria-labelledby") or "").strip()
+            aria_labelledby = _labelledby_text(link)
             title = (link.get("title") or "").strip()
             href = (link.get("href") or "").strip()
             selector = _css_selector(link)
 
+            if len(sample_elements_checked) < 5:
+                sample_elements_checked.append(f'{selector} text="{text[:60]}" href="{href[:80]}"')
+
             img = link.find("img")
             img_alt = (img.get("alt") or "").strip() if img else ""
             has_programmatic_name = bool(aria_label or aria_labelledby or title or img_alt)
+            accessible_name = (aria_label or aria_labelledby or title or text or img_alt).strip()
+            normalized_href = _normalize_href(href)
+
+            link_rows.append(
+                {
+                    "element": link,
+                    "selector": selector,
+                    "text": text,
+                    "href": href,
+                    "normalized_href": normalized_href,
+                    "accessible_name": accessible_name,
+                    "has_programmatic_name": has_programmatic_name,
+                }
+            )
 
             # Empty link
             if not text and not has_programmatic_name:
@@ -354,6 +791,9 @@ class StaticChecker:
                     "2.4.4", "A", "navigation",
                     "Use descriptive link text or add aria-label/aria-labelledby with purpose context."
                 ))
+                link_purpose_violations += 1
+                if len(sample_violations) < 5:
+                    sample_violations.append(_snippet(link, 200))
 
             # External links opening new window
             if link.get("target") == "_blank":
@@ -380,6 +820,77 @@ class StaticChecker:
                     "Add an underline, border, or other non-color visual indicator."
                 ))
 
+        # Links with identical ambiguous names in the same region should not lead to different destinations.
+        grouped_links: dict[tuple[str, int], list[dict[str, Any]]] = {}
+        for row in link_rows:
+            name = str(row.get("accessible_name") or "").strip().lower()
+            if not name:
+                continue
+            norm_href = str(row.get("normalized_href") or "").strip()
+            if not norm_href:
+                continue
+            parent = row["element"].parent if isinstance(row.get("element"), Tag) else None
+            key = (name, id(parent) if parent is not None else -1)
+            grouped_links.setdefault(key, []).append(row)
+
+        for (name, _), rows in grouped_links.items():
+            if len(rows) < 2:
+                continue
+            if name not in ambiguous_purpose_texts:
+                continue
+            targets = {str(r.get("normalized_href") or "").strip() for r in rows if str(r.get("normalized_href") or "").strip()}
+            if len(targets) <= 1:
+                continue
+
+            first = rows[0]
+            issues.append(_issue(
+                self.url, "link-purpose", "violation", "moderate",
+                str(first.get("selector") or "a"), _snippet(first["element"]),
+                f'Multiple links named "{name}" in the same context point to different destinations.',
+                "2.4.4", "A", "navigation",
+                "Differentiate link text or add contextual labels so each destination purpose is clear."
+            ))
+            link_purpose_violations += 1
+            if len(sample_violations) < 5:
+                sample_violations.append(_snippet(first["element"], 200))
+
+        # Treat unnamed iframes as ambiguous embedded content purpose.
+        for iframe in self.soup.find_all("iframe"):
+            checked += 1
+            selector = _css_selector(iframe)
+            frame_name = (
+                (iframe.get("title") or "").strip()
+                or (iframe.get("aria-label") or "").strip()
+                or _labelledby_text(iframe)
+            )
+            src = (iframe.get("src") or "").strip()
+
+            if len(sample_elements_checked) < 5:
+                sample_elements_checked.append(f'{selector} title="{frame_name[:60]}" src="{src[:80]}"')
+
+            if frame_name:
+                continue
+
+            issues.append(_issue(
+                self.url, "link-purpose", "violation", "moderate",
+                selector, _snippet(iframe),
+                "IFrame has no accessible name, so users cannot determine its purpose.",
+                "2.4.4", "A", "navigation",
+                "Add a descriptive title attribute or aria-label to the iframe."
+            ))
+            link_purpose_violations += 1
+            if len(sample_violations) < 5:
+                sample_violations.append(_snippet(iframe, 200))
+
+        self._track_rule_activity(
+            "link-purpose",
+            elements_checked=checked,
+            violations_found=link_purpose_violations,
+            confidence_bucket="medium",
+            sample_elements_checked=sample_elements_checked,
+            sample_violations=sample_violations,
+        )
+
         return issues
 
     # ── Buttons ────────────────────────────────────────────────
@@ -387,13 +898,39 @@ class StaticChecker:
     def check_buttons(self) -> list[dict]:
         issues = []
         checked = 0
-        button_name_violations = 0
+        button_name_high_violations = 0
+        button_name_medium_logs = 0
+        clickable_checked = 0
+        clickable_violations = 0
+        clickable_medium_logs = 0
+        sample_elements_checked: list[str] = []
+        sample_high_violations: list[str] = []
+        sample_medium_logs: list[str] = []
+        clickable_samples_checked: list[str] = []
+        clickable_samples_violations: list[str] = []
+        clickable_samples_medium_logs: list[str] = []
+
+        def _labelledby_text(elem: Tag) -> str:
+            ref_ids = str(elem.get("aria-labelledby") or "").strip().split()
+            if not ref_ids:
+                return ""
+            parts: list[str] = []
+            for ref_id in ref_ids:
+                target = self.soup.find(id=ref_id)
+                if not target:
+                    continue
+                txt = target.get_text(" ", strip=True)
+                if txt:
+                    parts.append(txt)
+            return " ".join(parts).strip()
 
         def _has_accessible_name(elem: Tag) -> bool:
             # Prefer explicit ARIA naming first.
-            if elem.get("aria-label") or elem.get("aria-labelledby"):
+            if (elem.get("aria-label") or "").strip():
                 return True
-            if elem.get("title"):
+            if _labelledby_text(elem):
+                return True
+            if (elem.get("title") or "").strip():
                 return True
 
             # Native visible text.
@@ -415,11 +952,28 @@ class StaticChecker:
 
             return False
 
+        def _is_ambiguous_nested_content(elem: Tag) -> bool:
+            # Conservative medium bucket for icon-only / CSS-driven content candidates.
+            if elem.name == "input":
+                return False
+            if elem.get_text(" ", strip=True):
+                return False
+            if elem.find(["svg", "img", "i", "span", "use"]):
+                return True
+            return False
+
         for btn in self.soup.find_all("button"):
             checked += 1
             selector = _css_selector(btn)
+            if len(sample_elements_checked) < 5:
+                sample_elements_checked.append(selector)
 
             if not _has_accessible_name(btn):
+                if _is_ambiguous_nested_content(btn):
+                    button_name_medium_logs += 1
+                    if len(sample_medium_logs) < 5:
+                        sample_medium_logs.append(_snippet(btn, 200))
+                    continue
                 issues.append(_issue(
                     self.url, "button-name", "violation", "critical",
                     selector, _snippet(btn),
@@ -427,7 +981,9 @@ class StaticChecker:
                     "4.1.2", "A", "forms",
                     'Add text content or aria-label="Button description".'
                 ))
-                button_name_violations += 1
+                button_name_high_violations += 1
+                if len(sample_high_violations) < 5:
+                    sample_high_violations.append(_snippet(btn, 200))
 
         # Input controls that function as buttons also require an accessible name.
         for inp in self.soup.find_all("input"):
@@ -435,6 +991,8 @@ class StaticChecker:
             if inp_type not in {"button", "submit", "reset", "image"}:
                 continue
             checked += 1
+            if len(sample_elements_checked) < 5:
+                sample_elements_checked.append(f'{_css_selector(inp)} type="{inp_type}"')
             if not _has_accessible_name(inp):
                 issues.append(_issue(
                     self.url, "button-name", "violation", "critical",
@@ -443,7 +1001,9 @@ class StaticChecker:
                     "4.1.2", "A", "forms",
                     'Add value text, alt text (for image inputs), or aria-label.'
                 ))
-                button_name_violations += 1
+                button_name_high_violations += 1
+                if len(sample_high_violations) < 5:
+                    sample_high_violations.append(_snippet(inp, 200))
 
         # ARIA button role support in static mode.
         for elem in self.soup.find_all(attrs={"role": True}):
@@ -451,7 +1011,14 @@ class StaticChecker:
             if role != "button":
                 continue
             checked += 1
+            if len(sample_elements_checked) < 5:
+                sample_elements_checked.append(f'{_css_selector(elem)} role="button"')
             if not _has_accessible_name(elem):
+                if _is_ambiguous_nested_content(elem):
+                    button_name_medium_logs += 1
+                    if len(sample_medium_logs) < 5:
+                        sample_medium_logs.append(_snippet(elem, 200))
+                    continue
                 issues.append(_issue(
                     self.url, "button-name", "violation", "critical",
                     _css_selector(elem), _snippet(elem),
@@ -459,21 +1026,95 @@ class StaticChecker:
                     "4.1.2", "A", "forms",
                     'Add visible text or aria-label/aria-labelledby to the role="button" element.'
                 ))
-                button_name_violations += 1
+                button_name_high_violations += 1
+                if len(sample_high_violations) < 5:
+                    sample_high_violations.append(_snippet(elem, 200))
 
-        # Div/span acting as button without role
-        for elem in self.soup.find_all(["div", "span"]):
-            onclick = elem.get("onclick", "")
-            if onclick and not elem.get("role"):
+        # Group 3: any non-native element with onclick but no role should be evaluated.
+        native_interactive_tags = {"a", "button", "input", "select", "textarea", "summary", "option"}
+        for elem in self.soup.find_all(attrs={"onclick": True}):
+            try:
+                onclick = str(elem.get("onclick") or "").strip()
+                if not onclick:
+                    continue
+                if elem.name in native_interactive_tags:
+                    continue
+                if elem.get("role"):
+                    continue
+
+                clickable_checked += 1
+                selector = _css_selector(elem)
+                if len(clickable_samples_checked) < 5:
+                    clickable_samples_checked.append(selector)
+
+                if not self._is_visible_for_group3(elem):
+                    clickable_medium_logs += 1
+                    if len(clickable_samples_medium_logs) < 5:
+                        clickable_samples_medium_logs.append(_snippet(elem, 200))
+                    continue
+
+                has_interactive_descendant = bool(elem.find(["a", "button", "input", "select", "textarea"]))
+                if has_interactive_descendant:
+                    clickable_medium_logs += 1
+                    if len(clickable_samples_medium_logs) < 5:
+                        clickable_samples_medium_logs.append(_snippet(elem, 200))
+                    continue
+
+                has_keyboard_handler = bool(elem.get("onkeydown") or elem.get("onkeyup") or elem.get("onkeypress"))
+                has_tabindex = elem.get("tabindex") is not None
+                if has_keyboard_handler and has_tabindex:
+                    clickable_medium_logs += 1
+                    if len(clickable_samples_medium_logs) < 5:
+                        clickable_samples_medium_logs.append(_snippet(elem, 200))
+                    continue
+
                 issues.append(_issue(
                     self.url, "clickable-no-role", "violation", "serious",
-                    _css_selector(elem), _snippet(elem),
+                    selector, _snippet(elem),
                     "Element with onclick handler has no role='button'. Not accessible via keyboard.",
                     "4.1.2", "A", "aria",
                     'Add role="button" tabindex="0" and keyboard event handlers, or use a <button>.'
                 ))
+                clickable_violations += 1
+                if len(clickable_samples_violations) < 5:
+                    clickable_samples_violations.append(_snippet(elem, 200))
+            except Exception as exc:
+                logger.debug("Group3 clickable-no-role check skipped element due to error: %s", exc)
+                continue
 
-        self._track_rule_activity("button-name", elements_checked=checked, violations_found=button_name_violations)
+        self._track_rule_activity(
+            "button-name",
+            elements_checked=checked,
+            violations_found=button_name_high_violations,
+            confidence_bucket="high",
+            sample_elements_checked=sample_elements_checked,
+            sample_violations=sample_high_violations,
+        )
+        if button_name_medium_logs > 0:
+            self._track_rule_activity(
+                "button-name",
+                violations_found=button_name_medium_logs,
+                confidence_bucket="medium",
+                sample_violations=sample_medium_logs,
+                count_towards_total=False,
+            )
+
+        self._track_rule_activity(
+            "clickable-no-role",
+            elements_checked=clickable_checked,
+            violations_found=clickable_violations,
+            confidence_bucket="high",
+            sample_elements_checked=clickable_samples_checked,
+            sample_violations=clickable_samples_violations,
+        )
+        if clickable_medium_logs > 0:
+            self._track_rule_activity(
+                "clickable-no-role",
+                violations_found=clickable_medium_logs,
+                confidence_bucket="medium",
+                sample_violations=clickable_samples_medium_logs,
+                count_towards_total=False,
+            )
 
         return issues
 
@@ -481,58 +1122,363 @@ class StaticChecker:
 
     def check_forms(self) -> list[dict]:
         issues = []
+        checked = 0
+        missing_label_violations = 0
+        sample_elements_checked: list[str] = []
+        sample_violations: list[str] = []
+
+        input_label_checked = 0
+        input_label_high_violations = 0
+        input_label_medium_logs = 0
+        input_label_samples_checked: list[str] = []
+        input_label_samples_high: list[str] = []
+        input_label_samples_medium: list[str] = []
+
+        input_name_checked = 0
+        input_name_high_violations = 0
+        input_name_medium_logs = 0
+        input_name_samples_checked: list[str] = []
+        input_name_samples_high: list[str] = []
+        input_name_samples_medium: list[str] = []
+
+        autocomplete_checked = 0
+        autocomplete_violations = 0
+        autocomplete_samples_checked: list[str] = []
+        autocomplete_samples_violations: list[str] = []
+
+        duplicate_label_checked = 0
+        duplicate_label_violations = 0
+        duplicate_label_samples_checked: list[str] = []
+        duplicate_label_samples_violations: list[str] = []
+
+        autocomplete_types = {
+            "name", "email", "tel", "url", "username", "new-password",
+            "current-password", "cc-name", "cc-number", "cc-exp",
+            "street-address", "country", "postal-code", "bday"
+        }
+
+        def _labelledby_text(elem: Tag) -> str:
+            ref_ids = str(elem.get("aria-labelledby") or "").strip().split()
+            if not ref_ids:
+                return ""
+            chunks: list[str] = []
+            for ref_id in ref_ids:
+                target = self.soup.find(id=ref_id)
+                if not target:
+                    continue
+                txt = target.get_text(" ", strip=True)
+                if txt:
+                    chunks.append(txt)
+            return " ".join(chunks).strip()
+
+        def _associated_labels(elem: Tag) -> list[Tag]:
+            labels: list[Tag] = []
+            elem_id = str(elem.get("id") or "").strip()
+            if elem_id:
+                labels.extend(self.soup.find_all("label", attrs={"for": elem_id}))
+            parent_label = elem.find_parent("label")
+            if isinstance(parent_label, Tag):
+                labels.append(parent_label)
+
+            deduped: list[Tag] = []
+            seen: set[int] = set()
+            for label in labels:
+                key = id(label)
+                if key in seen:
+                    continue
+                seen.add(key)
+                deduped.append(label)
+            return deduped
+
         for inp in self.soup.find_all(["input", "textarea", "select"]):
-            inp_type = inp.get("type", "text")
-            if inp_type in ("hidden", "submit", "button", "reset", "image"):
+            try:
+                inp_type = inp.get("type", "text")
+                if inp_type in ("hidden", "submit", "button", "reset", "image"):
+                    continue
+
+                checked += 1
+
+                selector = _css_selector(inp)
+                inp_id = inp.get("id", "")
+                has_label = False
+                associated_labels = _associated_labels(inp)
+                has_explicit_label = bool(associated_labels)
+                aria_label_text = str(inp.get("aria-label") or "").strip()
+                aria_labelledby_text = _labelledby_text(inp)
+                title_text = str(inp.get("title") or "").strip()
+                placeholder_text = str(inp.get("placeholder") or "").strip()
+                is_visible_for_group3 = self._is_visible_for_group3(inp)
+
+                if len(sample_elements_checked) < 5:
+                    sample_elements_checked.append(f'{selector} type="{inp_type}" id="{inp_id}"')
+
+                if inp_id:
+                    label = self.soup.find("label", attrs={"for": inp_id})
+                    if label:
+                        has_label = True
+
+                if not has_label:
+                    has_label = bool(
+                        inp.get("aria-label") or
+                        inp.get("aria-labelledby") or
+                        inp.get("title") or
+                        inp.find_parent("label")
+                    )
+
+                if not has_label:
+                    issues.append(_issue(
+                        self.url, "missing-label", "violation", "critical",
+                        selector, _snippet(inp),
+                        "Form input has no associated label. Screen readers cannot identify this field.",
+                        "1.3.1", "A", "forms",
+                        f'Add <label for="{inp_id or "field-id"}">Label text</label> or aria-label="Label text".'
+                    ))
+                    missing_label_violations += 1
+                    if len(sample_violations) < 5:
+                        sample_violations.append(_snippet(inp, 200))
+
+                if is_visible_for_group3:
+                    # Group 3: input-label (explicit <label> association only)
+                    input_label_checked += 1
+                    if len(input_label_samples_checked) < 5:
+                        input_label_samples_checked.append(f'{selector} type="{inp_type}"')
+
+                    if not has_explicit_label:
+                        if aria_label_text or aria_labelledby_text or title_text:
+                            input_label_medium_logs += 1
+                            if len(input_label_samples_medium) < 5:
+                                input_label_samples_medium.append(_snippet(inp, 200))
+                        else:
+                            issues.append(_issue(
+                                self.url, "input-label", "violation", "serious",
+                                selector, _snippet(inp),
+                                "Input has no associated <label> element.",
+                                "1.3.1", "A", "forms",
+                                f'Associate a <label for="{inp_id or "field-id"}"> with this input, or wrap it in <label>.'
+                            ))
+                            input_label_high_violations += 1
+                            if len(input_label_samples_high) < 5:
+                                input_label_samples_high.append(_snippet(inp, 200))
+
+                    # Group 3: input-name (programmatic accessible name)
+                    input_name_checked += 1
+                    if len(input_name_samples_checked) < 5:
+                        input_name_samples_checked.append(f'{selector} type="{inp_type}"')
+
+                    has_programmatic_name = bool(
+                        has_explicit_label
+                        or aria_label_text
+                        or aria_labelledby_text
+                        or title_text
+                    )
+                    if not has_programmatic_name:
+                        if placeholder_text:
+                            input_name_medium_logs += 1
+                            if len(input_name_samples_medium) < 5:
+                                input_name_samples_medium.append(_snippet(inp, 200))
+                        else:
+                            issues.append(_issue(
+                                self.url, "input-name", "violation", "critical",
+                                selector, _snippet(inp),
+                                "Input has no programmatic accessible name.",
+                                "4.1.2", "A", "forms",
+                                "Provide a visible label or add aria-label/aria-labelledby/title with clear field purpose."
+                            ))
+                            input_name_high_violations += 1
+                            if len(input_name_samples_high) < 5:
+                                input_name_samples_high.append(_snippet(inp, 200))
+
+                    # Group 3: autocomplete-missing (AA)
+                    if inp_type in ("text", "email", "tel", "url", "password") and not inp.get("autocomplete"):
+                        autocomplete_checked += 1
+                        if len(autocomplete_samples_checked) < 5:
+                            autocomplete_samples_checked.append(f'{selector} type="{inp_type}"')
+
+                        label_text = " ".join(
+                            re.sub(r"\s+", " ", lbl.get_text(" ", strip=True)).strip().lower()
+                            for lbl in associated_labels
+                        )
+                        signal_blob = " ".join(
+                            [
+                                str(inp.get("name", "") or ""),
+                                str(inp.get("id", "") or ""),
+                                aria_label_text,
+                                aria_labelledby_text,
+                                title_text,
+                                placeholder_text,
+                                label_text,
+                            ]
+                        ).lower()
+
+                        if re.search(r"\b(search|query|filter|keyword)\b", signal_blob):
+                            signal_blob = ""
+
+                        inferred_type = None
+                        if inp_type == "email":
+                            inferred_type = "email"
+                        elif inp_type == "tel":
+                            inferred_type = "tel"
+                        elif inp_type == "password":
+                            inferred_type = "current-password"
+                        elif signal_blob:
+                            token_map = {
+                                "name": ["first name", "last name", "full name", "given name", "family name", "name"],
+                                "email": ["email", "e-mail"],
+                                "tel": ["phone", "mobile", "telephone", "tel"],
+                                "street-address": ["address", "street", "addr", "line 1", "line 2"],
+                                "postal-code": ["zip", "postal", "postcode", "pin"],
+                                "country": ["country"],
+                                "bday": ["birthday", "birth", "dob"],
+                                "username": ["username", "user name", "login"],
+                                "cc-name": ["cardholder", "card name", "name on card"],
+                                "cc-number": ["card number", "credit card", "cc number", "ccnum"],
+                                "cc-exp": ["expiry", "expiration", "exp date", "exp"],
+                            }
+                            for ac_type, tokens in token_map.items():
+                                if any(re.search(rf"\\b{re.escape(tok)}\\b", signal_blob) for tok in tokens):
+                                    inferred_type = ac_type
+                                    break
+
+                        if inferred_type and inferred_type in autocomplete_types:
+                            issues.append(_issue(
+                                self.url, "autocomplete-missing", "violation", "moderate",
+                                selector, _snippet(inp),
+                                "Input likely collects personal data but is missing autocomplete attribute.",
+                                "1.3.5", "AA", "forms",
+                                f'Add autocomplete="{inferred_type}" to this input.',
+                                fix_effort="low"
+                            ))
+                            autocomplete_violations += 1
+                            if len(autocomplete_samples_violations) < 5:
+                                autocomplete_samples_violations.append(_snippet(inp, 200))
+
+                    # Group 3: duplicate-label (same control has repeated identical labels)
+                    duplicate_label_checked += 1
+                    if len(duplicate_label_samples_checked) < 5:
+                        duplicate_label_samples_checked.append(f'{selector} type="{inp_type}"')
+
+                    label_texts = [
+                        re.sub(r"\s+", " ", lbl.get_text(" ", strip=True)).strip().lower()
+                        for lbl in associated_labels
+                    ]
+                    label_texts = [txt for txt in label_texts if txt]
+                    if len(label_texts) >= 2 and len(label_texts) != len(set(label_texts)):
+                        duplicates = sorted({txt for txt in label_texts if label_texts.count(txt) > 1})
+                        duplicate_preview = ", ".join(duplicates[:2])
+                        issues.append(_issue(
+                            self.url, "duplicate-label", "violation", "moderate",
+                            selector, _snippet(inp),
+                            f'Input has duplicate associated labels ({duplicate_preview}).',
+                            "3.3.2", "A", "forms",
+                            "Keep one unique, descriptive label per form control."
+                        ))
+                        duplicate_label_violations += 1
+                        if len(duplicate_label_samples_violations) < 5:
+                            duplicate_label_samples_violations.append(_snippet(inp, 200))
+            except Exception as exc:
+                logger.debug("Group3 form checks skipped control due to error: %s", exc)
                 continue
 
-            selector = _css_selector(inp)
-            inp_id = inp.get("id", "")
-            has_label = False
+        # ARIA form widgets also need an accessible name.
+        role_name_required = {"combobox", "textbox", "searchbox", "spinbutton", "slider", "listbox"}
+        for elem in self.soup.find_all(attrs={"role": True}):
+            role_tokens = self._extract_role_tokens(elem)
+            if not role_tokens:
+                continue
 
-            if inp_id:
-                label = self.soup.find("label", attrs={"for": inp_id})
-                if label:
-                    has_label = True
+            primary_role = role_tokens[0]
+            if primary_role not in role_name_required:
+                continue
 
-            if not has_label:
-                has_label = bool(
-                    inp.get("aria-label") or
-                    inp.get("aria-labelledby") or
-                    inp.get("title") or
-                    inp.find_parent("label")
-                )
+            # Native form controls are already validated above.
+            if elem.name in {"input", "textarea", "select"}:
+                continue
 
-            if not has_label:
-                issues.append(_issue(
-                    self.url, "missing-label", "violation", "critical",
-                    selector, _snippet(inp),
-                    "Form input has no associated label. Screen readers cannot identify this field.",
-                    "1.3.1", "A", "forms",
-                    f'Add <label for="{inp_id or "field-id"}">Label text</label> or aria-label="Label text".'
-                ))
+            checked += 1
+            selector = _css_selector(elem)
+            if len(sample_elements_checked) < 5:
+                sample_elements_checked.append(f'{selector} role="{primary_role}"')
 
-            # Autocomplete check (AA)
-            autocomplete_types = {
-                "name", "email", "tel", "url", "username", "new-password",
-                "current-password", "cc-name", "cc-number", "cc-exp",
-                "street-address", "country", "postal-code", "bday"
-            }
-            if inp_type in ("text", "email", "tel", "url", "password") and not inp.get("autocomplete"):
-                # Flag only if the input name/id hints at personal data
-                name_lower = (inp.get("name", "") + inp.get("id", "")).lower()
-                for ac_type in autocomplete_types:
-                    ac_key = ac_type.replace("-", "")
-                    if ac_key in name_lower.replace("-", "").replace("_", ""):
-                        issues.append(_issue(
-                            self.url, "missing-autocomplete", "violation", "moderate",
-                            selector, _snippet(inp),
-                            f"Input likely collects personal data but missing autocomplete attribute.",
-                            "1.3.5", "AA", "forms",
-                            f'Add autocomplete="{ac_type}" to this input.',
-                            fix_effort="low"
-                        ))
-                        break
+            has_name = bool(
+                (elem.get("aria-label") or "").strip()
+                or (elem.get("aria-labelledby") or "").strip()
+                or (elem.get("title") or "").strip()
+                or elem.get_text(" ", strip=True)
+            )
+            if has_name:
+                continue
+
+            issues.append(_issue(
+                self.url, "missing-label", "violation", "critical",
+                selector, _snippet(elem),
+                f'Element with role="{primary_role}" has no accessible name.',
+                "1.3.1", "A", "forms",
+                "Add aria-label, aria-labelledby, title, or visible text to provide a clear name."
+            ))
+            missing_label_violations += 1
+            if len(sample_violations) < 5:
+                sample_violations.append(_snippet(elem, 200))
+
+        self._track_rule_activity(
+            "missing-label",
+            elements_checked=checked,
+            violations_found=missing_label_violations,
+            confidence_bucket="high",
+            sample_elements_checked=sample_elements_checked,
+            sample_violations=sample_violations,
+        )
+
+        self._track_rule_activity(
+            "input-label",
+            elements_checked=input_label_checked,
+            violations_found=input_label_high_violations,
+            confidence_bucket="high",
+            sample_elements_checked=input_label_samples_checked,
+            sample_violations=input_label_samples_high,
+        )
+        if input_label_medium_logs > 0:
+            self._track_rule_activity(
+                "input-label",
+                violations_found=input_label_medium_logs,
+                confidence_bucket="medium",
+                sample_violations=input_label_samples_medium,
+                count_towards_total=False,
+            )
+
+        self._track_rule_activity(
+            "input-name",
+            elements_checked=input_name_checked,
+            violations_found=input_name_high_violations,
+            confidence_bucket="high",
+            sample_elements_checked=input_name_samples_checked,
+            sample_violations=input_name_samples_high,
+        )
+        if input_name_medium_logs > 0:
+            self._track_rule_activity(
+                "input-name",
+                violations_found=input_name_medium_logs,
+                confidence_bucket="medium",
+                sample_violations=input_name_samples_medium,
+                count_towards_total=False,
+            )
+
+        self._track_rule_activity(
+            "autocomplete-missing",
+            elements_checked=autocomplete_checked,
+            violations_found=autocomplete_violations,
+            confidence_bucket="high",
+            sample_elements_checked=autocomplete_samples_checked,
+            sample_violations=autocomplete_samples_violations,
+        )
+
+        self._track_rule_activity(
+            "duplicate-label",
+            elements_checked=duplicate_label_checked,
+            violations_found=duplicate_label_violations,
+            confidence_bucket="high",
+            sample_elements_checked=duplicate_label_samples_checked,
+            sample_violations=duplicate_label_samples_violations,
+        )
 
         # Check for fieldset/legend on radio/checkbox groups
         radio_groups = {}
@@ -640,6 +1586,228 @@ class StaticChecker:
 
     # ── ARIA ───────────────────────────────────────────────────
 
+    def _extract_role_tokens(self, elem: Tag) -> list[str]:
+        role_raw = str(elem.get("role") or "").strip().lower()
+        return [tok for tok in role_raw.split() if tok]
+
+    def _has_ancestor_role_or_tag(self, elem: Tag, allowed_roles: set[str], allowed_tags: set[str]) -> bool:
+        parent = elem.parent
+        while isinstance(parent, Tag):
+            parent_roles = set(self._extract_role_tokens(parent))
+            if parent_roles & allowed_roles:
+                return True
+            if parent.name in allowed_tags:
+                return True
+            parent = parent.parent
+        return False
+
+    def _has_required_descendant(self, elem: Tag, required_roles: set[str], required_tags: set[str]) -> bool:
+        for desc in elem.find_all(True):
+            roles = set(self._extract_role_tokens(desc))
+            if roles & required_roles:
+                return True
+            if desc.name in required_tags:
+                if desc.name == "input":
+                    inp_type = str(desc.get("type") or "").strip().lower()
+                    if inp_type == "radio":
+                        return True
+                    continue
+                return True
+        return False
+
+    def _check_aria_required_parent(self) -> list[dict]:
+        issues = []
+
+        required_parent = {
+            "option": ({"listbox", "group"}, {"select", "datalist"}),
+            "menuitem": ({"menu", "menubar", "group"}, {"menu"}),
+            "menuitemcheckbox": ({"menu", "menubar", "group"}, {"menu"}),
+            "menuitemradio": ({"menu", "menubar", "group"}, {"menu"}),
+            "listitem": ({"list", "group"}, {"ul", "ol"}),
+            "row": ({"grid", "rowgroup", "table", "treegrid"}, {"table", "tbody", "thead", "tfoot"}),
+            "gridcell": ({"row", "grid", "treegrid"}, {"tr"}),
+            "columnheader": ({"row"}, {"tr"}),
+            "rowheader": ({"row"}, {"tr"}),
+            "tab": ({"tablist"}, set()),
+            "treeitem": ({"tree", "group", "treegrid"}, {"ul", "ol"}),
+        }
+
+        checked = 0
+        violations = 0
+        sample_elements_checked: list[str] = []
+        sample_violations: list[str] = []
+
+        for elem in self.soup.find_all(attrs={"role": True}):
+            role_tokens = self._extract_role_tokens(elem)
+            if not role_tokens:
+                continue
+
+            primary_role = role_tokens[0]
+            if primary_role not in required_parent:
+                continue
+
+            checked += 1
+            if len(sample_elements_checked) < 5:
+                sample_elements_checked.append(f'{_css_selector(elem)} role="{primary_role}"')
+            allowed_roles, allowed_tags = required_parent[primary_role]
+            if self._has_ancestor_role_or_tag(elem, allowed_roles, allowed_tags):
+                continue
+
+            issues.append(_issue(
+                self.url, "aria-required-parent", "violation", "serious",
+                _css_selector(elem), _snippet(elem),
+                f'Element with role="{primary_role}" is missing a required parent role/container.',
+                "4.1.2", "A", "aria",
+                f'Place this element inside a compatible parent (roles: {", ".join(sorted(allowed_roles))}).'
+            ))
+            violations += 1
+            if len(sample_violations) < 5:
+                sample_violations.append(_snippet(elem, 200))
+
+        self._track_rule_activity(
+            "aria-required-parent",
+            elements_checked=checked,
+            violations_found=violations,
+            confidence_bucket="high",
+            sample_elements_checked=sample_elements_checked,
+            sample_violations=sample_violations,
+        )
+
+        return issues
+
+    def _check_aria_required_children(self) -> list[dict]:
+        issues = []
+
+        required_children = {
+            "list": ({"listitem", "group"}, {"li"}),
+            "listbox": ({"option", "group"}, {"option", "optgroup"}),
+            "menu": ({"menuitem", "menuitemcheckbox", "menuitemradio", "group"}, {"li"}),
+            "menubar": ({"menuitem", "menuitemcheckbox", "menuitemradio", "group"}, {"li"}),
+            "tablist": ({"tab"}, set()),
+            "radiogroup": ({"radio"}, {"input"}),
+            "tree": ({"treeitem", "group"}, {"li"}),
+            "grid": ({"row", "rowgroup"}, {"tr", "tbody", "thead", "tfoot"}),
+            "row": ({"cell", "gridcell", "columnheader", "rowheader"}, {"td", "th"}),
+        }
+
+        checked = 0
+        violations = 0
+        sample_elements_checked: list[str] = []
+        sample_violations: list[str] = []
+
+        for elem in self.soup.find_all(attrs={"role": True}):
+            role_tokens = self._extract_role_tokens(elem)
+            if not role_tokens:
+                continue
+
+            primary_role = role_tokens[0]
+            if primary_role not in required_children:
+                continue
+
+            checked += 1
+            if len(sample_elements_checked) < 5:
+                sample_elements_checked.append(f'{_css_selector(elem)} role="{primary_role}"')
+
+            # Dynamic containers can be transiently empty while hydrating.
+            if str(elem.get("aria-busy") or "").strip().lower() == "true":
+                continue
+
+            req_roles, req_tags = required_children[primary_role]
+            if self._has_required_descendant(elem, req_roles, req_tags):
+                continue
+
+            issues.append(_issue(
+                self.url, "aria-required-children", "violation", "serious",
+                _css_selector(elem), _snippet(elem),
+                f'Element with role="{primary_role}" is missing required child roles.',
+                "4.1.2", "A", "aria",
+                f'Add required child roles such as: {", ".join(sorted(req_roles))}.',
+            ))
+            violations += 1
+            if len(sample_violations) < 5:
+                sample_violations.append(_snippet(elem, 200))
+
+        self._track_rule_activity(
+            "aria-required-children",
+            elements_checked=checked,
+            violations_found=violations,
+            confidence_bucket="high",
+            sample_elements_checked=sample_elements_checked,
+            sample_violations=sample_violations,
+        )
+
+        return issues
+
+    def _check_aria_allowed_role(self) -> list[dict]:
+        issues = []
+
+        structural_roles = {
+            "article", "banner", "complementary", "contentinfo", "form", "main",
+            "navigation", "region", "table", "row", "cell", "rowgroup", "heading", "list", "listitem",
+        }
+
+        checked = 0
+        violations = 0
+        sample_elements_checked: list[str] = []
+        sample_violations: list[str] = []
+
+        for elem in self.soup.find_all(attrs={"role": True}):
+            role_tokens = self._extract_role_tokens(elem)
+            if not role_tokens:
+                continue
+
+            primary_role = role_tokens[0]
+            if primary_role in {"none", "presentation"}:
+                continue
+
+            disallowed: set[str] = set()
+
+            if elem.name == "input":
+                inp_type = str(elem.get("type") or "text").strip().lower()
+                if inp_type in {"text", "email", "search", "url", "tel", "password"}:
+                    disallowed = structural_roles
+                elif inp_type in {"checkbox", "radio"}:
+                    disallowed = structural_roles | {"textbox", "combobox", "searchbox", "slider", "spinbutton"}
+            elif elem.name in {"textarea", "select"}:
+                disallowed = structural_roles | {"button", "link"}
+            elif elem.name in {"ul", "ol"}:
+                disallowed = {"button", "link", "textbox", "checkbox", "radio", "switch", "combobox", "searchbox", "slider", "spinbutton"}
+            elif elem.name == "li":
+                disallowed = {"button", "link", "textbox", "combobox", "searchbox", "slider", "spinbutton"}
+            elif elem.name == "table":
+                disallowed = {"button", "link", "textbox", "checkbox", "radio"}
+
+            if not disallowed:
+                continue
+
+            checked += 1
+            if len(sample_elements_checked) < 5:
+                sample_elements_checked.append(f'{_css_selector(elem)} role="{primary_role}"')
+            if primary_role not in disallowed:
+                continue
+
+            issues.append(_issue(
+                self.url, "aria-allowed-role", "violation", "serious",
+                _css_selector(elem), _snippet(elem),
+                f'Role "{primary_role}" is not a safe/compatible override for <{elem.name}> in this context.',
+                "4.1.2", "A", "aria",
+                "Use a role compatible with the host element semantics, or use a native element that matches the intended behavior.",
+            ))
+            violations += 1
+            if len(sample_violations) < 5:
+                sample_violations.append(_snippet(elem, 200))
+
+        self._track_rule_activity(
+            "aria-allowed-role",
+            elements_checked=checked,
+            violations_found=violations,
+            confidence_bucket="high",
+            sample_elements_checked=sample_elements_checked,
+            sample_violations=sample_violations,
+        )
+
+        return issues
+
     def check_aria(self) -> list[dict]:
         issues = []
         # Elements with role but no accessible name
@@ -678,6 +1846,11 @@ class StaticChecker:
                     "4.1.3", "AA", "aria",
                     'Add aria-live="polite" or role="status" for non-urgent, aria-live="assertive" or role="alert" for urgent.'
                 ))
+
+        # Deterministic Group 1 ARIA rules.
+        issues.extend(self._check_aria_required_parent())
+        issues.extend(self._check_aria_required_children())
+        issues.extend(self._check_aria_allowed_role())
 
         return issues
 
@@ -1676,20 +2849,95 @@ class StaticChecker:
 
     def check_svg_accessible_name(self) -> list[dict]:
         issues = []
+        checked = 0
+        high_violations = 0
+        medium_logs = 0
+        sample_elements_checked: list[str] = []
+        sample_high_violations: list[str] = []
+        sample_medium_logs: list[str] = []
+
+        def _labelledby_text(elem: Tag) -> str:
+            ref_ids = str(elem.get("aria-labelledby") or "").strip().split()
+            if not ref_ids:
+                return ""
+            chunks: list[str] = []
+            for ref_id in ref_ids:
+                target = self.soup.find(id=ref_id)
+                if not target:
+                    continue
+                txt = target.get_text(" ", strip=True)
+                if txt:
+                    chunks.append(txt)
+            return " ".join(chunks).strip()
+
         for svg in self.soup.find_all("svg"):
-            if svg.get("aria-hidden", "").lower() == "true" or svg.get("role") == "presentation":
+            try:
+                checked += 1
+                selector = _css_selector(svg)
+                if len(sample_elements_checked) < 5:
+                    sample_elements_checked.append(selector)
+
+                role = str(svg.get("role") or "").strip().lower()
+                hidden = (
+                    str(svg.get("aria-hidden", "")).lower() == "true"
+                    or role in {"presentation", "none"}
+                    or not self._is_visible_for_group3(svg)
+                )
+                if hidden:
+                    medium_logs += 1
+                    if len(sample_medium_logs) < 5:
+                        sample_medium_logs.append(_snippet(svg, 200))
+                    continue
+
+                interactive_parent = svg.find_parent(["button", "a", "label"])
+                if isinstance(interactive_parent, Tag):
+                    parent_has_name = bool(
+                        (interactive_parent.get("aria-label") or "").strip()
+                        or _labelledby_text(interactive_parent)
+                        or (interactive_parent.get("title") or "").strip()
+                        or interactive_parent.get_text(" ", strip=True)
+                    )
+                    if parent_has_name:
+                        medium_logs += 1
+                        if len(sample_medium_logs) < 5:
+                            sample_medium_logs.append(_snippet(svg, 200))
+                        continue
+
+                has_name = bool((svg.get("aria-label") or "").strip() or _labelledby_text(svg))
+                if not has_name and svg.find("title"):
+                    has_name = bool(svg.find("title").get_text(strip=True))
+                if not has_name:
+                    issues.append(_issue(
+                        self.url, "svg-accessible-name", "violation", "serious",
+                        selector, _snippet(svg, 200),
+                        "SVG image is missing an accessible name.",
+                        "1.1.1", "A", "images", "Add <title> or aria-label.",
+                        fix_effort="low"
+                    ))
+                    high_violations += 1
+                    if len(sample_high_violations) < 5:
+                        sample_high_violations.append(_snippet(svg, 200))
+            except Exception as exc:
+                logger.debug("Group3 svg-accessible-name check skipped svg due to error: %s", exc)
                 continue
-            has_name = bool(svg.get("aria-label") or svg.get("aria-labelledby"))
-            if not has_name and svg.find("title"):
-                has_name = bool(svg.find("title").get_text(strip=True))
-            if not has_name:
-                issues.append(_issue(
-                    self.url, "svg-no-accessible-name", "violation", "serious",
-                    _css_selector(svg), _snippet(svg, 200),
-                    "SVG image is missing an accessible name.",
-                    "1.1.1", "A", "images", "Add <title> or aria-label.",
-                    fix_effort="low"
-                ))
+
+        self._track_rule_activity(
+            "svg-accessible-name",
+            elements_checked=checked,
+            violations_found=high_violations,
+            confidence_bucket="high",
+            sample_elements_checked=sample_elements_checked,
+            sample_violations=sample_high_violations,
+        )
+        if medium_logs > 0:
+            self._track_rule_activity(
+                "svg-accessible-name",
+                violations_found=medium_logs,
+                confidence_bucket="medium",
+                sample_violations=sample_medium_logs,
+                count_towards_total=False,
+            )
+
         return issues
 
     def check_empty_headings(self) -> list[dict]:

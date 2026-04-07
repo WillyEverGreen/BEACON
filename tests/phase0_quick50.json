@@ -1,0 +1,132 @@
+{
+  "timestamp": "2026-04-07T15:52:07.659124",
+  "total_time_seconds": 6.76,
+  "configuration": {
+    "rag_enabled": true,
+    "max_enrich_issues": 5,
+    "cognitive_enabled": false
+  },
+  "summary": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "errors": 0,
+    "degraded": 0,
+    "spa_detected": 0,
+    "pass_rate": 100.0
+  },
+  "kpi": {
+    "success_rate": 100.0,
+    "degraded_rate": 0.0,
+    "precision": null,
+    "recall": null,
+    "f1": null,
+    "spa_precision": null,
+    "spa_recall": null,
+    "rag_completion": 100.0,
+    "timeout_rate": 0.0,
+    "avg_runtime": 3.38,
+    "fast_mode_p95_time": 0.03,
+    "fast_mode_usage": 100.0
+  },
+  "spa_detection": {
+    "total_spa_sites": 0,
+    "frameworks": {},
+    "spa_pass_rate": 0
+  },
+  "category_stats": {
+    "accessibility": {
+      "sites": 2,
+      "passed": 2,
+      "failed": 0,
+      "errors": 0,
+      "avg_fast_score": 96.8,
+      "avg_deep_score": 92.5,
+      "avg_fast_time": 0.06,
+      "avg_deep_time": 0.0,
+      "total_issues": 11
+    }
+  },
+  "complexity_stats": {
+    "simple": {
+      "sites": 2,
+      "passed": 2,
+      "errors": 0
+    },
+    "moderate": {
+      "sites": 0,
+      "passed": 0,
+      "errors": 0
+    },
+    "complex": {
+      "sites": 0,
+      "passed": 0,
+      "errors": 0
+    }
+  },
+  "results": [
+    {
+      "name": "A11y Project",
+      "url": "https://www.a11yproject.com/",
+      "category": "accessibility",
+      "complexity": "simple",
+      "fast_score": 96.4,
+      "deep_score": 91.2,
+      "fast_issues": 2,
+      "deep_issues": 6,
+      "fast_time": 0.09,
+      "deep_time": 0.0,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "serious": 5,
+        "moderate": 1
+      },
+      "passed": true,
+      "degraded": false,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "WebAIM",
+      "url": "https://webaim.org/",
+      "category": "accessibility",
+      "complexity": "simple",
+      "fast_score": 97.2,
+      "deep_score": 93.8,
+      "fast_issues": 2,
+      "deep_issues": 5,
+      "fast_time": 0.03,
+      "deep_time": 0.0,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "serious": 3,
+        "moderate": 2
+      },
+      "passed": true,
+      "degraded": false,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    }
+  ],
+  "failures": [],
+  "errors": [],
+  "recommendations": []
+}

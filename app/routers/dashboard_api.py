@@ -329,6 +329,7 @@ async def start_scan(data: ScanStart):
         "engines_used": [],
         "scan_time_seconds": 0,
         "degraded_mode": False,
+        "degraded_reason": None,
         "skipped_components": [],
         "degradation_reason": None,
         "enrichment_status": "pending",
@@ -379,6 +380,7 @@ async def start_scan(data: ScanStart):
             scan_record["engines_used"] = result.get("engines_used", [])
             scan_record["scan_time_seconds"] = result.get("scan_time_seconds", 0)
             scan_record["degraded_mode"] = result.get("degraded_mode", False)
+            scan_record["degraded_reason"] = result.get("degraded_reason")
             scan_record["skipped_components"] = result.get("skipped_components", [])
             scan_record["degradation_reason"] = result.get("degradation_reason")
             scan_record["enrichment_status"] = result.get("enrichment_status", "complete")
@@ -404,7 +406,11 @@ async def start_scan(data: ScanStart):
                 client = get_client()
                 degraded_prefix = ""
                 if scan_record.get("degraded_mode"):
-                    reason = scan_record.get("degradation_reason") or "Requested engines were unavailable during this run."
+                    reason = (
+                        scan_record.get("degradation_reason")
+                        or scan_record.get("degraded_reason")
+                        or "Requested engines were unavailable during this run."
+                    )
                     degraded_prefix = f"⚠️ Limited-confidence scan: {reason}\n\n"
                 
                 # Check for empty issues (e.g. clean site)

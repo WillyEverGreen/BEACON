@@ -718,6 +718,7 @@ async def enrich_issues(
             "calls": 0,
             "retries": 0,
         },
+        "retrieval_debug": [],
         "budget": {
             "max_tokens_per_audit": max_token_budget,
             "max_llm_cost_per_audit": max_cost_budget,
@@ -829,6 +830,25 @@ async def enrich_issues(
                     context_chunks = await retrieve_for_issue(group_iss[0])
                 except Exception:
                     context_chunks = []
+
+                primary_issue = group_iss[0] if group_iss else {}
+                query_hint_parts = [
+                    str(primary_issue.get("wcag_criterion", "") or "").strip(),
+                    str(primary_issue.get("rule_id", "") or "").strip(),
+                    str(primary_issue.get("description", "") or "").strip()[:160],
+                ]
+                query_hint = " | ".join(part for part in query_hint_parts if part)
+                enrichment_meta["retrieval_debug"].append(
+                    {
+                        "group": group_key,
+                        "query": query_hint,
+                        "retrieved_chunks": len(context_chunks),
+                        "similarity_scores": [
+                            round(float(chunk.get("score", 0.0) or 0.0), 4)
+                            for chunk in context_chunks[:5]
+                        ],
+                    }
+                )
 
                 context_parts = [chunk.get("content", "") for chunk in context_chunks]
                 context_str = "\n\n---\n\n".join(context_parts) if context_parts else "No reference material."

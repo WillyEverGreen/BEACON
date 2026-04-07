@@ -1,8 +1,8 @@
 {
-  "timestamp": "2026-04-06T01:34:04.468362",
-  "total_time": 1139.5,
+  "timestamp": "2026-04-07T02:26:41.440698",
+  "total_time": 1130.26,
   "summary": {
-    "total": 100,
+    "total": 110,
     "successful": 110,
     "errors": 0,
     "spas_detected": 107
@@ -16,8 +16,8 @@
       "deep_score": 89.4,
       "fast_issues": 2,
       "deep_issues": 8,
-      "fast_time": 0.0,
-      "deep_time": 20.89,
+      "fast_time": 0.01,
+      "deep_time": 0.0,
       "fast_engines": [
         "static",
         "heuristic"
@@ -42,7 +42,7 @@
       "fast_issues": 2,
       "deep_issues": 6,
       "fast_time": 0.0,
-      "deep_time": 32.12,
+      "deep_time": 0.0,
       "fast_engines": [
         "static",
         "heuristic"
@@ -67,7 +67,7 @@
       "fast_issues": 3,
       "deep_issues": 6,
       "fast_time": 0.0,
-      "deep_time": 51.88,
+      "deep_time": 49.13,
       "fast_engines": [
         "static",
         "heuristic"
@@ -91,8 +91,8 @@
       "deep_score": 77.0,
       "fast_issues": 9,
       "deep_issues": 18,
-      "fast_time": 0.98,
-      "deep_time": 16.47,
+      "fast_time": 1.66,
+      "deep_time": 18.45,
       "fast_engines": [
         "static",
         "heuristic"
@@ -116,8 +116,8 @@
       "deep_score": 73.4,
       "fast_issues": 8,
       "deep_issues": 17,
-      "fast_time": 0.39,
-      "deep_time": 12.73,
+      "fast_time": 1.05,
+      "deep_time": 11.85,
       "fast_engines": [
         "static",
         "heuristic"
@@ -141,8 +141,8 @@
       "deep_score": 92.9,
       "fast_issues": 2,
       "deep_issues": 6,
-      "fast_time": 0.0,
-      "deep_time": 20.05,
+      "fast_time": 1.33,
+      "deep_time": 19.81,
       "fast_engines": [
         "static",
         "heuristic"
@@ -166,8 +166,8 @@
       "deep_score": 84.7,
       "fast_issues": 7,
       "deep_issues": 10,
-      "fast_time": 0.58,
-      "deep_time": 14.03,
+      "fast_time": 0.6,
+      "deep_time": 13.84,
       "fast_engines": [
         "static",
         "heuristic"
@@ -191,8 +191,8 @@
       "deep_score": 84.7,
       "fast_issues": 3,
       "deep_issues": 13,
-      "fast_time": 1.47,
-      "deep_time": 12.19,
+      "fast_time": 1.62,
+      "deep_time": 12.81,
       "fast_engines": [
         "static",
         "heuristic"
@@ -212,13 +212,16 @@
       "name": "Level Access",
       "url": "https://www.levelaccess.com/",
       "category": "accessibility",
-      "fast_score": 0.0,
-      "deep_score": 81.8,
-      "fast_issues": 0,
-      "deep_issues": 16,
-      "fast_time": 1.52,
-      "deep_time": 20.17,
-      "fast_engines": [],
+      "fast_score": 91.2,
+      "deep_score": 83.6,
+      "fast_issues": 9,
+      "deep_issues": 15,
+      "fast_time": 2.66,
+      "deep_time": 20.96,
+      "fast_engines": [
+        "static",
+        "heuristic"
+      ],
       "deep_engines": [
         "browser-probe",
         "static",
@@ -238,8 +241,8 @@
       "deep_score": 93.0,
       "fast_issues": 2,
       "deep_issues": 6,
-      "fast_time": 1.05,
-      "deep_time": 14.59,
+      "fast_time": 1.64,
+      "deep_time": 16.11,
       "fast_engines": [
         "static",
         "heuristic"
@@ -263,8 +266,8 @@
       "deep_score": 86.9,
       "fast_issues": 3,
       "deep_issues": 11,
-      "fast_time": 1.27,
-      "deep_time": 17.45,
+      "fast_time": 0.24,
+      "deep_time": 0.0,
       "fast_engines": [
         "static",
         "heuristic"
@@ -285,11 +288,11 @@
       "url": "https://www.gov.uk/",
       "category": "government",
       "fast_score": 93.3,
-      "deep_score": 85.1,
+      "deep_score": 87.5,
       "fast_issues": 5,
-      "deep_issues": 11,
-      "fast_time": 0.54,
-      "deep_time": 10.63,
+      "deep_issues": 9,
+      "fast_time": 0.0,
+      "deep_time": 0.0,
       "fast_engines": [
         "static",
         "heuristic"
@@ -298,8 +301,7 @@
         "browser-probe",
         "static",
         "heuristic",
-        "axe-core",
-        "cognitive"
+        "axe-core"
       ],
       "spa_framework": null,
       "is_spa": true,
@@ -309,16 +311,13 @@
       "name": "Canada.ca",
       "url": "https://www.canada.ca/en.html",
       "category": "government",
-      "fast_score": 98.3,
+      "fast_score": 83.1,
       "deep_score": 88.2,
-      "fast_issues": 2,
+      "fast_issues": 1,
       "deep_issues": 10,
-      "fast_time": 2.75,
-      "deep_time": 34.15,
-      "fast_engines": [
-        "static",
-        "heuristic"
-      ],
+      "fast_time": 15.1,
+      "deep_time": 35.25,
+      "fast_engines": [],
       "deep_engines": [
         "browser-probe",
         "static",
@@ -338,8 +337,8 @@
       "deep_score": 88.2,
       "fast_issues": 3,
       "deep_issues": 9,
-      "fast_time": 0.99,
-      "deep_time": 13.61,
+      "fast_time": 1.16,
+      "deep_time": 15.16,
       "fast_engines": [
         "static",
         "heuristic"
@@ -363,8 +362,8 @@
       "deep_score": 83.9,
       "fast_issues": 4,
       "deep_issues": 12,
-      "fast_time": 0.76,
-      "deep_time": 11.62,
+      "fast_time": 0.5,
+      "deep_time": 14.65,
       "fast_engines": [
         "static",
         "heuristic"
@@ -388,8 +387,8 @@
       "deep_score": 92.0,
       "fast_issues": 3,
       "deep_issues": 7,
-      "fast_time": 1.68,
-      "deep_time": 16.79,
+      "fast_time": 1.86,
+      "deep_time": 18.37,
       "fast_engines": [
         "static",
         "heuristic"
@@ -410,11 +409,11 @@
       "url": "https://www.whitehouse.gov/",
       "category": "government",
       "fast_score": 81.3,
-      "deep_score": 71.0,
+      "deep_score": 70.1,
       "fast_issues": 14,
-      "deep_issues": 20,
-      "fast_time": 1.19,
-      "deep_time": 29.9,
+      "deep_issues": 21,
+      "fast_time": 0.69,
+      "deep_time": 30.19,
       "fast_engines": [
         "static",
         "heuristic"
@@ -438,8 +437,8 @@
       "deep_score": 78.1,
       "fast_issues": 8,
       "deep_issues": 19,
-      "fast_time": 1.61,
-      "deep_time": 19.42,
+      "fast_time": 1.64,
+      "deep_time": 20.39,
       "fast_engines": [
         "static",
         "heuristic"
@@ -459,13 +458,16 @@
       "name": "Social Security",
       "url": "https://www.ssa.gov/",
       "category": "government",
-      "fast_score": 0.0,
+      "fast_score": 95.3,
       "deep_score": 62.9,
-      "fast_issues": 0,
+      "fast_issues": 5,
       "deep_issues": 26,
-      "fast_time": 0.59,
-      "deep_time": 24.4,
-      "fast_engines": [],
+      "fast_time": 0.6,
+      "deep_time": 29.01,
+      "fast_engines": [
+        "static",
+        "heuristic"
+      ],
       "deep_engines": [
         "browser-probe",
         "static",
@@ -481,12 +483,12 @@
       "name": "State Department",
       "url": "https://www.state.gov/",
       "category": "government",
-      "fast_score": 93.0,
+      "fast_score": 80.9,
       "deep_score": 68.8,
-      "fast_issues": 6,
+      "fast_issues": 13,
       "deep_issues": 24,
-      "fast_time": 1.98,
-      "deep_time": 17.54,
+      "fast_time": 1.04,
+      "deep_time": 17.48,
       "fast_engines": [
         "static",
         "heuristic"
@@ -506,12 +508,12 @@
       "name": "Microsoft",
       "url": "https://www.microsoft.com/",
       "category": "tech",
-      "fast_score": 90.2,
+      "fast_score": 88.1,
       "deep_score": 81.6,
       "fast_issues": 9,
       "deep_issues": 16,
-      "fast_time": 0.97,
-      "deep_time": 21.49,
+      "fast_time": 0.96,
+      "deep_time": 20.69,
       "fast_engines": [
         "static",
         "heuristic"
@@ -535,8 +537,8 @@
       "deep_score": 80.8,
       "fast_issues": 9,
       "deep_issues": 15,
-      "fast_time": 0.77,
-      "deep_time": 17.06,
+      "fast_time": 0.85,
+      "deep_time": 17.18,
       "fast_engines": [
         "static",
         "heuristic"
@@ -556,12 +558,12 @@
       "name": "Google",
       "url": "https://www.google.com/",
       "category": "tech",
-      "fast_score": 90.2,
-      "deep_score": 78.7,
-      "fast_issues": 9,
-      "deep_issues": 16,
-      "fast_time": 1.18,
-      "deep_time": 0.0,
+      "fast_score": 85.4,
+      "deep_score": 73.3,
+      "fast_issues": 10,
+      "deep_issues": 21,
+      "fast_time": 0.93,
+      "deep_time": 16.87,
       "fast_engines": [
         "static",
         "heuristic"
@@ -570,6 +572,7 @@
         "browser-probe",
         "static",
         "heuristic",
+        "axe-core",
         "cognitive"
       ],
       "spa_framework": null,
@@ -584,8 +587,8 @@
       "deep_score": 67.3,
       "fast_issues": 17,
       "deep_issues": 25,
-      "fast_time": 1.82,
-      "deep_time": 0.0,
+      "fast_time": 1.22,
+      "deep_time": 48.06,
       "fast_engines": [
         "static",
         "heuristic"
@@ -594,6 +597,7 @@
         "browser-probe",
         "static",
         "heuristic",
+        "axe-core",
         "cognitive"
       ],
       "spa_framework": null,
@@ -604,12 +608,12 @@
       "name": "Meta",
       "url": "https://about.meta.com/",
       "category": "tech",
-      "fast_score": 86.2,
+      "fast_score": 93.0,
       "deep_score": 78.5,
-      "fast_issues": 11,
+      "fast_issues": 6,
       "deep_issues": 17,
-      "fast_time": 3.26,
-      "deep_time": 22.92,
+      "fast_time": 0.51,
+      "deep_time": 21.87,
       "fast_engines": [
         "static",
         "heuristic"
@@ -629,20 +633,18 @@
       "name": "Amazon",
       "url": "https://www.amazon.com/",
       "category": "tech",
-      "fast_score": 82.6,
-      "deep_score": 66.4,
-      "fast_issues": 15,
-      "deep_issues": 26,
-      "fast_time": 2.47,
-      "deep_time": 0.0,
-      "fast_engines": [
-        "static",
-        "heuristic"
-      ],
+      "fast_score": 83.1,
+      "deep_score": 68.2,
+      "fast_issues": 1,
+      "deep_issues": 25,
+      "fast_time": 0.09,
+      "deep_time": 54.13,
+      "fast_engines": [],
       "deep_engines": [
         "browser-probe",
         "static",
         "heuristic",
+        "axe-core",
         "cognitive"
       ],
       "spa_framework": null,
@@ -657,8 +659,8 @@
       "deep_score": 72.8,
       "fast_issues": 9,
       "deep_issues": 20,
-      "fast_time": 4.36,
-      "deep_time": 23.7,
+      "fast_time": 3.26,
+      "deep_time": 24.9,
       "fast_engines": [
         "static",
         "heuristic"
@@ -678,21 +680,14 @@
       "name": "Adobe",
       "url": "https://www.adobe.com/",
       "category": "tech",
-      "fast_score": 96.7,
-      "deep_score": 80.9,
-      "fast_issues": 3,
-      "deep_issues": 4,
-      "fast_time": 0.37,
-      "deep_time": 5.87,
-      "fast_engines": [
-        "static",
-        "heuristic"
-      ],
-      "deep_engines": [
-        "static",
-        "heuristic",
-        "cognitive"
-      ],
+      "fast_score": 83.1,
+      "deep_score": 83.1,
+      "fast_issues": 1,
+      "deep_issues": 1,
+      "fast_time": 15.18,
+      "deep_time": 19.58,
+      "fast_engines": [],
+      "deep_engines": [],
       "spa_framework": null,
       "is_spa": false,
       "error": null
@@ -701,12 +696,12 @@
       "name": "Salesforce",
       "url": "https://www.salesforce.com/",
       "category": "tech",
-      "fast_score": 84.2,
-      "deep_score": 88.1,
-      "fast_issues": 13,
+      "fast_score": 95.3,
+      "deep_score": 88.7,
+      "fast_issues": 5,
       "deep_issues": 10,
-      "fast_time": 2.98,
-      "deep_time": 9.72,
+      "fast_time": 0.37,
+      "deep_time": 9.15,
       "fast_engines": [
         "static",
         "heuristic"
@@ -726,13 +721,16 @@
       "name": "Oracle",
       "url": "https://www.oracle.com/",
       "category": "tech",
-      "fast_score": 0.0,
+      "fast_score": 90.2,
       "deep_score": 83.3,
-      "fast_issues": 0,
+      "fast_issues": 9,
       "deep_issues": 14,
-      "fast_time": 0.34,
-      "deep_time": 8.7,
-      "fast_engines": [],
+      "fast_time": 0.36,
+      "deep_time": 8.09,
+      "fast_engines": [
+        "static",
+        "heuristic"
+      ],
       "deep_engines": [
         "browser-probe",
         "static",
@@ -748,11 +746,11 @@
       "url": "https://www.ibm.com/",
       "category": "tech",
       "fast_score": 84.1,
-      "deep_score": 53.5,
+      "deep_score": 54.7,
       "fast_issues": 13,
-      "deep_issues": 31,
-      "fast_time": 1.56,
-      "deep_time": 59.69,
+      "deep_issues": 30,
+      "fast_time": 1.05,
+      "deep_time": 62.89,
       "fast_engines": [
         "static",
         "heuristic"
@@ -776,8 +774,8 @@
       "deep_score": 79.2,
       "fast_issues": 5,
       "deep_issues": 15,
-      "fast_time": 0.64,
-      "deep_time": 27.18,
+      "fast_time": 0.54,
+      "deep_time": 23.89,
       "fast_engines": [
         "static",
         "heuristic"
@@ -798,11 +796,11 @@
       "url": "https://www.cisco.com/",
       "category": "tech",
       "fast_score": 89.4,
-      "deep_score": 65.9,
+      "deep_score": 67.3,
       "fast_issues": 8,
-      "deep_issues": 25,
-      "fast_time": 1.26,
-      "deep_time": 23.92,
+      "deep_issues": 24,
+      "fast_time": 1.11,
+      "deep_time": 22.29,
       "fast_engines": [
         "static",
         "heuristic"
@@ -822,12 +820,12 @@
       "name": "Dell",
       "url": "https://www.dell.com/",
       "category": "tech",
-      "fast_score": 0.0,
+      "fast_score": 83.1,
       "deep_score": 71.1,
-      "fast_issues": 0,
+      "fast_issues": 1,
       "deep_issues": 21,
-      "fast_time": 0.28,
-      "deep_time": 47.29,
+      "fast_time": 28.67,
+      "deep_time": 49.5,
       "fast_engines": [],
       "deep_engines": [
         "browser-probe",
@@ -848,8 +846,8 @@
       "deep_score": 72.5,
       "fast_issues": 14,
       "deep_issues": 23,
-      "fast_time": 3.43,
-      "deep_time": 52.45,
+      "fast_time": 2.59,
+      "deep_time": 54.29,
       "fast_engines": [
         "static",
         "heuristic"
@@ -869,12 +867,12 @@
       "name": "eBay",
       "url": "https://www.ebay.com/",
       "category": "ecommerce",
-      "fast_score": 78.3,
+      "fast_score": 80.0,
       "deep_score": 54.0,
-      "fast_issues": 15,
+      "fast_issues": 14,
       "deep_issues": 29,
-      "fast_time": 1.47,
-      "deep_time": 27.22,
+      "fast_time": 3.03,
+      "deep_time": 27.95,
       "fast_engines": [
         "static",
         "heuristic"
@@ -894,13 +892,16 @@
       "name": "Etsy",
       "url": "https://www.etsy.com/",
       "category": "ecommerce",
-      "fast_score": 0.0,
+      "fast_score": 95.3,
       "deep_score": 92.8,
-      "fast_issues": 0,
+      "fast_issues": 5,
       "deep_issues": 7,
-      "fast_time": 0.12,
-      "deep_time": 15.05,
-      "fast_engines": [],
+      "fast_time": 0.84,
+      "deep_time": 12.94,
+      "fast_engines": [
+        "static",
+        "heuristic"
+      ],
       "deep_engines": [
         "browser-probe",
         "static",
@@ -915,12 +916,12 @@
       "name": "Target",
       "url": "https://www.target.com/",
       "category": "ecommerce",
-      "fast_score": 78.7,
-      "deep_score": 64.9,
-      "fast_issues": 16,
-      "deep_issues": 27,
-      "fast_time": 2.68,
-      "deep_time": 53.15,
+      "fast_score": 79.5,
+      "deep_score": 65.8,
+      "fast_issues": 15,
+      "deep_issues": 26,
+      "fast_time": 2.8,
+      "deep_time": 54.18,
       "fast_engines": [
         "static",
         "heuristic"
@@ -940,12 +941,12 @@
       "name": "Best Buy",
       "url": "https://www.bestbuy.com/",
       "category": "ecommerce",
-      "fast_score": 0.0,
+      "fast_score": 83.1,
       "deep_score": 89.9,
-      "fast_issues": 0,
+      "fast_issues": 1,
       "deep_issues": 10,
-      "fast_time": 15.11,
-      "deep_time": 71.82,
+      "fast_time": 15.1,
+      "deep_time": 74.74,
       "fast_engines": [],
       "deep_engines": [
         "browser-probe",
@@ -960,12 +961,12 @@
       "name": "Walmart",
       "url": "https://www.walmart.com/",
       "category": "ecommerce",
-      "fast_score": 90.0,
+      "fast_score": 89.5,
       "deep_score": 82.9,
-      "fast_issues": 7,
+      "fast_issues": 8,
       "deep_issues": 13,
-      "fast_time": 0.55,
-      "deep_time": 43.76,
+      "fast_time": 0.67,
+      "deep_time": 44.4,
       "fast_engines": [
         "static",
         "heuristic"
@@ -984,12 +985,12 @@
       "name": "Shopify",
       "url": "https://www.shopify.com/",
       "category": "ecommerce",
-      "fast_score": 0.0,
+      "fast_score": 83.1,
       "deep_score": 62.7,
-      "fast_issues": 0,
+      "fast_issues": 1,
       "deep_issues": 24,
-      "fast_time": 0.12,
-      "deep_time": 26.54,
+      "fast_time": 0.14,
+      "deep_time": 27.36,
       "fast_engines": [],
       "deep_engines": [
         "browser-probe",
@@ -1006,12 +1007,12 @@
       "name": "AliExpress",
       "url": "https://www.aliexpress.com/",
       "category": "ecommerce",
-      "fast_score": 100.0,
-      "deep_score": 68.2,
-      "fast_issues": 0,
-      "deep_issues": 22,
-      "fast_time": 0.66,
-      "deep_time": 12.89,
+      "fast_score": 93.1,
+      "deep_score": 70.1,
+      "fast_issues": 5,
+      "deep_issues": 21,
+      "fast_time": 1.26,
+      "deep_time": 13.3,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1031,12 +1032,12 @@
       "name": "Wayfair",
       "url": "https://www.wayfair.com/",
       "category": "ecommerce",
-      "fast_score": 0.0,
+      "fast_score": 83.1,
       "deep_score": 94.4,
-      "fast_issues": 0,
+      "fast_issues": 1,
       "deep_issues": 6,
-      "fast_time": 0.76,
-      "deep_time": 44.81,
+      "fast_time": 1.42,
+      "deep_time": 46.28,
       "fast_engines": [],
       "deep_engines": [
         "browser-probe",
@@ -1052,12 +1053,12 @@
       "name": "Overstock",
       "url": "https://www.overstock.com/",
       "category": "ecommerce",
-      "fast_score": 0.0,
+      "fast_score": 83.1,
       "deep_score": 67.3,
-      "fast_issues": 0,
+      "fast_issues": 1,
       "deep_issues": 21,
-      "fast_time": 0.08,
-      "deep_time": 13.59,
+      "fast_time": 0.97,
+      "deep_time": 15.1,
       "fast_engines": [],
       "deep_engines": [
         "browser-probe",
@@ -1074,11 +1075,11 @@
       "url": "https://www.newegg.com/",
       "category": "ecommerce",
       "fast_score": 91.7,
-      "deep_score": 83.8,
+      "deep_score": 76.7,
       "fast_issues": 8,
-      "deep_issues": 14,
-      "fast_time": 0.94,
-      "deep_time": 10.55,
+      "deep_issues": 18,
+      "fast_time": 1.19,
+      "deep_time": 21.04,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1101,8 +1102,8 @@
       "deep_score": 89.4,
       "fast_issues": 6,
       "deep_issues": 9,
-      "fast_time": 5.48,
-      "deep_time": 50.45,
+      "fast_time": 1.6,
+      "deep_time": 34.78,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1122,12 +1123,12 @@
       "name": "LinkedIn",
       "url": "https://www.linkedin.com/",
       "category": "social",
-      "fast_score": 97.4,
-      "deep_score": 83.9,
-      "fast_issues": 3,
-      "deep_issues": 12,
-      "fast_time": 1.03,
-      "deep_time": 45.04,
+      "fast_score": 93.2,
+      "deep_score": 81.7,
+      "fast_issues": 6,
+      "deep_issues": 13,
+      "fast_time": 1.09,
+      "deep_time": 23.62,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1148,11 +1149,11 @@
       "url": "https://www.reddit.com/",
       "category": "social",
       "fast_score": 94.5,
-      "deep_score": 76.5,
+      "deep_score": 76.1,
       "fast_issues": 5,
       "deep_issues": 17,
-      "fast_time": 0.47,
-      "deep_time": 47.78,
+      "fast_time": 0.43,
+      "deep_time": 49.02,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1172,12 +1173,12 @@
       "name": "Pinterest",
       "url": "https://www.pinterest.com/",
       "category": "social",
-      "fast_score": 0.0,
-      "deep_score": 82.2,
-      "fast_issues": 0,
-      "deep_issues": 13,
-      "fast_time": 0.71,
-      "deep_time": 18.73,
+      "fast_score": 83.1,
+      "deep_score": 83.4,
+      "fast_issues": 1,
+      "deep_issues": 12,
+      "fast_time": 0.97,
+      "deep_time": 15.89,
       "fast_engines": [],
       "deep_engines": [
         "browser-probe",
@@ -1194,13 +1195,16 @@
       "name": "Tumblr",
       "url": "https://www.tumblr.com/",
       "category": "social",
-      "fast_score": 0.0,
-      "deep_score": 73.9,
-      "fast_issues": 0,
-      "deep_issues": 19,
-      "fast_time": 0.36,
-      "deep_time": 49.37,
-      "fast_engines": [],
+      "fast_score": 94.8,
+      "deep_score": 75.0,
+      "fast_issues": 4,
+      "deep_issues": 18,
+      "fast_time": 0.45,
+      "deep_time": 50.17,
+      "fast_engines": [
+        "static",
+        "heuristic"
+      ],
       "deep_engines": [
         "browser-probe",
         "static",
@@ -1220,8 +1224,8 @@
       "deep_score": 82.4,
       "fast_issues": 6,
       "deep_issues": 14,
-      "fast_time": 2.5,
-      "deep_time": 12.89,
+      "fast_time": 1.3,
+      "deep_time": 14.9,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1242,11 +1246,11 @@
       "url": "https://www.tiktok.com/",
       "category": "social",
       "fast_score": 88.9,
-      "deep_score": 67.0,
+      "deep_score": 65.7,
       "fast_issues": 8,
-      "deep_issues": 23,
-      "fast_time": 1.24,
-      "deep_time": 47.54,
+      "deep_issues": 24,
+      "fast_time": 1.14,
+      "deep_time": 50.76,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1270,8 +1274,8 @@
       "deep_score": 70.8,
       "fast_issues": 8,
       "deep_issues": 19,
-      "fast_time": 0.76,
-      "deep_time": 49.18,
+      "fast_time": 0.5,
+      "deep_time": 51.36,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1291,16 +1295,13 @@
       "name": "YouTube",
       "url": "https://www.youtube.com/",
       "category": "social",
-      "fast_score": 87.7,
+      "fast_score": 83.1,
       "deep_score": 59.5,
-      "fast_issues": 9,
+      "fast_issues": 1,
       "deep_issues": 26,
-      "fast_time": 1.02,
-      "deep_time": 22.06,
-      "fast_engines": [
-        "static",
-        "heuristic"
-      ],
+      "fast_time": 0.3,
+      "deep_time": 19.89,
+      "fast_engines": [],
       "deep_engines": [
         "browser-probe",
         "static",
@@ -1319,8 +1320,8 @@
       "deep_score": 82.8,
       "fast_issues": 8,
       "deep_issues": 13,
-      "fast_time": 1.09,
-      "deep_time": 21.72,
+      "fast_time": 0.76,
+      "deep_time": 17.07,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1340,12 +1341,12 @@
       "name": "BBC",
       "url": "https://www.bbc.com/",
       "category": "news",
-      "fast_score": 82.0,
-      "deep_score": 69.3,
+      "fast_score": 82.6,
+      "deep_score": 66.1,
       "fast_issues": 11,
-      "deep_issues": 21,
-      "fast_time": 1.59,
-      "deep_time": 36.75,
+      "deep_issues": 24,
+      "fast_time": 1.29,
+      "deep_time": 44.66,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1366,11 +1367,11 @@
       "url": "https://www.nytimes.com/",
       "category": "news",
       "fast_score": 87.8,
-      "deep_score": 62.3,
+      "deep_score": 59.9,
       "fast_issues": 8,
-      "deep_issues": 27,
-      "fast_time": 2.22,
-      "deep_time": 41.17,
+      "deep_issues": 28,
+      "fast_time": 1.38,
+      "deep_time": 34.15,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1379,6 +1380,7 @@
         "browser-probe",
         "static",
         "heuristic",
+        "axe-core",
         "cognitive"
       ],
       "spa_framework": null,
@@ -1389,12 +1391,12 @@
       "name": "The Guardian",
       "url": "https://www.theguardian.com/",
       "category": "news",
-      "fast_score": 76.8,
-      "deep_score": 60.3,
-      "fast_issues": 15,
-      "deep_issues": 28,
-      "fast_time": 2.84,
-      "deep_time": 36.71,
+      "fast_score": 81.7,
+      "deep_score": 65.2,
+      "fast_issues": 12,
+      "deep_issues": 25,
+      "fast_time": 2.22,
+      "deep_time": 21.44,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1414,12 +1416,12 @@
       "name": "Washington Post",
       "url": "https://www.washingtonpost.com/",
       "category": "news",
-      "fast_score": 0.0,
-      "deep_score": 0.0,
-      "fast_issues": 0,
-      "deep_issues": 0,
+      "fast_score": 83.1,
+      "deep_score": 83.1,
+      "fast_issues": 1,
+      "deep_issues": 1,
       "fast_time": 15.1,
-      "deep_time": 21.54,
+      "deep_time": 19.02,
       "fast_engines": [],
       "deep_engines": [],
       "spa_framework": null,
@@ -1430,12 +1432,12 @@
       "name": "CNN",
       "url": "https://www.cnn.com/",
       "category": "news",
-      "fast_score": 0.0,
-      "deep_score": 52.1,
-      "fast_issues": 0,
-      "deep_issues": 35,
-      "fast_time": 0.24,
-      "deep_time": 69.54,
+      "fast_score": 83.1,
+      "deep_score": 54.0,
+      "fast_issues": 1,
+      "deep_issues": 34,
+      "fast_time": 0.19,
+      "deep_time": 61.09,
       "fast_engines": [],
       "deep_engines": [
         "browser-probe",
@@ -1452,13 +1454,16 @@
       "name": "Reuters",
       "url": "https://www.reuters.com/",
       "category": "news",
-      "fast_score": 0.0,
+      "fast_score": 95.3,
       "deep_score": 92.8,
-      "fast_issues": 0,
+      "fast_issues": 5,
       "deep_issues": 7,
-      "fast_time": 0.11,
-      "deep_time": 14.03,
-      "fast_engines": [],
+      "fast_time": 0.39,
+      "deep_time": 12.95,
+      "fast_engines": [
+        "static",
+        "heuristic"
+      ],
       "deep_engines": [
         "browser-probe",
         "static",
@@ -1473,12 +1478,12 @@
       "name": "BBC News",
       "url": "https://www.bbc.co.uk/news",
       "category": "news",
-      "fast_score": 88.2,
-      "deep_score": 74.9,
-      "fast_issues": 9,
-      "deep_issues": 17,
-      "fast_time": 2.31,
-      "deep_time": 24.74,
+      "fast_score": 89.2,
+      "deep_score": 74.0,
+      "fast_issues": 8,
+      "deep_issues": 18,
+      "fast_time": 2.58,
+      "deep_time": 22.32,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1498,12 +1503,12 @@
       "name": "NPR",
       "url": "https://www.npr.org/",
       "category": "news",
-      "fast_score": 83.2,
-      "deep_score": 61.9,
-      "fast_issues": 11,
-      "deep_issues": 25,
-      "fast_time": 2.86,
-      "deep_time": 64.88,
+      "fast_score": 82.3,
+      "deep_score": 55.7,
+      "fast_issues": 12,
+      "deep_issues": 29,
+      "fast_time": 3.52,
+      "deep_time": 56.18,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1527,8 +1532,8 @@
       "deep_score": 63.4,
       "fast_issues": 8,
       "deep_issues": 25,
-      "fast_time": 1.17,
-      "deep_time": 64.66,
+      "fast_time": 0.7,
+      "deep_time": 60.87,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1548,12 +1553,12 @@
       "name": "Fox News",
       "url": "https://www.foxnews.com/",
       "category": "news",
-      "fast_score": 85.5,
-      "deep_score": 72.1,
-      "fast_issues": 11,
-      "deep_issues": 21,
-      "fast_time": 3.4,
-      "deep_time": 74.18,
+      "fast_score": 86.3,
+      "deep_score": 62.9,
+      "fast_issues": 10,
+      "deep_issues": 26,
+      "fast_time": 2.45,
+      "deep_time": 70.08,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1562,6 +1567,7 @@
         "browser-probe",
         "static",
         "heuristic",
+        "axe-core",
         "cognitive"
       ],
       "spa_framework": null,
@@ -1572,13 +1578,16 @@
       "name": "Wikipedia",
       "url": "https://www.wikipedia.org/",
       "category": "education",
-      "fast_score": 0.0,
+      "fast_score": 90.3,
       "deep_score": 88.5,
-      "fast_issues": 0,
+      "fast_issues": 7,
       "deep_issues": 9,
-      "fast_time": 0.38,
-      "deep_time": 15.07,
-      "fast_engines": [],
+      "fast_time": 1.03,
+      "deep_time": 14.07,
+      "fast_engines": [
+        "static",
+        "heuristic"
+      ],
       "deep_engines": [
         "browser-probe",
         "static",
@@ -1594,12 +1603,12 @@
       "name": "Khan Academy",
       "url": "https://www.khanacademy.org/",
       "category": "education",
-      "fast_score": 94.4,
+      "fast_score": 95.3,
       "deep_score": 82.0,
-      "fast_issues": 6,
+      "fast_issues": 5,
       "deep_issues": 15,
-      "fast_time": 0.89,
-      "deep_time": 18.56,
+      "fast_time": 1.1,
+      "deep_time": 15.22,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1620,11 +1629,11 @@
       "url": "https://www.coursera.org/",
       "category": "education",
       "fast_score": 89.3,
-      "deep_score": 78.0,
+      "deep_score": 75.8,
       "fast_issues": 9,
-      "deep_issues": 19,
-      "fast_time": 2.26,
-      "deep_time": 28.45,
+      "deep_issues": 20,
+      "fast_time": 1.37,
+      "deep_time": 27.26,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1648,8 +1657,8 @@
       "deep_score": 90.1,
       "fast_issues": 6,
       "deep_issues": 8,
-      "fast_time": 1.34,
-      "deep_time": 13.99,
+      "fast_time": 0.96,
+      "deep_time": 18.98,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1673,8 +1682,8 @@
       "deep_score": 63.3,
       "fast_issues": 10,
       "deep_issues": 26,
-      "fast_time": 4.23,
-      "deep_time": 18.61,
+      "fast_time": 1.59,
+      "deep_time": 18.16,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1695,11 +1704,11 @@
       "url": "https://www.edx.org/",
       "category": "education",
       "fast_score": 85.4,
-      "deep_score": 75.7,
+      "deep_score": 73.4,
       "fast_issues": 10,
-      "deep_issues": 19,
-      "fast_time": 3.24,
-      "deep_time": 55.05,
+      "deep_issues": 21,
+      "fast_time": 1.05,
+      "deep_time": 32.13,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1708,6 +1717,7 @@
         "browser-probe",
         "static",
         "heuristic",
+        "axe-core",
         "cognitive"
       ],
       "spa_framework": null,
@@ -1718,13 +1728,16 @@
       "name": "Udemy",
       "url": "https://www.udemy.com/",
       "category": "education",
-      "fast_score": 0.0,
-      "deep_score": 73.3,
-      "fast_issues": 0,
+      "fast_score": 83.6,
+      "deep_score": 74.2,
+      "fast_issues": 11,
       "deep_issues": 18,
-      "fast_time": 0.12,
-      "deep_time": 22.57,
-      "fast_engines": [],
+      "fast_time": 0.5,
+      "deep_time": 23.73,
+      "fast_engines": [
+        "static",
+        "heuristic"
+      ],
       "deep_engines": [
         "browser-probe",
         "static",
@@ -1744,8 +1757,8 @@
       "deep_score": 68.5,
       "fast_issues": 14,
       "deep_issues": 25,
-      "fast_time": 1.89,
-      "deep_time": 44.06,
+      "fast_time": 1.85,
+      "deep_time": 40.54,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1766,11 +1779,11 @@
       "url": "https://www.codecademy.com/",
       "category": "education",
       "fast_score": 91.7,
-      "deep_score": 81.6,
+      "deep_score": 80.4,
       "fast_issues": 7,
-      "deep_issues": 14,
-      "fast_time": 1.75,
-      "deep_time": 24.83,
+      "deep_issues": 15,
+      "fast_time": 1.48,
+      "deep_time": 22.61,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1794,8 +1807,8 @@
       "deep_score": 85.4,
       "fast_issues": 6,
       "deep_issues": 11,
-      "fast_time": 2.74,
-      "deep_time": 17.61,
+      "fast_time": 1.74,
+      "deep_time": 19.14,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1816,11 +1829,11 @@
       "url": "https://www.chase.com/",
       "category": "finance",
       "fast_score": 88.8,
-      "deep_score": 76.7,
+      "deep_score": 75.8,
       "fast_issues": 9,
-      "deep_issues": 18,
-      "fast_time": 1.36,
-      "deep_time": 53.44,
+      "deep_issues": 19,
+      "fast_time": 1.37,
+      "deep_time": 50.72,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1844,8 +1857,8 @@
       "deep_score": 67.8,
       "fast_issues": 12,
       "deep_issues": 26,
-      "fast_time": 1.09,
-      "deep_time": 32.83,
+      "fast_time": 1.59,
+      "deep_time": 31.7,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1866,11 +1879,11 @@
       "url": "https://www.paypal.com/",
       "category": "finance",
       "fast_score": 92.4,
-      "deep_score": 84.4,
+      "deep_score": 86.2,
       "fast_issues": 7,
-      "deep_issues": 13,
-      "fast_time": 0.73,
-      "deep_time": 14.33,
+      "deep_issues": 12,
+      "fast_time": 0.68,
+      "deep_time": 15.47,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1894,8 +1907,8 @@
       "deep_score": 82.2,
       "fast_issues": 9,
       "deep_issues": 16,
-      "fast_time": 2.41,
-      "deep_time": 18.63,
+      "fast_time": 2.18,
+      "deep_time": 21.96,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1919,8 +1932,8 @@
       "deep_score": 85.0,
       "fast_issues": 2,
       "deep_issues": 11,
-      "fast_time": 1.09,
-      "deep_time": 22.26,
+      "fast_time": 0.78,
+      "deep_time": 16.0,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1944,8 +1957,8 @@
       "deep_score": 77.7,
       "fast_issues": 11,
       "deep_issues": 18,
-      "fast_time": 2.32,
-      "deep_time": 50.14,
+      "fast_time": 1.3,
+      "deep_time": 50.96,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1969,8 +1982,8 @@
       "deep_score": 68.0,
       "fast_issues": 17,
       "deep_issues": 23,
-      "fast_time": 2.25,
-      "deep_time": 34.74,
+      "fast_time": 2.09,
+      "deep_time": 37.1,
       "fast_engines": [
         "static",
         "heuristic"
@@ -1994,8 +2007,8 @@
       "deep_score": 65.5,
       "fast_issues": 15,
       "deep_issues": 25,
-      "fast_time": 2.2,
-      "deep_time": 52.46,
+      "fast_time": 1.36,
+      "deep_time": 52.09,
       "fast_engines": [
         "static",
         "heuristic"
@@ -2015,12 +2028,12 @@
       "name": "Fidelity",
       "url": "https://www.fidelity.com/",
       "category": "finance",
-      "fast_score": 96.5,
-      "deep_score": 81.3,
+      "fast_score": 95.3,
+      "deep_score": 79.7,
       "fast_issues": 5,
       "deep_issues": 6,
-      "fast_time": 1.16,
-      "deep_time": 6.3,
+      "fast_time": 0.54,
+      "deep_time": 6.07,
       "fast_engines": [
         "static",
         "heuristic"
@@ -2042,8 +2055,8 @@
       "deep_score": 89.2,
       "fast_issues": 3,
       "deep_issues": 10,
-      "fast_time": 2.14,
-      "deep_time": 49.12,
+      "fast_time": 2.29,
+      "deep_time": 47.92,
       "fast_engines": [
         "static",
         "heuristic"
@@ -2067,8 +2080,8 @@
       "deep_score": 48.3,
       "fast_issues": 13,
       "deep_issues": 33,
-      "fast_time": 2.17,
-      "deep_time": 68.46,
+      "fast_time": 0.83,
+      "deep_time": 63.96,
       "fast_engines": [
         "static",
         "heuristic"
@@ -2088,12 +2101,12 @@
       "name": "Mayo Clinic",
       "url": "https://www.mayoclinic.org/",
       "category": "healthcare",
-      "fast_score": 88.3,
+      "fast_score": 95.3,
       "deep_score": 69.5,
-      "fast_issues": 9,
+      "fast_issues": 5,
       "deep_issues": 21,
-      "fast_time": 2.92,
-      "deep_time": 55.84,
+      "fast_time": 0.42,
+      "deep_time": 50.73,
       "fast_engines": [
         "static",
         "heuristic"
@@ -2113,12 +2126,12 @@
       "name": "Healthline",
       "url": "https://www.healthline.com/",
       "category": "healthcare",
-      "fast_score": 87.1,
+      "fast_score": 86.7,
       "deep_score": 71.8,
       "fast_issues": 11,
       "deep_issues": 23,
-      "fast_time": 1.56,
-      "deep_time": 30.75,
+      "fast_time": 2.01,
+      "deep_time": 23.67,
       "fast_engines": [
         "static",
         "heuristic"
@@ -2142,8 +2155,8 @@
       "deep_score": 67.3,
       "fast_issues": 8,
       "deep_issues": 23,
-      "fast_time": 1.4,
-      "deep_time": 50.94,
+      "fast_time": 0.67,
+      "deep_time": 49.75,
       "fast_engines": [
         "static",
         "heuristic"
@@ -2163,12 +2176,12 @@
       "name": "WHO",
       "url": "https://www.who.int/",
       "category": "healthcare",
-      "fast_score": 87.4,
-      "deep_score": 72.0,
-      "fast_issues": 10,
-      "deep_issues": 19,
-      "fast_time": 1.55,
-      "deep_time": 15.1,
+      "fast_score": 88.3,
+      "deep_score": 72.8,
+      "fast_issues": 9,
+      "deep_issues": 18,
+      "fast_time": 0.82,
+      "deep_time": 16.59,
       "fast_engines": [
         "static",
         "heuristic"
@@ -2192,8 +2205,8 @@
       "deep_score": 90.0,
       "fast_issues": 2,
       "deep_issues": 8,
-      "fast_time": 1.85,
-      "deep_time": 16.42,
+      "fast_time": 2.05,
+      "deep_time": 30.65,
       "fast_engines": [
         "static",
         "heuristic"
@@ -2217,8 +2230,8 @@
       "deep_score": 84.1,
       "fast_issues": 8,
       "deep_issues": 13,
-      "fast_time": 1.68,
-      "deep_time": 13.74,
+      "fast_time": 1.21,
+      "deep_time": 14.63,
       "fast_engines": [
         "static",
         "heuristic"
@@ -2242,8 +2255,8 @@
       "deep_score": 67.6,
       "fast_issues": 11,
       "deep_issues": 24,
-      "fast_time": 1.42,
-      "deep_time": 19.13,
+      "fast_time": 1.61,
+      "deep_time": 23.63,
       "fast_engines": [
         "static",
         "heuristic"
@@ -2263,13 +2276,16 @@
       "name": "Johns Hopkins",
       "url": "https://www.hopkinsmedicine.org/",
       "category": "healthcare",
-      "fast_score": 0.0,
+      "fast_score": 96.4,
       "deep_score": 79.7,
-      "fast_issues": 0,
+      "fast_issues": 4,
       "deep_issues": 16,
-      "fast_time": 0.23,
-      "deep_time": 23.29,
-      "fast_engines": [],
+      "fast_time": 1.82,
+      "deep_time": 23.41,
+      "fast_engines": [
+        "static",
+        "heuristic"
+      ],
       "deep_engines": [
         "browser-probe",
         "static",
@@ -2285,13 +2301,16 @@
       "name": "Drugs.com",
       "url": "https://www.drugs.com/",
       "category": "healthcare",
-      "fast_score": 0.0,
+      "fast_score": 95.3,
       "deep_score": 88.7,
-      "fast_issues": 0,
+      "fast_issues": 5,
       "deep_issues": 10,
-      "fast_time": 0.14,
-      "deep_time": 12.26,
-      "fast_engines": [],
+      "fast_time": 0.5,
+      "deep_time": 10.14,
+      "fast_engines": [
+        "static",
+        "heuristic"
+      ],
       "deep_engines": [
         "browser-probe",
         "static",
@@ -2311,8 +2330,8 @@
       "deep_score": 75.3,
       "fast_issues": 14,
       "deep_issues": 20,
-      "fast_time": 3.48,
-      "deep_time": 23.66,
+      "fast_time": 2.24,
+      "deep_time": 18.73,
       "fast_engines": [
         "static",
         "heuristic"
@@ -2333,11 +2352,11 @@
       "url": "https://www.slack.com/",
       "category": "productivity",
       "fast_score": 88.3,
-      "deep_score": 87.2,
+      "deep_score": 76.0,
       "fast_issues": 8,
-      "deep_issues": 11,
-      "fast_time": 5.41,
-      "deep_time": 25.52,
+      "deep_issues": 19,
+      "fast_time": 2.34,
+      "deep_time": 53.87,
       "fast_engines": [
         "static",
         "heuristic"
@@ -2346,7 +2365,8 @@
         "browser-probe",
         "static",
         "heuristic",
-        "axe-core"
+        "axe-core",
+        "cognitive"
       ],
       "spa_framework": null,
       "is_spa": true,
@@ -2357,11 +2377,11 @@
       "url": "https://www.trello.com/",
       "category": "productivity",
       "fast_score": 85.3,
-      "deep_score": 71.9,
+      "deep_score": 74.1,
       "fast_issues": 11,
-      "deep_issues": 20,
-      "fast_time": 1.93,
-      "deep_time": 26.53,
+      "deep_issues": 19,
+      "fast_time": 1.57,
+      "deep_time": 16.94,
       "fast_engines": [
         "static",
         "heuristic"
@@ -2385,8 +2405,8 @@
       "deep_score": 73.5,
       "fast_issues": 13,
       "deep_issues": 21,
-      "fast_time": 4.25,
-      "deep_time": 55.66,
+      "fast_time": 1.47,
+      "deep_time": 48.78,
       "fast_engines": [
         "static",
         "heuristic"
@@ -2407,11 +2427,11 @@
       "url": "https://www.monday.com/",
       "category": "productivity",
       "fast_score": 73.5,
-      "deep_score": 46.2,
+      "deep_score": 49.5,
       "fast_issues": 17,
-      "deep_issues": 34,
-      "fast_time": 6.33,
-      "deep_time": 65.06,
+      "deep_issues": 32,
+      "fast_time": 3.65,
+      "deep_time": 57.04,
       "fast_engines": [
         "static",
         "heuristic"
@@ -2435,8 +2455,8 @@
       "deep_score": 69.6,
       "fast_issues": 11,
       "deep_issues": 20,
-      "fast_time": 2.35,
-      "deep_time": 20.67,
+      "fast_time": 1.66,
+      "deep_time": 16.23,
       "fast_engines": [
         "static",
         "heuristic"
@@ -2459,8 +2479,8 @@
       "deep_score": 73.9,
       "fast_issues": 9,
       "deep_issues": 18,
-      "fast_time": 1.48,
-      "deep_time": 11.79,
+      "fast_time": 1.85,
+      "deep_time": 12.76,
       "fast_engines": [
         "static",
         "heuristic"
@@ -2483,8 +2503,8 @@
       "deep_score": 75.8,
       "fast_issues": 12,
       "deep_issues": 17,
-      "fast_time": 6.47,
-      "deep_time": 40.32,
+      "fast_time": 6.01,
+      "deep_time": 35.93,
       "fast_engines": [
         "static",
         "heuristic"
@@ -2508,8 +2528,8 @@
       "deep_score": 89.7,
       "fast_issues": 4,
       "deep_issues": 9,
-      "fast_time": 0.8,
-      "deep_time": 16.33,
+      "fast_time": 0.71,
+      "deep_time": 14.19,
       "fast_engines": [
         "static",
         "heuristic"
@@ -2530,11 +2550,11 @@
       "url": "https://text.npr.org/",
       "category": "blog",
       "fast_score": 100.0,
-      "deep_score": 94.1,
+      "deep_score": 92.9,
       "fast_issues": 0,
-      "deep_issues": 4,
-      "fast_time": 3.06,
-      "deep_time": 16.86,
+      "deep_issues": 5,
+      "fast_time": 1.64,
+      "deep_time": 12.94,
       "fast_engines": [
         "static",
         "heuristic"
@@ -2555,11 +2575,11 @@
       "url": "https://www.drudgereport.com/",
       "category": "blog",
       "fast_score": 82.9,
-      "deep_score": 59.3,
+      "deep_score": 57.5,
       "fast_issues": 12,
-      "deep_issues": 26,
-      "fast_time": 1.73,
-      "deep_time": 48.85,
+      "deep_issues": 27,
+      "fast_time": 0.94,
+      "deep_time": 54.19,
       "fast_engines": [
         "static",
         "heuristic"
@@ -2579,12 +2599,12 @@
       "name": "Slashdot",
       "url": "https://slashdot.org/",
       "category": "blog",
-      "fast_score": 62.6,
-      "deep_score": 55.5,
-      "fast_issues": 24,
-      "deep_issues": 30,
-      "fast_time": 2.31,
-      "deep_time": 21.79,
+      "fast_score": 61.6,
+      "deep_score": 54.6,
+      "fast_issues": 25,
+      "deep_issues": 31,
+      "fast_time": 1.58,
+      "deep_time": 17.69,
       "fast_engines": [
         "static",
         "heuristic"
@@ -2604,13 +2624,16 @@
       "name": "MetaFilter",
       "url": "https://www.metafilter.com/",
       "category": "blog",
-      "fast_score": 0.0,
+      "fast_score": 96.4,
       "deep_score": 70.5,
-      "fast_issues": 0,
+      "fast_issues": 4,
       "deep_issues": 19,
-      "fast_time": 0.11,
-      "deep_time": 21.22,
-      "fast_engines": [],
+      "fast_time": 0.08,
+      "deep_time": 22.33,
+      "fast_engines": [
+        "static",
+        "heuristic"
+      ],
       "deep_engines": [
         "browser-probe",
         "static",
@@ -2630,8 +2653,8 @@
       "deep_score": 89.2,
       "fast_issues": 5,
       "deep_issues": 8,
-      "fast_time": 2.53,
-      "deep_time": 13.17,
+      "fast_time": 1.86,
+      "deep_time": 16.51,
       "fast_engines": [
         "static",
         "heuristic"
@@ -2654,7 +2677,7 @@
       "deep_score": 88.3,
       "fast_issues": 5,
       "deep_issues": 9,
-      "fast_time": 3.29,
+      "fast_time": 2.65,
       "deep_time": 14.94,
       "fast_engines": [
         "static",

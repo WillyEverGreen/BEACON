@@ -207,8 +207,10 @@ async def test_site_both_configs(url: str, name: str, category: str, semaphore) 
                 url=url,
                 scan_mode="deep",
                 precision_profile="balanced",
+                enable_enrichment=False,     # ❌ RAG disabled
                 max_enrich_issues=0,         # ❌ RAG disabled
-                enable_cognitive=False       # ❌ Cognitive disabled
+                enable_cognitive=False,      # ❌ Cognitive disabled
+                await_enrichment=False,
             )
             result.baseline_time = time.time() - baseline_start
             result.baseline_score = baseline.get("score", 0)
@@ -232,8 +234,10 @@ async def test_site_both_configs(url: str, name: str, category: str, semaphore) 
                 url=url,
                 scan_mode="deep",
                 precision_profile="balanced",
+                enable_enrichment=True,      # ✅ RAG enabled
                 max_enrich_issues=20,        # ✅ RAG enabled (enrich up to 20 issues)
-                enable_cognitive=False       # ❌ Cognitive still disabled
+                enable_cognitive=False,      # ❌ Cognitive still disabled
+                await_enrichment=True,
             )
             result.rag_time = time.time() - rag_start
             result.rag_score = rag_enhanced.get("score", 0)

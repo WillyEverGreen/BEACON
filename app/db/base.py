@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+import threading
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, scoped_session, sessionmaker
@@ -11,6 +12,8 @@ from app.config import settings
 
 
 Base = declarative_base()
+_db_init_lock = threading.Lock()
+_db_initialized = False
 
 
 def _engine_kwargs() -> dict:
@@ -34,14 +37,33 @@ SessionLocal = scoped_session(
 
 def init_db() -> None:
     """Initialize all declared SQLAlchemy tables."""
+    global _db_initialized
     from app.db import models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
+    _db_initialized = True
+
+
+def ensure_db_ready() -> None:
+    """Ensure SQLite schema exists for CLI/test contexts that bypass app startup."""
+    global _db_initialized
+    if _db_initialized:
+        return
+
+    db_url = str(getattr(settings, "db_url", "sqlite:///./beacon.db"))
+    if not db_url.startswith("sqlite"):
+        return
+
+    with _db_init_lock:
+        if _db_initialized:
+            return
+        init_db()
 
 
 @contextmanager
 def get_session():
     """Yield a session with automatic commit/rollback."""
+    ensure_db_ready()
     session = SessionLocal()
     try:
         yield session

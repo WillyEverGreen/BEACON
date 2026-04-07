@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
 import time
 from typing import Any, Optional
@@ -17,8 +18,10 @@ from app.audit.dynamic_handling import (
     detect_framework_and_wait,
     detect_login_wall,
     dismiss_cookie_banner,
-    install_third_party_script_blocking,
+    install_request_interception,
+    resolve_adaptive_timeouts,
 )
+from app.audit.failure_taxonomy import classify_failure_reason, normalize_reason
 from app.audit.exploration import SPAStrategyPack
 from app.audit.fingerprint import stable_selector_fingerprint
 from app.audit.models import PageAuditResult, PageContext, PageStateMeta, state_meta_to_dict
@@ -35,6 +38,9 @@ _UUID_PATTERN = re.compile(
     re.IGNORECASE,
 )
 _ISO_TIMESTAMP_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:\d{2}", re.IGNORECASE)
+
+
+logger = logging.getLogger(__name__)
 
 
 def _looks_dynamic_value(value: str) -> bool:
@@ -61,50 +67,64 @@ def _looks_dynamic_value(value: str) -> bool:
 
 
 def _canonicalize_dom_for_hash(dom: str) -> str:
-    soup = BeautifulSoup(dom or "", "html.parser")
+    raw_dom = dom or ""
+    soup = None
+    for parser_name in ("lxml", "html.parser"):
+        try:
+            soup = BeautifulSoup(raw_dom, parser_name)
+            break
+        except Exception:
+            soup = None
 
-    for node in soup(["script", "style", "noscript"]):
-        node.decompose()
+    if soup is None:
+        return re.sub(r"\s+", " ", raw_dom).strip()[:50000]
 
-    for tag in soup.find_all(True):
-        normalized_attrs: dict[str, Any] = {}
+    try:
+        for node in soup(["script", "style", "noscript"]):
+            node.decompose()
 
-        for attr_name, attr_value in list(tag.attrs.items()):
-            lowered_name = str(attr_name).lower()
+        for tag in soup.find_all(True):
+            normalized_attrs: dict[str, Any] = {}
 
-            if _DYNAMIC_ATTR_NAME_PATTERN.search(lowered_name):
-                continue
+            for attr_name, attr_value in list(tag.attrs.items()):
+                lowered_name = str(attr_name).lower()
 
-            if isinstance(attr_value, list):
-                values = [" ".join(str(item).split()) for item in attr_value if str(item).strip()]
-            else:
-                values = [" ".join(str(attr_value).split())]
-
-            if lowered_name == "class":
-                stable_classes = sorted(
-                    cls for cls in values if cls and not _looks_dynamic_value(cls)
-                )
-                if stable_classes:
-                    normalized_attrs[lowered_name] = stable_classes
-                continue
-
-            merged_value = " ".join(values).strip()
-            if not merged_value:
-                continue
-
-            if lowered_name in {"id", "for", "aria-controls", "aria-labelledby", "aria-describedby"}:
-                if _looks_dynamic_value(merged_value):
-                    normalized_attrs[lowered_name] = "__dynamic__"
+                if _DYNAMIC_ATTR_NAME_PATTERN.search(lowered_name):
                     continue
 
-            if _looks_dynamic_value(merged_value):
-                normalized_attrs[lowered_name] = "__dynamic__"
-            else:
-                normalized_attrs[lowered_name] = merged_value
+                if isinstance(attr_value, list):
+                    values = [" ".join(str(item).split()) for item in attr_value if str(item).strip()]
+                else:
+                    values = [" ".join(str(attr_value).split())]
 
-        tag.attrs = {key: normalized_attrs[key] for key in sorted(normalized_attrs)}
+                if lowered_name == "class":
+                    stable_classes = sorted(
+                        cls for cls in values if cls and not _looks_dynamic_value(cls)
+                    )
+                    if stable_classes:
+                        normalized_attrs[lowered_name] = stable_classes
+                    continue
 
-    canonical = str(soup)
+                merged_value = " ".join(values).strip()
+                if not merged_value:
+                    continue
+
+                if lowered_name in {"id", "for", "aria-controls", "aria-labelledby", "aria-describedby"}:
+                    if _looks_dynamic_value(merged_value):
+                        normalized_attrs[lowered_name] = "__dynamic__"
+                        continue
+
+                if _looks_dynamic_value(merged_value):
+                    normalized_attrs[lowered_name] = "__dynamic__"
+                else:
+                    normalized_attrs[lowered_name] = merged_value
+
+            tag.attrs = {key: normalized_attrs[key] for key in sorted(normalized_attrs)}
+
+        canonical = str(soup)
+    except Exception:
+        canonical = str(soup)
+
     canonical = re.sub(r"\s+", " ", canonical).strip()
     return canonical
 
@@ -148,6 +168,37 @@ def _normalize_state_payload(payload: dict[str, Any] | str | None) -> tuple[str,
     return html, hydration_status
 
 
+def _pick_degraded_reason(reasons: set[str]) -> str:
+    if not reasons:
+        return ""
+    normalized_reasons = {
+        normalize_reason(reason) or "extraction_failure"
+        for reason in reasons
+        if str(reason or "").strip()
+    }
+    for preferred in (
+        "dom_parse_error",
+        "render_timeout",
+        "dns_failure",
+        "blocked_request",
+        "network_error",
+        "extraction_failure",
+    ):
+        if preferred in normalized_reasons:
+            return preferred
+    for preferred in (
+        "dom_parse_error",
+        "render_timeout",
+        "dns_failure",
+        "blocked_request",
+        "network_error",
+        "extraction_failure",
+    ):
+        if preferred in reasons:
+            return preferred
+    return sorted(normalized_reasons)[0] if normalized_reasons else ""
+
+
 async def _ensure_playwright_browser(page_context: PageContext) -> Any:
     if page_context.playwright_browser is not None:
         return page_context.playwright_browser
@@ -168,30 +219,143 @@ async def _default_state_provider(url: str, state: str, page_context: PageContex
         return {"html": "", "hydration_status": "unavailable"}
 
     cfg = CRAWLER_CONFIG["dom"]
-    network_idle_timeout_ms = int(cfg["network_idle_timeout_ms"])
-    ready_state_timeout_ms = int(cfg["ready_state_timeout_ms"])
+    scan_mode_key = str(page_context.cache.get("scan_mode", "deep") if isinstance(page_context.cache, dict) else "deep")
+    adaptive_timeouts = resolve_adaptive_timeouts(
+        url,
+        scan_mode_key,
+        page_timeout_seconds=int(cfg["page_timeout_seconds"]),
+        network_idle_timeout_ms=int(cfg["network_idle_timeout_ms"]),
+        ready_state_timeout_ms=int(cfg["ready_state_timeout_ms"]),
+    )
+
+    network_idle_timeout_ms = int(adaptive_timeouts["network_idle_timeout_ms"])
+    ready_state_timeout_ms = int(adaptive_timeouts["ready_state_timeout_ms"])
+    page_timeout_ms = int(adaptive_timeouts["page_timeout_seconds"]) * 1000
+
     interaction_wait_ms = int(cfg["interaction_wait_ms"])
     scroll_wait_ms = int(cfg["scroll_wait_ms"])
+    complexity = str(adaptive_timeouts.get("complexity", "moderate"))
+    if complexity == "simple":
+        interaction_wait_ms = max(400, int(interaction_wait_ms * 0.7))
+        scroll_wait_ms = max(600, int(scroll_wait_ms * 0.8))
+    elif complexity == "heavy":
+        interaction_wait_ms = min(2000, int(interaction_wait_ms * 1.2))
+        scroll_wait_ms = min(2500, int(scroll_wait_ms * 1.2))
 
     page = await browser.new_page()
     hydration_status = "uncertain"
+    detected_framework: Optional[str] = None
+    render_retry_used = False
+
+    async def _snapshot_current_dom() -> str:
+        try:
+            html = await page.content()
+            if isinstance(html, str) and html.strip():
+                return html
+        except Exception:
+            pass
+
+        try:
+            html = await page.evaluate(
+                "() => document.documentElement ? document.documentElement.outerHTML : ''"
+            )
+            if isinstance(html, str) and html.strip():
+                return html
+        except Exception:
+            pass
+
+        return "<html><body><main>Partial snapshot unavailable.</main></body></html>"
+
+    def _partial_payload(reason: str, html: str, *, cookie_dismissed: bool = False) -> dict[str, Any]:
+        return {
+            "html": html,
+            "hydration_status": "partial",
+            "detected_framework": detected_framework,
+            "requires_auth": False,
+            "cookie_banner_dismissed": cookie_dismissed,
+            "third_party_blocking_enabled": blocking_enabled,
+            "request_interception": interception,
+            "adaptive_timeout_policy": adaptive_timeouts,
+            "anti_bot_delay_ms": anti_bot_delay,
+            "anti_bot_headers": anti_bot_headers,
+            "actions_taken": 0,
+            "degraded_reason": reason,
+            "partial_mode": True,
+            "render_retry_used": render_retry_used,
+        }
+
+    blocking_enabled = False
+    interception: dict[str, Any] = {"installed": False}
+    anti_bot_headers: dict[str, str] = {}
+    anti_bot_delay = 0
+
     try:
+        set_timeout = getattr(page, "set_default_timeout", None)
+        if callable(set_timeout):
+            set_timeout(page_timeout_ms)
+        set_navigation_timeout = getattr(page, "set_default_navigation_timeout", None)
+        if callable(set_navigation_timeout):
+            set_navigation_timeout(page_timeout_ms)
+
         allow_intercom = page_context.cognitive_engine is not None
-        blocking_enabled = await install_third_party_script_blocking(
+        interception = await install_request_interception(
             page,
             url,
             allow_intercom=allow_intercom,
         )
+        blocking_enabled = bool(interception.get("installed", False))
         anti_bot_headers = await apply_anti_bot_headers(page, url)
         anti_bot_delay = await apply_anti_bot_delay(page, url)
 
-        await page.goto(url, wait_until="domcontentloaded")
+        nav_error: Exception | None = None
+        nav_timeouts = [page_timeout_ms, max(4000, int(page_timeout_ms * 0.65))]
+        for idx, nav_timeout in enumerate(nav_timeouts):
+            try:
+                await page.goto(url, wait_until="domcontentloaded", timeout=nav_timeout)
+                if idx > 0:
+                    render_retry_used = True
+                nav_error = None
+                break
+            except Exception as exc:
+                nav_error = exc
+                reason = classify_failure_reason(exc)
+                logger.warning(
+                    "State render navigation failure: %s",
+                    {"url": url, "failure_stage": "render_navigation", "degraded_reason": reason},
+                )
+                if idx == 0 and reason in {"render_timeout", "extraction_failure"}:
+                    continue
+                break
 
-        detected_framework, hydration_status = await detect_framework_and_wait(
-            page,
-            network_idle_timeout_ms=network_idle_timeout_ms,
-            ready_state_timeout_ms=ready_state_timeout_ms,
-        )
+        if nav_error is not None:
+            reason = classify_failure_reason(nav_error)
+            snapshot = await _snapshot_current_dom()
+            return _partial_payload(reason, snapshot)
+
+        try:
+            effective_network_idle_ms = (
+                max(2000, int(network_idle_timeout_ms * 0.75))
+                if render_retry_used
+                else network_idle_timeout_ms
+            )
+            effective_ready_timeout_ms = (
+                max(1800, int(ready_state_timeout_ms * 0.75))
+                if render_retry_used
+                else ready_state_timeout_ms
+            )
+            detected_framework, hydration_status = await detect_framework_and_wait(
+                page,
+                network_idle_timeout_ms=effective_network_idle_ms,
+                ready_state_timeout_ms=effective_ready_timeout_ms,
+            )
+        except Exception as exc:
+            reason = classify_failure_reason(exc)
+            logger.warning(
+                "State hydration failure: %s",
+                {"url": url, "failure_stage": "render_hydration", "degraded_reason": reason},
+            )
+            snapshot = await _snapshot_current_dom()
+            return _partial_payload(reason, snapshot)
 
         cookie_dismissed = await dismiss_cookie_banner(page)
 
@@ -210,12 +374,15 @@ async def _default_state_provider(url: str, state: str, page_context: PageContex
                     "checked_fallback_urls": fallback.get("checked_urls", []),
                     "cookie_banner_dismissed": cookie_dismissed,
                     "third_party_blocking_enabled": blocking_enabled,
+                    "request_interception": interception,
+                    "adaptive_timeout_policy": adaptive_timeouts,
                     "anti_bot_delay_ms": anti_bot_delay,
                     "anti_bot_headers": anti_bot_headers,
                     "actions_taken": 0,
+                    "render_retry_used": render_retry_used,
                 }
 
-            html = await page.content()
+            html = await _snapshot_current_dom()
             return {
                 "html": html,
                 "hydration_status": "requires_auth",
@@ -225,9 +392,12 @@ async def _default_state_provider(url: str, state: str, page_context: PageContex
                 "auth_fallback_used": False,
                 "cookie_banner_dismissed": cookie_dismissed,
                 "third_party_blocking_enabled": blocking_enabled,
+                "request_interception": interception,
+                "adaptive_timeout_policy": adaptive_timeouts,
                 "anti_bot_delay_ms": anti_bot_delay,
                 "anti_bot_headers": anti_bot_headers,
                 "actions_taken": 0,
+                "render_retry_used": render_retry_used,
             }
 
         strategy_pack = SPAStrategyPack(
@@ -240,6 +410,7 @@ async def _default_state_provider(url: str, state: str, page_context: PageContex
         )
 
         actions_taken = 0
+        partial_reason = ""
         exploration_quality: dict[str, Any] = {
             "actions_taken": 0,
             "new_states": 0,
@@ -249,11 +420,28 @@ async def _default_state_provider(url: str, state: str, page_context: PageContex
         modal_checks: dict[str, Any] = {}
 
         if state == "after_interaction":
-            route_result = await strategy_pack.trigger_route_change(page, detected_framework=detected_framework)
+            try:
+                route_result = await strategy_pack.trigger_route_change(page, detected_framework=detected_framework)
+            except Exception as exc:
+                partial_reason = classify_failure_reason(exc)
+                logger.warning(
+                    "State interaction route failure: %s",
+                    {"url": url, "failure_stage": "interaction_route", "degraded_reason": partial_reason},
+                )
+                route_result = {"actions_taken": 0, "route_changes": 0}
             actions_taken += int(route_result.get("actions_taken", 0))
 
             remaining = max(0, int(cfg["interaction_budget_per_page"]) - actions_taken)
-            modal_checks = await strategy_pack.trigger_modals(page, max_actions=remaining)
+            try:
+                modal_checks = await strategy_pack.trigger_modals(page, max_actions=remaining)
+            except Exception as exc:
+                if not partial_reason:
+                    partial_reason = classify_failure_reason(exc)
+                logger.warning(
+                    "State interaction modal failure: %s",
+                    {"url": url, "failure_stage": "interaction_modal", "degraded_reason": partial_reason},
+                )
+                modal_checks = {"actions_taken": 0, "modal_checks_run": 0}
             actions_taken += int(modal_checks.get("actions_taken", 0))
 
             new_states = int(route_result.get("route_changes", 0))
@@ -267,7 +455,15 @@ async def _default_state_provider(url: str, state: str, page_context: PageContex
             }
 
         if state == "after_scroll":
-            lazy_result = await strategy_pack.trigger_lazy_load(page, max_actions=int(cfg["scroll_steps"]))
+            try:
+                lazy_result = await strategy_pack.trigger_lazy_load(page, max_actions=int(cfg["scroll_steps"]))
+            except Exception as exc:
+                partial_reason = classify_failure_reason(exc)
+                logger.warning(
+                    "State interaction scroll failure: %s",
+                    {"url": url, "failure_stage": "interaction_scroll", "degraded_reason": partial_reason},
+                )
+                lazy_result = {"actions_taken": 0, "growth_steps": 0, "infinite_scroll_detected": False}
             actions_taken += int(lazy_result.get("actions_taken", 0))
             growth_steps = int(lazy_result.get("growth_steps", 0))
             exploration_quality = {
@@ -278,7 +474,10 @@ async def _default_state_provider(url: str, state: str, page_context: PageContex
                 "infinite_scroll_detected": bool(lazy_result.get("infinite_scroll_detected", False)),
             }
 
-        html = await page.content()
+        html = await _snapshot_current_dom()
+        if not html.strip():
+            partial_reason = partial_reason or "extraction_failure"
+
         return {
             "html": html,
             "hydration_status": hydration_status,
@@ -286,12 +485,25 @@ async def _default_state_provider(url: str, state: str, page_context: PageContex
             "requires_auth": False,
             "cookie_banner_dismissed": cookie_dismissed,
             "third_party_blocking_enabled": blocking_enabled,
+            "request_interception": interception,
+            "adaptive_timeout_policy": adaptive_timeouts,
             "anti_bot_delay_ms": anti_bot_delay,
             "anti_bot_headers": anti_bot_headers,
             "actions_taken": actions_taken,
             "exploration_quality": exploration_quality,
             "modal_checks": modal_checks,
+            "degraded_reason": partial_reason,
+            "partial_mode": bool(partial_reason),
+            "render_retry_used": render_retry_used,
         }
+    except Exception as exc:
+        reason = classify_failure_reason(exc)
+        logger.warning(
+            "State provider fallback triggered: %s",
+            {"url": url, "failure_stage": "state_provider", "degraded_reason": reason},
+        )
+        snapshot = await _snapshot_current_dom()
+        return _partial_payload(reason, snapshot)
     finally:
         await page.close()
 
@@ -304,6 +516,9 @@ async def audit_page(url: str, scan_mode: str, page_context: PageContext) -> Pag
 
     state_sequence = ("initial",) if scan_mode_key == "fast" else _STATE_SEQUENCE
     state_provider = page_context.state_provider or _default_state_provider
+    if not isinstance(page_context.cache, dict):
+        page_context.cache = {}
+    page_context.cache["scan_mode"] = scan_mode_key
 
     def static_engine(dom: str, page_url: str) -> list[dict[str, Any]]:
         if page_context.static_engine is None:
@@ -333,6 +548,7 @@ async def audit_page(url: str, scan_mode: str, page_context: PageContext) -> Pag
 
     degraded_mode = False
     skipped_engines: list[str] = []
+    degraded_reasons: set[str] = set()
     hydration_status = "unknown"
     page_dom = ""
 
@@ -341,15 +557,38 @@ async def audit_page(url: str, scan_mode: str, page_context: PageContext) -> Pag
 
         try:
             payload = await state_provider(url, state, page_context)
-        except Exception:
+        except Exception as exc:
             degraded_mode = True
-            payload = {"html": "", "hydration_status": "failed"}
+            reason = classify_failure_reason(exc)
+            degraded_reasons.add(reason)
+            logger.warning(
+                "State provider exception: %s",
+                {"url": url, "failure_stage": f"state_provider:{state}", "degraded_reason": reason},
+            )
+            fallback_html = page_dom or str(page_context.cache.get("last_successful_dom", "") or "")
+            payload = {
+                "html": fallback_html,
+                "hydration_status": "failed",
+                "degraded_reason": reason,
+                "partial_mode": bool(fallback_html),
+            }
 
         dom, state_hydration = _normalize_state_payload(payload)
+        payload_data = payload if isinstance(payload, dict) else {}
+        payload_reason = normalize_reason(payload_data.get("degraded_reason"))
+        if payload_reason:
+            degraded_mode = True
+            degraded_reasons.add(payload_reason)
+        elif payload_data.get("partial_mode"):
+            degraded_mode = True
+            degraded_reasons.add("extraction_failure")
+
         if state_hydration not in {"unknown", ""}:
             hydration_status = state_hydration
         if not page_dom and dom:
             page_dom = dom
+        if isinstance(page_context.cache, dict) and dom:
+            page_context.cache["last_successful_dom"] = dom
 
         dom_hash = _compact_dom_hash(dom)
         duplicate_state = dom_hash in seen_state_hashes
@@ -373,9 +612,15 @@ async def audit_page(url: str, scan_mode: str, page_context: PageContext) -> Pag
         static_start = time.perf_counter()
         try:
             static_issues = static_engine(dom, url)
-        except Exception:
+        except Exception as exc:
             static_issues = []
             degraded_mode = True
+            reason = classify_failure_reason(exc)
+            degraded_reasons.add(reason)
+            logger.warning(
+                "Static engine failed: %s",
+                {"url": url, "failure_stage": f"static:{state}", "degraded_reason": reason},
+            )
             if "static" not in skipped_engines:
                 skipped_engines.append("static")
         engine_timings[f"static_{state}_ms"] = round((time.perf_counter() - static_start) * 1000, 2)
@@ -393,8 +638,14 @@ async def audit_page(url: str, scan_mode: str, page_context: PageContext) -> Pag
             else:
                 try:
                     interactive_issues = await interactive_engine(dom, url)
-                except Exception:
+                except Exception as exc:
                     degraded_mode = True
+                    reason = classify_failure_reason(exc)
+                    degraded_reasons.add(reason)
+                    logger.warning(
+                        "Interactive engine failed: %s",
+                        {"url": url, "failure_stage": f"interactive:{state}", "degraded_reason": reason},
+                    )
                     if "interactive" not in skipped_engines:
                         skipped_engines.append("interactive")
             engine_timings[f"interactive_{state}_ms"] = round((time.perf_counter() - interactive_start) * 1000, 2)
@@ -407,8 +658,14 @@ async def audit_page(url: str, scan_mode: str, page_context: PageContext) -> Pag
             else:
                 try:
                     axe_issues = await axe_engine(dom, url)
-                except Exception:
+                except Exception as exc:
                     degraded_mode = True
+                    reason = classify_failure_reason(exc)
+                    degraded_reasons.add(reason)
+                    logger.warning(
+                        "Axe engine failed: %s",
+                        {"url": url, "failure_stage": f"axe:{state}", "degraded_reason": reason},
+                    )
                     if "axe" not in skipped_engines:
                         skipped_engines.append("axe")
             engine_timings[f"axe_{state}_ms"] = round((time.perf_counter() - axe_start) * 1000, 2)
@@ -422,8 +679,14 @@ async def audit_page(url: str, scan_mode: str, page_context: PageContext) -> Pag
                 else:
                     try:
                         cognitive_issues = await cognitive_engine(dom, url)
-                    except Exception:
+                    except Exception as exc:
                         degraded_mode = True
+                        reason = classify_failure_reason(exc)
+                        degraded_reasons.add(reason)
+                        logger.warning(
+                            "Cognitive engine failed: %s",
+                            {"url": url, "failure_stage": f"cognitive:{state}", "degraded_reason": reason},
+                        )
                         if "cognitive" not in skipped_engines:
                             skipped_engines.append("cognitive")
                 engine_timings[f"cognitive_{state}_ms"] = round((time.perf_counter() - cognitive_start) * 1000, 2)
@@ -475,6 +738,7 @@ async def audit_page(url: str, scan_mode: str, page_context: PageContext) -> Pag
         issues=list(merged_issues.values()),
         engine_timings=engine_timings,
         degraded_mode=degraded_mode,
+        degraded_reason=_pick_degraded_reason(degraded_reasons),
         skipped_engines=skipped_engines,
         hydration_status=hydration_status,
         enrichment_status="pending",

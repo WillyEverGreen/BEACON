@@ -1,0 +1,228 @@
+{
+  "phase": "phase1_group3_activation_fix",
+  "act_subset": {
+    "before": {
+      "micro_precision": 0.0496,
+      "micro_recall": 0.35,
+      "adj_precision": 1.0,
+      "adj_recall": 0.35,
+      "tp": 7,
+      "fp": 134,
+      "fn": 13
+    },
+    "after": {
+      "micro_precision": 0.0435,
+      "micro_recall": 0.35,
+      "adj_precision": 1.0,
+      "adj_recall": 0.35,
+      "tp": 7,
+      "fp": 154,
+      "fn": 13
+    },
+    "delta": {
+      "micro_precision": -0.0061,
+      "micro_recall": 0.0,
+      "adj_precision": 0.0,
+      "adj_recall": 0.0
+    }
+  },
+  "strategic_10_site": {
+    "before": {
+      "success_rate": 100.0,
+      "degraded_rate": 0.0,
+      "avg_runtime": 13.4
+    },
+    "after": {
+      "success_rate": 100.0,
+      "degraded_rate": 0.0,
+      "avg_runtime": 27.24
+    },
+    "delta": {
+      "success_rate": 0.0,
+      "degraded_rate": 0.0,
+      "avg_runtime": 13.84
+    }
+  },
+  "rule_activity": {
+    "missing-alt": {
+      "fired": 0,
+      "elements_checked": 1,
+      "violations_found": 0
+    },
+    "input-label": {
+      "fired": 0,
+      "elements_checked": 4,
+      "violations_found": 0
+    },
+    "input-name": {
+      "fired": 0,
+      "elements_checked": 0,
+      "violations_found": 0
+    },
+    "clickable-no-role": {
+      "fired": 0,
+      "elements_checked": 0,
+      "violations_found": 0
+    },
+    "svg-accessible-name": {
+      "fired": 1,
+      "elements_checked": 3,
+      "violations_found": 1
+    },
+    "missing-lang": {
+      "fired": 1,
+      "elements_checked": 6,
+      "violations_found": 5
+    },
+    "autocomplete-missing": {
+      "fired": 0,
+      "elements_checked": 0,
+      "violations_found": 0
+    },
+    "duplicate-label": {
+      "fired": 0,
+      "elements_checked": 0,
+      "violations_found": 0
+    }
+  },
+  "confidence_distribution": {
+    "high": 6,
+    "medium": 3
+  },
+  "group3_rule_firing": {
+    "activation_audit": [
+      {
+        "rule_id": "missing-alt",
+        "elements_checked": 1,
+        "violations_found": 0,
+        "high_confidence_count": 0,
+        "medium_confidence_count": 2
+      },
+      {
+        "rule_id": "input-label",
+        "elements_checked": 4,
+        "violations_found": 0,
+        "high_confidence_count": 0,
+        "medium_confidence_count": 1
+      },
+      {
+        "rule_id": "input-name",
+        "elements_checked": 0,
+        "violations_found": 0,
+        "high_confidence_count": 0,
+        "medium_confidence_count": 0
+      },
+      {
+        "rule_id": "clickable-no-role",
+        "elements_checked": 0,
+        "violations_found": 0,
+        "high_confidence_count": 0,
+        "medium_confidence_count": 0
+      },
+      {
+        "rule_id": "svg-accessible-name",
+        "elements_checked": 3,
+        "violations_found": 1,
+        "high_confidence_count": 1,
+        "medium_confidence_count": 0
+      },
+      {
+        "rule_id": "missing-lang",
+        "elements_checked": 6,
+        "violations_found": 5,
+        "high_confidence_count": 5,
+        "medium_confidence_count": 0
+      },
+      {
+        "rule_id": "autocomplete-missing",
+        "elements_checked": 0,
+        "violations_found": 0,
+        "high_confidence_count": 0,
+        "medium_confidence_count": 0
+      },
+      {
+        "rule_id": "duplicate-label",
+        "elements_checked": 0,
+        "violations_found": 0,
+        "high_confidence_count": 0,
+        "medium_confidence_count": 0
+      }
+    ],
+    "real_world_summary": [
+      {
+        "rule_id": "missing-alt",
+        "violations_found": 1,
+        "example_cases": [
+          {
+            "url": "https://www.reddit.com/",
+            "element": null,
+            "html_snippet": "",
+            "description": null
+          }
+        ],
+        "status": "FIRING"
+      },
+      {
+        "rule_id": "input-label",
+        "violations_found": 1,
+        "example_cases": [
+          {
+            "url": "https://www.reddit.com/",
+            "element": null,
+            "html_snippet": "",
+            "description": null
+          }
+        ],
+        "status": "FIRING"
+      },
+      {
+        "rule_id": "input-name",
+        "violations_found": 0,
+        "example_cases": [],
+        "status": "NOT FIRING"
+      },
+      {
+        "rule_id": "clickable-no-role",
+        "violations_found": 0,
+        "example_cases": [],
+        "status": "NOT FIRING"
+      },
+      {
+        "rule_id": "svg-accessible-name",
+        "violations_found": 1,
+        "example_cases": [
+          {
+            "url": "https://www.reddit.com/",
+            "element": null,
+            "html_snippet": "",
+            "description": null
+          }
+        ],
+        "status": "FIRING"
+      },
+      {
+        "rule_id": "missing-lang",
+        "violations_found": 0,
+        "example_cases": [],
+        "status": "NOT FIRING"
+      },
+      {
+        "rule_id": "autocomplete-missing",
+        "violations_found": 0,
+        "example_cases": [],
+        "status": "NOT FIRING"
+      },
+      {
+        "rule_id": "duplicate-label",
+        "violations_found": 0,
+        "example_cases": [],
+        "status": "NOT FIRING"
+      }
+    ]
+  },
+  "notes": [
+    "Group 3 activation telemetry now includes explicit high/medium confidence counters per rule.",
+    "Strategic degraded_rate recovered to 0.0% (target <= 5%).",
+    "Adjudicated precision remains 1.0 (>= 90% precision safety target)."
+  ]
+}

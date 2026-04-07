@@ -1,0 +1,2767 @@
+{
+  "timestamp": "2026-04-07T23:54:33.587074",
+  "total_time_seconds": 401.93,
+  "configuration": {
+    "rag_enabled": false,
+    "max_enrich_issues": 0,
+    "cognitive_enabled": true
+  },
+  "summary": {
+    "total": 50,
+    "runtime_successful": 46,
+    "runtime_failed": 4,
+    "expectation_passed": 27,
+    "expectation_failed": 19,
+    "errors": 0,
+    "degraded": 4,
+    "spa_detected": 7,
+    "runtime_success_rate": 92.0,
+    "expectation_pass_rate": 54.0
+  },
+  "kpi": {
+    "runtime_success_rate": 92.0,
+    "expectation_pass_rate": 54.0,
+    "degraded_rate": 8.0,
+    "precision": null,
+    "recall": null,
+    "f1": null,
+    "spa_precision": null,
+    "spa_recall": null,
+    "rag_completion": null,
+    "timeout_rate": 0.0,
+    "avg_runtime": 8.04,
+    "fast_mode_p95_time": 8.35,
+    "fast_mode_usage": 100.0
+  },
+  "spa_detection": {
+    "total_spa_sites": 7,
+    "frameworks": {
+      "react": 5,
+      "svelte": 1,
+      "vue": 1
+    },
+    "spa_pass_rate": 100.0
+  },
+  "degraded_failure_analysis": {
+    "top_causes": [
+      {
+        "reason": "extraction_failure",
+        "count": 4
+      }
+    ]
+  },
+  "failure_breakdown": {
+    "dom_parse_error": 0,
+    "render_timeout": 0,
+    "extraction_failure": 4,
+    "network_error": 0,
+    "blocked_request": 0,
+    "dns_failure": 0
+  },
+  "category_stats": {
+    "accessibility": {
+      "sites": 5,
+      "passed": 5,
+      "failed": 0,
+      "runtime_failed": 0,
+      "errors": 0,
+      "avg_fast_score": 95.8,
+      "avg_deep_score": 91.6,
+      "avg_fast_time": 2.01,
+      "avg_deep_time": 14.38,
+      "total_issues": 34
+    },
+    "government": {
+      "sites": 5,
+      "passed": 4,
+      "failed": 0,
+      "runtime_failed": 1,
+      "errors": 0,
+      "avg_fast_score": 94.2,
+      "avg_deep_score": 90.3,
+      "avg_fast_time": 3.91,
+      "avg_deep_time": 18.31,
+      "total_issues": 40
+    },
+    "tech": {
+      "sites": 5,
+      "passed": 2,
+      "failed": 3,
+      "runtime_failed": 0,
+      "errors": 0,
+      "avg_fast_score": 85.4,
+      "avg_deep_score": 74.9,
+      "avg_fast_time": 1.71,
+      "avg_deep_time": 15.98,
+      "total_issues": 96
+    },
+    "ecommerce": {
+      "sites": 5,
+      "passed": 2,
+      "failed": 2,
+      "runtime_failed": 1,
+      "errors": 0,
+      "avg_fast_score": 86.2,
+      "avg_deep_score": 74.9,
+      "avg_fast_time": 4.16,
+      "avg_deep_time": 30.91,
+      "total_issues": 94
+    },
+    "social": {
+      "sites": 5,
+      "passed": 0,
+      "failed": 5,
+      "runtime_failed": 0,
+      "errors": 0,
+      "avg_fast_score": 93.1,
+      "avg_deep_score": 82.5,
+      "avg_fast_time": 0.95,
+      "avg_deep_time": 13.97,
+      "total_issues": 64
+    },
+    "news": {
+      "sites": 5,
+      "passed": 3,
+      "failed": 1,
+      "runtime_failed": 1,
+      "errors": 0,
+      "avg_fast_score": 86.0,
+      "avg_deep_score": 70.6,
+      "avg_fast_time": 3.48,
+      "avg_deep_time": 15.62,
+      "total_issues": 104
+    },
+    "education": {
+      "sites": 5,
+      "passed": 1,
+      "failed": 4,
+      "runtime_failed": 0,
+      "errors": 0,
+      "avg_fast_score": 89.3,
+      "avg_deep_score": 87.4,
+      "avg_fast_time": 1.67,
+      "avg_deep_time": 18.12,
+      "total_issues": 52
+    },
+    "finance": {
+      "sites": 5,
+      "passed": 2,
+      "failed": 3,
+      "runtime_failed": 0,
+      "errors": 0,
+      "avg_fast_score": 91.4,
+      "avg_deep_score": 80.7,
+      "avg_fast_time": 1.33,
+      "avg_deep_time": 25.91,
+      "total_issues": 80
+    },
+    "healthcare": {
+      "sites": 5,
+      "passed": 5,
+      "failed": 0,
+      "runtime_failed": 0,
+      "errors": 0,
+      "avg_fast_score": 88.6,
+      "avg_deep_score": 67.4,
+      "avg_fast_time": 1.08,
+      "avg_deep_time": 23.68,
+      "total_issues": 115
+    },
+    "blog": {
+      "sites": 5,
+      "passed": 3,
+      "failed": 1,
+      "runtime_failed": 1,
+      "errors": 0,
+      "avg_fast_score": 86.6,
+      "avg_deep_score": 82.4,
+      "avg_fast_time": 3.85,
+      "avg_deep_time": 19.69,
+      "total_issues": 64
+    }
+  },
+  "complexity_stats": {
+    "simple": {
+      "sites": 10,
+      "passed": 7,
+      "runtime_failed": 1,
+      "errors": 0
+    },
+    "moderate": {
+      "sites": 15,
+      "passed": 12,
+      "runtime_failed": 1,
+      "errors": 0
+    },
+    "complex": {
+      "sites": 25,
+      "passed": 8,
+      "runtime_failed": 2,
+      "errors": 0
+    }
+  },
+  "results": [
+    {
+      "name": "A11y Project",
+      "url": "https://www.a11yproject.com/",
+      "category": "accessibility",
+      "complexity": "simple",
+      "fast_score": 98.2,
+      "deep_score": 91.2,
+      "fast_issues": 1,
+      "deep_issues": 7,
+      "fast_time": 2.26,
+      "deep_time": 12.35,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "serious": 4,
+        "moderate": 3
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "WebAIM",
+      "url": "https://webaim.org/",
+      "category": "accessibility",
+      "complexity": "simple",
+      "fast_score": 98.2,
+      "deep_score": 93.3,
+      "fast_issues": 1,
+      "deep_issues": 5,
+      "fast_time": 2.93,
+      "deep_time": 17.8,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "serious": 4,
+        "moderate": 1
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "W3C WAI",
+      "url": "https://www.w3.org/WAI/",
+      "category": "accessibility",
+      "complexity": "moderate",
+      "fast_score": 96.4,
+      "deep_score": 97.9,
+      "fast_issues": 4,
+      "deep_issues": 3,
+      "fast_time": 0.92,
+      "deep_time": 6.95,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "minor": 2,
+        "moderate": 1
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Deque University",
+      "url": "https://dequeuniversity.com/",
+      "category": "accessibility",
+      "complexity": "moderate",
+      "fast_score": 86.9,
+      "deep_score": 80.4,
+      "fast_issues": 11,
+      "deep_issues": 15,
+      "fast_time": 2.69,
+      "deep_time": 21.11,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 7,
+        "serious": 6,
+        "critical": 1,
+        "minor": 1
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Inclusive Components",
+      "url": "https://inclusive-components.design/",
+      "category": "accessibility",
+      "complexity": "simple",
+      "fast_score": 99.1,
+      "deep_score": 95.3,
+      "fast_issues": 1,
+      "deep_issues": 4,
+      "fast_time": 1.24,
+      "deep_time": 13.71,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 3,
+        "serious": 1
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "USA.gov",
+      "url": "https://www.usa.gov/",
+      "category": "government",
+      "complexity": "moderate",
+      "fast_score": 96.5,
+      "deep_score": 86.9,
+      "fast_issues": 3,
+      "deep_issues": 11,
+      "fast_time": 1.58,
+      "deep_time": 19.0,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 8,
+        "serious": 3
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "GOV.UK",
+      "url": "https://www.gov.uk/",
+      "category": "government",
+      "complexity": "moderate",
+      "fast_score": 95.2,
+      "deep_score": 87.5,
+      "fast_issues": 4,
+      "deep_issues": 9,
+      "fast_time": 0.02,
+      "deep_time": 0.04,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 4,
+        "serious": 4,
+        "critical": 1
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Canada.ca",
+      "url": "https://www.canada.ca/en.html",
+      "category": "government",
+      "complexity": "moderate",
+      "fast_score": 83.1,
+      "deep_score": 92.3,
+      "fast_issues": 1,
+      "deep_issues": 7,
+      "fast_time": 12.98,
+      "deep_time": 33.47,
+      "fast_enrichment_status": "skipped",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 2,
+        "minor": 3,
+        "serious": 2
+      },
+      "passed": true,
+      "failure_type": "runtime_failure",
+      "runtime_failure_type": "network_error",
+      "fast_degraded": true,
+      "fast_degraded_reason": "extraction_failure",
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": true,
+      "degraded_reason": "extraction_failure",
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Digital.gov",
+      "url": "https://www.digital.gov/",
+      "category": "government",
+      "complexity": "simple",
+      "fast_score": 97.5,
+      "deep_score": 92.0,
+      "fast_issues": 3,
+      "deep_issues": 7,
+      "fast_time": 2.83,
+      "deep_time": 19.18,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 3,
+        "minor": 1,
+        "serious": 3
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Section508.gov",
+      "url": "https://www.section508.gov/",
+      "category": "government",
+      "complexity": "moderate",
+      "fast_score": 98.5,
+      "deep_score": 92.9,
+      "fast_issues": 2,
+      "deep_issues": 6,
+      "fast_time": 2.16,
+      "deep_time": 19.88,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 2,
+        "minor": 1,
+        "serious": 3
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Microsoft",
+      "url": "https://www.microsoft.com/",
+      "category": "tech",
+      "complexity": "complex",
+      "fast_score": 86.3,
+      "deep_score": 78.8,
+      "fast_issues": 10,
+      "deep_issues": 18,
+      "fast_time": 1.79,
+      "deep_time": 21.42,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 10,
+        "serious": 5,
+        "critical": 1,
+        "minor": 2
+      },
+      "passed": false,
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Apple",
+      "url": "https://www.apple.com/",
+      "category": "tech",
+      "complexity": "complex",
+      "fast_score": 90.1,
+      "deep_score": 85.0,
+      "fast_issues": 8,
+      "deep_issues": 12,
+      "fast_time": 1.52,
+      "deep_time": 0.0,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "minor": 2,
+        "moderate": 5,
+        "serious": 4,
+        "critical": 1
+      },
+      "passed": false,
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Google",
+      "url": "https://www.google.com/",
+      "category": "tech",
+      "complexity": "moderate",
+      "fast_score": 77.7,
+      "deep_score": 65.6,
+      "fast_issues": 14,
+      "deep_issues": 25,
+      "fast_time": 1.29,
+      "deep_time": 14.32,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 9,
+        "serious": 11,
+        "critical": 2,
+        "minor": 2,
+        "needs-review": 1
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "GitHub",
+      "url": "https://github.com/",
+      "category": "tech",
+      "complexity": "complex",
+      "fast_score": 81.6,
+      "deep_score": 66.1,
+      "fast_issues": 13,
+      "deep_issues": 25,
+      "fast_time": 2.78,
+      "deep_time": 17.69,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 12,
+        "critical": 3,
+        "serious": 9,
+        "minor": 1
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Meta",
+      "url": "https://about.meta.com/",
+      "category": "tech",
+      "complexity": "complex",
+      "fast_score": 91.2,
+      "deep_score": 78.8,
+      "fast_issues": 7,
+      "deep_issues": 16,
+      "fast_time": 1.14,
+      "deep_time": 26.47,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 4,
+        "minor": 3,
+        "serious": 9
+      },
+      "passed": false,
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Amazon",
+      "url": "https://www.amazon.com/",
+      "category": "ecommerce",
+      "complexity": "complex",
+      "fast_score": 93.5,
+      "deep_score": 73.7,
+      "fast_issues": 6,
+      "deep_issues": 21,
+      "fast_time": 0.02,
+      "deep_time": 0.01,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "minor": 5,
+        "serious": 8,
+        "moderate": 6,
+        "critical": 2
+      },
+      "passed": false,
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "eBay",
+      "url": "https://www.ebay.com/",
+      "category": "ecommerce",
+      "complexity": "complex",
+      "fast_score": 81.2,
+      "deep_score": 56.6,
+      "fast_issues": 14,
+      "deep_issues": 28,
+      "fast_time": 3.44,
+      "deep_time": 26.01,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 9,
+        "serious": 14,
+        "critical": 3,
+        "minor": 2
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Etsy",
+      "url": "https://www.etsy.com/",
+      "category": "ecommerce",
+      "complexity": "complex",
+      "fast_score": 93.5,
+      "deep_score": 91.1,
+      "fast_issues": 6,
+      "deep_issues": 8,
+      "fast_time": 0.6,
+      "deep_time": 7.98,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 3,
+        "minor": 3,
+        "serious": 2
+      },
+      "passed": false,
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Target",
+      "url": "https://www.target.com/",
+      "category": "ecommerce",
+      "complexity": "complex",
+      "fast_score": 79.5,
+      "deep_score": 62.9,
+      "fast_issues": 15,
+      "deep_issues": 28,
+      "fast_time": 2.45,
+      "deep_time": 27.15,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "minor": 5,
+        "serious": 10,
+        "moderate": 10,
+        "critical": 3
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": true,
+      "spa_framework": "react"
+    },
+    {
+      "name": "Best Buy",
+      "url": "https://www.bestbuy.com/",
+      "category": "ecommerce",
+      "complexity": "complex",
+      "fast_score": 83.1,
+      "deep_score": 90.4,
+      "fast_issues": 1,
+      "deep_issues": 9,
+      "fast_time": 14.3,
+      "deep_time": 93.4,
+      "fast_enrichment_status": "skipped",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 3,
+        "minor": 4,
+        "serious": 1,
+        "critical": 1
+      },
+      "passed": false,
+      "failure_type": "runtime_failure",
+      "runtime_failure_type": "network_error",
+      "fast_degraded": true,
+      "fast_degraded_reason": "extraction_failure",
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": true,
+      "degraded_reason": "extraction_failure",
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Twitter/X",
+      "url": "https://twitter.com/",
+      "category": "social",
+      "complexity": "complex",
+      "fast_score": 91.3,
+      "deep_score": 87.2,
+      "fast_issues": 7,
+      "deep_issues": 10,
+      "fast_time": 0.01,
+      "deep_time": 18.23,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "serious": 4,
+        "moderate": 2,
+        "minor": 3,
+        "critical": 1
+      },
+      "passed": false,
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "LinkedIn",
+      "url": "https://www.linkedin.com/",
+      "category": "social",
+      "complexity": "complex",
+      "fast_score": 91.4,
+      "deep_score": 82.8,
+      "fast_issues": 7,
+      "deep_issues": 13,
+      "fast_time": 1.89,
+      "deep_time": 15.57,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 5,
+        "serious": 7,
+        "minor": 1
+      },
+      "passed": false,
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Reddit",
+      "url": "https://www.reddit.com/",
+      "category": "social",
+      "complexity": "complex",
+      "fast_score": 94.5,
+      "deep_score": 75.7,
+      "fast_issues": 5,
+      "deep_issues": 16,
+      "fast_time": 0.02,
+      "deep_time": 0.01,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "minor": 1,
+        "serious": 9,
+        "moderate": 4,
+        "critical": 2
+      },
+      "passed": false,
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Pinterest",
+      "url": "https://www.pinterest.com/",
+      "category": "social",
+      "complexity": "complex",
+      "fast_score": 93.5,
+      "deep_score": 85.0,
+      "fast_issues": 6,
+      "deep_issues": 11,
+      "fast_time": 1.97,
+      "deep_time": 17.96,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "minor": 1,
+        "moderate": 4,
+        "critical": 1,
+        "serious": 5
+      },
+      "passed": false,
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Tumblr",
+      "url": "https://www.tumblr.com/",
+      "category": "social",
+      "complexity": "complex",
+      "fast_score": 94.8,
+      "deep_score": 81.7,
+      "fast_issues": 4,
+      "deep_issues": 14,
+      "fast_time": 0.88,
+      "deep_time": 18.06,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "minor": 1,
+        "serious": 7,
+        "moderate": 6
+      },
+      "passed": false,
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "BBC",
+      "url": "https://www.bbc.com/",
+      "category": "news",
+      "complexity": "complex",
+      "fast_score": 80.2,
+      "deep_score": 68.1,
+      "fast_issues": 13,
+      "deep_issues": 22,
+      "fast_time": 1.39,
+      "deep_time": 23.68,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "serious": 11,
+        "moderate": 8,
+        "critical": 2,
+        "minor": 1
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": true,
+      "spa_framework": "react"
+    },
+    {
+      "name": "NY Times",
+      "url": "https://www.nytimes.com/",
+      "category": "news",
+      "complexity": "complex",
+      "fast_score": 97.6,
+      "deep_score": 64.9,
+      "fast_issues": 2,
+      "deep_issues": 26,
+      "fast_time": 0.03,
+      "deep_time": 0.01,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 12,
+        "serious": 10,
+        "minor": 2,
+        "critical": 2
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": true,
+      "spa_framework": "svelte"
+    },
+    {
+      "name": "The Guardian",
+      "url": "https://www.theguardian.com/",
+      "category": "news",
+      "complexity": "complex",
+      "fast_score": 91.3,
+      "deep_score": 65.8,
+      "fast_issues": 7,
+      "deep_issues": 25,
+      "fast_time": 1.11,
+      "deep_time": 33.42,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "serious": 7,
+        "critical": 3,
+        "moderate": 13,
+        "minor": 2
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Washington Post",
+      "url": "https://www.washingtonpost.com/",
+      "category": "news",
+      "complexity": "complex",
+      "fast_score": 83.1,
+      "deep_score": 89.9,
+      "fast_issues": 1,
+      "deep_issues": 8,
+      "fast_time": 12.9,
+      "deep_time": 4.61,
+      "fast_enrichment_status": "skipped",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "serious": 4,
+        "moderate": 1,
+        "minor": 3
+      },
+      "passed": false,
+      "failure_type": "runtime_failure",
+      "runtime_failure_type": "network_error",
+      "fast_degraded": true,
+      "fast_degraded_reason": "extraction_failure",
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": true,
+      "degraded_reason": "extraction_failure",
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Hacker News",
+      "url": "https://news.ycombinator.com/",
+      "category": "news",
+      "complexity": "simple",
+      "fast_score": 77.8,
+      "deep_score": 64.5,
+      "fast_issues": 15,
+      "deep_issues": 23,
+      "fast_time": 1.96,
+      "deep_time": 16.37,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 6,
+        "minor": 4,
+        "serious": 8,
+        "critical": 5
+      },
+      "passed": false,
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Wikipedia",
+      "url": "https://www.wikipedia.org/",
+      "category": "education",
+      "complexity": "moderate",
+      "fast_score": 86.2,
+      "deep_score": 89.0,
+      "fast_issues": 9,
+      "deep_issues": 9,
+      "fast_time": 1.7,
+      "deep_time": 17.01,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 6,
+        "serious": 3
+      },
+      "passed": false,
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Khan Academy",
+      "url": "https://www.khanacademy.org/",
+      "category": "education",
+      "complexity": "complex",
+      "fast_score": 93.5,
+      "deep_score": 87.3,
+      "fast_issues": 6,
+      "deep_issues": 11,
+      "fast_time": 1.4,
+      "deep_time": 18.7,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "minor": 2,
+        "moderate": 5,
+        "critical": 1,
+        "serious": 3
+      },
+      "passed": false,
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Coursera",
+      "url": "https://www.coursera.org/",
+      "category": "education",
+      "complexity": "complex",
+      "fast_score": 93.5,
+      "deep_score": 78.0,
+      "fast_issues": 6,
+      "deep_issues": 18,
+      "fast_time": 1.45,
+      "deep_time": 29.49,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "minor": 2,
+        "moderate": 10,
+        "critical": 1,
+        "serious": 5
+      },
+      "passed": false,
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "MDN Web Docs",
+      "url": "https://developer.mozilla.org/en-US/",
+      "category": "education",
+      "complexity": "moderate",
+      "fast_score": 89.8,
+      "deep_score": 89.0,
+      "fast_issues": 7,
+      "deep_issues": 9,
+      "fast_time": 1.29,
+      "deep_time": 14.23,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 3,
+        "serious": 5,
+        "minor": 1
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Stack Overflow",
+      "url": "https://stackoverflow.com/",
+      "category": "education",
+      "complexity": "moderate",
+      "fast_score": 83.7,
+      "deep_score": 93.8,
+      "fast_issues": 12,
+      "deep_issues": 5,
+      "fast_time": 2.53,
+      "deep_time": 11.17,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "minor": 3,
+        "serious": 1,
+        "critical": 1
+      },
+      "passed": false,
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Chase",
+      "url": "https://www.chase.com/",
+      "category": "finance",
+      "complexity": "complex",
+      "fast_score": 90.6,
+      "deep_score": 82.6,
+      "fast_issues": 8,
+      "deep_issues": 15,
+      "fast_time": 1.41,
+      "deep_time": 25.43,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "serious": 6,
+        "moderate": 8,
+        "minor": 1
+      },
+      "passed": false,
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Bank of America",
+      "url": "https://www.bankofamerica.com/",
+      "category": "finance",
+      "complexity": "complex",
+      "fast_score": 88.3,
+      "deep_score": 66.5,
+      "fast_issues": 10,
+      "deep_issues": 26,
+      "fast_time": 1.18,
+      "deep_time": 33.26,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 13,
+        "minor": 2,
+        "serious": 9,
+        "critical": 2
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": true,
+      "spa_framework": "vue"
+    },
+    {
+      "name": "PayPal",
+      "url": "https://www.paypal.com/",
+      "category": "finance",
+      "complexity": "complex",
+      "fast_score": 91.4,
+      "deep_score": 85.5,
+      "fast_issues": 8,
+      "deep_issues": 13,
+      "fast_time": 0.95,
+      "deep_time": 24.35,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 7,
+        "serious": 4,
+        "minor": 2
+      },
+      "passed": false,
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Stripe",
+      "url": "https://stripe.com/",
+      "category": "finance",
+      "complexity": "moderate",
+      "fast_score": 90.5,
+      "deep_score": 83.3,
+      "fast_issues": 8,
+      "deep_issues": 15,
+      "fast_time": 1.79,
+      "deep_time": 22.13,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 10,
+        "serious": 4,
+        "minor": 1
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": true,
+      "spa_framework": "react"
+    },
+    {
+      "name": "Mint",
+      "url": "https://www.mint.com/",
+      "category": "finance",
+      "complexity": "complex",
+      "fast_score": 96.2,
+      "deep_score": 85.8,
+      "fast_issues": 3,
+      "deep_issues": 11,
+      "fast_time": 1.33,
+      "deep_time": 24.38,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 5,
+        "serious": 6
+      },
+      "passed": false,
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "WebMD",
+      "url": "https://www.webmd.com/",
+      "category": "healthcare",
+      "complexity": "complex",
+      "fast_score": 91.1,
+      "deep_score": 57.1,
+      "fast_issues": 6,
+      "deep_issues": 27,
+      "fast_time": 0.66,
+      "deep_time": 22.5,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "serious": 12,
+        "moderate": 9,
+        "critical": 4,
+        "minor": 2
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Mayo Clinic",
+      "url": "https://www.mayoclinic.org/",
+      "category": "healthcare",
+      "complexity": "moderate",
+      "fast_score": 93.5,
+      "deep_score": 66.5,
+      "fast_issues": 6,
+      "deep_issues": 23,
+      "fast_time": 0.79,
+      "deep_time": 30.02,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 7,
+        "critical": 2,
+        "serious": 13,
+        "minor": 1
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": true,
+      "spa_framework": "react"
+    },
+    {
+      "name": "Healthline",
+      "url": "https://www.healthline.com/",
+      "category": "healthcare",
+      "complexity": "moderate",
+      "fast_score": 81.1,
+      "deep_score": 69.4,
+      "fast_issues": 15,
+      "deep_issues": 25,
+      "fast_time": 1.58,
+      "deep_time": 21.72,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 10,
+        "minor": 5,
+        "serious": 9,
+        "critical": 1
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": true,
+      "spa_framework": "react"
+    },
+    {
+      "name": "CDC",
+      "url": "https://www.cdc.gov/",
+      "category": "healthcare",
+      "complexity": "moderate",
+      "fast_score": 88.3,
+      "deep_score": 68.2,
+      "fast_issues": 8,
+      "deep_issues": 23,
+      "fast_time": 1.01,
+      "deep_time": 27.43,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "serious": 11,
+        "moderate": 12
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "WHO",
+      "url": "https://www.who.int/",
+      "category": "healthcare",
+      "complexity": "moderate",
+      "fast_score": 89.0,
+      "deep_score": 75.9,
+      "fast_issues": 9,
+      "deep_issues": 17,
+      "fast_time": 1.35,
+      "deep_time": 16.71,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "serious": 10,
+        "moderate": 4,
+        "critical": 1,
+        "minor": 2
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Paul Graham Essays",
+      "url": "https://www.paulgraham.com/",
+      "category": "blog",
+      "complexity": "simple",
+      "fast_score": 87.0,
+      "deep_score": 72.2,
+      "fast_issues": 10,
+      "deep_issues": 19,
+      "fast_time": 2.4,
+      "deep_time": 11.84,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "serious": 7,
+        "moderate": 5,
+        "minor": 4,
+        "critical": 3
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "MFWS",
+      "url": "https://motherfuckingwebsite.com/",
+      "category": "blog",
+      "complexity": "simple",
+      "fast_score": 94.1,
+      "deep_score": 88.4,
+      "fast_issues": 5,
+      "deep_issues": 9,
+      "fast_time": 1.55,
+      "deep_time": 11.06,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "serious": 3,
+        "moderate": 4,
+        "minor": 2
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Better MFWS",
+      "url": "https://bettermotherfuckingwebsite.com/",
+      "category": "blog",
+      "complexity": "simple",
+      "fast_score": 83.1,
+      "deep_score": 89.9,
+      "fast_issues": 1,
+      "deep_issues": 8,
+      "fast_time": 8.35,
+      "deep_time": 38.79,
+      "fast_enrichment_status": "skipped",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "serious": 4,
+        "moderate": 1,
+        "minor": 3
+      },
+      "passed": true,
+      "failure_type": "runtime_failure",
+      "runtime_failure_type": "network_error",
+      "fast_degraded": true,
+      "fast_degraded_reason": "extraction_failure",
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": true,
+      "degraded_reason": "extraction_failure",
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Craigslist",
+      "url": "https://www.craigslist.org/",
+      "category": "blog",
+      "complexity": "simple",
+      "fast_score": 77.0,
+      "deep_score": 73.6,
+      "fast_issues": 16,
+      "deep_issues": 18,
+      "fast_time": 5.99,
+      "deep_time": 23.65,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "serious": 8,
+        "moderate": 7,
+        "critical": 2,
+        "minor": 1
+      },
+      "passed": false,
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "CNN Lite",
+      "url": "https://lite.cnn.com/",
+      "category": "blog",
+      "complexity": "simple",
+      "fast_score": 91.7,
+      "deep_score": 87.9,
+      "fast_issues": 7,
+      "deep_issues": 10,
+      "fast_time": 0.95,
+      "deep_time": 13.11,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 5,
+        "minor": 2,
+        "serious": 3
+      },
+      "passed": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    }
+  ],
+  "failure_classification": [
+    {
+      "name": "Canada.ca",
+      "url": "https://www.canada.ca/en.html",
+      "failure_type": "runtime_failure",
+      "runtime_failure_type": "network_error",
+      "score": 92.3,
+      "expected": [
+        55,
+        95
+      ],
+      "error": null,
+      "degraded": true,
+      "degraded_reason": "extraction_failure"
+    },
+    {
+      "name": "Microsoft",
+      "url": "https://www.microsoft.com/",
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "score": 78.8,
+      "expected": [
+        10,
+        70
+      ],
+      "error": null,
+      "degraded": false,
+      "degraded_reason": null
+    },
+    {
+      "name": "Apple",
+      "url": "https://www.apple.com/",
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "score": 85.0,
+      "expected": [
+        5,
+        60
+      ],
+      "error": null,
+      "degraded": false,
+      "degraded_reason": null
+    },
+    {
+      "name": "Meta",
+      "url": "https://about.meta.com/",
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "score": 78.8,
+      "expected": [
+        10,
+        60
+      ],
+      "error": null,
+      "degraded": false,
+      "degraded_reason": null
+    },
+    {
+      "name": "Amazon",
+      "url": "https://www.amazon.com/",
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "score": 73.7,
+      "expected": [
+        0,
+        50
+      ],
+      "error": null,
+      "degraded": false,
+      "degraded_reason": null
+    },
+    {
+      "name": "Etsy",
+      "url": "https://www.etsy.com/",
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "score": 91.1,
+      "expected": [
+        15,
+        65
+      ],
+      "error": null,
+      "degraded": false,
+      "degraded_reason": null
+    },
+    {
+      "name": "Best Buy",
+      "url": "https://www.bestbuy.com/",
+      "failure_type": "runtime_failure",
+      "runtime_failure_type": "network_error",
+      "score": 90.4,
+      "expected": [
+        15,
+        65
+      ],
+      "error": null,
+      "degraded": true,
+      "degraded_reason": "extraction_failure"
+    },
+    {
+      "name": "Twitter/X",
+      "url": "https://twitter.com/",
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "score": 87.2,
+      "expected": [
+        0,
+        50
+      ],
+      "error": null,
+      "degraded": false,
+      "degraded_reason": null
+    },
+    {
+      "name": "LinkedIn",
+      "url": "https://www.linkedin.com/",
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "score": 82.8,
+      "expected": [
+        10,
+        60
+      ],
+      "error": null,
+      "degraded": false,
+      "degraded_reason": null
+    },
+    {
+      "name": "Reddit",
+      "url": "https://www.reddit.com/",
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "score": 75.7,
+      "expected": [
+        0,
+        50
+      ],
+      "error": null,
+      "degraded": false,
+      "degraded_reason": null
+    },
+    {
+      "name": "Pinterest",
+      "url": "https://www.pinterest.com/",
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "score": 85.0,
+      "expected": [
+        5,
+        55
+      ],
+      "error": null,
+      "degraded": false,
+      "degraded_reason": null
+    },
+    {
+      "name": "Tumblr",
+      "url": "https://www.tumblr.com/",
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "score": 81.7,
+      "expected": [
+        10,
+        60
+      ],
+      "error": null,
+      "degraded": false,
+      "degraded_reason": null
+    },
+    {
+      "name": "Washington Post",
+      "url": "https://www.washingtonpost.com/",
+      "failure_type": "runtime_failure",
+      "runtime_failure_type": "network_error",
+      "score": 89.9,
+      "expected": [
+        15,
+        65
+      ],
+      "error": null,
+      "degraded": true,
+      "degraded_reason": "extraction_failure"
+    },
+    {
+      "name": "Hacker News",
+      "url": "https://news.ycombinator.com/",
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "score": 64.5,
+      "expected": [
+        0,
+        40
+      ],
+      "error": null,
+      "degraded": false,
+      "degraded_reason": null
+    },
+    {
+      "name": "Wikipedia",
+      "url": "https://www.wikipedia.org/",
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "score": 89.0,
+      "expected": [
+        40,
+        85
+      ],
+      "error": null,
+      "degraded": false,
+      "degraded_reason": null
+    },
+    {
+      "name": "Khan Academy",
+      "url": "https://www.khanacademy.org/",
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "score": 87.3,
+      "expected": [
+        35,
+        80
+      ],
+      "error": null,
+      "degraded": false,
+      "degraded_reason": null
+    },
+    {
+      "name": "Coursera",
+      "url": "https://www.coursera.org/",
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "score": 78.0,
+      "expected": [
+        30,
+        75
+      ],
+      "error": null,
+      "degraded": false,
+      "degraded_reason": null
+    },
+    {
+      "name": "Stack Overflow",
+      "url": "https://stackoverflow.com/",
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "score": 93.8,
+      "expected": [
+        25,
+        70
+      ],
+      "error": null,
+      "degraded": false,
+      "degraded_reason": null
+    },
+    {
+      "name": "Chase",
+      "url": "https://www.chase.com/",
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "score": 82.6,
+      "expected": [
+        20,
+        70
+      ],
+      "error": null,
+      "degraded": false,
+      "degraded_reason": null
+    },
+    {
+      "name": "PayPal",
+      "url": "https://www.paypal.com/",
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "score": 85.5,
+      "expected": [
+        30,
+        75
+      ],
+      "error": null,
+      "degraded": false,
+      "degraded_reason": null
+    },
+    {
+      "name": "Mint",
+      "url": "https://www.mint.com/",
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "score": 85.8,
+      "expected": [
+        25,
+        70
+      ],
+      "error": null,
+      "degraded": false,
+      "degraded_reason": null
+    },
+    {
+      "name": "Better MFWS",
+      "url": "https://bettermotherfuckingwebsite.com/",
+      "failure_type": "runtime_failure",
+      "runtime_failure_type": "network_error",
+      "score": 89.9,
+      "expected": [
+        50,
+        100
+      ],
+      "error": null,
+      "degraded": true,
+      "degraded_reason": "extraction_failure"
+    },
+    {
+      "name": "Craigslist",
+      "url": "https://www.craigslist.org/",
+      "failure_type": "score_out_of_range",
+      "runtime_failure_type": null,
+      "score": 73.6,
+      "expected": [
+        20,
+        70
+      ],
+      "error": null,
+      "degraded": false,
+      "degraded_reason": null
+    }
+  ],
+  "runtime_failure_classification": [
+    {
+      "name": "Canada.ca",
+      "url": "https://www.canada.ca/en.html",
+      "failure_type": "network_error",
+      "error": null,
+      "degraded_reason": "extraction_failure"
+    },
+    {
+      "name": "Best Buy",
+      "url": "https://www.bestbuy.com/",
+      "failure_type": "network_error",
+      "error": null,
+      "degraded_reason": "extraction_failure"
+    },
+    {
+      "name": "Washington Post",
+      "url": "https://www.washingtonpost.com/",
+      "failure_type": "network_error",
+      "error": null,
+      "degraded_reason": "extraction_failure"
+    },
+    {
+      "name": "Better MFWS",
+      "url": "https://bettermotherfuckingwebsite.com/",
+      "failure_type": "network_error",
+      "error": null,
+      "degraded_reason": "extraction_failure"
+    }
+  ],
+  "failures": [
+    {
+      "name": "Canada.ca",
+      "url": "https://www.canada.ca/en.html",
+      "failure_type": "runtime_failure",
+      "score": 92.3,
+      "expected": [
+        55,
+        95
+      ]
+    },
+    {
+      "name": "Microsoft",
+      "url": "https://www.microsoft.com/",
+      "failure_type": "score_out_of_range",
+      "score": 78.8,
+      "expected": [
+        10,
+        70
+      ]
+    },
+    {
+      "name": "Apple",
+      "url": "https://www.apple.com/",
+      "failure_type": "score_out_of_range",
+      "score": 85.0,
+      "expected": [
+        5,
+        60
+      ]
+    },
+    {
+      "name": "Meta",
+      "url": "https://about.meta.com/",
+      "failure_type": "score_out_of_range",
+      "score": 78.8,
+      "expected": [
+        10,
+        60
+      ]
+    },
+    {
+      "name": "Amazon",
+      "url": "https://www.amazon.com/",
+      "failure_type": "score_out_of_range",
+      "score": 73.7,
+      "expected": [
+        0,
+        50
+      ]
+    },
+    {
+      "name": "Etsy",
+      "url": "https://www.etsy.com/",
+      "failure_type": "score_out_of_range",
+      "score": 91.1,
+      "expected": [
+        15,
+        65
+      ]
+    },
+    {
+      "name": "Best Buy",
+      "url": "https://www.bestbuy.com/",
+      "failure_type": "runtime_failure",
+      "score": 90.4,
+      "expected": [
+        15,
+        65
+      ]
+    },
+    {
+      "name": "Twitter/X",
+      "url": "https://twitter.com/",
+      "failure_type": "score_out_of_range",
+      "score": 87.2,
+      "expected": [
+        0,
+        50
+      ]
+    },
+    {
+      "name": "LinkedIn",
+      "url": "https://www.linkedin.com/",
+      "failure_type": "score_out_of_range",
+      "score": 82.8,
+      "expected": [
+        10,
+        60
+      ]
+    },
+    {
+      "name": "Reddit",
+      "url": "https://www.reddit.com/",
+      "failure_type": "score_out_of_range",
+      "score": 75.7,
+      "expected": [
+        0,
+        50
+      ]
+    },
+    {
+      "name": "Pinterest",
+      "url": "https://www.pinterest.com/",
+      "failure_type": "score_out_of_range",
+      "score": 85.0,
+      "expected": [
+        5,
+        55
+      ]
+    },
+    {
+      "name": "Tumblr",
+      "url": "https://www.tumblr.com/",
+      "failure_type": "score_out_of_range",
+      "score": 81.7,
+      "expected": [
+        10,
+        60
+      ]
+    },
+    {
+      "name": "Washington Post",
+      "url": "https://www.washingtonpost.com/",
+      "failure_type": "runtime_failure",
+      "score": 89.9,
+      "expected": [
+        15,
+        65
+      ]
+    },
+    {
+      "name": "Hacker News",
+      "url": "https://news.ycombinator.com/",
+      "failure_type": "score_out_of_range",
+      "score": 64.5,
+      "expected": [
+        0,
+        40
+      ]
+    },
+    {
+      "name": "Wikipedia",
+      "url": "https://www.wikipedia.org/",
+      "failure_type": "score_out_of_range",
+      "score": 89.0,
+      "expected": [
+        40,
+        85
+      ]
+    },
+    {
+      "name": "Khan Academy",
+      "url": "https://www.khanacademy.org/",
+      "failure_type": "score_out_of_range",
+      "score": 87.3,
+      "expected": [
+        35,
+        80
+      ]
+    },
+    {
+      "name": "Coursera",
+      "url": "https://www.coursera.org/",
+      "failure_type": "score_out_of_range",
+      "score": 78.0,
+      "expected": [
+        30,
+        75
+      ]
+    },
+    {
+      "name": "Stack Overflow",
+      "url": "https://stackoverflow.com/",
+      "failure_type": "score_out_of_range",
+      "score": 93.8,
+      "expected": [
+        25,
+        70
+      ]
+    },
+    {
+      "name": "Chase",
+      "url": "https://www.chase.com/",
+      "failure_type": "score_out_of_range",
+      "score": 82.6,
+      "expected": [
+        20,
+        70
+      ]
+    },
+    {
+      "name": "PayPal",
+      "url": "https://www.paypal.com/",
+      "failure_type": "score_out_of_range",
+      "score": 85.5,
+      "expected": [
+        30,
+        75
+      ]
+    },
+    {
+      "name": "Mint",
+      "url": "https://www.mint.com/",
+      "failure_type": "score_out_of_range",
+      "score": 85.8,
+      "expected": [
+        25,
+        70
+      ]
+    },
+    {
+      "name": "Better MFWS",
+      "url": "https://bettermotherfuckingwebsite.com/",
+      "failure_type": "runtime_failure",
+      "score": 89.9,
+      "expected": [
+        50,
+        100
+      ]
+    },
+    {
+      "name": "Craigslist",
+      "url": "https://www.craigslist.org/",
+      "failure_type": "score_out_of_range",
+      "score": 73.6,
+      "expected": [
+        20,
+        70
+      ]
+    }
+  ],
+  "errors": [],
+  "recommendations": [
+    {
+      "priority": "HIGH",
+      "area": "Browser Engine",
+      "issue": "4 sites had degraded scans (browser failure)",
+      "action": "Improve Playwright stability, add retry logic, handle CSP/Cloudflare better"
+    },
+    {
+      "priority": "HIGH",
+      "area": "Complex Site Support",
+      "issue": "15 complex sites failed",
+      "action": "Improve SPA detection, handle React/Angular hydration, wait for dynamic content"
+    },
+    {
+      "priority": "MEDIUM",
+      "area": "E-commerce Support",
+      "issue": "2 e-commerce sites failed",
+      "action": "Improve handling of lazy-loaded products, modal dialogs, cart systems"
+    },
+    {
+      "priority": "MEDIUM",
+      "area": "Social Media Support",
+      "issue": "5 social media sites failed",
+      "action": "Handle infinite scroll, embedded media, dynamic feeds"
+    }
+  ]
+}

@@ -17,11 +17,14 @@ import time
 import uuid
 from pathlib import Path
 from typing import Any, Optional
+from urllib.parse import urlparse
 
 import httpx
 
 from app.config import QUALITY_GATES, SEVERITY_WEIGHTS, SCORING_CONFIG, settings
 from app.config import PRECISION_PROFILES
+from app.audit.dynamic_handling import resolve_adaptive_timeouts, stable_request_headers
+from app.audit.failure_taxonomy import classify_failure_reason, normalize_reason, reason_message
 from app.services.static_checks import StaticChecker
 from app.services.heuristics import HeuristicAnalyzer
 from app.services.normalizer import normalize_all
@@ -49,7 +52,20 @@ _enriched_results: dict[str, dict] = {}
 _active_audits = 0
 _MAX_CONCURRENT_AUDITS = 20
 
+_FETCH_DOMAIN_CONCURRENCY_LIMIT = 2
+_FETCH_DOMAIN_SEMAPHORES: dict[str, asyncio.Semaphore] = {}
+_FETCH_DOMAIN_LOCK = asyncio.Lock()
+_FETCH_PARTIAL_BODY_LIMIT = 200_000
+
 _RULE_QUALITY_POLICY_CACHE: dict[str, Any] | None = None
+
+
+def _classify_degraded_reason_from_error(exc: Exception | str | None) -> str:
+    return classify_failure_reason(exc)
+
+
+def _degradation_reason_message(reason_code: str, detail: str | None = None) -> str:
+    return reason_message(reason_code, detail)
 
 
 def _single_page_site_result(*, score: float, total_issues: int, url: str) -> dict[str, Any]:
@@ -111,6 +127,17 @@ def _enforce_audit_invariants(result: dict[str, Any]) -> dict[str, Any]:
 
     pages_audited = int(result.get("pages_audited") or 0)
     degraded_mode = bool(result.get("degraded_mode", False))
+    degraded_reason = normalize_reason(result.get("degraded_reason"))
+
+    if degraded_mode and not degraded_reason:
+        fallback_reason = _classify_degraded_reason_from_error(result.get("degradation_reason"))
+        result["degraded_reason"] = fallback_reason
+        if not result.get("degradation_reason"):
+            result["degradation_reason"] = _degradation_reason_message(fallback_reason)
+    elif degraded_reason:
+        result["degraded_reason"] = degraded_reason
+        if not result.get("degradation_reason"):
+            result["degradation_reason"] = _degradation_reason_message(degraded_reason)
 
     if pages_audited > 0:
         score_value = result.get("score")
@@ -134,12 +161,15 @@ def _enforce_audit_invariants(result: dict[str, Any]) -> dict[str, Any]:
             result["quality_gates"] = quality
 
         if result.get("enrichment_status") == "failed":
-            logger.error(
-                "Invariant violation: base audit marked enrichment_status=failed despite pages_audited=%s. "
-                "Coercing to pending.",
-                pages_audited,
-            )
-            result["enrichment_status"] = "pending"
+            audit_id = str(result.get("audit_id") or "")
+            task = _enrichment_tasks.get(audit_id) if audit_id else None
+            if task and not task.done():
+                logger.error(
+                    "Invariant violation: base audit marked enrichment_status=failed despite pages_audited=%s while "
+                    "a background enrichment task is still active. Coercing to pending.",
+                    pages_audited,
+                )
+                result["enrichment_status"] = "pending"
 
         site_result = result.get("site_result")
         if not isinstance(site_result, dict):
@@ -175,6 +205,7 @@ def _upgrade_cached_deep_result(result: dict, requested_mode: str) -> dict:
         return result
 
     result["degraded_mode"] = True
+    result["degraded_reason"] = normalize_reason(result.get("degraded_reason")) or "extraction_failure"
     result["degradation_reason"] = (
         result.get("degradation_reason")
         or "Deep scan requested, but browser engines did not execute. Results are based on static HTML analysis only."
@@ -330,45 +361,175 @@ def _merge_profile_with_policy(profile_name: str, profile: dict[str, Any]) -> di
     return merged
 
 
-async def _fetch_html(url: str, timeout: float = 15.0) -> Optional[str]:
-    """Fetch page HTML via httpx with resilient handling for bot-blocking and TLS edge cases."""
-    headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-            "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-        ),
-        "Accept-Language": "en-US,en;q=0.9",
+async def _fetch_html(url: str, timeout: float = 15.0) -> tuple[Optional[str], str, dict[str, Any]]:
+    """Fetch page HTML with selective retry and lightweight fallback.
+
+    Returns tuple: (html_or_none, failure_reason_if_any, fetch_metadata)
+    """
+
+    def _domain_key(raw_url: str) -> str:
+        try:
+            return (urlparse(raw_url).hostname or "").lower() or "unknown"
+        except Exception:
+            return "unknown"
+
+    async def _domain_semaphore(raw_url: str) -> asyncio.Semaphore:
+        key = _domain_key(raw_url)
+        async with _FETCH_DOMAIN_LOCK:
+            semaphore = _FETCH_DOMAIN_SEMAPHORES.get(key)
+            if semaphore is None:
+                semaphore = asyncio.Semaphore(_FETCH_DOMAIN_CONCURRENCY_LIMIT)
+                _FETCH_DOMAIN_SEMAPHORES[key] = semaphore
+            return semaphore
+
+    def _is_retryable_exception_text(text: str) -> bool:
+        retryable_tokens = (
+            "dns",
+            "getaddrinfo",
+            "name not resolved",
+            "name resolution",
+            "temporary failure in name resolution",
+            "econnreset",
+            "connection reset",
+            "connection aborted",
+            "server disconnected",
+            "remote protocol error",
+            "network is unreachable",
+            "timed out",
+            "timeout",
+            "transient",
+        )
+        return any(token in text for token in retryable_tokens)
+
+    def _is_blocked_status(status_code: int | None) -> bool:
+        return status_code in {401, 403, 407, 429}
+
+    def _is_retryable_http_status(status_code: int | None) -> bool:
+        if status_code is None:
+            return False
+        return status_code in {408, 425, 500, 502, 503, 504, 520, 521, 522, 523, 524}
+
+    def _coerce_partial_html(body: str) -> str:
+        trimmed = (body or "").strip()
+        if not trimmed:
+            return ""
+        return trimmed[:_FETCH_PARTIAL_BODY_LIMIT]
+
+    async def _attempt(
+        *,
+        attempt_timeout: float,
+        lightweight: bool,
+    ) -> tuple[Optional[str], Optional[int], str, bool]:
+        headers = stable_request_headers(url)
+        timeout_cfg = httpx.Timeout(
+            connect=max(2.0, min(5.0, attempt_timeout * 0.45)),
+            read=max(2.0, attempt_timeout),
+            write=max(2.0, min(5.0, attempt_timeout * 0.35)),
+            pool=max(1.5, min(3.0, attempt_timeout * 0.25)),
+        )
+
+        try:
+            async with httpx.AsyncClient(timeout=timeout_cfg, follow_redirects=True, headers=headers) as client:
+                if lightweight:
+                    stream_headers = dict(headers)
+                    stream_headers["Range"] = f"bytes=0-{_FETCH_PARTIAL_BODY_LIMIT - 1}"
+                    async with client.stream("GET", url, headers=stream_headers) as response:
+                        status_code = int(response.status_code)
+                        chunks: list[str] = []
+                        bytes_read = 0
+                        async for chunk in response.aiter_text():
+                            if not chunk:
+                                continue
+                            chunks.append(chunk)
+                            bytes_read += len(chunk.encode("utf-8", errors="ignore"))
+                            if bytes_read >= _FETCH_PARTIAL_BODY_LIMIT:
+                                break
+                        body = "".join(chunks)
+                else:
+                    response = await client.get(url)
+                    status_code = int(response.status_code)
+                    body = response.text or ""
+
+            if status_code >= 400:
+                logger.warning("Fetch returned status=%s for %s", status_code, url)
+                if body.strip():
+                    return _coerce_partial_html(body), status_code, "", False
+                if _is_blocked_status(status_code):
+                    return None, status_code, "blocked_request", False
+                return None, status_code, "network_error", False
+
+            if body.strip():
+                return _coerce_partial_html(body), status_code, "", False
+
+            return None, status_code, "extraction_failure", False
+        except Exception as exc:
+            error_text = str(exc).lower()
+            reason = classify_failure_reason(exc)
+            retryable = bool(reason != "blocked_request" and _is_retryable_exception_text(error_text))
+            return None, None, reason, retryable
+
+    effective_timeout = max(4.0, float(timeout))
+    retry_timeout = max(3.0, min(effective_timeout * 0.6, effective_timeout - 1.0))
+    lightweight_timeout = max(2.5, min(4.5, effective_timeout * 0.4))
+
+    meta: dict[str, Any] = {
+        "retry_used": False,
+        "partial_fallback_used": False,
+        "status_code": None,
+        "domain": _domain_key(url),
     }
 
-    async def _attempt(verify: bool) -> Optional[str]:
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, headers=headers, verify=verify) as client:
-            response = await client.get(url)
-            body = response.text or ""
+    semaphore = await _domain_semaphore(url)
+    async with semaphore:
+        body, status_code, reason, retryable_exc = await _attempt(
+            attempt_timeout=effective_timeout,
+            lightweight=False,
+        )
+        meta["status_code"] = status_code
 
-            if response.status_code >= 400:
-                # Do not hard-fail if server returned HTML body (e.g. anti-bot interstitial).
-                logger.warning("Fetch returned status=%s for %s", response.status_code, url)
-                if body.strip():
-                    return body
-                return None
+        if body:
+            return body, "", meta
 
-            return body
+        blocked_status = _is_blocked_status(status_code)
+        should_retry = (not blocked_status) and (retryable_exc or _is_retryable_http_status(status_code))
+        if should_retry:
+            meta["retry_used"] = True
+            body, retry_status, retry_reason, _ = await _attempt(
+                attempt_timeout=retry_timeout,
+                lightweight=False,
+            )
+            if retry_status is not None:
+                status_code = retry_status
+                meta["status_code"] = retry_status
+            if body:
+                return body, "", meta
+            if retry_reason:
+                reason = retry_reason
+            blocked_status = _is_blocked_status(status_code)
 
-    try:
-        return await _attempt(True)
-    except Exception as e:
-        err = str(e)
-        is_tls_error = "certificate verify failed" in err.lower() or "ssl" in err.lower()
-        if is_tls_error:
-            logger.warning("TLS verification failed for %s; retrying with verify=False.", url)
-            try:
-                return await _attempt(False)
-            except Exception as retry_exc:
-                logger.error("Fetch retry failed for %s: %s", url, retry_exc)
-                return None
+        if not blocked_status:
+            partial_body, partial_status, partial_reason, _ = await _attempt(
+                attempt_timeout=lightweight_timeout,
+                lightweight=True,
+            )
+            if partial_status is not None:
+                status_code = partial_status
+                meta["status_code"] = partial_status
+            if partial_body:
+                meta["partial_fallback_used"] = True
+                return partial_body, "", meta
+            if partial_reason:
+                reason = partial_reason
 
-        logger.error("Failed to fetch %s: %s", url, e)
-        return None
+    if not reason:
+        if _is_blocked_status(status_code):
+            reason = "blocked_request"
+        elif _is_retryable_http_status(status_code):
+            reason = "network_error"
+        else:
+            reason = "network_error"
+
+    return None, reason, meta
 
 
 async def _run_axe_core_via_playwright(page) -> list[dict]:
@@ -392,6 +553,7 @@ async def run_audit(
     enable_enrichment: bool = True,
     max_enrich_issues: int = 20,
     enable_cognitive: bool = True,
+    await_enrichment: bool = False,
 ) -> dict:
     """
     Run the full accessibility audit pipeline.
@@ -402,6 +564,10 @@ async def run_audit(
         - ``fast``:    httpx fetch -> static + heuristics. No browser/LLM by default. (~5-10s)
         - ``deep``:    Playwright render -> all engines + cognitive + RAG. (~30-120s)
         - ``max``:     Deep mode + explicit interaction/scroll exploration layer.
+
+        Enrichment mode:
+        - ``await_enrichment=False`` (default): queue enrichment in background and return immediately.
+        - ``await_enrichment=True``: block until enrichment completes/fails (recommended for CLI benchmarks).
     """
     global _active_audits
     start_time = time.time()
@@ -429,7 +595,7 @@ async def run_audit(
         return _finalize_result(failure, status="failed")
     
     # ── Step 0a: Check URL Cache ───────────────────────────────
-    url_hash = get_url_hash(url, scan_mode)
+    url_hash = get_url_hash(url, scan_mode, precision_profile)
     cached_res = check_cache(url_hash, tier="page")
     if cached_res:
         cached_res = _upgrade_cached_deep_result(cached_res, scan_mode)
@@ -441,8 +607,18 @@ async def run_audit(
             return _finalize_result(cached_res, status="cached", persist_db=False)
 
     degraded_mode = False
-    skipped_components = []
+    degraded_reason = None
     degradation_reason = None
+    skipped_components = []
+
+    def _mark_degraded(reason_code: str, message: Optional[str] = None) -> None:
+        nonlocal degraded_mode, degraded_reason, degradation_reason
+        normalized_reason = normalize_reason(reason_code) or classify_failure_reason(reason_code)
+        degraded_mode = True
+        if not degraded_reason:
+            degraded_reason = normalized_reason
+        if not degradation_reason:
+            degradation_reason = message or _degradation_reason_message(normalized_reason)
 
     # ── Step 0b: Global Backpressure Guard ─────────────────────
     _active_audits += 1
@@ -450,9 +626,8 @@ async def run_audit(
         if scan_mode == "deep":
             logger.warning(f"⚠️ Backpressure active ({_active_audits} audits). Auto-degrading to fast mode.")
             scan_mode = "fast"
-            degraded_mode = True
+            _mark_degraded("extraction_failure", "System under heavy load. Auto-degraded to fast mode.")
             skipped_components.extend(["browser_probes", "axe-core", "cognitive"])
-            degradation_reason = "System under heavy load. Auto-degraded to fast mode."
 
     try:
         engines_used = []
@@ -471,6 +646,16 @@ async def run_audit(
             if scan_mode in ("fast", "minimal")
             else QUALITY_GATES["runtime"]["deep_max_seconds"]
         )
+
+        adaptive_timeout_policy = resolve_adaptive_timeouts(
+            url,
+            "fast" if scan_mode in {"fast", "minimal"} else "deep",
+            page_timeout_seconds=15 if scan_mode in {"fast", "minimal"} else 30,
+            network_idle_timeout_ms=12000,
+            ready_state_timeout_ms=5000,
+        )
+        fetch_timeout = float(adaptive_timeout_policy.get("page_timeout_seconds", 10))
+        browser_timeout_ms = int(float(adaptive_timeout_policy.get("page_timeout_seconds", 30)) * 1000.0)
         
         html = None
         static_issues = []
@@ -482,13 +667,14 @@ async def run_audit(
 
         # ── Step 1: Fetch / Render page ────────────────────────────
         browser_probe_metadata = {}
+        fetch_reliability_meta: dict[str, Any] = {}
         
         if scan_mode in {"deep", "max"}:
             # Try Playwright for deep scan
             try:
                 from app.services.browser_probes import BrowserProber, _PLAYWRIGHT_AVAILABLE
                 if _PLAYWRIGHT_AVAILABLE:
-                    prober = BrowserProber(url, timeout=30000, max_retries=2)
+                    prober = BrowserProber(url, timeout=browser_timeout_ms, max_retries=1)
                     probe_result = await prober.run_all(scan_mode=scan_mode)
                     
                     # Handle both old (2-tuple) and new (3-tuple) return signatures
@@ -520,26 +706,26 @@ async def run_audit(
                             )
                 else:
                     logger.info("Playwright not available - falling back to httpx for %s scan", scan_mode)
-                    degraded_mode = True
+                    _mark_degraded("extraction_failure", "Playwright rendering engine is unavailable.")
                     skipped_components.extend(["browser_probes", "axe-core"])
-                    if not degradation_reason:
-                        degradation_reason = "Playwright rendering engine is unavailable."
             except Exception as e:
                 logger.warning(f"Playwright probing failed: {e}")
-                degraded_mode = True
+                reason_code = _classify_degraded_reason_from_error(e)
+                _mark_degraded(reason_code, _degradation_reason_message(reason_code, str(e)))
                 skipped_components.extend(["browser_probes", "axe-core"])
-                if not degradation_reason:
-                    degradation_reason = f"Browser engine failed: {e}"
 
         # Fallback: fetch with httpx if no rendered HTML yet
         if not html:
-            html = await _fetch_html(url, timeout=min(15.0, max_runtime))
+            html, fetch_reason, fetch_reliability_meta = await _fetch_html(
+                url,
+                timeout=min(fetch_timeout, float(max_runtime)),
+            )
+            if not html and fetch_reason:
+                _mark_degraded(fetch_reason, _degradation_reason_message(fetch_reason, "content_fetch"))
         
         if not html:
-            degraded_mode = True
+            _mark_degraded(degraded_reason or "network_error", "Unable to fetch rendered HTML. Returned safe degraded result.")
             skipped_components.extend(["content_fetch"])
-            if not degradation_reason:
-                degradation_reason = "Unable to fetch rendered HTML. Returned safe degraded result."
 
             fallback_issue = {
                 "issue_id": hashlib.sha256(f"{url}|fetch-unavailable".encode()).hexdigest()[:16],
@@ -591,6 +777,7 @@ async def run_audit(
                 "pages_discovered": 1,
                 "pages_audited": 1,
                 "degraded_mode": True,
+                "degraded_reason": degraded_reason,
                 "skipped_components": sorted(set(skipped_components)),
                 "degradation_reason": degradation_reason,
                 "site_result": _single_page_site_result(score=fallback_score, total_issues=1, url=url),
@@ -598,7 +785,7 @@ async def run_audit(
             return _finalize_result(failure, status="completed")
 
         # ── Step 1.5: Check Structure / DOM Cache ─────────────────
-        dom_hash = get_dom_hash(clean_html_for_hash(html), scan_mode)
+        dom_hash = get_dom_hash(clean_html_for_hash(html), scan_mode, precision_profile)
         cached_dom_res = check_cache(dom_hash, tier="dom")
         if cached_dom_res:
             cached_dom_res = _upgrade_cached_deep_result(cached_dom_res, scan_mode)
@@ -637,15 +824,17 @@ async def run_audit(
                 if not _PLAYWRIGHT_AVAILABLE:
                     return [], "axe-core", {"executed": False}
                 try:
+                    stage_timeout = max(8.0, min(20.0, (float(browser_timeout_ms) / 1000.0) + 2.0))
+                    page_goto_timeout = max(7000, min(18000, int(browser_timeout_ms) - 3000))
                     # Circuit breaker & backpressure guard (25s max wait)
-                    async with asyncio.timeout(25):
+                    async with asyncio.timeout(stage_timeout):
                         async with _browser_semaphore:
                             from playwright.async_api import async_playwright
                             async with async_playwright() as p:
                                 browser = await p.chromium.launch(headless=True)
                                 page = await browser.new_page()
                                 try:
-                                    await page.goto(url, timeout=20000, wait_until="domcontentloaded")
+                                    await page.goto(url, timeout=page_goto_timeout, wait_until="domcontentloaded")
                                     v = await _run_axe_core_via_playwright(page)
                                     return v, "axe-core", {"executed": True}
                                 finally:
@@ -686,31 +875,52 @@ async def run_audit(
         if scan_mode in {"deep", "max"}:
             used_set = set(engines_used)
             if "browser-probe" not in used_set and "axe-core" not in used_set:
-                degraded_mode = True
+                _mark_degraded(
+                    "extraction_failure",
+                    "Deep/max scan requested, but browser engines did not execute. Results are based on static HTML analysis only.",
+                )
                 skipped_components.extend(["browser_probes", "axe-core"])
-                if not degradation_reason:
-                    degradation_reason = (
-                        "Deep/max scan requested, but browser engines did not execute. "
-                        "Results are based on static HTML analysis only."
-                    )
                 logger.warning("%s scan degraded to static-only path (no browser engines executed).", scan_mode.upper())
 
         ttfi_ms = int((time.time() - start_time) * 1000)
 
         # ── Step 3: Normalize → Dedup → Confidence ────────────────
-        all_issues = normalize_all(
-            static_issues=static_issues,
-            heuristic_issues=heuristic_issues,
-            browser_issues=browser_issues,
-            axe_issues=axe_violations,
-            url=url,
-        )
-        
+        try:
+            all_issues = normalize_all(
+                static_issues=static_issues,
+                heuristic_issues=heuristic_issues,
+                browser_issues=browser_issues,
+                axe_issues=axe_violations,
+                url=url,
+            )
+        except Exception as e:
+            logger.error("Normalization failed: %s", e)
+            _mark_degraded("extraction_failure", _degradation_reason_message("extraction_failure", "normalization"))
+            skipped_components.append("normalizer")
+            all_issues = [
+                *list(static_issues or []),
+                *list(heuristic_issues or []),
+                *list(browser_issues or []),
+                *list(axe_violations or []),
+            ]
+
         # Deduplicate
-        deduped_issues = deduplicate(all_issues)
-        
+        try:
+            deduped_issues = deduplicate(all_issues)
+        except Exception as e:
+            logger.error("Deduplication failed: %s", e)
+            _mark_degraded("extraction_failure", _degradation_reason_message("extraction_failure", "deduplication"))
+            skipped_components.append("dedup")
+            deduped_issues = list(all_issues)
+
         # Apply confidence scoring
-        scored_issues = apply_confidence_rules(deduped_issues, html)
+        try:
+            scored_issues = apply_confidence_rules(deduped_issues, html)
+        except Exception as e:
+            logger.error("Confidence scoring failed: %s", e)
+            _mark_degraded("extraction_failure", _degradation_reason_message("extraction_failure", "confidence"))
+            skipped_components.append("confidence")
+            scored_issues = list(deduped_issues)
         
         # ── Step 4: Cognitive checks (deep mode only) ──────────────
         if scan_mode in {"deep", "max"} and enable_cognitive:
@@ -743,6 +953,7 @@ async def run_audit(
         # ── Step 6: RAG Enrichment (Audit Mastery) ────────────────
         audit_id = str(uuid.uuid4())
         enrichment_status = "complete"
+        enrichment_meta: dict[str, Any] = {}
 
         if enable_enrichment:
             enrichment_status = "pending"
@@ -795,10 +1006,30 @@ async def run_audit(
                         )
                     except Exception as exc:
                         logger.error("Failed to persist failed enrichment payload for %s: %s", aid, exc)
+                finally:
+                    _enrichment_tasks.pop(aid, None)
 
-            # Fire and forget
-            task = asyncio.create_task(run_enrichment_task(audit_id, scored_issues.copy(), max_enrich_issues))
-            _enrichment_tasks[audit_id] = task
+            if await_enrichment:
+                await run_enrichment_task(audit_id, scored_issues.copy(), max_enrich_issues)
+                enriched_payload = _enriched_results.get(audit_id, {})
+                final_status = str(enriched_payload.get("status", "pending")).lower()
+                payload_meta = enriched_payload.get("meta")
+                if isinstance(payload_meta, dict):
+                    enrichment_meta = payload_meta
+
+                if final_status == "complete":
+                    enriched_issues = enriched_payload.get("issues")
+                    if isinstance(enriched_issues, list):
+                        scored_issues = enriched_issues
+                    enrichment_status = "complete"
+                elif final_status == "failed":
+                    enrichment_status = "failed"
+                else:
+                    enrichment_status = "pending"
+            else:
+                # Fire and forget for API mode.
+                task = asyncio.create_task(run_enrichment_task(audit_id, scored_issues.copy(), max_enrich_issues))
+                _enrichment_tasks[audit_id] = task
 
         # ── Step 7: Calculate score (capped, per-rule) ─────────────
         score, score_explanation = _calculate_score(scored_issues, degraded_mode=degraded_mode)
@@ -810,7 +1041,7 @@ async def run_audit(
             url=url,
             scan_mode=scan_mode,
             score=score,
-            issues=scored_issues,  # Returning base unenriched issues immediately
+            issues=scored_issues,
             groups=groups,
             cognitive_scores=cognitive_scores,
             scan_time=scan_time,
@@ -822,6 +1053,7 @@ async def run_audit(
             "runtime_limit": max_runtime,
             "runtime_actual": round(scan_time, 2),
             "runtime_passed": scan_time <= max_runtime,
+            "adaptive_timeout_policy": adaptive_timeout_policy,
             "engines_used": engines_used,
             "total_before_dedup": len(all_issues),
             "total_after_dedup": len(deduped_issues),
@@ -832,6 +1064,22 @@ async def run_audit(
             "ttfi_ms": ttfi_ms,
             "active_audits": _active_audits,
         }
+
+        if fetch_reliability_meta:
+            quality_gates["fetch_reliability"] = fetch_reliability_meta
+
+        if enrichment_meta:
+            llm_meta = enrichment_meta.get("llm") if isinstance(enrichment_meta, dict) else None
+            budget_meta = enrichment_meta.get("budget") if isinstance(enrichment_meta, dict) else None
+            retrieval_debug = enrichment_meta.get("retrieval_debug") if isinstance(enrichment_meta, dict) else None
+            quality_gates["enrichment_observability"] = {
+                "llm_calls": int((llm_meta or {}).get("calls", 0) or 0),
+                "llm_retries": int((llm_meta or {}).get("retries", 0) or 0),
+                "token_budget_used": int((budget_meta or {}).get("tokens_used", 0) or 0),
+                "cost_budget_used": float((budget_meta or {}).get("cost_used", 0.0) or 0.0),
+                "budget_exhausted": bool((budget_meta or {}).get("budget_exhausted", False)),
+                "retrieval_debug_records": len(retrieval_debug) if isinstance(retrieval_debug, list) else 0,
+            }
 
         if scan_mode == "max":
             quality_gates["max_mode_validation"] = {
@@ -890,6 +1138,7 @@ async def run_audit(
             "expected_score_after_fix": round(expected_score_after_fix, 1),
             "score_improvement": round(score_improvement, 1),
             "degraded_mode": degraded_mode,
+            "degraded_reason": degraded_reason,
             "skipped_components": list(set(skipped_components)),
             "degradation_reason": degradation_reason,
             "cognitive_scores": cognitive_scores,
@@ -905,6 +1154,7 @@ async def run_audit(
             "precision_profile_telemetry": profile_telemetry,
             "rule_activity": static_rule_activity,
             "enrichment_status": enrichment_status,
+            "enrichment_meta": enrichment_meta,
             "audit_id": audit_id,
             "site_result": _single_page_site_result(score=score, total_issues=len(scored_issues), url=url),
             # World-class SPA detection metadata

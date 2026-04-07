@@ -31,8 +31,8 @@ import json
 import os
 import sys
 from pathlib import Path
-import os; sys.path.insert(0, os.path.abspath('.')); import app.config
-app.config.PAGE_LEVEL_RULES.clear()
+
+sys.path.insert(0, os.path.abspath("."))
 
 with open('evaluation/act_rule_mapping.json') as _f:
     ACT_MAPPING = json.load(_f)

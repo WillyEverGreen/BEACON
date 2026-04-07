@@ -2,6 +2,7 @@
 Page-Level and DOM-Level Caching.
 Short-circuits repeated and unchanged page audits to eliminate redundant processing.
 """
+import copy
 import hashlib
 import json
 import logging
@@ -18,12 +19,21 @@ CACHE_FILE = Path(__file__).resolve().parents[1] / "data" / "page_cache.json"
 _page_cache = {}
 _MAX_CACHE_ENTRIES = 100
 
+
+def _safe_copy(value):
+    try:
+        return copy.deepcopy(value)
+    except Exception:
+        return value
+
 def _load_cache():
     global _page_cache
     if CACHE_FILE.exists():
         try:
             with CACHE_FILE.open("r", encoding="utf-8") as f:
                 _page_cache = json.load(f)
+            if not isinstance(_page_cache, dict):
+                _page_cache = {}
         except Exception as e:
             logger.error(f"Failed to load Page Cache: {e}")
             _page_cache = {}
@@ -57,6 +67,7 @@ def _evict_oldest():
     evict_count = len(_page_cache) - _MAX_CACHE_ENTRIES
     for key in sorted_keys[:evict_count]:
         _page_cache.pop(key, None)
+    _inc_counter("cache_evictions")
     logger.info(f"Page Cache evicted {evict_count} oldest entries (max {_MAX_CACHE_ENTRIES})")
 
 
@@ -106,20 +117,28 @@ def check_cache(cache_key: str, max_age_seconds: int = 86400, *, tier: str = "pa
         _inc_counter(f"{tier_key}_misses")
         return None
 
+    if not isinstance(entry, dict) or "result" not in entry:
+        _page_cache.pop(cache_key, None)
+        _inc_counter("cache_corrupt_entries")
+        _inc_counter(f"{tier_key}_misses")
+        return None
+
     age = time.time() - entry.get("timestamp", 0)
     if age > max_age_seconds:
         _page_cache.pop(cache_key, None)
+        _inc_counter("cache_stale_purges")
         _inc_counter(f"{tier_key}_misses")
         return None
 
     _inc_counter(f"{tier_key}_hits")
-    return entry.get("result")
+    return _safe_copy(entry.get("result"))
 
 def save_to_cache(url_hash: str, dom_hash: str, result: dict):
     """Store audit result under both URL and DOM hashes."""
+    safe_result = _safe_copy(result)
     entry = {
         "timestamp": time.time(),
-        "result": result
+        "result": safe_result
     }
     _page_cache[url_hash] = entry
     _inc_counter("page_writes")

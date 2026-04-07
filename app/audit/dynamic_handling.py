@@ -9,12 +9,14 @@ from urllib.parse import urlparse
 from app.audit.exploration import auth_fallback_urls
 
 
+STABLE_AUDIT_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+)
+
+
 _ANTI_BOT_USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_7_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_7_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Safari/605.1.15",
+    STABLE_AUDIT_USER_AGENT,
 ]
 
 _TRACKER_HOST_PATTERNS = (
@@ -28,6 +30,48 @@ _TRACKER_HOST_PATTERNS = (
     "mixpanel.com",
     "segment.io",
     "intercom.io",
+)
+
+_HEAVY_HOST_HINTS = (
+    "facebook.",
+    "instagram.",
+    "x.com",
+    "twitter.",
+    "linkedin.",
+    "reddit.",
+    "pinterest.",
+    "amazon.",
+    "target.",
+    "bestbuy.",
+    "etsy.",
+    "bankofamerica.",
+    "chase.",
+    "paypal.",
+    "webmd.",
+    "cdc.",
+    "who.",
+)
+
+_HEAVY_PATH_TOKENS = (
+    "/checkout",
+    "/cart",
+    "/basket",
+    "/payment",
+    "/account",
+    "/login",
+    "/signin",
+    "/auth",
+    "/feed",
+    "/timeline",
+)
+
+_MODERATE_PATH_TOKENS = (
+    "/search",
+    "/product",
+    "/listing",
+    "/results",
+    "/news",
+    "/article",
 )
 
 _WHITELIST_HOSTS = (
@@ -59,11 +103,19 @@ def _hostname(url: str) -> str:
 
 
 def rotate_user_agent_for_url(seed_url: str) -> str:
-    host = _hostname(seed_url) or seed_url.lower()
-    if not host:
-        return _ANTI_BOT_USER_AGENTS[0]
-    offset = sum(ord(ch) for ch in host) % len(_ANTI_BOT_USER_AGENTS)
-    return _ANTI_BOT_USER_AGENTS[offset]
+    # Keep a stable audit identity across all fetch/render paths to reduce anti-bot fingerprint churn.
+    return _ANTI_BOT_USER_AGENTS[0]
+
+
+def stable_request_headers(seed_url: str = "") -> dict[str, str]:
+    _ = seed_url
+    return {
+        "User-Agent": rotate_user_agent_for_url(seed_url),
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
+    }
 
 
 def anti_bot_delay_ms(seed_url: str) -> int:
@@ -73,6 +125,93 @@ def anti_bot_delay_ms(seed_url: str) -> int:
     digest = hashlib.sha256(host.encode("utf-8", errors="ignore")).hexdigest()
     value = int(digest[:8], 16)
     return 400 + (value % 801)
+
+
+def classify_page_complexity(seed_url: str) -> str:
+    """Classify URL complexity to drive adaptive timeout policies."""
+    lowered = (seed_url or "").lower()
+    host = _hostname(seed_url)
+
+    try:
+        parsed = urlparse(seed_url)
+        path = (parsed.path or "").lower()
+        query = (parsed.query or "").lower()
+    except Exception:
+        path = ""
+        query = ""
+
+    score = 0
+
+    if any(token in host for token in _HEAVY_HOST_HINTS):
+        score += 2
+
+    if any(token in path for token in _HEAVY_PATH_TOKENS):
+        score += 2
+    elif any(token in path for token in _MODERATE_PATH_TOKENS):
+        score += 1
+
+    if query:
+        score += 1
+        if len(query) > 64:
+            score += 1
+
+    path_depth = len([part for part in path.split("/") if part])
+    if path_depth >= 4:
+        score += 1
+
+    if "?" in lowered and "utm_" in lowered:
+        score += 1
+
+    if score >= 4:
+        return "heavy"
+    if score >= 2:
+        return "moderate"
+    return "simple"
+
+
+def resolve_adaptive_timeouts(
+    seed_url: str,
+    scan_mode: str,
+    *,
+    page_timeout_seconds: int,
+    network_idle_timeout_ms: int,
+    ready_state_timeout_ms: int,
+) -> dict[str, int | str]:
+    """Return complexity-aware timeout values bounded for reliability."""
+    mode = (scan_mode or "fast").lower()
+    if mode not in {"fast", "deep", "max"}:
+        mode = "fast"
+
+    complexity = classify_page_complexity(seed_url)
+
+    page_multipliers = {
+        "fast": {"simple": 0.6, "moderate": 0.8, "heavy": 1.0},
+        "deep": {"simple": 0.7, "moderate": 1.0, "heavy": 1.3},
+        "max": {"simple": 0.8, "moderate": 1.1, "heavy": 1.4},
+    }
+    io_multipliers = {
+        "simple": 0.65,
+        "moderate": 1.0,
+        "heavy": 1.25,
+    }
+
+    page_timeout = int(round(float(page_timeout_seconds) * page_multipliers[mode][complexity]))
+    net_timeout = int(round(float(network_idle_timeout_ms) * io_multipliers[complexity]))
+    ready_timeout = int(round(float(ready_state_timeout_ms) * io_multipliers[complexity]))
+
+    page_min = {"fast": 6, "deep": 15, "max": 20}[mode]
+    page_max = {"fast": 10, "deep": 40, "max": 60}[mode]
+    page_timeout = max(page_min, min(page_max, page_timeout))
+
+    net_timeout = max(2500, min(22000, net_timeout))
+    ready_timeout = max(2000, min(12000, ready_timeout))
+
+    return {
+        "complexity": complexity,
+        "page_timeout_seconds": page_timeout,
+        "network_idle_timeout_ms": net_timeout,
+        "ready_state_timeout_ms": ready_timeout,
+    }
 
 
 async def _safe_wait(page: Any, timeout_ms: int) -> None:
@@ -115,10 +254,7 @@ async def _safe_click(handle: Any) -> bool:
 
 
 async def apply_anti_bot_headers(page: Any, seed_url: str) -> dict[str, str]:
-    headers = {
-        "Accept-Language": "en-US,en;q=0.9",
-        "User-Agent": rotate_user_agent_for_url(seed_url),
-    }
+    headers = stable_request_headers(seed_url)
     try:
         set_headers = getattr(page, "set_extra_http_headers", None)
         if callable(set_headers):
@@ -275,20 +411,95 @@ def should_block_third_party_request(
     return False
 
 
-async def install_third_party_script_blocking(
+def should_block_request_for_performance(
+    request_url: str,
+    seed_url: str,
+    resource_type: str,
+    *,
+    allow_intercom: bool = False,
+) -> bool:
+    """Decide whether a request should be blocked to reduce scan overhead."""
+    resource = (resource_type or "").lower()
+    if resource in {"image", "font", "media"}:
+        return True
+
+    request_host = _hostname(request_url)
+    seed_host = _hostname(seed_url)
+    lowered_url = (request_url or "").lower()
+    third_party = bool(
+        request_host
+        and seed_host
+        and request_host != seed_host
+        and not request_host.endswith(f".{seed_host}")
+    )
+
+    if resource == "script":
+        if should_block_third_party_request(
+            request_url,
+            seed_url,
+            resource,
+            allow_intercom=allow_intercom,
+        ):
+            return True
+
+        if third_party:
+            if allow_intercom and "intercom" in request_host:
+                return False
+
+            if any(token in request_host for token in _TRACKER_HOST_PATTERNS):
+                return True
+
+            if any(
+                token in lowered_url
+                for token in (
+                    "analytics",
+                    "collect",
+                    "gtm.js",
+                    "fbevents",
+                    "segment",
+                    "mixpanel",
+                    "hotjar",
+                    "pixel",
+                )
+            ):
+                return True
+
+    if resource in {"xhr", "fetch"} and third_party:
+        if any(token in request_host for token in _TRACKER_HOST_PATTERNS):
+            return True
+
+    return False
+
+
+async def install_request_interception(
     page: Any,
     seed_url: str,
     *,
     allow_intercom: bool = False,
-) -> bool:
+) -> dict[str, Any]:
+    """Install request routing that blocks expensive non-essential resources."""
     route_method = getattr(page, "route", None)
+    stats: dict[str, Any] = {
+        "installed": False,
+        "blocked_total": 0,
+        "blocked_by_type": {
+            "image": 0,
+            "font": 0,
+            "media": 0,
+            "script": 0,
+            "xhr": 0,
+            "fetch": 0,
+            "other": 0,
+        },
+    }
+
     if not callable(route_method):
-        return False
+        return stats
 
     async def _handler(route: Any, request: Any) -> None:
         request_url = str(getattr(request, "url", ""))
-        resource_type = str(getattr(request, "resource_type", "script"))
-        should_block = should_block_third_party_request(
+        resource_type = str(getattr(request, "resource_type", "other") or "other").lower()
+        should_block = should_block_request_for_performance(
             request_url,
             seed_url,
             resource_type,
@@ -302,6 +513,10 @@ async def install_third_party_script_blocking(
                     maybe_awaitable = abort_fn()
                     if hasattr(maybe_awaitable, "__await__"):
                         await maybe_awaitable
+                stats["blocked_total"] = int(stats.get("blocked_total", 0)) + 1
+                bucket = stats["blocked_by_type"]
+                key = resource_type if resource_type in bucket else "other"
+                bucket[key] = int(bucket.get(key, 0)) + 1
                 return
 
             continue_fn = getattr(route, "continue_", None)
@@ -316,9 +531,25 @@ async def install_third_party_script_blocking(
         maybe_awaitable = route_method("**/*", _handler)
         if hasattr(maybe_awaitable, "__await__"):
             await maybe_awaitable
-        return True
+        stats["installed"] = True
     except Exception:
-        return False
+        stats["installed"] = False
+
+    return stats
+
+
+async def install_third_party_script_blocking(
+    page: Any,
+    seed_url: str,
+    *,
+    allow_intercom: bool = False,
+) -> bool:
+    stats = await install_request_interception(
+        page,
+        seed_url,
+        allow_intercom=allow_intercom,
+    )
+    return bool(stats.get("installed", False))
 
 
 async def dismiss_cookie_banner(page: Any, settle_ms: int = 800) -> bool:

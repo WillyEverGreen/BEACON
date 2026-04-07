@@ -8,6 +8,7 @@ from typing import Any, Awaitable, Callable, Optional
 import httpx
 
 from app.audit.models import PageContext
+from app.audit.failure_taxonomy import normalize_reason
 from app.audit.parallel_runner import PageAuditor, SSEEmitter, run_site_audit
 from app.crawlers.orchestrator import CrawlerOrchestrator
 from app.config import AUDIT_PIPELINE_CONFIG, CRAWLER_CONFIG
@@ -318,8 +319,12 @@ async def run_scan_mode_audit(
                         "bounded": True,
                     }
                     result["degraded_mode"] = True
+                    result["degraded_reason"] = normalize_reason(result.get("degraded_reason")) or "extraction_failure"
                     if isinstance(result.get("site_result"), dict):
                         result["site_result"]["degraded_mode"] = True
+                        result["site_result"]["degraded_reason"] = (
+                            normalize_reason(result["site_result"].get("degraded_reason")) or "extraction_failure"
+                        )
 
                 result["journey_simulation"] = journey_payload
                 await _emit_optional_event(

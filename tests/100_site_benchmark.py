@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-100-Site Accessibility Audit Benchmark
+Large-Site Accessibility Audit Benchmark
 ========================================
-Tests BEACON engine with both FAST and DEEP scans on 100 diverse real-world sites.
+Tests BEACON engine with both FAST and DEEP scans on a diverse real-world site set.
 
 Usage:
     python tests/100_site_benchmark.py
@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.services.audit_runner import run_audit
 
 # =============================================================================
-# 100 DIVERSE TEST SITES
+# DIVERSE TEST SITES
 # =============================================================================
 
 SITES_100 = [
@@ -186,7 +186,13 @@ async def test_site(url: str, name: str, category: str, semaphore) -> BenchmarkR
         print(f"  [{name}] Running FAST scan...", flush=True)
         fast_start = time.time()
         try:
-            fast_result = await run_audit(url=url, scan_mode="fast", precision_profile="balanced")
+            fast_result = await run_audit(
+                url=url,
+                scan_mode="fast",
+                precision_profile="balanced",
+                enable_enrichment=False,
+                enable_cognitive=False,
+            )
             result.fast_time = time.time() - fast_start
             result.fast_score = fast_result.get("score", 0)
             result.fast_issues = fast_result.get("total_issues", 0)
@@ -201,7 +207,12 @@ async def test_site(url: str, name: str, category: str, semaphore) -> BenchmarkR
         print(f"  [{name}] Running DEEP scan...", flush=True)
         deep_start = time.time()
         try:
-            deep_result = await run_audit(url=url, scan_mode="deep", precision_profile="balanced")
+            deep_result = await run_audit(
+                url=url,
+                scan_mode="deep",
+                precision_profile="balanced",
+                enable_enrichment=False,
+            )
             result.deep_time = time.time() - deep_start
             result.deep_score = deep_result.get("score", 0)
             result.deep_issues = deep_result.get("total_issues", 0)
@@ -222,8 +233,9 @@ async def test_site(url: str, name: str, category: str, semaphore) -> BenchmarkR
         return result
 
 async def main():
+    total_sites = len(SITES_100)
     print("\n" + "="*80)
-    print("  🌐 BEACON 100-SITE ACCESSIBILITY BENCHMARK")
+    print(f"  🌐 BEACON {total_sites}-SITE ACCESSIBILITY BENCHMARK")
     print("  Testing with FAST + DEEP scans (no RAG enrichment)")
     print("="*80 + "\n")
     
@@ -234,7 +246,7 @@ async def main():
     tasks = []
     
     for i, (url, name, category) in enumerate(SITES_100, 1):
-        print(f"[{i}/100] Queuing {name}...")
+        print(f"[{i}/{total_sites}] Queuing {name}...")
         task = test_site(url, name, category, semaphore)
         tasks.append(task)
     
@@ -255,11 +267,11 @@ async def main():
     spas = [r for r in successful if r.is_spa]
     
     print(f"\nExecution Summary:")
-    print(f"  Total sites: 100")
+    print(f"  Total sites: {total_sites}")
     print(f"  Successful: {len(successful)}")
     print(f"  Errors: {len(errors)}")
     print(f"  Total time: {total_time:.1f}s ({total_time/60:.1f} min)")
-    print(f"  Avg time/site: {total_time/100:.1f}s")
+    print(f"  Avg time/site: {total_time/total_sites:.1f}s")
     
     if successful:
         # Score statistics
@@ -318,14 +330,42 @@ async def main():
                   f"Deep: {stats['deep_score']/count:5.1f} ({stats['deep_issues']/count:4.1f} issues)")
     
     # Save results
+    timeout_count = sum(1 for r in errors if "timeout" in str(r.error).lower())
+    degraded_count = sum(1 for r in successful if r.fast_degraded or r.deep_degraded)
+    fast_mode_count = sum(1 for r in results if r.fast_time > 0)
+
+    def _p95(values: list[float]) -> float:
+        if not values:
+            return 0.0
+        ordered = sorted(values)
+        idx = max(0, min(len(ordered) - 1, int(0.95 * (len(ordered) - 1))))
+        return round(float(ordered[idx]), 2)
+
+    fast_times_all = [r.fast_time for r in results if r.fast_time > 0]
+    avg_runtime = round(total_time / total_sites, 2) if total_sites else 0.0
+
     output = {
         "timestamp": datetime.now().isoformat(),
         "total_time": round(total_time, 2),
         "summary": {
-            "total": 100,
+            "total": total_sites,
             "successful": len(successful),
             "errors": len(errors),
             "spas_detected": len(spas),
+        },
+        "kpi": {
+            "success_rate": round((len(successful) / total_sites) * 100, 1) if total_sites else 0.0,
+            "degraded_rate": round((degraded_count / total_sites) * 100, 1) if total_sites else 0.0,
+            "precision": None,
+            "recall": None,
+            "f1": None,
+            "spa_precision": None,
+            "spa_recall": None,
+            "rag_completion": None,
+            "timeout_rate": round((timeout_count / total_sites) * 100, 1) if total_sites else 0.0,
+            "avg_runtime": avg_runtime,
+            "fast_mode_p95_time": _p95(fast_times_all),
+            "fast_mode_usage": round((fast_mode_count / total_sites) * 100, 1) if total_sites else 0.0,
         },
         "results": [
             {
@@ -340,6 +380,8 @@ async def main():
                 "deep_time": round(r.deep_time, 2),
                 "fast_engines": r.fast_engines,
                 "deep_engines": r.deep_engines,
+                "fast_degraded": r.fast_degraded,
+                "deep_degraded": r.deep_degraded,
                 "spa_framework": r.spa_framework,
                 "is_spa": r.is_spa,
                 "error": r.error,

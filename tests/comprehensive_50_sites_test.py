@@ -30,6 +30,8 @@ from collections import defaultdict
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from app.audit.failure_taxonomy import classify_failure_reason, normalize_reason
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s"
@@ -148,7 +150,12 @@ class TestResult:
     severity_breakdown: dict = None
     error: Optional[str] = None
     passed: bool = False
+    fast_degraded: bool = False
+    deep_degraded: bool = False
+    fast_degraded_reason: Optional[str] = None
+    deep_degraded_reason: Optional[str] = None
     degraded: bool = False
+    degraded_reason: Optional[str] = None
     spa_framework: Optional[str] = None
     is_spa: bool = False
     browser_probe_metadata: dict = None
@@ -191,6 +198,7 @@ async def run_single_site_test(
                 enable_enrichment=use_rag,
                 max_enrich_issues=max_enrich_issues if use_rag else 0,
                 enable_cognitive=False,
+                await_enrichment=use_rag,
             ),
             timeout=60
         )
@@ -200,6 +208,8 @@ async def run_single_site_test(
         result.fast_issues = fast_result.get("total_issues", 0)
         result.fast_engines = fast_result.get("engines_used", [])
         result.fast_enrichment_status = fast_result.get("enrichment_status", "off")
+        result.fast_degraded = bool(fast_result.get("degraded_mode", False))
+        result.fast_degraded_reason = fast_result.get("degraded_reason") or fast_result.get("degradation_reason")
         
         # Brief pause between scans
         await asyncio.sleep(1)
@@ -216,6 +226,7 @@ async def run_single_site_test(
                 enable_enrichment=use_rag,
                 max_enrich_issues=max_enrich_issues if use_rag else 0,
                 enable_cognitive=enable_cognitive,
+                await_enrichment=use_rag,
             ),
             timeout=120
         )
@@ -226,7 +237,10 @@ async def run_single_site_test(
         result.deep_engines = deep_result.get("engines_used", [])
         result.deep_enrichment_status = deep_result.get("enrichment_status", "off")
         result.wcag_scs = deep_result.get("wcag_scs_covered", [])
-        result.degraded = deep_result.get("degraded_mode", False)
+        result.deep_degraded = bool(deep_result.get("degraded_mode", False))
+        result.deep_degraded_reason = deep_result.get("degraded_reason") or deep_result.get("degradation_reason")
+        result.degraded = bool(result.fast_degraded or result.deep_degraded)
+        result.degraded_reason = result.deep_degraded_reason or result.fast_degraded_reason
         
         # SPA detection info
         result.spa_framework = deep_result.get("spa_framework")
@@ -325,6 +339,7 @@ async def run_50_site_test(
         "sites": 0,
         "passed": 0,
         "failed": 0,
+        "runtime_failed": 0,
         "errors": 0,
         "avg_fast_score": 0,
         "avg_deep_score": 0,
@@ -337,14 +352,39 @@ async def run_50_site_test(
     complexity_stats = defaultdict(lambda: {
         "sites": 0,
         "passed": 0,
+        "runtime_failed": 0,
         "errors": 0,
     })
     
     # Collect all failures for analysis
-    failures = []
-    successes = []
+    expectation_failures = []
+    expectation_passes = []
+    runtime_failures = []
+    runtime_successes = []
     errors = []
     degraded_sites = []
+    degraded_reason_counts = defaultdict(int)
+    failure_reason_counts = defaultdict(int)
+
+    def _is_runtime_failure(row: TestResult) -> bool:
+        return bool(row.error or row.degraded)
+
+    def _failure_type(row: TestResult) -> Optional[str]:
+        if _is_runtime_failure(row):
+            return "runtime_failure"
+        if not row.passed:
+            return "score_out_of_range"
+        return None
+
+    def _runtime_failure_type(row: TestResult) -> Optional[str]:
+        if not _is_runtime_failure(row):
+            return None
+        reason = normalize_reason(row.degraded_reason) or classify_failure_reason(row.error)
+        if reason == "dns_failure":
+            return "dns_failure"
+        if reason == "blocked_request":
+            return "blocked_request"
+        return "network_error"
     
     for r in processed_results:
         cat = r.site.category
@@ -353,20 +393,34 @@ async def run_50_site_test(
         category_stats[cat]["sites"] += 1
         complexity_stats[comp]["sites"] += 1
         
-        if r.error:
-            category_stats[cat]["errors"] += 1
-            complexity_stats[comp]["errors"] += 1
-            errors.append(r)
-        elif r.passed:
+        if _is_runtime_failure(r):
+            category_stats[cat]["runtime_failed"] += 1
+            complexity_stats[comp]["runtime_failed"] += 1
+            runtime_failures.append(r)
+            if r.error:
+                category_stats[cat]["errors"] += 1
+                complexity_stats[comp]["errors"] += 1
+                errors.append(r)
+        else:
+            runtime_successes.append(r)
+
+        if (not _is_runtime_failure(r)) and r.passed:
             category_stats[cat]["passed"] += 1
             complexity_stats[comp]["passed"] += 1
-            successes.append(r)
-        else:
+            expectation_passes.append(r)
+        elif not _is_runtime_failure(r):
             category_stats[cat]["failed"] += 1
-            failures.append(r)
+            expectation_failures.append(r)
         
         if r.degraded:
             degraded_sites.append(r)
+            reason_key = normalize_reason(r.degraded_reason) or "extraction_failure"
+            degraded_reason_counts[reason_key] += 1
+            failure_reason_counts[reason_key] += 1
+
+        if r.error:
+            error_reason = normalize_reason(r.degraded_reason) or classify_failure_reason(r.error)
+            failure_reason_counts[error_reason] += 1
         
         # Accumulate scores/times
         if r.fast_score is not None:
@@ -395,19 +449,23 @@ async def run_50_site_test(
     print("="*80)
     
     total = len(processed_results)
-    passed = len(successes)
-    failed = len(failures)
+    runtime_success_count = len(runtime_successes)
+    runtime_failure_count = len(runtime_failures)
+    expectation_pass_count = len(expectation_passes)
+    expectation_fail_count = len(expectation_failures)
     errored = len(errors)
     
     print(f"\n  Total Sites:     {total}")
-    print(f"  [OK] Passed:       {passed} ({100*passed/total:.1f}%)")
-    print(f"  [FAIL] Failed:       {failed} ({100*failed/total:.1f}%)")
+    print(f"  [RUN] Runtime Success: {runtime_success_count} ({100*runtime_success_count/total:.1f}%)")
+    print(f"  [RUN] Runtime Fail:    {runtime_failure_count} ({100*runtime_failure_count/total:.1f}%)")
+    print(f"  [EXP] Expectation Pass: {expectation_pass_count} ({100*expectation_pass_count/total:.1f}%)")
+    print(f"  [EXP] Out of Range:     {expectation_fail_count} ({100*expectation_fail_count/total:.1f}%)")
     print(f"  [ERR] Errors:       {errored} ({100*errored/total:.1f}%)")
     print(f"  [DEG] Degraded:     {len(degraded_sites)} (browser fallback)")
     print(f"  [TIME] Total Time:   {total_time:.1f}s ({total_time/total:.1f}s avg)")
     
     # SPA detection stats
-    spa_sites = [r for r in processed_results if r.is_spa]
+    spa_sites = [r for r in runtime_successes if r.is_spa]
     spa_frameworks = {}
     for r in spa_sites:
         fw = r.spa_framework or "generic"
@@ -422,11 +480,11 @@ async def run_50_site_test(
     print("\n" + "-"*80)
     print("  BY CATEGORY")
     print("-"*80)
-    print(f"  {'Category':<15} {'Sites':>6} {'Pass':>6} {'Fail':>6} {'Err':>5} {'AvgScore':>9} {'AvgTime':>8}")
+    print(f"  {'Category':<15} {'Sites':>6} {'Pass':>6} {'Fail':>6} {'RunFail':>8} {'Err':>5} {'AvgScore':>9} {'AvgTime':>8}")
     print("-"*80)
     for cat in sorted(category_stats.keys()):
         s = category_stats[cat]
-        print(f"  {cat:<15} {s['sites']:>6} {s['passed']:>6} {s['failed']:>6} {s['errors']:>5} {s['avg_deep_score']:>8.1f} {s['avg_deep_time']:>7.1f}s")
+        print(f"  {cat:<15} {s['sites']:>6} {s['passed']:>6} {s['failed']:>6} {s['runtime_failed']:>8} {s['errors']:>5} {s['avg_deep_score']:>8.1f} {s['avg_deep_time']:>7.1f}s")
     
     # Complexity breakdown
     print("\n" + "-"*80)
@@ -435,11 +493,11 @@ async def run_50_site_test(
     for comp in ["simple", "moderate", "complex"]:
         s = complexity_stats[comp]
         rate = 100 * s["passed"] / s["sites"] if s["sites"] > 0 else 0
-        print(f"  {comp:<12}: {s['passed']}/{s['sites']} passed ({rate:.0f}%)")
+        print(f"  {comp:<12}: {s['passed']}/{s['sites']} expectation-pass ({rate:.0f}%), runtime-fail={s['runtime_failed']}")
     
     # SPA vs Non-SPA comparison
     spa_passed = sum(1 for r in spa_sites if r.passed)
-    non_spa_sites = [r for r in processed_results if not r.is_spa and not r.error]
+    non_spa_sites = [r for r in runtime_successes if not r.is_spa]
     non_spa_passed = sum(1 for r in non_spa_sites if r.passed)
     
     print("\n" + "-"*80)
@@ -453,16 +511,24 @@ async def run_50_site_test(
         print(f"  Non-SPA sites: {non_spa_passed}/{len(non_spa_sites)} passed ({non_spa_pass_rate:.0f}%)")
     
     # Failed sites detail
-    if failures:
+    if expectation_failures:
         print("\n" + "-"*80)
         print("  [FAIL] FAILED SITES (score outside expected range)")
         print("-"*80)
-        for r in failures:
+        for r in expectation_failures:
             exp_min, exp_max = r.site.expected_score_range
             spa_tag = f" [SPA:{r.spa_framework}]" if r.is_spa else ""
             print(f"  • {r.site.name:<25} Score: {r.deep_score:>3}/100  Expected: {exp_min}-{exp_max}{spa_tag}")
             if r.severity_breakdown:
                 print(f"    Severity: {r.severity_breakdown}")
+
+    if runtime_failures:
+        print("\n" + "-"*80)
+        print("  [RUN] RUNTIME FAILURES")
+        print("-"*80)
+        for r in runtime_failures:
+            reason = r.degraded_reason or r.error or "unknown"
+            print(f"  • {r.site.name:<25} Type: runtime_failure | Reason: {str(reason)[:70]}")
     
     # Error sites detail
     if errors:
@@ -478,7 +544,15 @@ async def run_50_site_test(
         print("  [DEG] DEGRADED SCANS (browser engines failed, static-only results)")
         print("-"*80)
         for r in degraded_sites:
-            print(f"  • {r.site.name:<25} Engines: {', '.join(r.deep_engines)}")
+            print(
+                f"  • {r.site.name:<25} Engines: {', '.join(r.deep_engines)} "
+                f"| Reason: {r.degraded_reason or 'unknown'}"
+            )
+
+        if degraded_reason_counts:
+            print("\n  Top degraded causes:")
+            for reason, count in sorted(degraded_reason_counts.items(), key=lambda kv: (-kv[1], kv[0]))[:5]:
+                print(f"    - {reason}: {count}")
     
     # Top performing sites
     print("\n" + "-"*80)
@@ -541,8 +615,8 @@ async def run_50_site_test(
             "action": "Improve Playwright stability, add retry logic, handle CSP/Cloudflare better"
         })
     
-    complex_failures = [r for r in failures if r.site.complexity == "complex"]
-    if len(complex_failures) > len(failures) * 0.5:
+    complex_failures = [r for r in expectation_failures if r.site.complexity == "complex"]
+    if expectation_failures and len(complex_failures) > len(expectation_failures) * 0.5:
         recommendations.append({
             "priority": "HIGH", 
             "area": "Complex Site Support",
@@ -560,7 +634,7 @@ async def run_50_site_test(
                 "action": "Optimize slow checks, add early-exit for problematic sites"
             })
     
-    ecommerce_failures = [r for r in failures if r.site.category == "ecommerce"]
+    ecommerce_failures = [r for r in expectation_failures if r.site.category == "ecommerce"]
     if ecommerce_failures:
         recommendations.append({
             "priority": "MEDIUM",
@@ -569,7 +643,7 @@ async def run_50_site_test(
             "action": "Improve handling of lazy-loaded products, modal dialogs, cart systems"
         })
     
-    social_failures = [r for r in failures if r.site.category == "social"]
+    social_failures = [r for r in expectation_failures if r.site.category == "social"]
     if social_failures:
         recommendations.append({
             "priority": "MEDIUM",
@@ -579,7 +653,7 @@ async def run_50_site_test(
         })
     
     # SPA-specific recommendations
-    spa_failures = [r for r in failures if r.is_spa]
+    spa_failures = [r for r in expectation_failures if r.is_spa]
     if spa_failures:
         frameworks_failed = set(r.spa_framework or "generic" for r in spa_failures)
         recommendations.append({
@@ -600,7 +674,66 @@ async def run_50_site_test(
     # ══════════════════════════════════════════════════════════════════════════
     # SAVE REPORT
     # ══════════════════════════════════════════════════════════════════════════
+
+    timeout_count = sum(1 for r in errors if str(r.error).upper() == "TIMEOUT")
+    runtime_success_rate = round((runtime_success_count / total) * 100, 1) if total else 0.0
+    expectation_pass_rate = round((expectation_pass_count / total) * 100, 1) if total else 0.0
+    degraded_rate = round((len(degraded_sites) / total) * 100, 1) if total else 0.0
+    timeout_rate = round((timeout_count / total) * 100, 1) if total else 0.0
+    avg_runtime = round(total_time / total, 2) if total else 0.0
+    fast_mode_usage = round(
+        (sum(1 for r in processed_results if r.fast_score is not None) / total) * 100,
+        1,
+    ) if total else 0.0
+
+    def _p95(values: list[float]) -> float:
+        if not values:
+            return 0.0
+        ordered = sorted(values)
+        idx = max(0, min(len(ordered) - 1, int(0.95 * (len(ordered) - 1))))
+        return round(float(ordered[idx]), 2)
+
+    rag_completion_rate = None
+    if use_rag and processed_results:
+        terminal_statuses = {"complete", "failed", "skipped", "off"}
+        rag_terminal = sum(
+            1
+            for r in processed_results
+            if str(r.deep_enrichment_status).strip().lower() in terminal_statuses
+        )
+        rag_completion_rate = round((rag_terminal / len(processed_results)) * 100, 1)
     
+    failure_classification = []
+    for r in processed_results:
+        failure_type = _failure_type(r)
+        if not failure_type:
+            continue
+        runtime_failure_type = _runtime_failure_type(r)
+        failure_classification.append(
+            {
+                "name": r.site.name,
+                "url": r.site.url,
+                "failure_type": failure_type,
+                "runtime_failure_type": runtime_failure_type,
+                "score": r.deep_score,
+                "expected": list(r.site.expected_score_range),
+                "error": r.error,
+                "degraded": r.degraded,
+                "degraded_reason": r.degraded_reason,
+            }
+        )
+
+    runtime_failure_classification = [
+        {
+            "name": r.site.name,
+            "url": r.site.url,
+            "failure_type": _runtime_failure_type(r),
+            "error": r.error,
+            "degraded_reason": r.degraded_reason,
+        }
+        for r in runtime_failures
+    ]
+
     report = {
         "timestamp": datetime.now().isoformat(),
         "total_time_seconds": round(total_time, 2),
@@ -611,17 +744,49 @@ async def run_50_site_test(
         },
         "summary": {
             "total": total,
-            "passed": passed,
-            "failed": failed,
+            "runtime_successful": runtime_success_count,
+            "runtime_failed": runtime_failure_count,
+            "expectation_passed": expectation_pass_count,
+            "expectation_failed": expectation_fail_count,
             "errors": errored,
             "degraded": len(degraded_sites),
             "spa_detected": len(spa_sites),
-            "pass_rate": round(100 * passed / total, 1),
+            "runtime_success_rate": runtime_success_rate,
+            "expectation_pass_rate": expectation_pass_rate,
+        },
+        "kpi": {
+            "runtime_success_rate": runtime_success_rate,
+            "expectation_pass_rate": expectation_pass_rate,
+            "degraded_rate": degraded_rate,
+            "precision": None,
+            "recall": None,
+            "f1": None,
+            "spa_precision": None,
+            "spa_recall": None,
+            "rag_completion": rag_completion_rate,
+            "timeout_rate": timeout_rate,
+            "avg_runtime": avg_runtime,
+            "fast_mode_p95_time": _p95(fast_times),
+            "fast_mode_usage": fast_mode_usage,
         },
         "spa_detection": {
             "total_spa_sites": len(spa_sites),
             "frameworks": spa_frameworks,
             "spa_pass_rate": round(100 * spa_passed / len(spa_sites), 1) if spa_sites else 0,
+        },
+        "degraded_failure_analysis": {
+            "top_causes": [
+                {"reason": reason, "count": count}
+                for reason, count in sorted(degraded_reason_counts.items(), key=lambda kv: (-kv[1], kv[0]))[:5]
+            ]
+        },
+        "failure_breakdown": {
+            "dom_parse_error": int(failure_reason_counts.get("dom_parse_error", 0)),
+            "render_timeout": int(failure_reason_counts.get("render_timeout", 0)),
+            "extraction_failure": int(failure_reason_counts.get("extraction_failure", 0)),
+            "network_error": int(failure_reason_counts.get("network_error", 0)),
+            "blocked_request": int(failure_reason_counts.get("blocked_request", 0)),
+            "dns_failure": int(failure_reason_counts.get("dns_failure", 0)),
         },
         "category_stats": dict(category_stats),
         "complexity_stats": dict(complexity_stats),
@@ -643,16 +808,31 @@ async def run_50_site_test(
                 "wcag_scs": r.wcag_scs,
                 "severity": r.severity_breakdown,
                 "passed": r.passed,
+                "failure_type": _failure_type(r),
+                "runtime_failure_type": _runtime_failure_type(r),
+                "fast_degraded": r.fast_degraded,
+                "fast_degraded_reason": r.fast_degraded_reason,
+                "deep_degraded": r.deep_degraded,
+                "deep_degraded_reason": r.deep_degraded_reason,
                 "degraded": r.degraded,
+                "degraded_reason": r.degraded_reason,
                 "error": r.error,
                 "is_spa": r.is_spa,
                 "spa_framework": r.spa_framework,
             }
             for r in processed_results
         ],
+        "failure_classification": failure_classification,
+        "runtime_failure_classification": runtime_failure_classification,
         "failures": [
-            {"name": r.site.name, "score": r.deep_score, "expected": r.site.expected_score_range}
-            for r in failures
+            {
+                "name": row["name"],
+                "url": row["url"],
+                "failure_type": row["failure_type"],
+                "score": row["score"],
+                "expected": row["expected"],
+            }
+            for row in failure_classification
         ],
         "errors": [
             {"name": r.site.name, "error": r.error}

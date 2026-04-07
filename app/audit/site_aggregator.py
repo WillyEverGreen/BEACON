@@ -79,6 +79,7 @@ def _as_page_result(item: PageAuditResult | dict[str, Any]) -> PageAuditResult:
         issues=list(item.get("issues", [])),
         engine_timings=dict(item.get("engine_timings", {})),
         degraded_mode=bool(item.get("degraded_mode", False)),
+        degraded_reason=str(item.get("degraded_reason", "") or ""),
         skipped_engines=list(item.get("skipped_engines", [])),
         hydration_status=str(item.get("hydration_status", "unknown")),
         enrichment_status=str(item.get("enrichment_status", "pending")),
@@ -208,6 +209,18 @@ def aggregate_site_results(page_results: list[PageAuditResult | dict[str, Any]],
     priority_ranking = _build_priority_ranking(deduped_issues, total_pages)
 
     critical_issues = sum(1 for issue in deduped_issues if str(issue.get("severity", "")).lower() == "critical")
+    degraded_reason_counts: dict[str, int] = {}
+    for page in pages:
+        if not page.degraded_mode:
+            continue
+        reason = (page.degraded_reason or "unknown").strip() or "unknown"
+        degraded_reason_counts[reason] = degraded_reason_counts.get(reason, 0) + 1
+
+    top_degraded_causes = [
+        {"reason": reason, "count": count}
+        for reason, count in sorted(degraded_reason_counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    ][:5]
+
     top_fix = ""
     if priority_ranking:
         top = priority_ranking[0]
@@ -221,6 +234,7 @@ def aggregate_site_results(page_results: list[PageAuditResult | dict[str, Any]],
         "pages_audited": total_pages,
         "pages_discovered": total_pages,
         "top_fix": top_fix,
+        "top_degraded_causes": top_degraded_causes,
     }
 
     return SiteAuditResult(

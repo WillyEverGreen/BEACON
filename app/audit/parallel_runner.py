@@ -11,6 +11,7 @@ from typing import Any, Awaitable, Callable, Optional
 from app.audit.models import PageAuditResult, PageContext
 from app.audit.page_auditor import audit_page
 from app.audit.site_aggregator import aggregate_site_results
+from app.audit.failure_taxonomy import classify_failure_reason, normalize_reason
 from app.config import AUDIT_PIPELINE_CONFIG
 
 
@@ -49,12 +50,17 @@ def _minimal_failed_result(url: str, reason: str) -> PageAuditResult:
         issues=[],
         engine_timings={},
         degraded_mode=True,
+        degraded_reason=reason,
         skipped_engines=["static", "interactive"],
         hydration_status="failed",
         enrichment_status="failed",
         states_meta=[],
         page_dom="",
     )
+
+
+def _classify_degraded_reason(exc: Exception | str | None) -> str:
+    return classify_failure_reason(exc)
 
 
 def _clone_context_for_static(page_context: PageContext) -> PageContext:
@@ -88,24 +94,33 @@ async def _audit_with_two_stage_fallback(
     page_timeout_stage1_seconds: float,
     page_timeout_stage2_seconds: float,
 ) -> PageAuditResult:
+    stage1_reason = "unknown"
     try:
         return await asyncio.wait_for(
             page_auditor(url, scan_mode, page_context),
             timeout=page_timeout_stage1_seconds,
         )
-    except Exception:
+    except Exception as exc:
+        stage1_reason = _classify_degraded_reason(exc)
         try:
             degraded = await asyncio.wait_for(
                 static_only_auditor(url, "fast", page_context),
                 timeout=page_timeout_stage2_seconds,
             )
             degraded.degraded_mode = True
+            if not getattr(degraded, "degraded_reason", ""):
+                degraded.degraded_reason = stage1_reason
+            else:
+                degraded.degraded_reason = normalize_reason(degraded.degraded_reason) or stage1_reason
             skipped = set(degraded.skipped_engines)
             skipped.update(["interactive", "browser", "axe", "cognitive"])
             degraded.skipped_engines = sorted(skipped)
             return degraded
-        except Exception:
-            return _minimal_failed_result(url, "timeout_or_error")
+        except Exception as fallback_exc:
+            fallback_reason = _classify_degraded_reason(fallback_exc)
+            if stage1_reason == "render_timeout":
+                return _minimal_failed_result(url, "render_timeout")
+            return _minimal_failed_result(url, fallback_reason)
 
 
 async def run_site_audit(
@@ -198,6 +213,7 @@ async def run_site_audit(
                 "score": result.score,
                 "issues_found": len(result.issues),
                 "degraded_mode": result.degraded_mode,
+                "degraded_reason": getattr(result, "degraded_reason", ""),
                 "pages_done": pages_completed,
                 "pages_total": pages_total,
             }
@@ -316,6 +332,19 @@ async def run_site_audit(
     site_result_payload["degraded_pages"] = degraded_pages
     site_result_payload["sla_truncated"] = sla_truncated
 
+    degraded_reason_counts: dict[str, int] = {}
+    for row in completed_results:
+        if not row.degraded_mode:
+            continue
+        reason = (getattr(row, "degraded_reason", "") or "unknown").strip() or "unknown"
+        degraded_reason_counts[reason] = degraded_reason_counts.get(reason, 0) + 1
+
+    top_degraded_causes = [
+        {"reason": reason, "count": count}
+        for reason, count in sorted(degraded_reason_counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    ][:5]
+    site_result_payload["top_degraded_causes"] = top_degraded_causes
+
     if pages_completed > 0:
         if int(site_result_payload.get("pages_audited") or 0) <= 0:
             logger.error("Invariant violation: site_result.pages_audited <= 0. Repairing with pages_completed.")
@@ -347,6 +376,7 @@ async def run_site_audit(
         "sla_truncated": sla_truncated,
         "degraded_mode": degraded_mode,
         "degraded_pages": degraded_pages,
+        "top_degraded_causes": top_degraded_causes,
         "results": [asdict(result) for result in completed_results],
         "site_result": site_result_payload,
         "events": list(events),

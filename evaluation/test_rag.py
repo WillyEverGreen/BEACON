@@ -5,7 +5,7 @@ import sys
 # Ensure app is in path
 sys.path.insert(0, os.path.abspath("."))
 
-from app.services.retrieval import retrieve_for_issue, _keyword_search
+from app.services.retrieval import retrieve_for_issue
 from app.services.llm import generate_remediation, enrich_issues_with_remediation
 from app.services.ingestion import CORPUS_EXPANSION_SOURCES
 

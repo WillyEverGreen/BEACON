@@ -29,6 +29,7 @@ from typing import Optional
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.services.audit_runner import run_audit
+from app.audit.failure_taxonomy import classify_failure_reason, normalize_reason
 
 # Strategic test sites with their testing purpose
 STRATEGIC_SITES = [
@@ -118,6 +119,9 @@ class StrategicResult:
     fast_time: float = 0.0
     fast_engines: list = field(default_factory=list)
     fast_rag_enriched: int = 0
+    fast_enrichment_status: str = "off"
+    fast_degraded: bool = False
+    fast_degraded_reason: Optional[str] = None
     
     # Deep scan results
     deep_score: float = 0.0
@@ -125,6 +129,9 @@ class StrategicResult:
     deep_time: float = 0.0
     deep_engines: list = field(default_factory=list)
     deep_rag_enriched: int = 0
+    deep_enrichment_status: str = "off"
+    deep_degraded: bool = False
+    deep_degraded_reason: Optional[str] = None
     deep_spa_framework: Optional[str] = None
     deep_is_spa: bool = False
     
@@ -161,14 +168,19 @@ async def test_strategic_site(site_data: dict, semaphore) -> StrategicResult:
                 url=site_data["url"],
                 scan_mode="fast",
                 precision_profile="balanced",
+                enable_enrichment=True,
                 max_enrich_issues=20,        # ✅ RAG enabled
-                enable_cognitive=False       # ❌ No API calls
+                enable_cognitive=False,      # ❌ No API calls
+                await_enrichment=True,
             )
             result.fast_time = time.time() - fast_start
             result.fast_score = fast_result.get("score", 0)
             result.fast_issues = fast_result.get("total_issues", 0)
             result.fast_engines = fast_result.get("engines_used", [])
             result.fast_rag_enriched = sum(1 for iss in fast_result.get("issues", []) if iss.get("rag_context"))
+            result.fast_enrichment_status = str(fast_result.get("enrichment_status", "off") or "off")
+            result.fast_degraded = bool(fast_result.get("degraded_mode", False))
+            result.fast_degraded_reason = fast_result.get("degraded_reason") or fast_result.get("degradation_reason")
             
             print(f"    ✓ Score: {result.fast_score:.1f}/100")
             print(f"    ✓ Issues: {result.fast_issues}")
@@ -191,14 +203,19 @@ async def test_strategic_site(site_data: dict, semaphore) -> StrategicResult:
                 url=site_data["url"],
                 scan_mode="deep",
                 precision_profile="balanced",
+                enable_enrichment=True,
                 max_enrich_issues=20,        # ✅ RAG enabled
-                enable_cognitive=False       # ❌ No API calls
+                enable_cognitive=False,      # ❌ No API calls
+                await_enrichment=True,
             )
             result.deep_time = time.time() - deep_start
             result.deep_score = deep_result.get("score", 0)
             result.deep_issues = deep_result.get("total_issues", 0)
             result.deep_engines = deep_result.get("engines_used", [])
             result.deep_rag_enriched = sum(1 for iss in deep_result.get("issues", []) if iss.get("rag_context"))
+            result.deep_enrichment_status = str(deep_result.get("enrichment_status", "off") or "off")
+            result.deep_degraded = bool(deep_result.get("degraded_mode", False))
+            result.deep_degraded_reason = deep_result.get("degraded_reason") or deep_result.get("degradation_reason")
             result.deep_spa_framework = deep_result.get("spa_framework")
             result.deep_is_spa = deep_result.get("is_spa", False)
             
@@ -271,24 +288,54 @@ async def main():
     print("  📊 STRATEGIC TEST RESULTS & ANALYSIS")
     print("="*80)
     
-    successful = [r for r in results if not r.error]
+    completed = [r for r in results if not r.error]
     errors = [r for r in results if r.error]
-    met_expectations = [r for r in successful if r.met_expectations]
-    spas_detected = [r for r in successful if r.deep_is_spa]
-    rag_enriched = [r for r in successful if r.deep_rag_enriched > 0]
+    runtime_failures = [r for r in results if r.error or r.fast_degraded or r.deep_degraded]
+    runtime_successes = [r for r in results if not r.error and not (r.fast_degraded or r.deep_degraded)]
+    expectation_passes = [r for r in completed if r.met_expectations]
+    spas_detected = [r for r in completed if r.deep_is_spa]
+    rag_enriched = [r for r in completed if r.deep_rag_enriched > 0]
+    degraded_count = sum(1 for r in results if r.fast_degraded or r.deep_degraded)
+    timeout_count = sum(1 for r in errors if "timeout" in str(r.error).lower())
+
+    def _p95(values: list[float]) -> float:
+        if not values:
+            return 0.0
+        ordered = sorted(values)
+        idx = max(0, min(len(ordered) - 1, int(0.95 * (len(ordered) - 1))))
+        return round(float(ordered[idx]), 2)
+
+    fast_times = [r.fast_time for r in runtime_successes if r.fast_time >= 0]
+    rag_terminal_statuses = {"complete", "failed", "skipped", "off"}
+    rag_completed = sum(
+        1
+        for r in completed
+        if str(r.deep_enrichment_status).strip().lower() in rag_terminal_statuses
+    )
+
+    total_sites = len(STRATEGIC_SITES)
+    runtime_success_rate = round((len(runtime_successes) / total_sites) * 100, 1)
+    expectation_pass_rate = round((len(expectation_passes) / total_sites) * 100, 1)
+    degraded_rate = round((degraded_count / len(STRATEGIC_SITES)) * 100, 1)
+    timeout_rate = round((timeout_count / len(STRATEGIC_SITES)) * 100, 1)
+    rag_completion_rate = round((rag_completed / len(completed)) * 100, 1) if completed else 0.0
+    avg_runtime = round(total_time / len(STRATEGIC_SITES), 2)
+    fast_mode_usage = round((len(completed) / len(STRATEGIC_SITES)) * 100, 1)
+    fast_mode_p95_time = _p95(fast_times)
     
     print(f"\n📋 Execution Summary:")
     print(f"  Total sites: 10")
-    print(f"  Successful: {len(successful)}")
+    print(f"  Completed (no crash): {len(completed)}")
+    print(f"  Runtime success: {len(runtime_successes)}/{total_sites} ({runtime_success_rate:.1f}%)")
     print(f"  Errors: {len(errors)}")
-    print(f"  Met expectations: {len(met_expectations)}/{len(successful)} ({100*len(met_expectations)/len(successful):.0f}%)")
+    print(f"  Met expectations: {len(expectation_passes)}/{total_sites} ({expectation_pass_rate:.1f}%)")
     print(f"  Total time: {total_time:.1f}s ({total_time/60:.1f} min)")
     
-    if successful:
+    if completed:
         # Overall metrics
-        avg_fast_score = sum(r.fast_score for r in successful) / len(successful)
-        avg_deep_score = sum(r.deep_score for r in successful) / len(successful)
-        avg_improvement = sum(r.improvement_pct for r in successful) / len(successful)
+        avg_fast_score = sum(r.fast_score for r in completed) / len(completed)
+        avg_deep_score = sum(r.deep_score for r in completed) / len(completed)
+        avg_improvement = sum(r.improvement_pct for r in completed) / len(completed)
         
         print(f"\n📈 Score Performance:")
         print(f"  Fast scan average: {avg_fast_score:.1f}/100")
@@ -296,14 +343,14 @@ async def main():
         print(f"  Deep improvement: {avg_improvement:+.1f}% more issues found")
         
         # RAG effectiveness
-        total_fast_rag = sum(r.fast_rag_enriched for r in successful)
-        total_deep_rag = sum(r.deep_rag_enriched for r in successful)
+        total_fast_rag = sum(r.fast_rag_enriched for r in completed)
+        total_deep_rag = sum(r.deep_rag_enriched for r in completed)
         
         print(f"\n📚 RAG Enrichment Effectiveness:")
-        print(f"  Sites with RAG data: {len(rag_enriched)}/10 ({100*len(rag_enriched)/len(successful):.0f}%)")
+        print(f"  Sites with RAG data: {len(rag_enriched)}/10 ({100*len(rag_enriched)/len(completed):.0f}%)")
         print(f"  Fast scan enriched: {total_fast_rag} issues")
         print(f"  Deep scan enriched: {total_deep_rag} issues")
-        print(f"  Average enrichment/site: {total_deep_rag/len(successful):.1f} issues")
+        print(f"  Average enrichment/site: {total_deep_rag/len(completed):.1f} issues")
         
         # SPA detection
         if spas_detected:
@@ -317,7 +364,7 @@ async def main():
         print(f"\n📊 Detailed Site-by-Site Results:")
         print(f"  {'Site':<15} {'Fast':>6} {'Deep':>6} {'Δ':>6} {'Issues':>7} {'RAG':>5} {'SPA':<8} {'Met?':<5}")
         print(f"  {'-'*70}")
-        for r in successful:
+        for r in completed:
             score_delta = r.deep_score - r.fast_score
             issues_str = f"{r.fast_issues}→{r.deep_issues}"
             spa_str = (r.deep_spa_framework or "No")[:8] if r.deep_is_spa else "No"
@@ -327,7 +374,7 @@ async def main():
         
         # Purpose-specific insights
         print(f"\n🎯 Purpose-Specific Insights:")
-        for r in successful:
+        for r in completed:
             status = "✅" if r.met_expectations else "⚠️"
             print(f"\n  {status} {r.name}:")
             print(f"     Purpose: {r.purpose}")
@@ -341,6 +388,47 @@ async def main():
     # SAVE RESULTS
     # ============================================================================
     
+    def _runtime_failure_type(row: StrategicResult) -> Optional[str]:
+        if not (row.error or row.fast_degraded or row.deep_degraded):
+            return None
+        reason = normalize_reason(row.deep_degraded_reason or row.fast_degraded_reason) or classify_failure_reason(row.error)
+        if reason in {"network_error", "blocked_request", "dns_failure"}:
+            return reason
+        return "network_error"
+
+    failure_classification = []
+    failure_breakdown = {
+        "network_error": 0,
+        "blocked_request": 0,
+        "dns_failure": 0,
+    }
+    for r in results:
+        if r.error or r.fast_degraded or r.deep_degraded:
+            runtime_failure_type = _runtime_failure_type(r) or "network_error"
+            failure_breakdown[runtime_failure_type] = failure_breakdown.get(runtime_failure_type, 0) + 1
+            failure_classification.append(
+                {
+                    "name": r.name,
+                    "url": r.url,
+                    "failure_type": "runtime_failure",
+                    "runtime_failure_type": runtime_failure_type,
+                    "error": r.error,
+                    "degraded": bool(r.fast_degraded or r.deep_degraded),
+                    "degraded_reason": r.deep_degraded_reason or r.fast_degraded_reason,
+                }
+            )
+        elif not r.met_expectations:
+            failure_classification.append(
+                {
+                    "name": r.name,
+                    "url": r.url,
+                    "failure_type": "score_out_of_range",
+                    "error": None,
+                    "degraded": False,
+                    "degraded_reason": None,
+                }
+            )
+
     output = {
         "timestamp": datetime.now().isoformat(),
         "total_time": round(total_time, 2),
@@ -352,12 +440,31 @@ async def main():
         },
         "summary": {
             "total_sites": 10,
-            "successful": len(successful),
+            "completed": len(completed),
+            "runtime_successful": len(runtime_successes),
+            "runtime_failed": len(runtime_failures),
             "errors": len(errors),
-            "met_expectations": len(met_expectations),
+            "met_expectations": len(expectation_passes),
             "spas_detected": len(spas_detected),
             "rag_enriched_sites": len(rag_enriched)
         },
+        "kpi": {
+            "runtime_success_rate": runtime_success_rate,
+            "expectation_pass_rate": expectation_pass_rate,
+            "degraded_rate": degraded_rate,
+            "precision": None,
+            "recall": None,
+            "f1": None,
+            "spa_precision": None,
+            "spa_recall": None,
+            "rag_completion": rag_completion_rate,
+            "timeout_rate": timeout_rate,
+            "avg_runtime": avg_runtime,
+            "fast_mode_p95_time": fast_mode_p95_time,
+            "fast_mode_usage": fast_mode_usage,
+        },
+        "failure_breakdown": failure_breakdown,
+        "failure_classification": failure_classification,
         "results": [
             {
                 "name": r.name,
@@ -369,7 +476,10 @@ async def main():
                     "issues": r.fast_issues,
                     "time": round(r.fast_time, 2),
                     "engines": r.fast_engines,
-                    "rag_enriched": r.fast_rag_enriched
+                    "rag_enriched": r.fast_rag_enriched,
+                    "enrichment_status": r.fast_enrichment_status,
+                    "degraded": r.fast_degraded,
+                    "degraded_reason": r.fast_degraded_reason,
                 },
                 "deep": {
                     "score": r.deep_score,
@@ -377,6 +487,9 @@ async def main():
                     "time": round(r.deep_time, 2),
                     "engines": r.deep_engines,
                     "rag_enriched": r.deep_rag_enriched,
+                    "enrichment_status": r.deep_enrichment_status,
+                    "degraded": r.deep_degraded,
+                    "degraded_reason": r.deep_degraded_reason,
                     "spa_framework": r.deep_spa_framework,
                     "is_spa": r.deep_is_spa
                 },
@@ -385,6 +498,16 @@ async def main():
                     "met_expectations": r.met_expectations,
                     "notes": r.notes
                 },
+                "failure_type": (
+                    "runtime_failure"
+                    if (r.error or r.fast_degraded or r.deep_degraded)
+                    else ("score_out_of_range" if not r.met_expectations else None)
+                ),
+                "runtime_failure_type": (
+                    _runtime_failure_type(r)
+                    if (r.error or r.fast_degraded or r.deep_degraded)
+                    else None
+                ),
                 "error": r.error
             }
             for r in results
@@ -405,15 +528,20 @@ async def main():
     print("  🏆 FINAL VERDICT")
     print("="*80)
     
-    if successful:
-        success_rate = len(met_expectations) / len(successful) * 100
-        
-        if success_rate >= 80:
-            print(f"  ✅ EXCELLENT: {success_rate:.0f}% of sites met expectations")
-        elif success_rate >= 60:
-            print(f"  ✅ GOOD: {success_rate:.0f}% of sites met expectations")
+    if completed:
+        expectation_hit_on_completed = (len(expectation_passes) / len(completed)) * 100
+
+        if runtime_success_rate >= 90:
+            print(f"  ✅ Runtime health: {runtime_success_rate:.0f}% runtime_success_rate")
         else:
-            print(f"  ⚠️  NEEDS WORK: Only {success_rate:.0f}% of sites met expectations")
+            print(f"  ⚠️  Runtime health: {runtime_success_rate:.0f}% runtime_success_rate")
+
+        if expectation_hit_on_completed >= 80:
+            print(f"  ✅ EXCELLENT: {expectation_hit_on_completed:.0f}% of completed audits met expectations")
+        elif expectation_hit_on_completed >= 60:
+            print(f"  ✅ GOOD: {expectation_hit_on_completed:.0f}% of completed audits met expectations")
+        else:
+            print(f"  ⚠️  NEEDS WORK: Only {expectation_hit_on_completed:.0f}% of completed audits met expectations")
         
         if len(spas_detected) >= 3:
             print(f"  ✅ SPA Detection: Working ({len(spas_detected)} SPAs detected)")
@@ -421,11 +549,11 @@ async def main():
             print(f"  ⚠️  SPA Detection: Weak ({len(spas_detected)} SPAs detected)")
         
         if len(rag_enriched) >= 7:
-            print(f"  ✅ RAG Enrichment: Effective ({100*len(rag_enriched)/len(successful):.0f}% coverage)")
+            print(f"  ✅ RAG Enrichment: Effective ({100*len(rag_enriched)/len(completed):.0f}% coverage)")
         elif len(rag_enriched) >= 4:
-            print(f"  ⚠️  RAG Enrichment: Partial ({100*len(rag_enriched)/len(successful):.0f}% coverage)")
+            print(f"  ⚠️  RAG Enrichment: Partial ({100*len(rag_enriched)/len(completed):.0f}% coverage)")
         else:
-            print(f"  ❌ RAG Enrichment: Not working ({100*len(rag_enriched)/len(successful):.0f}% coverage)")
+            print(f"  ❌ RAG Enrichment: Not working ({100*len(rag_enriched)/len(completed):.0f}% coverage)")
         
         if avg_improvement > 40:
             print(f"  ✅ Deep vs Fast: Deep scan finds {avg_improvement:.0f}% more issues")

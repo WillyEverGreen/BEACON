@@ -1,0 +1,1156 @@
+{
+  "generated_at": "2026-04-07T15:18:27.000329+00:00",
+  "phase": "phase1_group3_refinement",
+  "step1_rule_firing_diagnostics": [
+    {
+      "rule_id": "missing-alt",
+      "elements_checked": 1,
+      "violations_found": 0,
+      "high_confidence_count": 0,
+      "medium_confidence_count": 2,
+      "sample_elements_checked": [
+        "img src=\"/test-assets/shared/fireworks.jpg\""
+      ],
+      "sample_violations": [
+        "<img alt=\"\" src=\"/test-assets/shared/fireworks.jpg\"/>",
+        "<img alt=\"\" aria-hidden=\"true\" role=\"img\" src=\"/test-assets/shared/fireworks.jpg\"/>"
+      ],
+      "status": "NOT FIRING",
+      "act_cases_used": 2
+    },
+    {
+      "rule_id": "input-label",
+      "elements_checked": 4,
+      "violations_found": 0,
+      "high_confidence_count": 0,
+      "medium_confidence_count": 1,
+      "sample_elements_checked": [
+        "input#fname type=\"text\"",
+        "input type=\"text\""
+      ],
+      "sample_violations": [
+        "<input aria-label=\"last name\" disabled=\"\"/>"
+      ],
+      "status": "NOT FIRING",
+      "act_cases_used": 4
+    },
+    {
+      "rule_id": "input-name",
+      "elements_checked": 0,
+      "violations_found": 0,
+      "high_confidence_count": 0,
+      "medium_confidence_count": 0,
+      "sample_elements_checked": [],
+      "sample_violations": [],
+      "status": "NOT FIRING",
+      "act_cases_used": 0
+    },
+    {
+      "rule_id": "clickable-no-role",
+      "elements_checked": 0,
+      "violations_found": 0,
+      "high_confidence_count": 0,
+      "medium_confidence_count": 0,
+      "sample_elements_checked": [],
+      "sample_violations": [],
+      "status": "NOT FIRING",
+      "act_cases_used": 4
+    },
+    {
+      "rule_id": "svg-accessible-name",
+      "elements_checked": 3,
+      "violations_found": 1,
+      "high_confidence_count": 1,
+      "medium_confidence_count": 0,
+      "sample_elements_checked": [
+        "svg"
+      ],
+      "sample_violations": [
+        "<svg xmlns=\"https://www.w3.org/2000/svg\">\n<circle aria-label=\"1 circle\" cx=\"50\" cy=\"50\" fill=\"yellow\" r=\"40\" role=\"graphics-symbol\" stroke=\"green\" stroke-width=\"4\"></circle>\n</svg>"
+      ],
+      "status": "FIRING",
+      "act_cases_used": 6
+    },
+    {
+      "rule_id": "missing-lang",
+      "elements_checked": 6,
+      "violations_found": 5,
+      "high_confidence_count": 5,
+      "medium_confidence_count": 0,
+      "sample_elements_checked": [
+        "<html>"
+      ],
+      "sample_violations": [
+        "<html>"
+      ],
+      "status": "FIRING",
+      "act_cases_used": 6
+    },
+    {
+      "rule_id": "autocomplete-missing",
+      "elements_checked": 0,
+      "violations_found": 0,
+      "high_confidence_count": 0,
+      "medium_confidence_count": 0,
+      "sample_elements_checked": [],
+      "sample_violations": [],
+      "status": "NOT FIRING",
+      "act_cases_used": 0
+    },
+    {
+      "rule_id": "duplicate-label",
+      "elements_checked": 0,
+      "violations_found": 0,
+      "high_confidence_count": 0,
+      "medium_confidence_count": 0,
+      "sample_elements_checked": [],
+      "sample_violations": [],
+      "status": "NOT FIRING",
+      "act_cases_used": 0
+    }
+  ],
+  "activation_audit": [
+    {
+      "rule_id": "missing-alt",
+      "elements_checked": 1,
+      "violations_found": 0,
+      "high_confidence_count": 0,
+      "medium_confidence_count": 2
+    },
+    {
+      "rule_id": "input-label",
+      "elements_checked": 4,
+      "violations_found": 0,
+      "high_confidence_count": 0,
+      "medium_confidence_count": 1
+    },
+    {
+      "rule_id": "input-name",
+      "elements_checked": 0,
+      "violations_found": 0,
+      "high_confidence_count": 0,
+      "medium_confidence_count": 0
+    },
+    {
+      "rule_id": "clickable-no-role",
+      "elements_checked": 0,
+      "violations_found": 0,
+      "high_confidence_count": 0,
+      "medium_confidence_count": 0
+    },
+    {
+      "rule_id": "svg-accessible-name",
+      "elements_checked": 3,
+      "violations_found": 1,
+      "high_confidence_count": 1,
+      "medium_confidence_count": 0
+    },
+    {
+      "rule_id": "missing-lang",
+      "elements_checked": 6,
+      "violations_found": 5,
+      "high_confidence_count": 5,
+      "medium_confidence_count": 0
+    },
+    {
+      "rule_id": "autocomplete-missing",
+      "elements_checked": 0,
+      "violations_found": 0,
+      "high_confidence_count": 0,
+      "medium_confidence_count": 0
+    },
+    {
+      "rule_id": "duplicate-label",
+      "elements_checked": 0,
+      "violations_found": 0,
+      "high_confidence_count": 0,
+      "medium_confidence_count": 0
+    }
+  ],
+  "step2_act_test_mapping": [
+    {
+      "rule_id": "missing-alt",
+      "cases": [
+        {
+          "name": "ACT case 613",
+          "url": "https://act-rules.github.io/testcases/e88epe/fdc91cd65be10f2ff361158ce5f2312c7be38f21.html",
+          "expected_rule_ids": [
+            "image-alt"
+          ],
+          "known_valid_rule_ids": [
+            "image-alt"
+          ],
+          "manual_violations_found": 0,
+          "status": "LOGIC GAP",
+          "html_snippet": "<img alt=\"\" src=\"/test-assets/shared/fireworks.jpg\"/>",
+          "rule_activity": {
+            "elements_checked": 1,
+            "violations_found": 0,
+            "firing_status": "NOT FIRING",
+            "confidence_bucket": {
+              "high": 0,
+              "medium": 1,
+              "low": 0
+            },
+            "sample_elements_checked": [
+              "img src=\"/test-assets/shared/fireworks.jpg\""
+            ],
+            "sample_violations": [
+              "<img alt=\"\" src=\"/test-assets/shared/fireworks.jpg\"/>"
+            ],
+            "violations": [
+              "<img alt=\"\" src=\"/test-assets/shared/fireworks.jpg\"/>"
+            ]
+          },
+          "error": null
+        },
+        {
+          "name": "ACT case 614",
+          "url": "https://act-rules.github.io/testcases/e88epe/90f579fe2b01db999b270d6dfe818cce8c715b65.html",
+          "expected_rule_ids": [
+            "image-alt"
+          ],
+          "known_valid_rule_ids": [
+            "image-alt"
+          ],
+          "manual_violations_found": 0,
+          "status": "LOGIC GAP",
+          "html_snippet": "<img alt=\"\" aria-hidden=\"true\" role=\"img\" src=\"/test-assets/shared/fireworks.jpg\"/>",
+          "rule_activity": {
+            "elements_checked": 0,
+            "violations_found": 0,
+            "firing_status": "NOT FIRING",
+            "confidence_bucket": {
+              "high": 0,
+              "medium": 1,
+              "low": 0
+            },
+            "sample_elements_checked": [],
+            "sample_violations": [
+              "<img alt=\"\" aria-hidden=\"true\" role=\"img\" src=\"/test-assets/shared/fireworks.jpg\"/>"
+            ],
+            "violations": [
+              "<img alt=\"\" aria-hidden=\"true\" role=\"img\" src=\"/test-assets/shared/fireworks.jpg\"/>"
+            ]
+          },
+          "error": null
+        }
+      ]
+    },
+    {
+      "rule_id": "input-label",
+      "cases": [
+        {
+          "name": "ACT case 368",
+          "url": "https://act-rules.github.io/testcases/cc0f0a/0ed8074a5bee7052a1a28f9fd718b7d35a645cfd.html",
+          "expected_rule_ids": [
+            "form-label-missing"
+          ],
+          "known_valid_rule_ids": [
+            "form-label-missing"
+          ],
+          "manual_violations_found": 0,
+          "status": "LOGIC GAP",
+          "html_snippet": "<label>First name:<input id=\"fname\" name=\"fname\" type=\"text\"/></label>",
+          "rule_activity": {
+            "elements_checked": 1,
+            "violations_found": 0,
+            "firing_status": "NOT FIRING",
+            "confidence_bucket": {
+              "high": 0,
+              "medium": 0,
+              "low": 0
+            },
+            "sample_elements_checked": [
+              "input#fname type=\"text\""
+            ],
+            "sample_violations": [],
+            "violations": []
+          },
+          "error": null
+        },
+        {
+          "name": "ACT case 369",
+          "url": "https://act-rules.github.io/testcases/cc0f0a/90d77d3e5b2fdc19bce47f9f9362283861d3903b.html",
+          "expected_rule_ids": [
+            "form-label-missing"
+          ],
+          "known_valid_rule_ids": [
+            "form-label-missing"
+          ],
+          "manual_violations_found": 0,
+          "status": "LOGIC GAP",
+          "html_snippet": "<label for=\"fname\">First name:</label>",
+          "rule_activity": {
+            "elements_checked": 1,
+            "violations_found": 0,
+            "firing_status": "NOT FIRING",
+            "confidence_bucket": {
+              "high": 0,
+              "medium": 0,
+              "low": 0
+            },
+            "sample_elements_checked": [
+              "input#fname type=\"text\""
+            ],
+            "sample_violations": [],
+            "violations": []
+          },
+          "error": null
+        },
+        {
+          "name": "ACT case 382",
+          "url": "https://act-rules.github.io/testcases/e086e5/3b4e297ca20e30ab0d1bbf68edd6218a3263ca5d.html",
+          "expected_rule_ids": [
+            "form-label-missing",
+            "missing-label"
+          ],
+          "known_valid_rule_ids": [
+            "form-label-missing",
+            "missing-label"
+          ],
+          "manual_violations_found": 0,
+          "status": "LOGIC GAP",
+          "html_snippet": "<label>\n\tfirst name\n\t<input/>\n</label>",
+          "rule_activity": {
+            "elements_checked": 1,
+            "violations_found": 0,
+            "firing_status": "NOT FIRING",
+            "confidence_bucket": {
+              "high": 0,
+              "medium": 0,
+              "low": 0
+            },
+            "sample_elements_checked": [
+              "input type=\"text\""
+            ],
+            "sample_violations": [],
+            "violations": []
+          },
+          "error": null
+        },
+        {
+          "name": "ACT case 383",
+          "url": "https://act-rules.github.io/testcases/e086e5/e71ccce6c5750132902bdaeccd223da5619cf2a0.html",
+          "expected_rule_ids": [
+            "form-label-missing",
+            "missing-label"
+          ],
+          "known_valid_rule_ids": [
+            "form-label-missing",
+            "missing-label"
+          ],
+          "manual_violations_found": 0,
+          "status": "LOGIC GAP",
+          "html_snippet": "<input aria-label=\"last name\" disabled=\"\"/>",
+          "rule_activity": {
+            "elements_checked": 1,
+            "violations_found": 0,
+            "firing_status": "NOT FIRING",
+            "confidence_bucket": {
+              "high": 0,
+              "medium": 1,
+              "low": 0
+            },
+            "sample_elements_checked": [
+              "input type=\"text\""
+            ],
+            "sample_violations": [
+              "<input aria-label=\"last name\" disabled=\"\"/>"
+            ],
+            "violations": [
+              "<input aria-label=\"last name\" disabled=\"\"/>"
+            ]
+          },
+          "error": null
+        }
+      ]
+    },
+    {
+      "rule_id": "input-name",
+      "cases": []
+    },
+    {
+      "rule_id": "clickable-no-role",
+      "cases": [
+        {
+          "name": "ACT case 196",
+          "url": "https://act-rules.github.io/testcases/97a4e1/95935dc40a7a9d307aa385102365364fc866845f.html",
+          "expected_rule_ids": [
+            "button-name"
+          ],
+          "known_valid_rule_ids": [
+            "button-name"
+          ],
+          "manual_violations_found": 0,
+          "status": "LOGIC GAP",
+          "html_snippet": "<body><button>My button</button></body>",
+          "rule_activity": {
+            "elements_checked": 0,
+            "violations_found": 0,
+            "firing_status": "NOT FIRING",
+            "confidence_bucket": {
+              "high": 0,
+              "medium": 0,
+              "low": 0
+            },
+            "sample_elements_checked": [],
+            "sample_violations": [],
+            "violations": []
+          },
+          "error": null
+        },
+        {
+          "name": "ACT case 197",
+          "url": "https://act-rules.github.io/testcases/97a4e1/770a924ca441324dd186a5a58d705af40393504a.html",
+          "expected_rule_ids": [
+            "button-name"
+          ],
+          "known_valid_rule_ids": [
+            "button-name"
+          ],
+          "manual_violations_found": 0,
+          "status": "LOGIC GAP",
+          "html_snippet": "<body><input type=\"submit\" value=\"Submit\"/></body>",
+          "rule_activity": {
+            "elements_checked": 0,
+            "violations_found": 0,
+            "firing_status": "NOT FIRING",
+            "confidence_bucket": {
+              "high": 0,
+              "medium": 0,
+              "low": 0
+            },
+            "sample_elements_checked": [],
+            "sample_violations": [],
+            "violations": []
+          },
+          "error": null
+        },
+        {
+          "name": "ACT case 554",
+          "url": "https://act-rules.github.io/testcases/59796f/bd1c895bd29e87165b7e3bb21d7a3412975893c3.html",
+          "expected_rule_ids": [
+            "button-name"
+          ],
+          "known_valid_rule_ids": [
+            "button-name"
+          ],
+          "manual_violations_found": 0,
+          "status": "LOGIC GAP",
+          "html_snippet": "<body><input alt=\"Search\" src=\"/test-assets/shared/search-icon.svg\" type=\"image\"/></body>",
+          "rule_activity": {
+            "elements_checked": 0,
+            "violations_found": 0,
+            "firing_status": "NOT FIRING",
+            "confidence_bucket": {
+              "high": 0,
+              "medium": 0,
+              "low": 0
+            },
+            "sample_elements_checked": [],
+            "sample_violations": [],
+            "violations": []
+          },
+          "error": null
+        },
+        {
+          "name": "ACT case 555",
+          "url": "https://act-rules.github.io/testcases/59796f/0b219e427b84db4c85edc337a456f482a0b0cf0d.html",
+          "expected_rule_ids": [
+            "button-name"
+          ],
+          "known_valid_rule_ids": [
+            "button-name"
+          ],
+          "manual_violations_found": 0,
+          "status": "LOGIC GAP",
+          "html_snippet": "<body><input aria-label=\"Search\" src=\"/test-assets/shared/search-icon.svg\" type=\"image\"/></body>",
+          "rule_activity": {
+            "elements_checked": 0,
+            "violations_found": 0,
+            "firing_status": "NOT FIRING",
+            "confidence_bucket": {
+              "high": 0,
+              "medium": 0,
+              "low": 0
+            },
+            "sample_elements_checked": [],
+            "sample_violations": [],
+            "violations": []
+          },
+          "error": null
+        }
+      ]
+    },
+    {
+      "rule_id": "svg-accessible-name",
+      "cases": [
+        {
+          "name": "ACT case 325",
+          "url": "https://act-rules.github.io/testcases/7d6734/0fd9df3029d10e81ef1e453902e8f61670939b52.html",
+          "expected_rule_ids": [
+            "svg-no-accessible-name"
+          ],
+          "known_valid_rule_ids": [
+            "svg-no-accessible-name"
+          ],
+          "manual_violations_found": 0,
+          "status": "LOGIC GAP",
+          "html_snippet": "<svg height=\"100\" role=\"img\" width=\"100\" xmlns=\"http://www.w3.org/2000/svg\">\n<title>1 circle</title>\n<circle cx=\"50\" cy=\"50\" fill=\"yellow\" r=\"40\"></circle>\n</svg>",
+          "rule_activity": {
+            "elements_checked": 1,
+            "violations_found": 0,
+            "firing_status": "NOT FIRING",
+            "confidence_bucket": {
+              "high": 0,
+              "medium": 0,
+              "low": 0
+            },
+            "sample_elements_checked": [
+              "svg"
+            ],
+            "sample_violations": [],
+            "violations": []
+          },
+          "error": null
+        },
+        {
+          "name": "ACT case 326",
+          "url": "https://act-rules.github.io/testcases/7d6734/114be98c8b9af5e15b6694283669cd1ef1c8677b.html",
+          "expected_rule_ids": [
+            "svg-no-accessible-name"
+          ],
+          "known_valid_rule_ids": [
+            "svg-no-accessible-name"
+          ],
+          "manual_violations_found": 1,
+          "status": "TRIGGERED",
+          "html_snippet": "<svg xmlns=\"https://www.w3.org/2000/svg\">\n<circle aria-label=\"1 circle\" cx=\"50\" cy=\"50\" fill=\"yellow\" r=\"40\" role=\"graphics-symbol\" stroke=\"green\" stroke-width=\"4\"></circle>\n</svg>",
+          "rule_activity": {
+            "elements_checked": 1,
+            "violations_found": 1,
+            "firing_status": "FIRING",
+            "confidence_bucket": {
+              "high": 1,
+              "medium": 0,
+              "low": 0
+            },
+            "sample_elements_checked": [
+              "svg"
+            ],
+            "sample_violations": [
+              "<svg xmlns=\"https://www.w3.org/2000/svg\">\n<circle aria-label=\"1 circle\" cx=\"50\" cy=\"50\" fill=\"yellow\" r=\"40\" role=\"graphics-symbol\" stroke=\"green\" stroke-width=\"4\"></circle>\n</svg>"
+            ],
+            "violations": [
+              "<svg xmlns=\"https://www.w3.org/2000/svg\">\n<circle aria-label=\"1 circle\" cx=\"50\" cy=\"50\" fill=\"yellow\" r=\"40\" role=\"graphics-symbol\" stroke=\"green\" stroke-width=\"4\"></circle>\n</svg>"
+            ]
+          },
+          "error": null
+        },
+        {
+          "name": "ACT case 522",
+          "url": "https://act-rules.github.io/testcases/cae760/00d0ca6f65fac3fda16eefab537af52f2f3ad1bb.html",
+          "expected_rule_ids": [
+            "svg-no-accessible-name"
+          ],
+          "known_valid_rule_ids": [
+            "svg-no-accessible-name"
+          ],
+          "manual_violations_found": 0,
+          "status": "LOGIC GAP",
+          "html_snippet": "<body><iframe src=\"/test-assets/SC4-1-2-frame-doc.html\" title=\"Grocery List\"> </iframe></body>",
+          "rule_activity": {
+            "elements_checked": 0,
+            "violations_found": 0,
+            "firing_status": "NOT FIRING",
+            "confidence_bucket": {
+              "high": 0,
+              "medium": 0,
+              "low": 0
+            },
+            "sample_elements_checked": [],
+            "sample_violations": [],
+            "violations": []
+          },
+          "error": null
+        },
+        {
+          "name": "ACT case 523",
+          "url": "https://act-rules.github.io/testcases/cae760/2813dd16dbc09fc3c554133cb3bc5ff2e27cd1bf.html",
+          "expected_rule_ids": [
+            "svg-no-accessible-name"
+          ],
+          "known_valid_rule_ids": [
+            "svg-no-accessible-name"
+          ],
+          "manual_violations_found": 0,
+          "status": "LOGIC GAP",
+          "html_snippet": "<body><iframe aria-label=\"Grocery list\" src=\"/test-assets/SC4-1-2-frame-doc.html\"> </iframe></body>",
+          "rule_activity": {
+            "elements_checked": 0,
+            "violations_found": 0,
+            "firing_status": "NOT FIRING",
+            "confidence_bucket": {
+              "high": 0,
+              "medium": 0,
+              "low": 0
+            },
+            "sample_elements_checked": [],
+            "sample_violations": [],
+            "violations": []
+          },
+          "error": null
+        },
+        {
+          "name": "ACT case 538",
+          "url": "https://act-rules.github.io/testcases/qt1vmo/be6b29e220d6afbd827625c602ec49027e73fdf1.html",
+          "expected_rule_ids": [
+            "svg-no-accessible-name"
+          ],
+          "known_valid_rule_ids": [
+            "svg-no-accessible-name"
+          ],
+          "manual_violations_found": 0,
+          "status": "LOGIC GAP",
+          "html_snippet": "<body><img alt=\"W3C\" src=\"/test-assets/shared/w3c-logo.png\"/>\n</body>",
+          "rule_activity": {
+            "elements_checked": 0,
+            "violations_found": 0,
+            "firing_status": "NOT FIRING",
+            "confidence_bucket": {
+              "high": 0,
+              "medium": 0,
+              "low": 0
+            },
+            "sample_elements_checked": [],
+            "sample_violations": [],
+            "violations": []
+          },
+          "error": null
+        },
+        {
+          "name": "ACT case 539",
+          "url": "https://act-rules.github.io/testcases/qt1vmo/dd2f262645db0f473e294a02dff5576c6ccfe133.html",
+          "expected_rule_ids": [
+            "svg-no-accessible-name"
+          ],
+          "known_valid_rule_ids": [
+            "svg-no-accessible-name"
+          ],
+          "manual_violations_found": 0,
+          "status": "LOGIC GAP",
+          "html_snippet": "<svg aria-label=\"HTML 5\" viewbox=\"0 0 512 512\">\n<path d=\"M108.4 0h23v22.8h21.2V0h23v69h-23V46h-21v23h-23.2M206 23h-20.3V0h63.7v23H229v46h-23M259.5 0h24.1l14.8 24.3L313.2 0h24.1v69h-23V34.8l-16.1 24.8l-16.1-24.8v34.2h-22.6M348.7 0h23v46.2h32.6V69h-55.6\"></path>\n<path d=\"M107.6 471l-33-370.4h362.8l-33 370.2L255.7 512\" fi",
+          "rule_activity": {
+            "elements_checked": 1,
+            "violations_found": 0,
+            "firing_status": "NOT FIRING",
+            "confidence_bucket": {
+              "high": 0,
+              "medium": 0,
+              "low": 0
+            },
+            "sample_elements_checked": [
+              "svg"
+            ],
+            "sample_violations": [],
+            "violations": []
+          },
+          "error": null
+        }
+      ]
+    },
+    {
+      "rule_id": "missing-lang",
+      "cases": [
+        {
+          "name": "ACT case 8",
+          "url": "https://act-rules.github.io/testcases/6cfa84/6993d0144f7c3ba330666daf9f0b077fb61894f1.html",
+          "expected_rule_ids": [
+            "no-lang"
+          ],
+          "known_valid_rule_ids": [
+            "no-lang"
+          ],
+          "manual_violations_found": 1,
+          "status": "TRIGGERED",
+          "html_snippet": "<html>",
+          "rule_activity": {
+            "elements_checked": 1,
+            "violations_found": 1,
+            "firing_status": "FIRING",
+            "confidence_bucket": {
+              "high": 1,
+              "medium": 0,
+              "low": 0
+            },
+            "sample_elements_checked": [
+              "<html>"
+            ],
+            "sample_violations": [
+              "<html>"
+            ],
+            "violations": [
+              "<html>"
+            ]
+          },
+          "error": null
+        },
+        {
+          "name": "ACT case 9",
+          "url": "https://act-rules.github.io/testcases/6cfa84/46416c73f816af91f446e6056c96e89ac7882edb.html",
+          "expected_rule_ids": [
+            "no-lang"
+          ],
+          "known_valid_rule_ids": [
+            "no-lang"
+          ],
+          "manual_violations_found": 1,
+          "status": "TRIGGERED",
+          "html_snippet": "<html>",
+          "rule_activity": {
+            "elements_checked": 1,
+            "violations_found": 1,
+            "firing_status": "FIRING",
+            "confidence_bucket": {
+              "high": 1,
+              "medium": 0,
+              "low": 0
+            },
+            "sample_elements_checked": [
+              "<html>"
+            ],
+            "sample_violations": [
+              "<html>"
+            ],
+            "violations": [
+              "<html>"
+            ]
+          },
+          "error": null
+        },
+        {
+          "name": "ACT case 139",
+          "url": "https://act-rules.github.io/testcases/aaa1bf/e8a48b617a529bd77a77693eddc7212655da60ab.html",
+          "expected_rule_ids": [
+            "no-lang"
+          ],
+          "known_valid_rule_ids": [
+            "no-lang"
+          ],
+          "manual_violations_found": 1,
+          "status": "TRIGGERED",
+          "html_snippet": "<html>",
+          "rule_activity": {
+            "elements_checked": 1,
+            "violations_found": 1,
+            "firing_status": "FIRING",
+            "confidence_bucket": {
+              "high": 1,
+              "medium": 0,
+              "low": 0
+            },
+            "sample_elements_checked": [
+              "<html>"
+            ],
+            "sample_violations": [
+              "<html>"
+            ],
+            "violations": [
+              "<html>"
+            ]
+          },
+          "error": null
+        },
+        {
+          "name": "ACT case 140",
+          "url": "https://act-rules.github.io/testcases/aaa1bf/19ebd0fed367ae04538cbd14453d24677605b4d1.html",
+          "expected_rule_ids": [
+            "no-lang"
+          ],
+          "known_valid_rule_ids": [
+            "no-lang"
+          ],
+          "manual_violations_found": 1,
+          "status": "TRIGGERED",
+          "html_snippet": "<html>",
+          "rule_activity": {
+            "elements_checked": 1,
+            "violations_found": 1,
+            "firing_status": "FIRING",
+            "confidence_bucket": {
+              "high": 1,
+              "medium": 0,
+              "low": 0
+            },
+            "sample_elements_checked": [
+              "<html>"
+            ],
+            "sample_violations": [
+              "<html>"
+            ],
+            "violations": [
+              "<html>"
+            ]
+          },
+          "error": null
+        },
+        {
+          "name": "ACT case 431",
+          "url": "https://act-rules.github.io/testcases/b5c3f8/9e6fd0d4112ad490218f17263e36ec33f8adb8db.html",
+          "expected_rule_ids": [
+            "missing-lang-attr",
+            "no-lang"
+          ],
+          "known_valid_rule_ids": [
+            "missing-lang-attr",
+            "no-lang"
+          ],
+          "manual_violations_found": 0,
+          "status": "LOGIC GAP",
+          "html_snippet": "<html lang=\"en\"></html>",
+          "rule_activity": {
+            "elements_checked": 1,
+            "violations_found": 0,
+            "firing_status": "NOT FIRING",
+            "confidence_bucket": {
+              "high": 0,
+              "medium": 0,
+              "low": 0
+            },
+            "sample_elements_checked": [
+              "<html>"
+            ],
+            "sample_violations": [],
+            "violations": []
+          },
+          "error": null
+        },
+        {
+          "name": "ACT case 432",
+          "url": "https://act-rules.github.io/testcases/b5c3f8/2f3f2c774ba3e0ac44c37bdb43a34c85bf73e484.html",
+          "expected_rule_ids": [
+            "missing-lang-attr",
+            "no-lang"
+          ],
+          "known_valid_rule_ids": [
+            "missing-lang-attr",
+            "no-lang"
+          ],
+          "manual_violations_found": 1,
+          "status": "TRIGGERED",
+          "html_snippet": "<html>",
+          "rule_activity": {
+            "elements_checked": 1,
+            "violations_found": 1,
+            "firing_status": "FIRING",
+            "confidence_bucket": {
+              "high": 1,
+              "medium": 0,
+              "low": 0
+            },
+            "sample_elements_checked": [
+              "<html>"
+            ],
+            "sample_violations": [
+              "<html>"
+            ],
+            "violations": [
+              "<html>"
+            ]
+          },
+          "error": null
+        }
+      ]
+    },
+    {
+      "rule_id": "autocomplete-missing",
+      "cases": []
+    },
+    {
+      "rule_id": "duplicate-label",
+      "cases": []
+    }
+  ],
+  "step3_real_world_site_results": [
+    {
+      "url": "https://www.apple.com/",
+      "error": null,
+      "rule_hits": {
+        "missing-alt": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "input-label": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "input-name": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "clickable-no-role": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "svg-accessible-name": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "missing-lang": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "autocomplete-missing": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "duplicate-label": {
+          "violations_found": 0,
+          "example_cases": []
+        }
+      }
+    },
+    {
+      "url": "https://www.wikipedia.org/",
+      "error": null,
+      "rule_hits": {
+        "missing-alt": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "input-label": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "input-name": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "clickable-no-role": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "svg-accessible-name": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "missing-lang": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "autocomplete-missing": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "duplicate-label": {
+          "violations_found": 0,
+          "example_cases": []
+        }
+      }
+    },
+    {
+      "url": "https://www.amazon.com/",
+      "error": null,
+      "rule_hits": {
+        "missing-alt": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "input-label": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "input-name": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "clickable-no-role": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "svg-accessible-name": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "missing-lang": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "autocomplete-missing": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "duplicate-label": {
+          "violations_found": 0,
+          "example_cases": []
+        }
+      }
+    },
+    {
+      "url": "https://www.reddit.com/",
+      "error": null,
+      "rule_hits": {
+        "missing-alt": {
+          "violations_found": 1,
+          "example_cases": [
+            {
+              "element": null,
+              "html_snippet": "",
+              "description": null
+            }
+          ]
+        },
+        "input-label": {
+          "violations_found": 1,
+          "example_cases": [
+            {
+              "element": null,
+              "html_snippet": "",
+              "description": null
+            }
+          ]
+        },
+        "input-name": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "clickable-no-role": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "svg-accessible-name": {
+          "violations_found": 1,
+          "example_cases": [
+            {
+              "element": null,
+              "html_snippet": "",
+              "description": null
+            }
+          ]
+        },
+        "missing-lang": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "autocomplete-missing": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "duplicate-label": {
+          "violations_found": 0,
+          "example_cases": []
+        }
+      }
+    },
+    {
+      "url": "https://www.gov.uk/",
+      "error": null,
+      "rule_hits": {
+        "missing-alt": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "input-label": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "input-name": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "clickable-no-role": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "svg-accessible-name": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "missing-lang": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "autocomplete-missing": {
+          "violations_found": 0,
+          "example_cases": []
+        },
+        "duplicate-label": {
+          "violations_found": 0,
+          "example_cases": []
+        }
+      }
+    }
+  ],
+  "step3_real_world_rule_summary": [
+    {
+      "rule_id": "missing-alt",
+      "violations_found": 1,
+      "example_cases": [
+        {
+          "url": "https://www.reddit.com/",
+          "element": null,
+          "html_snippet": "",
+          "description": null
+        }
+      ],
+      "status": "FIRING"
+    },
+    {
+      "rule_id": "input-label",
+      "violations_found": 1,
+      "example_cases": [
+        {
+          "url": "https://www.reddit.com/",
+          "element": null,
+          "html_snippet": "",
+          "description": null
+        }
+      ],
+      "status": "FIRING"
+    },
+    {
+      "rule_id": "input-name",
+      "violations_found": 0,
+      "example_cases": [],
+      "status": "NOT FIRING"
+    },
+    {
+      "rule_id": "clickable-no-role",
+      "violations_found": 0,
+      "example_cases": [],
+      "status": "NOT FIRING"
+    },
+    {
+      "rule_id": "svg-accessible-name",
+      "violations_found": 1,
+      "example_cases": [
+        {
+          "url": "https://www.reddit.com/",
+          "element": null,
+          "html_snippet": "",
+          "description": null
+        }
+      ],
+      "status": "FIRING"
+    },
+    {
+      "rule_id": "missing-lang",
+      "violations_found": 0,
+      "example_cases": [],
+      "status": "NOT FIRING"
+    },
+    {
+      "rule_id": "autocomplete-missing",
+      "violations_found": 0,
+      "example_cases": [],
+      "status": "NOT FIRING"
+    },
+    {
+      "rule_id": "duplicate-label",
+      "violations_found": 0,
+      "example_cases": [],
+      "status": "NOT FIRING"
+    }
+  ]
+}

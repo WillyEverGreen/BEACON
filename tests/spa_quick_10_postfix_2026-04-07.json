@@ -1,0 +1,376 @@
+{
+  "timestamp": "2026-04-07T06:19:24.039041",
+  "total_time_seconds": 103.87,
+  "configuration": {
+    "rag_enabled": false,
+    "max_enrich_issues": 0,
+    "cognitive_enabled": false
+  },
+  "summary": {
+    "total": 10,
+    "passed": 10,
+    "failed": 0,
+    "errors": 0,
+    "degraded": 0,
+    "spa_detected": 0,
+    "pass_rate": 100.0
+  },
+  "spa_detection": {
+    "total_spa_sites": 0,
+    "frameworks": {},
+    "spa_pass_rate": 0
+  },
+  "category_stats": {
+    "accessibility": {
+      "sites": 5,
+      "passed": 5,
+      "failed": 0,
+      "errors": 0,
+      "avg_fast_score": 95.4,
+      "avg_deep_score": 92.1,
+      "avg_fast_time": 0.79,
+      "avg_deep_time": 16.09,
+      "total_issues": 32
+    },
+    "government": {
+      "sites": 5,
+      "passed": 5,
+      "failed": 0,
+      "errors": 0,
+      "avg_fast_score": 93.8,
+      "avg_deep_score": 90.9,
+      "avg_fast_time": 4.1,
+      "avg_deep_time": 17.38,
+      "total_issues": 37
+    }
+  },
+  "complexity_stats": {
+    "simple": {
+      "sites": 4,
+      "passed": 4,
+      "errors": 0
+    },
+    "moderate": {
+      "sites": 6,
+      "passed": 6,
+      "errors": 0
+    },
+    "complex": {
+      "sites": 0,
+      "passed": 0,
+      "errors": 0
+    }
+  },
+  "results": [
+    {
+      "name": "A11y Project",
+      "url": "https://www.a11yproject.com/",
+      "category": "accessibility",
+      "complexity": "simple",
+      "fast_score": 96.4,
+      "deep_score": 91.2,
+      "fast_issues": 2,
+      "deep_issues": 6,
+      "fast_time": 0.04,
+      "deep_time": 11.57,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "serious": 5,
+        "moderate": 1
+      },
+      "passed": true,
+      "degraded": false,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "WebAIM",
+      "url": "https://webaim.org/",
+      "category": "accessibility",
+      "complexity": "simple",
+      "fast_score": 97.2,
+      "deep_score": 93.8,
+      "fast_issues": 2,
+      "deep_issues": 5,
+      "fast_time": 0.0,
+      "deep_time": 0.0,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "serious": 3,
+        "moderate": 2
+      },
+      "passed": true,
+      "degraded": false,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "W3C WAI",
+      "url": "https://www.w3.org/WAI/",
+      "category": "accessibility",
+      "complexity": "moderate",
+      "fast_score": 96.4,
+      "deep_score": 94.3,
+      "fast_issues": 4,
+      "deep_issues": 6,
+      "fast_time": 0.59,
+      "deep_time": 37.01,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "minor": 3,
+        "serious": 1,
+        "moderate": 2
+      },
+      "passed": true,
+      "degraded": false,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Deque University",
+      "url": "https://dequeuniversity.com/",
+      "category": "accessibility",
+      "complexity": "moderate",
+      "fast_score": 87.9,
+      "deep_score": 84.8,
+      "fast_issues": 10,
+      "deep_issues": 12,
+      "fast_time": 2.3,
+      "deep_time": 20.64,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 6,
+        "serious": 4,
+        "critical": 1,
+        "minor": 1
+      },
+      "passed": true,
+      "degraded": false,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Inclusive Components",
+      "url": "https://inclusive-components.design/",
+      "category": "accessibility",
+      "complexity": "simple",
+      "fast_score": 99.1,
+      "deep_score": 96.2,
+      "fast_issues": 1,
+      "deep_issues": 3,
+      "fast_time": 1.03,
+      "deep_time": 11.22,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 2,
+        "serious": 1
+      },
+      "passed": true,
+      "degraded": false,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "USA.gov",
+      "url": "https://www.usa.gov/",
+      "category": "government",
+      "complexity": "moderate",
+      "fast_score": 96.5,
+      "deep_score": 88.7,
+      "fast_issues": 3,
+      "deep_issues": 9,
+      "fast_time": 1.06,
+      "deep_time": 16.76,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 6,
+        "serious": 3
+      },
+      "passed": true,
+      "degraded": false,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "GOV.UK",
+      "url": "https://www.gov.uk/",
+      "category": "government",
+      "complexity": "moderate",
+      "fast_score": 93.3,
+      "deep_score": 87.5,
+      "fast_issues": 5,
+      "deep_issues": 9,
+      "fast_time": 0.38,
+      "deep_time": 10.11,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 4,
+        "serious": 4,
+        "critical": 1
+      },
+      "passed": true,
+      "degraded": false,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Canada.ca",
+      "url": "https://www.canada.ca/en.html",
+      "category": "government",
+      "complexity": "moderate",
+      "fast_score": 83.1,
+      "deep_score": 90.6,
+      "fast_issues": 1,
+      "deep_issues": 8,
+      "fast_time": 15.28,
+      "deep_time": 25.87,
+      "fast_enrichment_status": "skipped",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 4,
+        "serious": 3,
+        "minor": 1
+      },
+      "passed": true,
+      "degraded": false,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Digital.gov",
+      "url": "https://www.digital.gov/",
+      "category": "government",
+      "complexity": "simple",
+      "fast_score": 97.5,
+      "deep_score": 93.5,
+      "fast_issues": 3,
+      "deep_issues": 6,
+      "fast_time": 2.06,
+      "deep_time": 16.93,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 3,
+        "minor": 1,
+        "serious": 2
+      },
+      "passed": true,
+      "degraded": false,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Section508.gov",
+      "url": "https://www.section508.gov/",
+      "category": "government",
+      "complexity": "moderate",
+      "fast_score": 98.5,
+      "deep_score": 94.4,
+      "fast_issues": 2,
+      "deep_issues": 5,
+      "fast_time": 1.72,
+      "deep_time": 17.21,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "moderate": 2,
+        "minor": 1,
+        "serious": 2
+      },
+      "passed": true,
+      "degraded": false,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    }
+  ],
+  "failures": [],
+  "errors": [],
+  "recommendations": []
+}

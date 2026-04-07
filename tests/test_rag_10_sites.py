@@ -16,8 +16,7 @@ from typing import Optional
 # Add app to path
 sys.path.insert(0, os.path.abspath("."))
 
-from app.services.audit_runner import AuditRunner
-from app.schemas import AuditRequest
+from app.services.audit_runner import run_audit
 
 
 @dataclass
@@ -42,6 +41,19 @@ STRATEGIC_SITES = [
 ]
 
 
+def _count_enriched_issues(issues: list[dict]) -> int:
+    """Count issues with non-pending enrichment source or explicit rag_context."""
+    enriched = 0
+    for issue in issues:
+        source = str(issue.get("_enrichment_source") or issue.get("enrichment_source") or "").strip().lower()
+        if issue.get("rag_context"):
+            enriched += 1
+            continue
+        if source and source not in {"pending", "off", "none", "unknown"}:
+            enriched += 1
+    return enriched
+
+
 async def test_site_with_rag(site: SiteTest):
     """Test a single site with RAG enabled"""
     print(f"\n{'='*80}")
@@ -54,21 +66,21 @@ async def test_site_with_rag(site: SiteTest):
     # Test WITHOUT RAG (baseline)
     print(f"  [1/2] BASELINE (No RAG, No Cognitive)...")
     start = time.time()
-    
-    runner = AuditRunner()
-    request_no_rag = AuditRequest(
+
+    result_no_rag = await run_audit(
         url=site.url,
-        scan_mode="deep",  # Use deep scan
-        enable_rag_enrichment=False,  # NO RAG
-        enable_cognitive_engine=False,  # NO Cognitive (avoid API costs)
+        scan_mode="deep",
+        precision_profile="balanced",
+        enable_enrichment=False,
+        max_enrich_issues=0,
+        enable_cognitive=False,
+        await_enrichment=False,
     )
-    
-    result_no_rag = await runner.run_audit(request_no_rag)
     time_no_rag = time.time() - start
-    
-    score_no_rag = result_no_rag.score
-    issues_no_rag = len(result_no_rag.issues)
-    rag_enriched_no = sum(1 for i in result_no_rag.issues if i.knowledge_context and len(i.knowledge_context) > 0)
+
+    score_no_rag = float(result_no_rag.get("score", 0))
+    issues_no_rag = int(result_no_rag.get("total_issues", 0))
+    rag_enriched_no = _count_enriched_issues(result_no_rag.get("issues", []))
     
     print(f"    ✓ Score: {score_no_rag:.1f}/100")
     print(f"    ✓ Issues: {issues_no_rag}")
@@ -78,25 +90,28 @@ async def test_site_with_rag(site: SiteTest):
     # Test WITH RAG
     print(f"  [2/2] RAG-ENABLED (With RAG, No Cognitive)...")
     start = time.time()
-    
-    request_with_rag = AuditRequest(
+
+    result_with_rag = await run_audit(
         url=site.url,
         scan_mode="deep",
-        enable_rag_enrichment=True,  # YES RAG!
-        enable_cognitive_engine=False,  # NO Cognitive (avoid API costs)
+        precision_profile="balanced",
+        enable_enrichment=True,
+        max_enrich_issues=20,
+        enable_cognitive=False,
+        await_enrichment=True,
     )
-    
-    result_with_rag = await runner.run_audit(request_with_rag)
     time_with_rag = time.time() - start
-    
-    score_with_rag = result_with_rag.score
-    issues_with_rag = len(result_with_rag.issues)
-    rag_enriched_yes = sum(1 for i in result_with_rag.issues if i.knowledge_context and len(i.knowledge_context) > 0)
+
+    score_with_rag = float(result_with_rag.get("score", 0))
+    issues_with_rag = int(result_with_rag.get("total_issues", 0))
+    rag_enriched_yes = _count_enriched_issues(result_with_rag.get("issues", []))
+    with_rag_status = str(result_with_rag.get("enrichment_status", "unknown"))
     
     print(f"    ✓ Score: {score_with_rag:.1f}/100")
     print(f"    ✓ Issues: {issues_with_rag}")
     print(f"    ✓ Time: {time_with_rag:.1f}s")
     print(f"    ✓ RAG enriched: {rag_enriched_yes} issues")
+    print(f"    ✓ Enrichment status: {with_rag_status}")
     
     # Analysis
     print(f"\n  📊 RAG Impact Analysis:")
@@ -129,7 +144,8 @@ async def test_site_with_rag(site: SiteTest):
             "score": score_with_rag,
             "issues": issues_with_rag,
             "rag_enriched": rag_enriched_yes,
-            "time": time_with_rag
+            "time": time_with_rag,
+            "enrichment_status": with_rag_status,
         },
         "impact": {
             "score_delta": score_diff,

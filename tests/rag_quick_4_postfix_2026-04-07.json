@@ -1,0 +1,178 @@
+{
+  "timestamp": "2026-04-07T06:17:35.189648",
+  "total_time_seconds": 205.09,
+  "configuration": {
+    "rag_enabled": true,
+    "max_enrich_issues": 20,
+    "cognitive_enabled": false
+  },
+  "summary": {
+    "total": 4,
+    "passed": 2,
+    "failed": 0,
+    "errors": 2,
+    "degraded": 0,
+    "spa_detected": 0,
+    "pass_rate": 50.0
+  },
+  "spa_detection": {
+    "total_spa_sites": 0,
+    "frameworks": {},
+    "spa_pass_rate": 0
+  },
+  "category_stats": {
+    "accessibility": {
+      "sites": 4,
+      "passed": 2,
+      "failed": 0,
+      "errors": 2,
+      "avg_fast_score": 48.4,
+      "avg_deep_score": 46.2,
+      "avg_fast_time": 17.63,
+      "avg_deep_time": 40.8,
+      "total_issues": 11
+    }
+  },
+  "complexity_stats": {
+    "simple": {
+      "sites": 2,
+      "passed": 2,
+      "errors": 0
+    },
+    "moderate": {
+      "sites": 2,
+      "passed": 0,
+      "errors": 2
+    },
+    "complex": {
+      "sites": 0,
+      "passed": 0,
+      "errors": 0
+    }
+  },
+  "results": [
+    {
+      "name": "A11y Project",
+      "url": "https://www.a11yproject.com/",
+      "category": "accessibility",
+      "complexity": "simple",
+      "fast_score": 96.4,
+      "deep_score": 91.2,
+      "fast_issues": 2,
+      "deep_issues": 6,
+      "fast_time": 13.25,
+      "deep_time": 79.61,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "failed",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "serious": 5,
+        "moderate": 1
+      },
+      "passed": true,
+      "degraded": false,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "WebAIM",
+      "url": "https://webaim.org/",
+      "category": "accessibility",
+      "complexity": "simple",
+      "fast_score": 97.2,
+      "deep_score": 93.8,
+      "fast_issues": 2,
+      "deep_issues": 5,
+      "fast_time": 57.26,
+      "deep_time": 83.59,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "serious": 3,
+        "moderate": 2
+      },
+      "passed": true,
+      "degraded": false,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "W3C WAI",
+      "url": "https://www.w3.org/WAI/",
+      "category": "accessibility",
+      "complexity": "moderate",
+      "fast_score": null,
+      "deep_score": null,
+      "fast_issues": 0,
+      "deep_issues": 0,
+      "fast_time": 0.0,
+      "deep_time": 0.0,
+      "fast_enrichment_status": "off",
+      "deep_enrichment_status": "off",
+      "engines": [],
+      "wcag_scs": [],
+      "severity": {},
+      "passed": false,
+      "degraded": false,
+      "error": "TIMEOUT",
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "Deque University",
+      "url": "https://dequeuniversity.com/",
+      "category": "accessibility",
+      "complexity": "moderate",
+      "fast_score": null,
+      "deep_score": null,
+      "fast_issues": 0,
+      "deep_issues": 0,
+      "fast_time": 0.0,
+      "deep_time": 0.0,
+      "fast_enrichment_status": "off",
+      "deep_enrichment_status": "off",
+      "engines": [],
+      "wcag_scs": [],
+      "severity": {},
+      "passed": false,
+      "degraded": false,
+      "error": "TIMEOUT",
+      "is_spa": false,
+      "spa_framework": null
+    }
+  ],
+  "failures": [],
+  "errors": [
+    {
+      "name": "W3C WAI",
+      "error": "TIMEOUT"
+    },
+    {
+      "name": "Deque University",
+      "error": "TIMEOUT"
+    }
+  ],
+  "recommendations": [
+    {
+      "priority": "MEDIUM",
+      "area": "Performance",
+      "issue": "2 sites timed out",
+      "action": "Optimize slow checks, add early-exit for problematic sites"
+    }
+  ]
+}

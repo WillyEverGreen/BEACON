@@ -1,0 +1,24 @@
+{
+  "phase": "phase1_group1",
+  "total_rules": 20,
+  "implemented_rules": 5,
+  "coverage_percent": 25.0,
+  "fn_reduction": 0.0,
+  "remaining_rules": [
+    "missing-h1",
+    "multiple-h1",
+    "heading-order",
+    "landmark roles",
+    "button-name",
+    "clickable-no-role",
+    "aria-hidden-focusable",
+    "semantic-html",
+    "missing-lang",
+    "svg-no-accessible-name",
+    "missing-alt variants",
+    "video-transcript",
+    "autocomplete-missing",
+    "duplicate-label",
+    "text-spacing"
+  ]
+}

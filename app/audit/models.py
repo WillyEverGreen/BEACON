@@ -69,6 +69,7 @@ class PageAuditResult:
     issues: list[dict[str, Any]]
     engine_timings: dict[str, float]
     degraded_mode: bool = False
+    degraded_reason: str = ""
     skipped_engines: list[str] = field(default_factory=list)
     hydration_status: str = "unknown"
     enrichment_status: str = "pending"

@@ -17,8 +17,16 @@ import hashlib
 import logging
 import re
 from typing import Any, Optional
+from urllib.parse import urlparse
+
+from app.audit.dynamic_handling import install_request_interception, resolve_adaptive_timeouts, stable_request_headers
+from app.audit.failure_taxonomy import classify_failure_reason, normalize_reason
 
 logger = logging.getLogger(__name__)
+
+_DOMAIN_NAV_CONCURRENCY_LIMIT = 2
+_DOMAIN_NAV_SEMAPHORES: dict[str, asyncio.Semaphore] = {}
+_DOMAIN_NAV_LOCK = asyncio.Lock()
 
 # Check if playwright is available
 _PLAYWRIGHT_AVAILABLE = False
@@ -88,12 +96,75 @@ class BrowserProber:
         ],
     }
 
-    def __init__(self, url: str, timeout: int = 30000, max_retries: int = 2):
+    def __init__(self, url: str, timeout: int = 30000, max_retries: int = 1):
         self.url = url
-        self.timeout = timeout
+        base_timeout_seconds = max(8, int(timeout / 1000))
+        self.adaptive_timeouts = resolve_adaptive_timeouts(
+            url,
+            "deep",
+            page_timeout_seconds=base_timeout_seconds,
+            network_idle_timeout_ms=12000,
+            ready_state_timeout_ms=5000,
+        )
+        self.timeout = int(self.adaptive_timeouts.get("page_timeout_seconds", base_timeout_seconds)) * 1000
         self.max_retries = max_retries
         self.detected_framework: Optional[str] = None
         self.is_spa: bool = False
+        self.last_navigation_failure_reason: str = ""
+
+    def _domain_key(self) -> str:
+        try:
+            return (urlparse(self.url).hostname or "").lower() or "unknown"
+        except Exception:
+            return "unknown"
+
+    async def _domain_nav_semaphore(self) -> asyncio.Semaphore:
+        key = self._domain_key()
+        async with _DOMAIN_NAV_LOCK:
+            semaphore = _DOMAIN_NAV_SEMAPHORES.get(key)
+            if semaphore is None:
+                semaphore = asyncio.Semaphore(_DOMAIN_NAV_CONCURRENCY_LIMIT)
+                _DOMAIN_NAV_SEMAPHORES[key] = semaphore
+            return semaphore
+
+    def _is_retryable_navigation_error(self, reason: str, message: str) -> bool:
+        if reason == "blocked_request":
+            return False
+        if reason == "dns_failure":
+            return True
+
+        lowered = (message or "").lower()
+        retryable_tokens = (
+            "connection reset",
+            "connection aborted",
+            "server disconnected",
+            "remote protocol error",
+            "transient",
+            "timed out",
+            "timeout",
+            "network is unreachable",
+        )
+        return any(token in lowered for token in retryable_tokens)
+
+    async def _safe_snapshot_html(self, page) -> str:
+        """Capture best-effort DOM snapshot even when rendering is unstable."""
+        try:
+            html = await page.content()
+            if isinstance(html, str) and html.strip():
+                return html
+        except Exception:
+            pass
+
+        try:
+            html = await page.evaluate(
+                "() => document.documentElement ? document.documentElement.outerHTML : ''"
+            )
+            if isinstance(html, str) and html.strip():
+                return html
+        except Exception:
+            pass
+
+        return ""
 
     async def _detect_spa_framework(self, page) -> Optional[str]:
         """Detect if the page is a SPA and identify the framework."""
@@ -137,14 +208,28 @@ class BrowserProber:
                         result.indicators.push('svelte');
                     }
                     
-                    // Generic SPA indicators
-                    const hasHistoryAPI = typeof history.pushState === 'function';
-                    const hasServiceWorker = 'serviceWorker' in navigator;
-                    const hasMinimalHTML = document.body?.innerHTML?.includes('Loading') ||
-                                          document.body?.children?.length <= 3;
-                    
-                    if (hasHistoryAPI && (hasServiceWorker || hasMinimalHTML)) {
+                    // Generic SPA indicators (conservative to avoid false positives)
+                    const bodyTextLength = (document.body?.innerText || '').trim().length;
+                    const bodyChildCount = document.body?.children?.length || 0;
+                    const scriptCount = document.scripts?.length || 0;
+
+                    const hasMinimalHTML = bodyTextLength < 140 && bodyChildCount <= 6;
+                    const hasClientShell = !!document.querySelector('#app, #root, app-root, main#app, [data-server-rendered]') &&
+                                           bodyChildCount <= 8;
+                    const hasHydrationBlob = !!document.querySelector('script#__NEXT_DATA__, script#__NUXT_DATA__, script[type="application/json"][id*="__"]');
+                    const hasActiveServiceWorker = !!navigator.serviceWorker?.controller;
+                    const scriptHeavyShell = scriptCount >= 15 && bodyTextLength < 400;
+
+                    let genericSignals = 0;
+                    if (hasMinimalHTML) genericSignals += 1;
+                    if (hasClientShell) genericSignals += 1;
+                    if (hasHydrationBlob) genericSignals += 1;
+                    if (hasActiveServiceWorker) genericSignals += 1;
+                    if (scriptHeavyShell) genericSignals += 1;
+
+                    if (!result.is_spa && genericSignals >= 3) {
                         result.is_spa = true;
+                        result.indicators.push(`generic:${genericSignals}`);
                     }
                     
                     return result;
@@ -165,6 +250,7 @@ class BrowserProber:
 
     async def _wait_for_spa_hydration(self, page, framework: Optional[str] = None) -> bool:
         """Wait for SPA framework to complete hydration/mounting."""
+        hydration_timeout_ms = int(self.adaptive_timeouts.get("ready_state_timeout_ms", 5000))
         try:
             # Framework-specific waiting strategies
             if framework == "react":
@@ -181,7 +267,7 @@ class BrowserProber:
                         return root && root.children.length > 0;
                     }
                     """,
-                    timeout=5000
+                    timeout=hydration_timeout_ms
                 )
                 
             elif framework == "angular":
@@ -192,7 +278,7 @@ class BrowserProber:
                         return appRoot && appRoot.children.length > 0;
                     }
                     """,
-                    timeout=5000
+                    timeout=hydration_timeout_ms
                 )
                 
             elif framework == "vue":
@@ -206,7 +292,7 @@ class BrowserProber:
                         return app && app.children.length > 0;
                     }
                     """,
-                    timeout=5000
+                    timeout=hydration_timeout_ms
                 )
             else:
                 # Generic SPA waiting: wait for meaningful content
@@ -222,7 +308,7 @@ class BrowserProber:
                         return hasContent && noLoadingSpinner;
                     }
                     """,
-                    timeout=5000
+                    timeout=hydration_timeout_ms
                 )
             
             logger.info(f"SPA hydration complete for {framework or 'generic SPA'}")
@@ -235,14 +321,32 @@ class BrowserProber:
     async def _navigate_with_retry(self, page, retry_count: int = 0) -> bool:
         """Navigate to URL with retry logic for CSP/Cloudflare/bot protection."""
         wait_strategies = ["networkidle", "domcontentloaded", "load", "commit"]
+        base_budget_ms = max(6000, int(self.timeout))
+        retry_factor = max(0.55, 1.0 - (retry_count * 0.2))
+        strategy_timeouts = {
+            "networkidle": int(min(12000, base_budget_ms * 0.45) * retry_factor),
+            "domcontentloaded": int(min(9000, base_budget_ms * 0.35) * retry_factor),
+            "load": int(min(10000, base_budget_ms * 0.35) * retry_factor),
+            "commit": int(min(5000, base_budget_ms * 0.2) * retry_factor),
+        }
+
+        last_reason = "network_error"
+        last_error_text = ""
         
         for strategy in wait_strategies:
             try:
-                await page.goto(
+                response = await page.goto(
                     self.url,
-                    timeout=self.timeout,
+                    timeout=max(3000, strategy_timeouts.get(strategy, 6000)),
                     wait_until=strategy
                 )
+
+                status_code = int(response.status) if response is not None else None
+                if status_code is not None and 400 <= status_code < 500:
+                    last_reason = "blocked_request" if status_code in {401, 403, 407, 429} else "network_error"
+                    self.last_navigation_failure_reason = last_reason
+                    logger.warning("Navigation blocked with status=%s for %s", status_code, self.url)
+                    return False
                 
                 # Check for bot protection pages
                 is_blocked = await page.evaluate("""
@@ -269,18 +373,40 @@ class BrowserProber:
                     except:
                         pass
                 
+                    still_blocked = await page.evaluate("""
+                        () => {
+                            const text = document.body?.innerText?.toLowerCase() || '';
+                            const blockers = [
+                                'checking your browser',
+                                'access denied',
+                                'captcha',
+                                'security check',
+                                'too many requests',
+                            ];
+                            return blockers.some(b => text.includes(b));
+                        }
+                    """)
+                    if still_blocked:
+                        self.last_navigation_failure_reason = "blocked_request"
+                        return False
+
+                self.last_navigation_failure_reason = ""
                 return True
                 
             except Exception as e:
                 logger.warning(f"Navigation with {strategy} failed: {e}")
+                last_reason = classify_failure_reason(e)
+                last_error_text = str(e)
                 continue
         
-        # Retry logic
-        if retry_count < self.max_retries:
+        # Retry only for DNS, connection resets, and transient fetch failures.
+        should_retry = self._is_retryable_navigation_error(last_reason, last_error_text)
+        if retry_count < self.max_retries and should_retry:
             logger.info(f"Retrying navigation (attempt {retry_count + 2})")
             await asyncio.sleep(1)
             return await self._navigate_with_retry(page, retry_count + 1)
-        
+
+        self.last_navigation_failure_reason = normalize_reason(last_reason) or "network_error"
         return False
 
     async def _run_max_exploration(self, page, framework: Optional[str]) -> dict[str, Any]:
@@ -363,9 +489,11 @@ class BrowserProber:
             "is_spa": False,
             "navigation_strategy": None,
             "hydration_waited": False,
+            "adaptive_timeout_policy": self.adaptive_timeouts,
             "probes_executed": [],
             "probes_failed": [],
             "shadow_dom_detected": False,
+            "request_interception": {"installed": False, "blocked_total": 0, "blocked_by_type": {}},
             "interaction_phase_ran": False,
             "scroll_phase_ran": False,
             "exploration_layer_ran": False,
@@ -389,21 +517,40 @@ class BrowserProber:
                 )
                 context = await browser.new_context(
                     viewport={"width": 1280, "height": 720},
-                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    user_agent=stable_request_headers(self.url).get("User-Agent", ""),
                     bypass_csp=True,  # Bypass CSP for axe-core injection
                     java_script_enabled=True,
+                    extra_http_headers={
+                        "Accept-Language": stable_request_headers(self.url).get("Accept-Language", "en-US,en;q=0.9"),
+                        "Accept": stable_request_headers(self.url).get("Accept", "text/html,application/xhtml+xml"),
+                    },
                 )
                 
                 # Enable request interception for better debugging
                 page = await context.new_page()
                 page.set_default_timeout(self.timeout)
+                page.set_default_navigation_timeout(self.timeout)
+
+                interception = await install_request_interception(
+                    page,
+                    self.url,
+                    allow_intercom=str(scan_mode).lower() == "max",
+                )
+                metadata["request_interception"] = interception
 
                 # Navigate with retry logic
-                nav_success = await self._navigate_with_retry(page)
+                domain_nav_semaphore = await self._domain_nav_semaphore()
+                async with domain_nav_semaphore:
+                    nav_success = await self._navigate_with_retry(page)
                 if not nav_success:
                     logger.error(f"Failed to load page after retries: {self.url}")
+                    rendered_html = await self._safe_snapshot_html(page)
+                    reason = normalize_reason(self.last_navigation_failure_reason) or classify_failure_reason("navigation timeout")
+                    metadata["degraded_reason"] = reason
+                    metadata["partial_mode"] = bool(rendered_html)
+                    metadata["failure_stage"] = "render_navigation"
                     await browser.close()
-                    return [], None, {"error": "navigation_failed"}
+                    return [], rendered_html or None, {**metadata, "error": "navigation_failed"}
                 
                 metadata["navigation_strategy"] = "retry_with_fallback"
 
@@ -504,6 +651,8 @@ class BrowserProber:
         except Exception as e:
             logger.error(f"Browser probing failed: {e}")
             metadata["error"] = str(e)[:200]
+            metadata["degraded_reason"] = normalize_reason(metadata.get("degraded_reason")) or classify_failure_reason(e)
+            metadata["failure_stage"] = metadata.get("failure_stage") or "browser_probe"
 
         return issues, rendered_html, metadata
 

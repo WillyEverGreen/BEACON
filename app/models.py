@@ -241,6 +241,7 @@ class AuditResponse(BaseModel):
     expected_score_after_fix: float = Field(default=0.0, description="Score if top priorities are fixed")
     score_improvement: float = Field(default=0.0, description="Potential score boost")
     degraded_mode: bool = Field(default=False, description="True if one or more requested engines failed or skipped")
+    degraded_reason: Optional[str] = Field(default=None, description="Machine-readable degradation reason code")
     skipped_components: list[str] = Field(default_factory=list, description="e.g., ['playwright', 'llm']")
     degradation_reason: Optional[str] = Field(default=None, description="Reason for degradation")
     cognitive_scores: Optional[CognitiveScore] = None

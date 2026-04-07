@@ -1,0 +1,95 @@
+{
+  "phase": "phase1_group1_refinement",
+  "act_subset": {
+    "before": {
+      "micro_precision": 0.0496,
+      "micro_recall": 0.35,
+      "adj_precision": 1.0,
+      "adj_recall": 0.35,
+      "tp": 7,
+      "fp": 134,
+      "fn": 13
+    },
+    "after": {
+      "micro_precision": 0.0496,
+      "micro_recall": 0.35,
+      "adj_precision": 1.0,
+      "adj_recall": 0.35,
+      "tp": 7,
+      "fp": 134,
+      "fn": 13
+    },
+    "delta": {
+      "micro_precision": 0.0,
+      "micro_recall": 0.0,
+      "adj_precision": 0.0,
+      "adj_recall": 0.0
+    }
+  },
+  "strategic_10_site": {
+    "before": {
+      "success_rate": 100.0,
+      "degraded_rate": 10.0
+    },
+    "after": {
+      "success_rate": 100.0,
+      "degraded_rate": 10.0
+    },
+    "delta": {
+      "success_rate": 0.0,
+      "degraded_rate": 0.0
+    }
+  },
+  "group1_rule_coverage_proxy_delta": {
+    "aria-allowed-role": {
+      "before_detected": 0,
+      "before_expected": 0,
+      "before_recall": 0.0,
+      "after_detected": 0,
+      "after_expected": 0,
+      "after_recall": 0.0,
+      "recall_delta": 0.0
+    },
+    "aria-required-children": {
+      "before_detected": 2,
+      "before_expected": 19,
+      "before_recall": 0.1053,
+      "after_detected": 6,
+      "after_expected": 19,
+      "after_recall": 0.3158,
+      "recall_delta": 0.2105
+    },
+    "aria-required-parent": {
+      "before_detected": 2,
+      "before_expected": 34,
+      "before_recall": 0.0588,
+      "after_detected": 6,
+      "after_expected": 34,
+      "after_recall": 0.1765,
+      "recall_delta": 0.1176
+    },
+    "link-purpose": {
+      "before_detected": 1,
+      "before_expected": 63,
+      "before_recall": 0.0159,
+      "after_detected": 20,
+      "after_expected": 63,
+      "after_recall": 0.3175,
+      "recall_delta": 0.3016
+    },
+    "missing-label": {
+      "before_detected": 4,
+      "before_expected": 17,
+      "before_recall": 0.2353,
+      "after_detected": 6,
+      "after_expected": 17,
+      "after_recall": 0.3529,
+      "recall_delta": 0.1176
+    }
+  },
+  "notes": [
+    "ACT subset aggregate metrics are unchanged after refinement.",
+    "Strategic KPI success/degraded remains unchanged relative to baseline snapshot.",
+    "Rule-level benchmark proxy coverage improved for missing-label, link-purpose, aria-required-parent, and aria-required-children."
+  ]
+}

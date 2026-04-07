@@ -1,6 +1,6 @@
 # test_rag_comprehensive.py — Deep Evaluation Matrix
 import sys, os, time, json
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "rag-pipeline")))
 
 from query import hybrid_retrieve, rerank, answer, expand_query
 
