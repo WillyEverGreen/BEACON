@@ -92,10 +92,10 @@ CRAWLER_CONFIG = {
                 "use_dom": False,
             },
             "deep": {
-                "cap": 50,
-                "sitemap_max_pages": 50,
+                "cap": 25,
+                "sitemap_max_pages": 25,
                 "bfs_max_depth": 3,
-                "bfs_max_pages": 30,
+                "bfs_max_pages": 25,
                 "use_dom": False,
             },
             "max": {
@@ -112,6 +112,14 @@ CRAWLER_CONFIG = {
         "shallow_depth_threshold": 2,
     },
 }
+
+
+# ── Site Crawl Runtime Limits (Phase 6) ───────────────────────
+# These keys are read directly by the Phase 6 crawler orchestration layer.
+CRAWL_MAX_PAGES_PER_SITE = 15
+CRAWL_MAX_DEPTH = 3
+CRAWL_TIMEOUT_PER_PAGE_S = 15
+CRAWL_CONCURRENCY = 2
 
 
 # ── Audit Pipeline Configuration ──────────────────────────────
@@ -609,6 +617,12 @@ class Settings(BaseSettings):
     # Scan defaults
     default_scan_mode: str = "fast"
 
+    # Phase 6 crawl defaults
+    crawl_max_pages_per_site: int = CRAWL_MAX_PAGES_PER_SITE
+    crawl_max_depth: int = CRAWL_MAX_DEPTH
+    crawl_timeout_per_page_s: int = CRAWL_TIMEOUT_PER_PAGE_S
+    crawl_concurrency: int = CRAWL_CONCURRENCY
+
     # Enrichment + RAG controls
     enrichment_enable_llm_cache: bool = True
     llm_cache_max_entries: int = 2000
@@ -635,3 +649,10 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+# Runtime-resolved crawl limits (env-configurable via Settings).
+CRAWL_MAX_PAGES_PER_SITE = int(settings.crawl_max_pages_per_site or CRAWL_MAX_PAGES_PER_SITE)
+CRAWL_MAX_DEPTH = int(settings.crawl_max_depth or CRAWL_MAX_DEPTH)
+CRAWL_TIMEOUT_PER_PAGE_S = int(settings.crawl_timeout_per_page_s or CRAWL_TIMEOUT_PER_PAGE_S)
+CRAWL_CONCURRENCY = int(settings.crawl_concurrency or CRAWL_CONCURRENCY)

@@ -33,6 +33,7 @@ from urllib.parse import urlparse
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.audit.failure_taxonomy import classify_failure_reason, normalize_reason
+from app.observability.telemetry import record_operational_event
 from app.services.spa_classifier import compute_confusion_matrix, precision_recall
 
 logging.basicConfig(
@@ -364,6 +365,11 @@ class TestResult:
     spa_framework: Optional[str] = None
     is_spa: bool = False
     browser_probe_metadata: dict = None
+    deep_skipped: bool = False
+    deep_skip_reason: Optional[str] = None
+    early_stop_reason: Optional[str] = None
+    pages_skipped_low_value: int = 0
+    avg_page_time: float = 0.0
     
     def __post_init__(self):
         if self.fast_engines is None:
@@ -458,11 +464,21 @@ async def run_single_site_test(
 
     result = TestResult(site=site)
 
-    fast_timeout, deep_timeout = _derive_mode_timeouts(max_site_time)
+    effective_site_time = min(180, max(15, int(max_site_time or 30)))
+    fast_timeout_hint, deep_timeout_hint = _derive_mode_timeouts(effective_site_time)
+    site_start = time.monotonic()
+    current_stage = "fast"
+
+    def _remaining_budget(reserve_s: float = 0.0) -> float:
+        elapsed = time.monotonic() - site_start
+        return max(0.0, float(effective_site_time) - elapsed - reserve_s)
 
     async def _run_scans() -> None:
+        nonlocal current_stage
         # ── FAST MODE ──────────────────────────────────────────────
-        logger.info(f"[FAST] Testing {site.name}: {site.url} (timeout={fast_timeout}s)")
+        current_stage = "fast"
+        fast_timeout = max(1.0, min(float(fast_timeout_hint), _remaining_budget(1.0)))
+        logger.info(f"[FAST] Testing {site.name}: {site.url} (timeout={fast_timeout:.1f}s)")
         fast_start = time.time()
 
         fast_result = await asyncio.wait_for(
@@ -488,10 +504,47 @@ async def run_single_site_test(
         result.fast_degraded_reason = fast_result.get("degraded_reason") or fast_result.get("degradation_reason")
 
         # Brief pause between scans
-        await asyncio.sleep(1)
+        pause_s = min(0.25, _remaining_budget(0.5))
+        if pause_s > 0:
+            await asyncio.sleep(pause_s)
 
         # ── DEEP MODE ──────────────────────────────────────────────
-        logger.info(f"[DEEP] Testing {site.name}: {site.url} (timeout={deep_timeout}s)")
+        current_stage = "deep"
+        remaining_before_deep = _remaining_budget(0.0)
+        if remaining_before_deep < 20.0:
+            result.deep_skipped = True
+            result.deep_skip_reason = "insufficient_budget_for_deep"
+            result.early_stop_reason = result.deep_skip_reason
+            result.avg_page_time = round(_safe_avg([result.fast_time] if result.fast_time > 0 else []), 3)
+
+            score = result.fast_score or 0
+            min_exp, max_exp = site.expected_score_range
+            result.passed = min_exp <= score <= max_exp
+
+            logger.info(
+                "[DEEP-SKIP] %s: remaining budget %.1fs is below 20s threshold",
+                site.name,
+                remaining_before_deep,
+            )
+            return
+
+        deep_phase_budget = float(effective_site_time) * 0.60
+        deep_timeout = max(
+            1.0,
+            min(
+                float(deep_timeout_hint),
+                deep_phase_budget,
+                _remaining_budget(0.25),
+            ),
+        )
+        logger.info(
+            "[DEEP] Testing %s: %s (timeout=%.1fs, hint=%ss, deep_budget_cap=%.1fs)",
+            site.name,
+            site.url,
+            deep_timeout,
+            deep_timeout_hint,
+            deep_phase_budget,
+        )
         deep_start = time.time()
 
         deep_result = await asyncio.wait_for(
@@ -519,6 +572,19 @@ async def run_single_site_test(
         result.degraded = bool(result.fast_degraded or result.deep_degraded)
         result.degraded_reason = result.deep_degraded_reason or result.fast_degraded_reason
 
+        crawl_meta = deep_result.get("crawl_meta") or {}
+        site_result = deep_result.get("site_result") or {}
+        if not crawl_meta and isinstance(site_result, dict):
+            crawl_meta = site_result.get("crawl_meta") or {}
+        if isinstance(crawl_meta, dict):
+            result.early_stop_reason = str(crawl_meta.get("early_stop_reason") or "") or None
+            result.pages_skipped_low_value = int(crawl_meta.get("pages_skipped_low_value", 0) or 0)
+            result.avg_page_time = float(crawl_meta.get("avg_page_time", 0.0) or 0.0)
+
+        if result.avg_page_time <= 0.0:
+            stage_times = [value for value in (result.fast_time, result.deep_time) if value > 0.0]
+            result.avg_page_time = round(_safe_avg(stage_times), 3)
+
         # SPA detection info
         result.spa_framework = deep_result.get("spa_framework")
         result.is_spa = deep_result.get("is_spa", False)
@@ -539,7 +605,7 @@ async def run_single_site_test(
         result.passed = min_exp <= score <= max_exp
 
     try:
-        await asyncio.wait_for(_run_scans(), timeout=max_site_time)
+        await _run_scans()
 
         if result.degraded:
             result.site_status = "runtime_failed"
@@ -560,7 +626,9 @@ async def run_single_site_test(
         result.failure_reason = "timeout"
         result.runtime_failure_type = "timeout"
         result.scoring_completed = False
-        logger.warning(f"[TIMEOUT] {site.name} exceeded {max_site_time}s limit")
+        logger.warning(
+            f"[TIMEOUT] {site.name} exceeded {effective_site_time}s limit during {current_stage} scan"
+        )
     except Exception as e:
         result.error = str(e)[:200]
         result.site_status = "runtime_failed"
@@ -681,6 +749,10 @@ async def run_50_site_test(
     degraded_sites = []
     degraded_reason_counts = defaultdict(int)
     failure_reason_counts = defaultdict(int)
+    deep_skipped_sites = []
+    early_stop_reason_counts = defaultdict(int)
+    pages_skipped_low_value_total = 0
+    avg_page_time_values: list[float] = []
 
     def _is_runtime_failure(row: TestResult) -> bool:
         return row.site_status == "runtime_failed" or bool(row.error or row.degraded)
@@ -737,6 +809,16 @@ async def run_50_site_test(
             degraded_sites.append(r)
             reason_key = r.failure_reason or _runtime_failure_type(r) or "partial_load"
             degraded_reason_counts[reason_key] += 1
+
+        if r.deep_skipped:
+            deep_skipped_sites.append(r)
+
+        if r.early_stop_reason:
+            early_stop_reason_counts[str(r.early_stop_reason)] += 1
+
+        pages_skipped_low_value_total += int(r.pages_skipped_low_value or 0)
+        if float(r.avg_page_time or 0.0) > 0.0:
+            avg_page_time_values.append(float(r.avg_page_time))
         
         # Accumulate scores/times
         if r.fast_score is not None:
@@ -776,6 +858,7 @@ async def run_50_site_test(
     print(f"\n  Total Sites:     {total}")
     print(f"  [RUN] Runtime Success: {runtime_success_count} ({100*runtime_success_count/total_safe:.1f}%)")
     print(f"  [RUN] Runtime Fail:    {runtime_failure_count} ({100*runtime_failure_count/total_safe:.1f}%)")
+    print(f"  [RUN] Deep Skipped:    {len(deep_skipped_sites)}")
     print(f"  [SCORE] Completed:     {scoring_completed_count} ({100*scoring_completed_count/total_safe:.1f}%)")
     print(f"  [EXP] Expectation Pass: {expectation_pass_count} ({100*expectation_pass_count/total_safe:.1f}%)")
     print(f"  [EXP] Out of Range:     {expectation_fail_count} ({100*expectation_fail_count/total_safe:.1f}%)")
@@ -1026,9 +1109,24 @@ async def run_50_site_test(
     expectation_pass_rate = round((expectation_pass_count / total) * 100, 1) if total else 0.0
     degraded_rate = round((len(degraded_sites) / total) * 100, 1) if total else 0.0
     timeout_rate = round((timeout_count / total) * 100, 1) if total else 0.0
+    failure_rate = round((runtime_failure_count / total) * 100, 1) if total else 0.0
     scoring_completed_rate = round((scoring_completed_count / total) * 100, 1) if total else 0.0
     required_fields_rate = round((required_fields_complete_count / total) * 100, 1) if total else 0.0
     avg_runtime = round(total_time / total, 2) if total else 0.0
+    if not avg_page_time_values:
+        avg_page_time_values = [
+            (r.fast_time + r.deep_time) / max(1, int((r.fast_time > 0) + (r.deep_time > 0)))
+            for r in processed_results
+            if (r.fast_time + r.deep_time) > 0
+        ]
+    avg_page_time = round(_safe_avg(avg_page_time_values), 3)
+
+    dominant_early_stop_reason = None
+    if early_stop_reason_counts:
+        dominant_early_stop_reason = sorted(
+            early_stop_reason_counts.items(), key=lambda kv: (-kv[1], kv[0])
+        )[0][0]
+
     fast_mode_usage = round(
         (sum(1 for r in processed_results if r.fast_score is not None) / total) * 100,
         1,
@@ -1116,12 +1214,22 @@ async def run_50_site_test(
             "degraded": len(degraded_sites),
             "spa_detected": len(spa_sites),
             "runtime_success_rate": runtime_success_rate,
+            "timeout_rate": timeout_rate,
+            "failure_rate": failure_rate,
+            "avg_page_time": avg_page_time,
+            "early_stop_reason": dominant_early_stop_reason,
+            "pages_skipped_low_value": pages_skipped_low_value_total,
             "scoring_completed_rate": scoring_completed_rate,
             "required_scoring_fields_rate": required_fields_rate,
             "expectation_pass_rate": expectation_pass_rate,
         },
         "kpi": {
             "runtime_success_rate": runtime_success_rate,
+            "timeout_rate": timeout_rate,
+            "failure_rate": failure_rate,
+            "avg_page_time": avg_page_time,
+            "early_stop_reason": dominant_early_stop_reason,
+            "pages_skipped_low_value": pages_skipped_low_value_total,
             "expectation_pass_rate": expectation_pass_rate,
             "degraded_rate": degraded_rate,
             "scoring_completed_rate": scoring_completed_rate,
@@ -1135,7 +1243,6 @@ async def run_50_site_test(
             "rag_completion": rag_completion_rate,
             "rag_effectiveness": rag_effectiveness_rate,
             "fix_acceptance_rate": fix_acceptance_rate,
-            "timeout_rate": timeout_rate,
             "avg_runtime": avg_runtime,
             "fast_mode_p95_time": _p95(fast_times),
             "fast_mode_usage": fast_mode_usage,
@@ -1205,6 +1312,11 @@ async def run_50_site_test(
                 "error": r.error,
                 "is_spa": r.is_spa,
                 "spa_framework": r.spa_framework,
+                "deep_skipped": r.deep_skipped,
+                "deep_skip_reason": r.deep_skip_reason,
+                "early_stop_reason": r.early_stop_reason,
+                "pages_skipped_low_value": r.pages_skipped_low_value,
+                "avg_page_time": r.avg_page_time,
             }
             for r in processed_results
         ],
@@ -1226,6 +1338,22 @@ async def run_50_site_test(
         ],
         "recommendations": recommendations,
     }
+
+    record_operational_event(
+        "benchmark_run_summary",
+        {
+            "run_type": "50_site",
+            "timestamp": report.get("timestamp"),
+            "total_sites": total,
+            "runtime_success_rate": runtime_success_rate,
+            "timeout_rate": timeout_rate,
+            "failure_rate": failure_rate,
+            "avg_page_time": avg_page_time,
+            "early_stop_reason": dominant_early_stop_reason,
+            "pages_skipped_low_value": pages_skipped_low_value_total,
+            "deep_skipped_sites": len(deep_skipped_sites),
+        },
+    )
     
     # Save to file
     if output_path:

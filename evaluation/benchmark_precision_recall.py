@@ -111,10 +111,41 @@ async def _run_case(case: dict, profile: str, scan_mode: str) -> dict:
         enable_cognitive=False,
     )
 
-    predicted_rules = {i.get("rule_id", "") for i in result.get("issues", []) if i.get("rule_id")}
+    raw_predicted_rules = {i.get("rule_id", "") for i in result.get("issues", []) if i.get("rule_id")}
+    predicted_rules = _expand_rules(raw_predicted_rules)
     expected_rules = _expand_rules(set(case.get("expected_rule_ids", [])))
     known_valid_rules = _expand_rules(set(case.get("known_valid_rule_ids", expected_rules)))
     known_invalid_rules = _expand_rules(set(case.get("known_invalid_rule_ids", [])))
+
+    runtime_passed = bool((result.get("quality_gates") or {}).get("runtime_passed", True))
+    degraded_mode = bool(result.get("degraded_mode", False))
+    pages_audited = int(result.get("pages_audited", 1) or 1)
+    valid_for_act = runtime_passed and not degraded_mode and pages_audited > 0
+
+    if not valid_for_act:
+        skip_reason_parts = []
+        if not runtime_passed:
+            skip_reason_parts.append("runtime_not_passed")
+        if degraded_mode:
+            skip_reason_parts.append("degraded_mode")
+        if pages_audited <= 0:
+            skip_reason_parts.append("no_pages_audited")
+
+        return {
+            "name": case.get("name", case.get("url", "case")),
+            "url": case.get("url"),
+            "expected_rule_ids": sorted(expected_rules),
+            "predicted_rule_ids": sorted(predicted_rules),
+            "missing_rule_ids": sorted(expected_rules - predicted_rules),
+            "unexpected_rule_ids": sorted(predicted_rules - expected_rules),
+            "metrics": None,
+            "adjudicated_metrics": None,
+            "scan_summary": result.get("summary", ""),
+            "precision_profile_telemetry": result.get("precision_profile_telemetry", {}),
+            "rule_activity": result.get("rule_activity", {}),
+            "skipped": True,
+            "skip_reason": ",".join(skip_reason_parts) or "invalid_case",
+        }
 
     metrics = _calc_metrics(expected_rules, predicted_rules)
     adjudicated_metrics = _calc_adjudicated_metrics(known_valid_rules, known_invalid_rules, predicted_rules)
@@ -130,6 +161,8 @@ async def _run_case(case: dict, profile: str, scan_mode: str) -> dict:
         "scan_summary": result.get("summary", ""),
         "precision_profile_telemetry": result.get("precision_profile_telemetry", {}),
         "rule_activity": result.get("rule_activity", {}),
+        "skipped": False,
+        "skip_reason": None,
     }
 
 
@@ -139,6 +172,7 @@ async def _run_all(benchmark: dict, profile: str, scan_mode: str) -> dict:
         raise ValueError("Benchmark file must contain a non-empty 'cases' list")
 
     per_case = []
+    valid_cases = []
     total_tp = total_fp = total_fn = 0
     total_adj_tp = total_adj_fp = total_adj_fn = 0
 
@@ -147,6 +181,11 @@ async def _run_all(benchmark: dict, profile: str, scan_mode: str) -> dict:
             raise ValueError(f"Case missing 'url': {case}")
         case_result = await _run_case(case, profile, scan_mode)
         per_case.append(case_result)
+
+        if case_result.get("skipped", False):
+            continue
+
+        valid_cases.append(case_result)
 
         m = case_result["metrics"]
         total_tp += m["tp"]
@@ -158,51 +197,68 @@ async def _run_all(benchmark: dict, profile: str, scan_mode: str) -> dict:
         total_adj_fp += am["fp"]
         total_adj_fn += am["fn"]
 
-    macro_precision = sum(c["metrics"]["precision"] for c in per_case) / len(per_case)
-    macro_recall = sum(c["metrics"]["recall"] for c in per_case) / len(per_case)
-    macro_f1 = sum(c["metrics"]["f1"] for c in per_case) / len(per_case)
+    if valid_cases:
+        macro_precision = sum(c["metrics"]["precision"] for c in valid_cases) / len(valid_cases)
+        macro_recall = sum(c["metrics"]["recall"] for c in valid_cases) / len(valid_cases)
+        macro_f1 = sum(c["metrics"]["f1"] for c in valid_cases) / len(valid_cases)
 
-    micro_precision = total_tp / (total_tp + total_fp) if (total_tp + total_fp) else 0.0
-    micro_recall = total_tp / (total_tp + total_fn) if (total_tp + total_fn) else 0.0
-    micro_f1 = (
-        2 * micro_precision * micro_recall / (micro_precision + micro_recall)
-        if (micro_precision + micro_recall)
-        else 0.0
-    )
+        micro_precision = total_tp / (total_tp + total_fp) if (total_tp + total_fp) else 0.0
+        micro_recall = total_tp / (total_tp + total_fn) if (total_tp + total_fn) else 0.0
+        micro_f1 = (
+            2 * micro_precision * micro_recall / (micro_precision + micro_recall)
+            if (micro_precision + micro_recall)
+            else 0.0
+        )
 
-    adj_micro_precision = total_adj_tp / (total_adj_tp + total_adj_fp) if (total_adj_tp + total_adj_fp) else 0.0
-    adj_micro_recall = total_adj_tp / (total_adj_tp + total_adj_fn) if (total_adj_tp + total_adj_fn) else 0.0
-    adj_micro_f1 = (
-        2 * adj_micro_precision * adj_micro_recall / (adj_micro_precision + adj_micro_recall)
-        if (adj_micro_precision + adj_micro_recall)
-        else 0.0
-    )
+        adj_micro_precision = total_adj_tp / (total_adj_tp + total_adj_fp) if (total_adj_tp + total_adj_fp) else 0.0
+        adj_micro_recall = total_adj_tp / (total_adj_tp + total_adj_fn) if (total_adj_tp + total_adj_fn) else 0.0
+        adj_micro_f1 = (
+            2 * adj_micro_precision * adj_micro_recall / (adj_micro_precision + adj_micro_recall)
+            if (adj_micro_precision + adj_micro_recall)
+            else 0.0
+        )
+    else:
+        macro_precision = None
+        macro_recall = None
+        macro_f1 = None
+        micro_precision = None
+        micro_recall = None
+        micro_f1 = None
+        adj_micro_precision = None
+        adj_micro_recall = None
+        adj_micro_f1 = None
+
+    skipped_cases = len(per_case) - len(valid_cases)
 
     return {
         "profile": profile,
         "scan_mode": scan_mode,
         "cases": per_case,
+        "act_validation_status": "completed" if valid_cases else "skipped_no_valid_pages",
+        "act_total_cases": len(per_case),
+        "act_evaluated_cases": len(valid_cases),
+        "act_skipped_cases": skipped_cases,
         "aggregate": {
             "micro": {
-                "precision": round(micro_precision, 4),
-                "recall": round(micro_recall, 4),
-                "f1": round(micro_f1, 4),
+                "precision": round(micro_precision, 4) if micro_precision is not None else None,
+                "recall": round(micro_recall, 4) if micro_recall is not None else None,
+                "f1": round(micro_f1, 4) if micro_f1 is not None else None,
                 "tp": total_tp,
                 "fp": total_fp,
                 "fn": total_fn,
             },
             "adjudicated_micro": {
-                "precision": round(adj_micro_precision, 4),
-                "recall": round(adj_micro_recall, 4),
-                "f1": round(adj_micro_f1, 4),
+                "precision": round(adj_micro_precision, 4) if adj_micro_precision is not None else None,
+                "recall": round(adj_micro_recall, 4) if adj_micro_recall is not None else None,
+                "f1": round(adj_micro_f1, 4) if adj_micro_f1 is not None else None,
                 "tp": total_adj_tp,
                 "fp": total_adj_fp,
                 "fn": total_adj_fn,
             },
             "macro": {
-                "precision": round(macro_precision, 4),
-                "recall": round(macro_recall, 4),
-                "f1": round(macro_f1, 4),
+                "precision": round(macro_precision, 4) if macro_precision is not None else None,
+                "recall": round(macro_recall, 4) if macro_recall is not None else None,
+                "f1": round(macro_f1, 4) if macro_f1 is not None else None,
             },
         },
     }
@@ -234,15 +290,31 @@ def main():
     adj = results["aggregate"]["adjudicated_micro"]
     print("=== Benchmark Results ===")
     print(f"Profile: {args.profile} | Scan mode: {args.scan_mode}")
-    print(f"Micro Precision: {micro['precision']:.2%}")
-    print(f"Micro Recall:    {micro['recall']:.2%}")
-    print(f"Micro F1:        {micro['f1']:.2%}")
-    print(f"TP/FP/FN:        {micro['tp']}/{micro['fp']}/{micro['fn']}")
-    print("---")
-    print(f"Adjudicated Precision: {adj['precision']:.2%}")
-    print(f"Adjudicated Recall:    {adj['recall']:.2%}")
-    print(f"Adjudicated F1:        {adj['f1']:.2%}")
-    print(f"Adj TP/FP/FN:          {adj['tp']}/{adj['fp']}/{adj['fn']}")
+    print(
+        "ACT evaluated/skipped cases: "
+        f"{results.get('act_evaluated_cases', 0)}/{results.get('act_skipped_cases', 0)}"
+    )
+
+    if micro["precision"] is None:
+        print("Micro Precision: skipped (no valid pages/cases)")
+        print("Micro Recall:    skipped (no valid pages/cases)")
+        print("Micro F1:        skipped (no valid pages/cases)")
+        print(f"TP/FP/FN:        {micro['tp']}/{micro['fp']}/{micro['fn']}")
+        print("---")
+        print("Adjudicated Precision: skipped (no valid pages/cases)")
+        print("Adjudicated Recall:    skipped (no valid pages/cases)")
+        print("Adjudicated F1:        skipped (no valid pages/cases)")
+        print(f"Adj TP/FP/FN:          {adj['tp']}/{adj['fp']}/{adj['fn']}")
+    else:
+        print(f"Micro Precision: {micro['precision']:.2%}")
+        print(f"Micro Recall:    {micro['recall']:.2%}")
+        print(f"Micro F1:        {micro['f1']:.2%}")
+        print(f"TP/FP/FN:        {micro['tp']}/{micro['fp']}/{micro['fn']}")
+        print("---")
+        print(f"Adjudicated Precision: {adj['precision']:.2%}")
+        print(f"Adjudicated Recall:    {adj['recall']:.2%}")
+        print(f"Adjudicated F1:        {adj['f1']:.2%}")
+        print(f"Adj TP/FP/FN:          {adj['tp']}/{adj['fp']}/{adj['fn']}")
     print(f"Saved: {out_path}")
 
 

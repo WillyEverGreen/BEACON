@@ -216,6 +216,21 @@ def record_audit_event(audit_result: dict[str, Any], *, status: str = "completed
     return event
 
 
+def record_operational_event(event_type: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """Persist non-audit operational telemetry events to the Phase 0 telemetry stream."""
+    event = {
+        "timestamp": _utc_now_iso(),
+        "event_type": str(event_type or "operational"),
+    }
+    if isinstance(payload, dict):
+        event.update(payload)
+
+    with _WINDOW_LOCK:
+        _append_jsonl(event)
+
+    return event
+
+
 def record_llm_failure(reason: str) -> None:
     """Track LLM failure timestamps for burst alerting."""
     now_ts = datetime.now(timezone.utc).timestamp()

@@ -1,0 +1,302 @@
+{
+  "timestamp": "2026-04-09T20:16:20.020575",
+  "total_time_seconds": 31.1,
+  "configuration": {
+    "rag_enabled": false,
+    "max_enrich_issues": 0,
+    "cognitive_enabled": true,
+    "max_site_time": 30
+  },
+  "summary": {
+    "total": 3,
+    "runtime_successful": 2,
+    "runtime_failed": 1,
+    "scoring_completed": 2,
+    "required_scoring_fields_complete": 2,
+    "expectation_passed": 2,
+    "expectation_failed": 0,
+    "errors": 1,
+    "degraded": 0,
+    "spa_detected": 0,
+    "runtime_success_rate": 66.7,
+    "scoring_completed_rate": 66.7,
+    "required_scoring_fields_rate": 66.7,
+    "expectation_pass_rate": 66.7
+  },
+  "kpi": {
+    "runtime_success_rate": 66.7,
+    "expectation_pass_rate": 66.7,
+    "degraded_rate": 0.0,
+    "scoring_completed_rate": 66.7,
+    "required_scoring_fields_rate": 66.7,
+    "precision": null,
+    "recall": null,
+    "f1": null,
+    "spa_precision": 0.0,
+    "spa_recall": 0.0,
+    "spa_f1": 0.0,
+    "rag_completion": null,
+    "rag_effectiveness": null,
+    "fix_acceptance_rate": null,
+    "timeout_rate": 33.3,
+    "avg_runtime": 10.37,
+    "fast_mode_p95_time": 1.38,
+    "fast_mode_usage": 100.0
+  },
+  "spa_detection": {
+    "total_spa_sites": 0,
+    "frameworks": {},
+    "spa_pass_rate": 0
+  },
+  "spa_confusion_matrix": {
+    "evaluated_sites": 1,
+    "confusion_matrix": {
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "tn": 1
+    },
+    "spa_precision": 0.0,
+    "spa_recall": 0.0,
+    "spa_f1": 0.0
+  },
+  "degraded_failure_analysis": {
+    "top_causes": []
+  },
+  "failure_breakdown": {
+    "timeout": 1,
+    "csp_block": 0,
+    "navigation_error": 0,
+    "partial_load": 0,
+    "network_error": 0,
+    "blocked_request": 0,
+    "dns_failure": 0,
+    "unknown": 0,
+    "dom_parse_error": 0,
+    "render_timeout": 0,
+    "extraction_failure": 0
+  },
+  "category_stats": {
+    "accessibility": {
+      "sites": 3,
+      "passed": 2,
+      "failed": 0,
+      "runtime_failed": 1,
+      "errors": 1,
+      "avg_fast_score": 96.1,
+      "avg_deep_score": 60.2,
+      "avg_fast_time": 1.37,
+      "avg_deep_time": 8.3,
+      "total_issues": 10
+    }
+  },
+  "complexity_stats": {
+    "simple": {
+      "sites": 2,
+      "passed": 1,
+      "runtime_failed": 1,
+      "errors": 1
+    },
+    "moderate": {
+      "sites": 1,
+      "passed": 1,
+      "runtime_failed": 0,
+      "errors": 0
+    },
+    "complex": {
+      "sites": 0,
+      "passed": 0,
+      "runtime_failed": 0,
+      "errors": 0
+    }
+  },
+  "results": [
+    {
+      "name": "A11y Project",
+      "url": "https://www.a11yproject.com/",
+      "category": "accessibility",
+      "complexity": "simple",
+      "fast_score": 97.8,
+      "deep_score": 86.2,
+      "fast_issues": 1,
+      "deep_issues": 7,
+      "fast_time": 1.38,
+      "deep_time": 17.66,
+      "fast_rag_effectiveness": 0.0,
+      "deep_rag_effectiveness": 0.0,
+      "fast_fix_acceptance_rate": 0.0,
+      "deep_fix_acceptance_rate": 0.0,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "serious": 4,
+        "moderate": 3
+      },
+      "passed": true,
+      "site_status": "completed",
+      "failure_reason": null,
+      "scoring_completed": true,
+      "required_scoring_fields": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "WebAIM",
+      "url": "https://webaim.org/",
+      "category": "accessibility",
+      "complexity": "simple",
+      "fast_score": 98.2,
+      "deep_score": null,
+      "fast_issues": 1,
+      "deep_issues": 0,
+      "fast_time": 2.14,
+      "deep_time": 0.0,
+      "fast_rag_effectiveness": 0.0,
+      "deep_rag_effectiveness": 0.0,
+      "fast_fix_acceptance_rate": 0.0,
+      "deep_fix_acceptance_rate": 0.0,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "off",
+      "engines": [],
+      "wcag_scs": [],
+      "severity": {},
+      "passed": false,
+      "site_status": "runtime_failed",
+      "failure_reason": "timeout",
+      "scoring_completed": false,
+      "required_scoring_fields": false,
+      "failure_type": "runtime_failure",
+      "runtime_failure_type": "timeout",
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": "TIMEOUT",
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "W3C WAI",
+      "url": "https://www.w3.org/WAI/",
+      "category": "accessibility",
+      "complexity": "moderate",
+      "fast_score": 92.2,
+      "deep_score": 94.3,
+      "fast_issues": 4,
+      "deep_issues": 3,
+      "fast_time": 0.58,
+      "deep_time": 7.24,
+      "fast_rag_effectiveness": 0.0,
+      "deep_rag_effectiveness": 0.0,
+      "fast_fix_acceptance_rate": 0.0,
+      "deep_fix_acceptance_rate": 0.0,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "complete",
+      "engines": [
+        "browser-probe",
+        "static",
+        "heuristic",
+        "axe-core",
+        "cognitive"
+      ],
+      "wcag_scs": [],
+      "severity": {
+        "minor": 2,
+        "moderate": 1
+      },
+      "passed": true,
+      "site_status": "completed",
+      "failure_reason": null,
+      "scoring_completed": true,
+      "required_scoring_fields": true,
+      "failure_type": null,
+      "runtime_failure_type": null,
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": null,
+      "is_spa": false,
+      "spa_framework": null
+    }
+  ],
+  "failure_classification": [
+    {
+      "name": "WebAIM",
+      "url": "https://webaim.org/",
+      "failure_type": "runtime_failure",
+      "runtime_failure_type": "timeout",
+      "site_status": "runtime_failed",
+      "failure_reason": "timeout",
+      "scoring_completed": false,
+      "required_scoring_fields": false,
+      "score": null,
+      "expected": [
+        70,
+        100
+      ],
+      "error": "TIMEOUT",
+      "degraded": false,
+      "degraded_reason": null
+    }
+  ],
+  "runtime_failure_classification": [
+    {
+      "name": "WebAIM",
+      "url": "https://webaim.org/",
+      "failure_type": "timeout",
+      "site_status": "runtime_failed",
+      "failure_reason": "timeout",
+      "scoring_completed": false,
+      "error": "TIMEOUT",
+      "degraded_reason": null
+    }
+  ],
+  "failures": [
+    {
+      "name": "WebAIM",
+      "url": "https://webaim.org/",
+      "failure_type": "runtime_failure",
+      "score": null,
+      "expected": [
+        70,
+        100
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "name": "WebAIM",
+      "error": "TIMEOUT"
+    }
+  ],
+  "recommendations": [
+    {
+      "priority": "MEDIUM",
+      "area": "Performance",
+      "issue": "1 sites timed out",
+      "action": "Optimize slow checks, add early-exit for problematic sites"
+    }
+  ]
+}
