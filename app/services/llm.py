@@ -10,6 +10,7 @@ from typing import Any, Optional
 from openai import AsyncOpenAI
 
 from app.config import CACHE_STATS, settings
+from app.services.feedback import get_feedback_stats
 from app.services.fix_cache import get_cache_key, get_cached_fix, store_fix
 
 logger = logging.getLogger(__name__)
@@ -163,6 +164,226 @@ def _store_llm_cached_remediation(issue: dict, remediation: dict) -> None:
     CACHE_STATS["llm_writes"] = int(CACHE_STATS.get("llm_writes", 0) or 0) + 1
 
 
+def _extract_wcag_reference(raw: Any) -> str:
+    match = re.search(r"\b(\d\.\d+\.\d+)\b", str(raw or ""))
+    return match.group(1) if match else ""
+
+
+def _first_html_tag(html_snippet: str) -> str:
+    match = re.search(r"<\s*([a-zA-Z0-9:-]+)", str(html_snippet or ""))
+    return match.group(1).lower() if match else ""
+
+
+def _coerce_fix_steps(raw_steps: Any) -> list[str]:
+    if isinstance(raw_steps, list):
+        cleaned = [str(step).strip() for step in raw_steps if str(step).strip()]
+    elif isinstance(raw_steps, str):
+        text = raw_steps.strip()
+        if not text:
+            cleaned = []
+        else:
+            segments = re.split(r"\n+|\s*\d+[\.)]\s*", text)
+            cleaned = [segment.strip(" -") for segment in segments if segment.strip(" -")]
+    else:
+        cleaned = []
+
+    if cleaned:
+        return cleaned[:6]
+
+    return [
+        "Update the element with the provided accessible code example.",
+        "Run an automated accessibility scan (axe/Lighthouse) to verify no violation remains.",
+        "Manually test with keyboard and a screen reader for confirmation.",
+    ]
+
+
+def _normalize_code_examples(code_example: Any, legacy_fixes: Any) -> dict[str, str]:
+    normalized = {
+        "vanilla": "",
+        "react": "",
+        "vue": "",
+        "angular": "",
+    }
+
+    if isinstance(code_example, dict):
+        for key in normalized:
+            normalized[key] = str(code_example.get(key, "") or "").strip()
+    elif isinstance(code_example, str):
+        normalized["vanilla"] = code_example.strip()
+
+    if isinstance(legacy_fixes, dict):
+        for key in normalized:
+            if not normalized[key]:
+                normalized[key] = str(legacy_fixes.get(key, "") or "").strip()
+
+    if normalized["vanilla"]:
+        for key in ("react", "vue", "angular"):
+            if not normalized[key]:
+                normalized[key] = normalized["vanilla"]
+
+    return normalized
+
+
+def _build_structured_issue_input(issue: dict) -> dict[str, Any]:
+    wcag_reference = str(issue.get("wcag_criterion", "") or "").strip()
+    issue_type = str(issue.get("issue_type", "violation") or "violation").strip().lower()
+    element_context = {
+        "selector": str(issue.get("element", "") or ""),
+        "page_url": str(issue.get("page_url", "") or ""),
+        "rule_id": str(issue.get("rule_id", "") or ""),
+        "severity": str(issue.get("severity", "") or "moderate"),
+        "description": str(issue.get("description", "") or "")[:260],
+    }
+    return {
+        "issue_type": issue_type,
+        "element_context": element_context,
+        "html_snippet": str(issue.get("html_snippet", "") or "")[:400],
+        "wcag_reference": wcag_reference,
+    }
+
+
+def _derive_structured_fix(data: dict[str, Any]) -> dict[str, Any]:
+    expl_raw = data.get("explanation", "")
+    expl_dict = expl_raw if isinstance(expl_raw, dict) else {}
+
+    explanation_text = ""
+    if isinstance(expl_raw, str):
+        explanation_text = expl_raw.strip()
+    if not explanation_text:
+        explanation_text = str(expl_dict.get("what_is_broken", "") or "").strip()
+    if not explanation_text:
+        explanation_text = "Accessibility issue detected for this element."
+
+    impact_text = str(data.get("impact", "") or "").strip()
+    if not impact_text:
+        impact_text = str(expl_dict.get("impact", "") or "").strip()
+
+    wcag_reference = str(data.get("wcag_reference", "") or "").strip()
+    if not wcag_reference:
+        wcag_reference = str(expl_dict.get("wcag_sc", "") or "").strip()
+
+    fix_steps = _coerce_fix_steps(data.get("fix_steps") or expl_dict.get("verification"))
+    legacy_fixes = data.get("fixes")
+    if not isinstance(legacy_fixes, dict) and data.get("code_fix"):
+        legacy_fixes = {"vanilla": data.get("code_fix")}
+    code_examples = _normalize_code_examples(data.get("code_example"), legacy_fixes)
+
+    structured_fix = {
+        "explanation": explanation_text,
+        "fix_steps": fix_steps,
+        "code_example": code_examples,
+        "impact": impact_text,
+        "wcag_reference": wcag_reference,
+    }
+
+    legacy_explanation = {
+        "what_is_broken": explanation_text,
+        "impact": impact_text,
+        "wcag_sc": wcag_reference,
+        "intent": str(expl_dict.get("intent", "") or "").strip(),
+        "verification": "\n".join(fix_steps),
+    }
+
+    return {
+        "structured_fix": structured_fix,
+        "legacy_explanation": legacy_explanation,
+        "legacy_fixes": code_examples,
+    }
+
+
+def _score_structured_fix(
+    issue: dict,
+    structured_fix: dict[str, Any],
+    *,
+    source: str,
+    context_chunks_used: int,
+    acceptance_rate: float,
+) -> dict[str, float]:
+    explanation = str(structured_fix.get("explanation", "") or "").strip()
+    impact = str(structured_fix.get("impact", "") or "").strip()
+    fix_steps = structured_fix.get("fix_steps", [])
+    if not isinstance(fix_steps, list):
+        fix_steps = []
+    fix_steps = [str(step).strip() for step in fix_steps if str(step).strip()]
+
+    code_examples = structured_fix.get("code_example", {})
+    if not isinstance(code_examples, dict):
+        code_examples = {}
+
+    vanilla = str(code_examples.get("vanilla", "") or "").strip()
+    framework_count = sum(
+        1 for key in ("vanilla", "react", "vue", "angular") if str(code_examples.get(key, "") or "").strip()
+    )
+
+    usefulness = 0.0
+    usefulness += 28.0 if len(explanation) >= 40 else 14.0
+    usefulness += 22.0 if len(impact) >= 24 else 10.0
+    usefulness += 25.0 if len(fix_steps) >= 3 else (16.0 if len(fix_steps) >= 2 else 6.0)
+    usefulness += 20.0 if len(vanilla) >= 20 else 9.0
+    usefulness += 9.0 if framework_count >= 3 else 4.0
+    usefulness += 8.0 if context_chunks_used > 0 else 0.0
+
+    issue_wcag = _extract_wcag_reference(issue.get("wcag_criterion", ""))
+    fix_wcag = _extract_wcag_reference(structured_fix.get("wcag_reference", ""))
+    tag = _first_html_tag(issue.get("html_snippet", ""))
+
+    correctness = 0.0
+    if issue_wcag and fix_wcag and issue_wcag == fix_wcag:
+        correctness += 35.0
+    elif fix_wcag:
+        correctness += 15.0
+    elif not issue_wcag:
+        correctness += 20.0
+    else:
+        correctness += 5.0
+
+    if vanilla and tag and tag in vanilla.lower():
+        correctness += 25.0
+    elif vanilla:
+        correctness += 12.0
+
+    verification_signal = " ".join(fix_steps).lower()
+    if any(token in verification_signal for token in ("verify", "test", "screen reader", "keyboard", "axe")):
+        correctness += 15.0
+    else:
+        correctness += 6.0
+
+    if "..." not in vanilla:
+        correctness += 10.0
+    else:
+        correctness += 3.0
+
+    correctness += 10.0 if context_chunks_used > 0 else 0.0
+    if source in {"llm", "llm_cache", "fix_library_cache", "existing_fix"}:
+        correctness += 8.0
+    elif source.startswith("rule_fallback"):
+        correctness += 6.0 if context_chunks_used > 0 else 4.0
+    else:
+        correctness += 3.0
+
+    # Soft penalty for placeholder-heavy snippets to discourage low-fidelity fixes.
+    placeholder_signals = ("...", "todo", "placeholder", "lorem")
+    if any(signal in vanilla.lower() for signal in placeholder_signals):
+        correctness = max(0.0, correctness - 3.0)
+
+    usefulness = max(0.0, min(100.0, usefulness))
+    correctness = max(0.0, min(100.0, correctness))
+    predicted_acceptance = (usefulness + correctness) / 2.0
+    if source in {"llm", "llm_cache", "fix_library_cache", "existing_fix"}:
+        predicted_acceptance += 4.0
+    elif source.startswith("rule_fallback") and context_chunks_used > 0:
+        predicted_acceptance += 2.0
+    predicted_acceptance = max(0.0, min(100.0, predicted_acceptance))
+    acceptance_rate = max(0.0, min(100.0, float(acceptance_rate or 0.0)))
+
+    return {
+        "usefulness_score": round(usefulness, 1),
+        "correctness_score": round(correctness, 1),
+        "acceptance_rate": round(acceptance_rate, 1),
+        "predicted_acceptance_rate": round(predicted_acceptance, 1),
+    }
+
+
 def _framework_hints(fixes: dict[str, Any] | None) -> dict[str, str]:
     src = fixes if isinstance(fixes, dict) else {}
     return {
@@ -201,12 +422,23 @@ def _fix_object_valid(fix: dict[str, Any]) -> bool:
     return True
 
 
-def _apply_remediation_to_issue(issue: dict, remediation: dict, source: str) -> None:
-    fixes = _framework_hints(remediation.get("fixes", {}))
+def _apply_remediation_to_issue(
+    issue: dict,
+    remediation: dict,
+    source: str,
+    *,
+    acceptance_rate: float = 0.0,
+    context_chunks_used: int = 0,
+) -> None:
+    normalized = _derive_structured_fix(remediation if isinstance(remediation, dict) else {})
+    structured_fix = normalized["structured_fix"]
+
+    fixes = _framework_hints(normalized.get("legacy_fixes", {}))
     issue["code_fix"] = fixes.get("vanilla", "")
     issue["framework_fixes"] = fixes
+    issue["structured_fix"] = structured_fix
 
-    expl = remediation.get("explanation", {})
+    expl = normalized.get("legacy_explanation", {})
     if isinstance(expl, dict):
         if expl.get("what_is_broken"):
             issue["description"] = expl.get("what_is_broken", issue.get("description", ""))
@@ -218,6 +450,20 @@ def _apply_remediation_to_issue(issue: dict, remediation: dict, source: str) -> 
             issue["test_procedure"] = expl.get("verification", "")
         if expl.get("wcag_sc"):
             issue["wcag_criterion"] = expl.get("wcag_sc", issue.get("wcag_criterion", ""))
+
+    fix_steps = structured_fix.get("fix_steps", [])
+    if isinstance(fix_steps, list) and fix_steps:
+        issue["suggested_fix"] = str(fix_steps[0])
+    elif issue.get("code_fix"):
+        issue["suggested_fix"] = str(issue.get("code_fix", ""))[:180]
+
+    issue["quality_scores"] = _score_structured_fix(
+        issue,
+        structured_fix,
+        source=source,
+        context_chunks_used=context_chunks_used,
+        acceptance_rate=acceptance_rate,
+    )
 
     fix_obj = _build_fix_object(issue, issue.get("framework_fixes", {}))
     if not _fix_object_valid(fix_obj):
@@ -402,38 +648,28 @@ async def generate_rag_response(query: str, context_chunks: list[dict]) -> dict:
 
 
 def _validate_response(data: dict) -> dict:
-    """Validate and normalize the LLM response for Audit Mastery."""
-    expl = data.get("explanation", {})
-    if not isinstance(expl, dict): expl = {"what_is_broken": str(expl)}
+    """Validate and normalize LLM output into structured + legacy compatibility fields."""
+    if not isinstance(data, dict):
+        data = {"explanation": str(data)}
 
-    fixes = data.get("fixes", {})
-    if not isinstance(fixes, dict): fixes = {"vanilla": str(fixes)}
-
+    normalized = _derive_structured_fix(data)
     result = {
-        "explanation": {
-            "what_is_broken": expl.get("what_is_broken", ""),
-            "impact": expl.get("impact", ""),
-            "wcag_sc": expl.get("wcag_sc", ""),
-            "intent": expl.get("intent", ""),
-            "verification": expl.get("verification", ""),
-        },
-        "fixes": {
-            "vanilla": fixes.get("vanilla", ""),
-            "react": fixes.get("react", ""),
-            "vue": fixes.get("vue", ""),
-            "angular": fixes.get("angular", ""),
-        },
+        "structured_fix": normalized["structured_fix"],
+        "explanation": normalized["legacy_explanation"],
+        "fixes": normalized["legacy_fixes"],
         "practical_assets": [],
     }
 
     # Validate practical assets
     for asset in data.get("practical_assets", []):
         if isinstance(asset, dict) and "asset_type" in asset:
-            result["practical_assets"].append({
-                "asset_type": asset.get("asset_type", "reference"),
-                "name": asset.get("name", ""),
-                "content": asset.get("content", ""),
-            })
+            result["practical_assets"].append(
+                {
+                    "asset_type": asset.get("asset_type", "reference"),
+                    "name": asset.get("name", ""),
+                    "content": asset.get("content", ""),
+                }
+            )
 
     return result
 
@@ -441,92 +677,80 @@ def _validate_response(data: dict) -> dict:
 # ── Remediation Generation (Milestone 4) ──────────────────────
 
 BATCH_REMEDIATION_SYSTEM_PROMPT = """You are an expert web accessibility remediation engine.
-Given multiple related accessibility issues sharing the same WCAG criterion, along with reference material, produce a structured batched remediation array.
+Given multiple related accessibility issues and retrieval context, return a strict JSON array.
 
-Your response MUST be a valid JSON array of objects. Each object must contain:
-[
-  {
-    "explanation": {
-      "what_is_broken": "One sentence description of the violation",
-      "impact": "Who it affects and how",
-      "wcag_sc": "Success Criterion number and name",
-      "intent": "Why this criterion exists",
-      "verification": "Test procedure"
-    },
-    "fixes": {
-      "vanilla": "Plain HTML/CSS/JS fix specific to the element",
-      "react": "React fix",
-      "vue": "Vue fix",
-      "angular": "Angular fix"
-    },
-    "practical_assets": []
-  }
-]
-The array MUST have exactly the same number of elements as the issues provided, in the exact same order."""
-
-BATCH_REMEDIATION_USER_PROMPT = """
-WCAG Criterion: {wcag_criterion}
-
-=== KNOWLEDGE BASE CONTEXT ===
-{context}
-==============================
-
-I have found {count} instances of the exact same vulnerability.
-For each of the following HTML snippets, generate a strict remediation packet. Keep explanations tight.
-
-ISSUES TO FIX:
-{issues_list}
-"""
-
-REMEDIATION_SYSTEM_PROMPT = """You are an expert web accessibility remediation engine. Given a specific accessibility issue found during an audit, along with relevant WCAG/ARIA/COGA reference material, produce a structured remediation packet.
-
-Your response MUST be valid JSON with these exact fields:
+Each array item MUST use this exact schema:
 {
-  "explanation": {
-    "what_is_broken": "One sentence, plain English description of the violation",
-    "impact": "Who it affects and how (human-centric story)",
-    "wcag_sc": "Success Criterion number and name",
-    "intent": "Why this criterion exists and its importance",
-    "verification": "Step-by-step test procedure (automated + manual)"
-  },
-  "fixes": {
-    "vanilla": "Plain HTML/CSS/JS fix specific to the element",
-    "react": "React component implementation of the fix",
-    "vue": "Vue component implementation of the fix",
-    "angular": "Angular component/template implementation of the fix"
-  },
-  "practical_assets": [
-    {
-      "asset_type": "template OR aria-pattern OR script OR reference",
-      "name": "Name of the resource",
-      "content": "The relevant snippet or instruction from the toolkit"
-    }
-  ]
+    "explanation": "Plain-English explanation of what is broken",
+    "fix_steps": [
+        "Concrete step 1",
+        "Concrete step 2",
+        "Concrete validation step"
+    ],
+    "code_example": {
+        "vanilla": "Specific HTML/CSS/JS fix",
+        "react": "React fix",
+        "vue": "Vue fix",
+        "angular": "Angular fix"
+    },
+    "impact": "Who is impacted and how",
+    "wcag_reference": "WCAG success criterion reference"
 }
 
 Rules:
-1. PLAIN ENGLISH FIRST: Prioritize human impact over technical jargon.
-2. ELEMENT-SPECIFIC: Use the provided HTML snippet to write the code fixes.
-3. FULL COVERAGE: Provide Vanilla, React, Vue, and Angular variants.
-4. VALIDATION: Include a clear test procedure in the explanation block.
-5. ONLY VALID JSON: No markdown backticks, no conversational filler.
+1. Keep output actionable and specific to each issue's HTML snippet.
+2. Do not invent APIs, selectors, or WCAG references.
+3. Keep fix_steps concise and executable.
+4. Return JSON array only, no markdown and no extra text.
+5. Array order and length must exactly match input issues."""
+
+BATCH_REMEDIATION_USER_PROMPT = """
+WCAG REFERENCE: {wcag_reference}
+
+RETRIEVED KNOWLEDGE BASE CONTEXT:
+{context}
+
+ISSUES (JSON ARRAY):
+{issues_json}
+
+Return only the JSON array of structured fixes, one per input issue.
 """
 
+REMEDIATION_SYSTEM_PROMPT = """You are an expert web accessibility remediation engine.
+Given one accessibility issue and retrieved WCAG/ARIA context, return a strict JSON object.
 
-REMEDIATION_USER_PROMPT = """ACCESSIBILITY ISSUE:
-- Rule: {rule_id}
-- Severity: {severity}
-- WCAG Criterion: {wcag_criterion}
-- Element: {element}
-- HTML Snippet: {html_snippet}
-- Description: {description}
+The output MUST use this exact schema:
+{
+    "explanation": "Plain-English explanation of what is broken",
+    "fix_steps": [
+        "Concrete step 1",
+        "Concrete step 2",
+        "Concrete validation step"
+    ],
+    "code_example": {
+        "vanilla": "Specific HTML/CSS/JS fix",
+        "react": "React fix",
+        "vue": "Vue fix",
+        "angular": "Angular fix"
+    },
+    "impact": "Who is impacted and how",
+    "wcag_reference": "WCAG success criterion reference"
+}
+
+Rules:
+1. Use only evidence from the issue payload and retrieved context.
+2. Never hallucinate standards or unsupported behavior.
+3. Keep language clear for developers and non-specialists.
+4. Return valid JSON only; no markdown or commentary."""
+
+
+REMEDIATION_USER_PROMPT = """STRUCTURED ISSUE INPUT (JSON):
+{issue_payload}
 
 RETRIEVED REFERENCE MATERIAL:
 {context}
 
----
-
-Produce a structured remediation packet for this issue. Respond with valid JSON only."""
+Produce one structured fix JSON object. Return JSON only."""
 
 
 async def generate_remediation(issue: dict, context_chunks: list[dict]) -> dict:
@@ -554,22 +778,19 @@ async def generate_remediation(issue: dict, context_chunks: list[dict]) -> dict:
 
     context_str = "\n\n---\n\n".join(context_parts) if context_parts else "No reference material available."
 
+    issue_payload = _build_structured_issue_input(issue)
+
     try:
         response = await client.chat.completions.create(
             model=settings.featherless_model,
             messages=[
                 {"role": "system", "content": REMEDIATION_SYSTEM_PROMPT},
                 {"role": "user", "content": REMEDIATION_USER_PROMPT.format(
-                    rule_id=issue.get("rule_id", "unknown"),
-                    severity=issue.get("severity", "moderate"),
-                    wcag_criterion=issue.get("wcag_criterion", ""),
-                    element=issue.get("element", ""),
-                    html_snippet=issue.get("html_snippet", "")[:300],
-                    description=issue.get("description", ""),
+                    issue_payload=json.dumps(issue_payload, indent=2),
                     context=context_str,
                 )},
             ],
-            max_tokens=2000,
+            max_tokens=1700,
             temperature=0.2,
             timeout=30.0,
         )
@@ -631,12 +852,8 @@ async def generate_remediation_batch(
         "estimated_cost_usd": 0.0,
     }
     
-    # Build list of HTML snippets
-    snippets = []
-    for idx, iss in enumerate(issues_group):
-        html_snip = iss.get("html_snippet", "")[:300]
-        snippets.append(f"[{idx+1}] {html_snip}")
-    issues_list_str = "\n".join(snippets)
+    issues_payload = [_build_structured_issue_input(issue) for issue in issues_group]
+    issues_json = json.dumps(issues_payload, indent=2)
 
     try:
         response = await client.chat.completions.create(
@@ -644,13 +861,12 @@ async def generate_remediation_batch(
             messages=[
                 {"role": "system", "content": BATCH_REMEDIATION_SYSTEM_PROMPT},
                 {"role": "user", "content": BATCH_REMEDIATION_USER_PROMPT.format(
-                    wcag_criterion=wcag_criterion,
+                    wcag_reference=wcag_criterion,
                     context=context_str,
-                    count=len(issues_group),
-                    issues_list=issues_list_str,
+                    issues_json=issues_json,
                 )},
             ],
-            max_tokens=3000,
+            max_tokens=2600,
             temperature=0.2,
             timeout=40.0,
         )
@@ -693,6 +909,13 @@ async def enrich_issues(
     """Enrich the top issues using cache-first and bounded batched RAG remediation."""
     from app.services.retrieval import retrieve_for_issue
 
+    acceptance_rate = 0.0
+    try:
+        feedback_stats = get_feedback_stats()
+        acceptance_rate = float(feedback_stats.get("acceptance_rate", 0.0) or 0.0) * 100.0
+    except Exception as exc:
+        logger.warning("Unable to load feedback acceptance stats: %s", exc)
+
     severity_order = {"critical": 4, "serious": 3, "moderate": 2, "minor": 1}
     sorted_issues = sorted(
         issues,
@@ -726,18 +949,77 @@ async def enrich_issues(
             "cost_used": 0.0,
             "budget_exhausted": max_token_budget <= 0 or max_cost_budget <= 0,
         },
+        "quality": {
+            "avg_usefulness_score": 0.0,
+            "avg_correctness_score": 0.0,
+            "acceptance_rate": round(acceptance_rate, 1),
+            "fix_acceptance_rate": round(acceptance_rate, 1),
+            "rag_effectiveness": 0.0,
+            "sample_count": 0,
+        },
     }
 
     cache_misses: list[dict] = []
     enriched_count = 0
     semaphore = _enrichment_semaphore()
     budget_lock = asyncio.Lock()
+    quality_totals = {
+        "usefulness": 0.0,
+        "correctness": 0.0,
+        "predicted_acceptance": 0.0,
+        "samples": 0,
+    }
 
-    def _apply_rule_fallback(group_issues: list[dict], source: str) -> int:
+    def _record_quality(issue: dict) -> None:
+        quality = issue.get("quality_scores", {})
+        if not isinstance(quality, dict):
+            return
+        try:
+            usefulness = float(quality.get("usefulness_score", 0.0) or 0.0)
+            correctness = float(quality.get("correctness_score", 0.0) or 0.0)
+            predicted_acceptance = float(quality.get("predicted_acceptance_rate", 0.0) or 0.0)
+        except Exception:
+            return
+        quality_totals["usefulness"] += usefulness
+        quality_totals["correctness"] += correctness
+        quality_totals["predicted_acceptance"] += predicted_acceptance
+        quality_totals["samples"] += 1
+
+    def _finalize_quality_meta() -> None:
+        samples = int(quality_totals["samples"])
+        if samples > 0:
+            avg_usefulness = quality_totals["usefulness"] / samples
+            avg_correctness = quality_totals["correctness"] / samples
+            rag_effectiveness = (avg_usefulness + avg_correctness) / 2.0
+            predicted_acceptance = quality_totals["predicted_acceptance"] / samples
+        else:
+            avg_usefulness = 0.0
+            avg_correctness = 0.0
+            rag_effectiveness = 0.0
+            predicted_acceptance = 0.0
+
+        enrichment_meta["quality"].update(
+            {
+                "avg_usefulness_score": round(avg_usefulness, 1),
+                "avg_correctness_score": round(avg_correctness, 1),
+                "rag_effectiveness": round(rag_effectiveness, 1),
+                "fix_acceptance_rate": round(predicted_acceptance, 1),
+                "sample_count": samples,
+            }
+        )
+
+    def _apply_rule_fallback(group_issues: list[dict], source: str, *, context_chunks_used: int = 0) -> int:
         applied = 0
         for issue in group_issues:
             fallback = _get_fallback_remediation(issue)
-            _apply_remediation_to_issue(issue, fallback, source)
+            _apply_remediation_to_issue(
+                issue,
+                fallback,
+                source,
+                acceptance_rate=acceptance_rate,
+                context_chunks_used=context_chunks_used,
+            )
+            _record_quality(issue)
             applied += 1
         return applied
 
@@ -779,14 +1061,24 @@ async def enrich_issues(
                     "fixes": issue.get("framework_fixes", {"vanilla": issue.get("code_fix", "")}),
                 },
                 source="existing_fix",
+                acceptance_rate=acceptance_rate,
+                context_chunks_used=0,
             )
+            _record_quality(issue)
             continue
 
         llm_cached = _get_llm_cached_remediation(issue)
         if llm_cached:
             CACHE_STATS["llm_hits"] = CACHE_STATS.get("llm_hits", 0) + 1
             enrichment_meta["cache"]["llm_hits"] += 1
-            _apply_remediation_to_issue(issue, llm_cached, source="llm_cache")
+            _apply_remediation_to_issue(
+                issue,
+                llm_cached,
+                source="llm_cache",
+                acceptance_rate=acceptance_rate,
+                context_chunks_used=0,
+            )
+            _record_quality(issue)
             enriched_count += 1
             continue
 
@@ -799,7 +1091,14 @@ async def enrich_issues(
         if cached_fix:
             CACHE_STATS["fix_hits"] = CACHE_STATS.get("fix_hits", 0) + 1
             enrichment_meta["cache"]["fix_hits"] += 1
-            _apply_remediation_to_issue(issue, cached_fix, source="fix_library_cache")
+            _apply_remediation_to_issue(
+                issue,
+                cached_fix,
+                source="fix_library_cache",
+                acceptance_rate=acceptance_rate,
+                context_chunks_used=0,
+            )
+            _record_quality(issue)
             _store_llm_cached_remediation(issue, cached_fix)
             enriched_count += 1
             continue
@@ -810,6 +1109,7 @@ async def enrich_issues(
 
     if not cache_misses:
         logger.info(f"All {len(sorted_issues)} issues fulfilled from cache.")
+        _finalize_quality_meta()
         if return_meta:
             return issues, enrichment_meta
         return issues
@@ -820,12 +1120,15 @@ async def enrich_issues(
         group_key = issue.get("wcag_criterion") or issue.get("rule_id") or "unknown"
         grouped_misses.setdefault(group_key, []).append(issue)
 
-    async def process_batch(group_key: str, group_iss: list[dict]) -> int:
+    max_batch_issues = max(1, int(getattr(settings, "enrichment_batch_max_issues", 6) or 6))
+
+    async def process_batch(group_label: str, wcag_reference: str, group_iss: list[dict]) -> int:
         async with semaphore:
             try:
                 if not await _budget_available():
                     return _apply_rule_fallback(group_iss, "rule_fallback_budget")
 
+                context_chunks: list[dict] = []
                 try:
                     context_chunks = await retrieve_for_issue(group_iss[0])
                 except Exception:
@@ -840,15 +1143,27 @@ async def enrich_issues(
                 query_hint = " | ".join(part for part in query_hint_parts if part)
                 enrichment_meta["retrieval_debug"].append(
                     {
-                        "group": group_key,
+                        "group": group_label,
+                        "wcag_reference": wcag_reference,
                         "query": query_hint,
                         "retrieved_chunks": len(context_chunks),
+                        "source_silos": [
+                            str((chunk.get("metadata", {}) or {}).get("source_silo", "") or "")
+                            for chunk in context_chunks[:5]
+                        ],
                         "similarity_scores": [
                             round(float(chunk.get("score", 0.0) or 0.0), 4)
                             for chunk in context_chunks[:5]
                         ],
                     }
                 )
+
+                if not context_chunks:
+                    logger.warning("No retrieval context for batch '%s'. Using fallback remediation.", group_label)
+                    return _apply_rule_fallback(group_iss, "rule_fallback_no_context")
+
+                for issue in group_iss:
+                    issue["rag_context"] = context_chunks
 
                 context_parts = [chunk.get("content", "") for chunk in context_chunks]
                 context_str = "\n\n---\n\n".join(context_parts) if context_parts else "No reference material."
@@ -863,7 +1178,7 @@ async def enrich_issues(
                         break
 
                     enrichment_meta["llm"]["calls"] += 1
-                    batch_results, usage = await generate_remediation_batch(group_iss, context_str, group_key)
+                    batch_results, usage = await generate_remediation_batch(group_iss, context_str, wcag_reference)
                     await _record_usage(usage)
 
                     if batch_results:
@@ -878,8 +1193,8 @@ async def enrich_issues(
 
                 if not results:
                     source = "rule_fallback_budget" if enrichment_meta["budget"]["budget_exhausted"] else "rule_fallback"
-                    logger.warning(f"LLM unavailable for batch '{group_key}'. Applying {source} remediation.")
-                    return _apply_rule_fallback(group_iss, source)
+                    logger.warning(f"LLM unavailable for batch '{group_label}'. Applying {source} remediation.")
+                    return _apply_rule_fallback(group_iss, source, context_chunks_used=len(context_chunks))
 
                 saved_count = 0
                 for idx, issue in enumerate(group_iss):
@@ -887,19 +1202,35 @@ async def enrich_issues(
                         break
 
                     remediation = results[idx]
-                    _apply_remediation_to_issue(issue, remediation, source="llm")
+                    _apply_remediation_to_issue(
+                        issue,
+                        remediation,
+                        source="llm",
+                        acceptance_rate=acceptance_rate,
+                        context_chunks_used=len(context_chunks),
+                    )
+                    _record_quality(issue)
                     _store_llm_cached_remediation(issue, remediation)
                     store_fix(issue.get("rule_id", "unknown"), issue.get("html_snippet", ""), remediation)
                     saved_count += 1
 
                 return saved_count
             except Exception as e:
-                logger.error(f"LLM batch failed for {group_key}: {e}. Applying rule-based fallback.")
-                return _apply_rule_fallback(group_iss, "rule_fallback")
+                logger.error(f"LLM batch failed for {group_label}: {e}. Applying rule-based fallback.")
+                return _apply_rule_fallback(group_iss, "rule_fallback", context_chunks_used=len(context_chunks))
 
-    batch_tasks = [process_batch(k, v) for k, v in grouped_misses.items()]
+    batch_tasks = []
+    for group_key, grouped in grouped_misses.items():
+        for index in range(0, len(grouped), max_batch_issues):
+            subset = grouped[index : index + max_batch_issues]
+            batch_number = (index // max_batch_issues) + 1
+            label = f"{group_key}#{batch_number}" if len(grouped) > max_batch_issues else str(group_key)
+            batch_tasks.append(process_batch(label, str(group_key), subset))
+
     batch_results = await asyncio.gather(*batch_tasks)
     enriched_count += sum(batch_results)
+
+    _finalize_quality_meta()
 
     logger.info(
         f"Enriched {enriched_count}/{len(sorted_issues)} issues "

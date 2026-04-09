@@ -147,6 +147,14 @@ class AuditIssue(BaseModel):
     suggested_fix: str = Field(default="")
     code_fix: str = Field(default="", description="Ready-to-paste Vanilla HTML/CSS/JS fix")
     framework_fixes: dict[str, str] = Field(default_factory=dict, description="Fixes for React, Vue, Angular")
+    structured_fix: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Standardized fix packet: explanation, fix_steps, code_example, impact",
+    )
+    quality_scores: dict[str, float] = Field(
+        default_factory=dict,
+        description="Per-fix quality signals: usefulness_score, correctness_score, acceptance_rate",
+    )
     fix: dict[str, Any] = Field(
         default_factory=dict,
         description="Structured fix object containing description, before/after diff, and framework hints",
@@ -235,8 +243,17 @@ class AuditResponse(BaseModel):
         default_factory=list,
         description="Top-5 rule groups to fix first, ranked by impact × frequency × visibility"
     )
+    prioritized_issues: list[dict] = Field(default_factory=list, description="Ranked issue summaries for fix-first decisions")
+    recommendations: list[str] = Field(default_factory=list, description="Deterministic fix-order recommendations")
     groups: list[IssueGroup] = Field(default_factory=list)
     score: float = Field(default=0.0, description="Accessibility score 0-100")
+    overall_score: float = Field(default=0.0, description="Deterministic overall accessibility score")
+    severity_breakdown: dict = Field(default_factory=dict, description="Critical / major / minor counts")
+    score_distribution: dict = Field(default_factory=dict, description="Score penalty distribution")
+    priority_score_distribution: dict = Field(default_factory=dict, description="Priority score distribution")
+    top_issue_types: list[dict] = Field(default_factory=list, description="Top issue types by count")
+    issue_groupings: dict = Field(default_factory=dict, description="Issue groupings by type, component, and pattern")
+    score_explanation: dict = Field(default_factory=dict, description="Score calculation details")
     score_display_context: str = Field(default="", description="Important caveat for perfect scores")
     expected_score_after_fix: float = Field(default=0.0, description="Score if top priorities are fixed")
     score_improvement: float = Field(default=0.0, description="Potential score boost")
@@ -250,6 +267,13 @@ class AuditResponse(BaseModel):
     scan_time_seconds: float = Field(default=0.0)
     engines_used: list[str] = Field(default_factory=list)
     quality_gates: dict = Field(default_factory=dict)
+    browser_probe_metadata: dict = Field(default_factory=dict, description="Browser runtime metadata from Playwright probes")
+    spa_framework: Optional[str] = Field(default=None, description="Detected SPA framework, if available")
+    is_spa: bool = Field(default=False, description="Final SPA classification decision")
+    spa_classification: dict = Field(
+        default_factory=lambda: {"is_spa": False, "confidence": "low", "signals": []},
+        description="Explainable SPA classification payload",
+    )
     enrichment_status: str = Field(default="complete", description="complete | pending | failed")
     audit_id: str = Field(default="", description="Unique ID for this audit run to poll for enrichment")
 

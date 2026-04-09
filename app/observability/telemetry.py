@@ -12,6 +12,7 @@ from pathlib import Path
 from statistics import median
 from typing import Any
 
+from app.audit.failure_taxonomy import classify_failure_reason, normalize_reason
 from app.config import CACHE_STATS, settings
 
 _WINDOW_LOCK = threading.RLock()
@@ -72,11 +73,101 @@ def _enrichment_breakdown(issues: list[dict[str, Any]]) -> dict[str, int]:
     return buckets
 
 
+def _severity_breakdown(issues: list[dict[str, Any]], audit_result: dict[str, Any]) -> dict[str, int]:
+    breakdown = {"critical": 0, "major": 0, "minor": 0}
+    result_breakdown = audit_result.get("severity_breakdown")
+    if isinstance(result_breakdown, dict):
+        for key in breakdown:
+            if key in result_breakdown:
+                breakdown[key] = int(result_breakdown.get(key, 0) or 0)
+        return breakdown
+
+    for issue in issues:
+        severity = str(issue.get("priority_severity") or issue.get("severity") or "minor").lower()
+        if severity == "critical":
+            breakdown["critical"] += 1
+        elif severity in {"major", "serious"}:
+            breakdown["major"] += 1
+        else:
+            breakdown["minor"] += 1
+    return breakdown
+
+
+def _priority_distribution(issues: list[dict[str, Any]], audit_result: dict[str, Any]) -> dict[str, float]:
+    if isinstance(audit_result.get("priority_score_distribution"), dict):
+        payload = dict(audit_result.get("priority_score_distribution") or {})
+        return {
+            "min": float(payload.get("min", 0.0) or 0.0),
+            "p50": float(payload.get("p50", 0.0) or 0.0),
+            "p95": float(payload.get("p95", 0.0) or 0.0),
+            "max": float(payload.get("max", 0.0) or 0.0),
+            "avg": float(payload.get("avg", 0.0) or 0.0),
+        }
+
+    scores = [float(issue.get("priority_score", 0.0) or 0.0) for issue in issues]
+    if not scores:
+        return {"min": 0.0, "p50": 0.0, "p95": 0.0, "max": 0.0, "avg": 0.0}
+
+    ordered = sorted(scores)
+
+    def _percentile(values: list[float], p: float) -> float:
+        if not values:
+            return 0.0
+        if len(values) == 1:
+            return float(values[0])
+        rank = (len(values) - 1) * p
+        lower = math.floor(rank)
+        upper = math.ceil(rank)
+        if lower == upper:
+            return float(values[int(rank)])
+        weight = rank - lower
+        return float(values[lower] + (values[upper] - values[lower]) * weight)
+
+    return {
+        "min": round(float(ordered[0]), 3),
+        "p50": round(_percentile(ordered, 0.5), 3),
+        "p95": round(_percentile(ordered, 0.95), 3),
+        "max": round(float(ordered[-1]), 3),
+        "avg": round(sum(scores) / len(scores), 3),
+    }
+
+
+def _top_issue_types(issues: list[dict[str, Any]], audit_result: dict[str, Any]) -> list[dict[str, Any]]:
+    if isinstance(audit_result.get("top_issue_types"), list):
+        return list(audit_result.get("top_issue_types") or [])
+
+    counts: dict[str, int] = {}
+    for issue in issues:
+        issue_type = str(issue.get("issue_type") or "unknown")
+        counts[issue_type] = counts.get(issue_type, 0) + 1
+    ranked = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+    return [{"issue_type": issue_type, "count": count} for issue_type, count in ranked[:5]]
+
+
 def _build_audit_event(audit_result: dict[str, Any], *, status: str) -> dict[str, Any]:
     issues = list(audit_result.get("issues") or [])
     breakdown = _enrichment_breakdown(issues)
     total_enriched = max(1, sum(breakdown.values()))
     fallback_rate = float(breakdown["rule_fallback"]) / float(total_enriched)
+    severity_breakdown = _severity_breakdown(issues, audit_result)
+    priority_distribution = _priority_distribution(issues, audit_result)
+    top_issue_types = _top_issue_types(issues, audit_result)
+
+    score_distribution = audit_result.get("score_distribution")
+    if not isinstance(score_distribution, dict):
+        score_distribution = {
+            "overall_score": float(audit_result.get("score") or 0.0),
+            "critical_penalty": 0.0,
+            "major_penalty": 0.0,
+            "minor_penalty": 0.0,
+            "issue_count": int(audit_result.get("total_issues") or 0),
+        }
+
+    degraded_reason = normalize_reason(audit_result.get("degraded_reason"))
+    if not degraded_reason and bool(audit_result.get("degraded_mode")):
+        degraded_reason = classify_failure_reason(
+            audit_result.get("degradation_reason") or audit_result.get("summary")
+        )
 
     timeout_flag = bool(
         not audit_result.get("quality_gates", {}).get("runtime_passed", True)
@@ -97,8 +188,15 @@ def _build_audit_event(audit_result: dict[str, Any], *, status: str) -> dict[str
         "degraded_mode": bool(audit_result.get("degraded_mode", False)),
         "timeout": timeout_flag,
         "site_score": float(audit_result.get("score") or 0.0),
+        "overall_score": float(audit_result.get("overall_score") or audit_result.get("score") or 0.0),
         "total_issues": int(audit_result.get("total_issues") or 0),
-        "critical_issues": sum(1 for i in issues if str(i.get("severity", "")).lower() == "critical"),
+        "critical_issues": severity_breakdown.get("critical", 0),
+        "degraded_reason": degraded_reason,
+        "severity_counts": severity_breakdown,
+        "score_distribution": score_distribution,
+        "overall_score_distribution": score_distribution,
+        "priority_score_distribution": priority_distribution,
+        "top_issue_types": top_issue_types,
         "enrichment_status": str(audit_result.get("enrichment_status") or "complete"),
         "enrichment_source_breakdown": breakdown,
         "enrichment_fallback_rate": round(fallback_rate, 6),

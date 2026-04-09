@@ -37,7 +37,7 @@ from app.services.llm import enrich_issues
 from app.services.page_cache import (
     get_url_hash, clean_html_for_hash, get_dom_hash, check_cache, save_to_cache
 )
-from app.services.prioritizer import prioritize_issues
+from app.services.prioritizer import build_scoring_summary, prioritize_issues
 from app.services.aggregator import aggregate_issues
 from app.db.repository import persist_audit_payload, persist_enrichment_payload
 from app.observability.alerts import evaluate_audit_alerts, notify_llm_failure
@@ -943,9 +943,9 @@ async def run_audit(
         # ── Step 4.25: Aggregate identical rules ─────────────────────
         scored_issues, compression_telemetry = aggregate_issues(scored_issues)
         # ── Step 4.5: Prioritize issues (NEW) ────────────────────────
-        # Computes priority_score per issue and builds a top-5 "fix first" list.
-        # Formula: impact × frequency × visibility × confidence
+        # Computes deterministic priority scores and rank-ordered issue summaries.
         scored_issues, priority_ranking = prioritize_issues(scored_issues)
+        scoring_summary = build_scoring_summary(scored_issues, degraded_mode=degraded_mode)
 
         # ── Step 5: Group issues ──────────────────────────────────
         groups = group_issues(scored_issues)
@@ -1031,8 +1031,9 @@ async def run_audit(
                 task = asyncio.create_task(run_enrichment_task(audit_id, scored_issues.copy(), max_enrich_issues))
                 _enrichment_tasks[audit_id] = task
 
-        # ── Step 7: Calculate score (capped, per-rule) ─────────────
-        score, score_explanation = _calculate_score(scored_issues, degraded_mode=degraded_mode)
+        # ── Step 7: Calculate score (deterministic summary) ──────────
+        score = float(scoring_summary.get("overall_score", 100.0))
+        score_explanation = scoring_summary.get("score_explanation", {})
         
         # ── Step 8: Generate report ────────────────────────────────
         scan_time = time.time() - start_time
@@ -1043,6 +1044,10 @@ async def run_audit(
             score=score,
             issues=scored_issues,
             groups=groups,
+            severity_breakdown=scoring_summary.get("severity_breakdown", {}),
+            prioritized_issues=scoring_summary.get("prioritized_issues", []),
+            recommendations=scoring_summary.get("recommendations", []),
+            score_breakdown=scoring_summary.get("score_distribution", {}),
             cognitive_scores=cognitive_scores,
             scan_time=scan_time,
             engines_used=engines_used,
@@ -1072,6 +1077,7 @@ async def run_audit(
             llm_meta = enrichment_meta.get("llm") if isinstance(enrichment_meta, dict) else None
             budget_meta = enrichment_meta.get("budget") if isinstance(enrichment_meta, dict) else None
             retrieval_debug = enrichment_meta.get("retrieval_debug") if isinstance(enrichment_meta, dict) else None
+            quality_meta = enrichment_meta.get("quality") if isinstance(enrichment_meta, dict) else None
             quality_gates["enrichment_observability"] = {
                 "llm_calls": int((llm_meta or {}).get("calls", 0) or 0),
                 "llm_retries": int((llm_meta or {}).get("retries", 0) or 0),
@@ -1079,6 +1085,10 @@ async def run_audit(
                 "cost_budget_used": float((budget_meta or {}).get("cost_used", 0.0) or 0.0),
                 "budget_exhausted": bool((budget_meta or {}).get("budget_exhausted", False)),
                 "retrieval_debug_records": len(retrieval_debug) if isinstance(retrieval_debug, list) else 0,
+                "avg_usefulness_score": float((quality_meta or {}).get("avg_usefulness_score", 0.0) or 0.0),
+                "avg_correctness_score": float((quality_meta or {}).get("avg_correctness_score", 0.0) or 0.0),
+                "rag_effectiveness": float((quality_meta or {}).get("rag_effectiveness", 0.0) or 0.0),
+                "fix_acceptance_rate": float((quality_meta or {}).get("fix_acceptance_rate", 0.0) or 0.0),
             }
 
         if scan_mode == "max":
@@ -1131,9 +1141,17 @@ async def run_audit(
             "total_issues": len(scored_issues),
             "issues": scored_issues,
             "priority_ranking": priority_ranking,   # Top-5 "fix these first" list
+            "prioritized_issues": scoring_summary.get("prioritized_issues", []),
+            "recommendations": scoring_summary.get("recommendations", []),
             "groups": groups,
             "score": score,
+            "overall_score": score,
+            "severity_breakdown": scoring_summary.get("severity_breakdown", {}),
             "score_explanation": score_explanation,
+            "score_distribution": scoring_summary.get("score_distribution", {}),
+            "priority_score_distribution": scoring_summary.get("priority_score_distribution", {}),
+            "top_issue_types": scoring_summary.get("top_issue_types", []),
+            "issue_groupings": scoring_summary.get("issue_groupings", {}),
             "score_display_context": f"No issues detected across {len(engines_used)} active engine(s). Note: This does not guarantee full WCAG AA conformance." if score == 100.0 else "",
             "expected_score_after_fix": round(expected_score_after_fix, 1),
             "score_improvement": round(score_improvement, 1),
@@ -1161,6 +1179,14 @@ async def run_audit(
             "browser_probe_metadata": browser_probe_metadata,
             "spa_framework": browser_probe_metadata.get("spa_framework"),
             "is_spa": browser_probe_metadata.get("is_spa", False),
+            "spa_classification": browser_probe_metadata.get(
+                "spa_classification",
+                {
+                    "is_spa": bool(browser_probe_metadata.get("is_spa", False)),
+                    "confidence": "low",
+                    "signals": [],
+                },
+            ),
         }
         
         # ── Step 8: Cache Write Policy ─────────────────────────────────
@@ -1178,75 +1204,11 @@ async def run_audit(
 
 
 def _calculate_score(issues: list[dict], degraded_mode: bool = False) -> tuple[float, dict]:
-    """
-    Calculate accessibility score (0-100) using capped per-rule penalties.
-    Returns (score, explanation_layer_dict).
-    """
-    max_per_rule: float = float(SCORING_CONFIG["max_penalty_per_rule"])
-
-    # Accumulate per-rule penalties
-    rule_penalty: dict[str, float] = {}
-    rule_details: dict[str, dict] = {}
-    
-    for issue in issues:
-        if issue.get("needs_manual_review") and issue.get("confidence", 0) < 0.4:
-            continue
-        
-        rule_id = issue.get("rule_id", "unknown")
-        sev = issue.get("severity", "minor")
-        confidence = float(issue.get("confidence", 1.0))
-        rule_type = issue.get("rule_type", "hard")
-        
-        weight = float(SEVERITY_WEIGHTS.get(sev, 1.0))
-        
-        # Apply confidence penalty weighting
-        weight *= confidence
-        
-        # Apply visual rules weighting
-        if rule_type == "visual":
-            weight *= 0.7
-            
-        # Grouped axe issues count as 1 finding regardless of affected_count
-        if issue.get("is_grouped"):
-            weight = float(SCORING_CONFIG.get("grouped_issue_weight", 1.0)) * weight
-            
-        rule_penalty[rule_id] = rule_penalty.get(rule_id, 0.0) + weight
-        if rule_id not in rule_details:
-            rule_details[rule_id] = {"type": rule_type, "severity": sev, "raw_penalty": 0.0, "capped_penalty": 0.0}
-        rule_details[rule_id]["raw_penalty"] += weight
-
-    # Apply per-rule cap and build explanation
-    total_penalty = 0.0
-    for rule, p in rule_penalty.items():
-        capped = min(p, max_per_rule)
-        rule_details[rule]["capped_penalty"] = capped
-        total_penalty += capped
-
-    score = max(0.0, min(100.0, 100.0 - total_penalty))
-    
-    explanation = {
-        "base_score": 100.0,
-        "total_penalty_applied": round(total_penalty, 2),
-        "degraded_mode_penalty": 0.0,
-        "capped_rules_count": sum(1 for d in rule_details.values() if d["raw_penalty"] > max_per_rule),
-        "penalty_breakdown": {k: round(v["capped_penalty"], 2) for k, v in sorted(rule_details.items(), key=lambda item: item[1]["capped_penalty"], reverse=True)[:5]}
-    }
-    
-    # Degraded mode reduction
-    if degraded_mode:
-        explanation["degraded_mode_penalty"] = round(score * 0.15, 2)
-        score *= 0.85
-        
-    # Hard floor to prevent "0 = completely broken" for otherwise usable sites
-    if score < 15.0 and total_penalty > 0:
-        explanation["floor_applied"] = True
-        score = 15.0
-        
-    # Only return 100 if there were literally no penalties (or floating point exactly matches)
-    if total_penalty == 0 and not degraded_mode:
-        score = 100.0
-
-    logger.debug(f"Score calculation: {len(rule_penalty)} rules, penalty={total_penalty:.1f} -> score={score:.1f}")
+    """Calculate the deterministic accessibility score and explanation payload."""
+    summary = build_scoring_summary(issues, degraded_mode=degraded_mode)
+    score = float(summary.get("overall_score", 100.0))
+    explanation = dict(summary.get("score_explanation", {}))
+    logger.debug("Score calculation: %s issues -> score=%s", len(issues), score)
     return round(score, 1), explanation
 
 

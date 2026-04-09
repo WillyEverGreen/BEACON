@@ -21,6 +21,7 @@ from urllib.parse import urlparse
 
 from app.audit.dynamic_handling import install_request_interception, resolve_adaptive_timeouts, stable_request_headers
 from app.audit.failure_taxonomy import classify_failure_reason, normalize_reason
+from app.services.spa_classifier import classify_spa
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +110,7 @@ class BrowserProber:
         self.timeout = int(self.adaptive_timeouts.get("page_timeout_seconds", base_timeout_seconds)) * 1000
         self.max_retries = max_retries
         self.detected_framework: Optional[str] = None
+        self.legacy_framework: Optional[str] = None
         self.is_spa: bool = False
         self.last_navigation_failure_reason: str = ""
 
@@ -167,86 +169,235 @@ class BrowserProber:
         return ""
 
     async def _detect_spa_framework(self, page) -> Optional[str]:
-        """Detect if the page is a SPA and identify the framework."""
+        """Detect likely SPA framework using strict runtime signals first."""
         try:
             detection_result = await page.evaluate("""
                 () => {
-                    const result = { framework: null, is_spa: false, indicators: [] };
-                    
-                    // React detection
-                    if (window.__REACT_DEVTOOLS_GLOBAL_HOOK__ ||
-                        document.querySelector('[data-reactroot]') ||
-                        document.querySelector('#__next') ||
-                        window.__NEXT_DATA__) {
-                        result.framework = 'react';
-                        result.is_spa = true;
-                        result.indicators.push('react');
+                    const result = {
+                        strict_framework: null,
+                        legacy_framework: null,
+                        strict_hits: [],
+                        legacy_hits: [],
+                    };
+
+                    const scanForRuntimeKey = (prefixes, limit = 140) => {
+                        const nodes = Array.from(document.querySelectorAll('*')).slice(0, limit);
+                        for (const node of nodes) {
+                            const keys = Object.keys(node || {});
+                            for (const key of keys) {
+                                for (const prefix of prefixes) {
+                                    if (key.startsWith(prefix)) return true;
+                                }
+                            }
+                        }
+                        return false;
+                    };
+
+                    const hasNext = Boolean(window.__NEXT_DATA__ || document.querySelector('#__next, script#__NEXT_DATA__'));
+                    const hasReactFiber = scanForRuntimeKey(['__reactFiber$', '__reactProps$']);
+                    const hasReactRootAttr = Boolean(document.querySelector('[data-reactroot]'));
+                    if (hasNext || hasReactFiber || hasReactRootAttr) {
+                        result.strict_hits.push('react');
                     }
-                    
-                    // Angular detection
-                    if (window.ng || document.querySelector('[ng-version]') ||
-                        document.querySelector('[ng-app]') ||
-                        document.querySelector('app-root')) {
-                        result.framework = 'angular';
-                        result.is_spa = true;
-                        result.indicators.push('angular');
+
+                    const hasAngularRoot = Boolean(document.querySelector('[ng-version], app-root, [ng-app], [ng-controller]'));
+                    if (hasAngularRoot) {
+                        result.strict_hits.push('angular');
                     }
-                    
-                    // Vue detection
-                    if (window.__VUE__ || window.__NUXT__ ||
-                        document.querySelector('[data-v-]') ||
-                        document.querySelector('#__nuxt')) {
-                        result.framework = 'vue';
-                        result.is_spa = true;
-                        result.indicators.push('vue');
+
+                    const hasNuxt = Boolean(window.__NUXT__ || document.querySelector('#__nuxt, script#__NUXT_DATA__'));
+                    const hasVueRuntime = scanForRuntimeKey(['__vueParentComponent', '__vnode']);
+                    if (hasNuxt || hasVueRuntime || document.querySelector('[data-v-]')) {
+                        result.strict_hits.push('vue');
                     }
-                    
-                    // Svelte detection
-                    if (window.__svelte || document.querySelector('[class*="svelte-"]')) {
-                        result.framework = 'svelte';
-                        result.is_spa = true;
-                        result.indicators.push('svelte');
+
+                    const hasSvelteClass = Boolean(document.querySelector('[class*="svelte-"]'));
+                    if (hasSvelteClass) {
+                        result.strict_hits.push('svelte');
                     }
-                    
-                    // Generic SPA indicators (conservative to avoid false positives)
+
+                    // Legacy fallback hints (used for confidence calibration only).
+                    const scriptCount = document.scripts?.length || 0;
                     const bodyTextLength = (document.body?.innerText || '').trim().length;
                     const bodyChildCount = document.body?.children?.length || 0;
-                    const scriptCount = document.scripts?.length || 0;
+                    const hasRootShell = Boolean(document.querySelector('#app, #root, app-root, #__next, #__nuxt'));
 
-                    const hasMinimalHTML = bodyTextLength < 140 && bodyChildCount <= 6;
-                    const hasClientShell = !!document.querySelector('#app, #root, app-root, main#app, [data-server-rendered]') &&
-                                           bodyChildCount <= 8;
-                    const hasHydrationBlob = !!document.querySelector('script#__NEXT_DATA__, script#__NUXT_DATA__, script[type="application/json"][id*="__"]');
-                    const hasActiveServiceWorker = !!navigator.serviceWorker?.controller;
-                    const scriptHeavyShell = scriptCount >= 15 && bodyTextLength < 400;
-
-                    let genericSignals = 0;
-                    if (hasMinimalHTML) genericSignals += 1;
-                    if (hasClientShell) genericSignals += 1;
-                    if (hasHydrationBlob) genericSignals += 1;
-                    if (hasActiveServiceWorker) genericSignals += 1;
-                    if (scriptHeavyShell) genericSignals += 1;
-
-                    if (!result.is_spa && genericSignals >= 3) {
-                        result.is_spa = true;
-                        result.indicators.push(`generic:${genericSignals}`);
+                    if (!result.strict_hits.length && hasRootShell && scriptCount >= 14 && bodyChildCount <= 18 && bodyTextLength < 1400) {
+                        result.legacy_hits.push('generic-shell');
                     }
-                    
+
+                    const uniqueStrict = Array.from(new Set(result.strict_hits));
+                    if (uniqueStrict.length === 1) {
+                        result.strict_framework = uniqueStrict[0];
+                    } else if (uniqueStrict.length > 1) {
+                        result.strict_framework = 'hybrid';
+                    }
+
+                    if (!result.strict_framework && result.legacy_hits.length > 0) {
+                        result.legacy_framework = 'generic';
+                    }
+
                     return result;
                 }
             """)
-            
-            self.detected_framework = detection_result.get("framework")
-            self.is_spa = detection_result.get("is_spa", False)
-            
+
+            self.detected_framework = detection_result.get("strict_framework")
+            self.legacy_framework = detection_result.get("legacy_framework")
+            self.is_spa = bool(self.detected_framework)
+
             if self.detected_framework:
                 logger.info(f"Detected SPA framework: {self.detected_framework}")
-            
+
             return self.detected_framework
-            
+
         except Exception as e:
             logger.warning(f"SPA detection failed: {e}")
             return None
+
+    async def _collect_spa_runtime_signals(
+        self,
+        page,
+        framework: Optional[str],
+        hydration_waited: bool,
+    ) -> dict[str, Any]:
+        """Collect runtime SPA signals for the classification layer."""
+        signals: dict[str, Any] = {
+            "strict_framework": framework,
+            "legacy_framework": self.legacy_framework,
+            "hydration_waited": bool(hydration_waited),
+            "history_state_ops": 0,
+            "route_marker_count": 0,
+            "dom_mutation_count": 0,
+            "dom_nodes_added": 0,
+            "dom_nodes_delta": 0,
+            "dom_text_delta": 0,
+            "script_count": 0,
+            "shell_root_detected": False,
+            "body_text_length": 0,
+            "body_child_count": 0,
+        }
+
+        try:
+            await page.evaluate(
+                """
+                () => {
+                    if (window.__beaconSpaHistoryProbe) return;
+                    const probe = { pushStateCalls: 0, replaceStateCalls: 0 };
+                    try {
+                        const originalPushState = history.pushState.bind(history);
+                        history.pushState = function (...args) {
+                            probe.pushStateCalls += 1;
+                            return originalPushState(...args);
+                        };
+                    } catch (_) {}
+
+                    try {
+                        const originalReplaceState = history.replaceState.bind(history);
+                        history.replaceState = function (...args) {
+                            probe.replaceStateCalls += 1;
+                            return originalReplaceState(...args);
+                        };
+                    } catch (_) {}
+
+                    window.__beaconSpaHistoryProbe = probe;
+                }
+                """
+            )
+        except Exception:
+            pass
+
+        try:
+            mutation_snapshot = await page.evaluate(
+                """
+                () => new Promise((resolve) => {
+                    const startNodes = document.querySelectorAll('*').length;
+                    const startText = (document.body?.innerText || '').trim().length;
+
+                    let mutationCount = 0;
+                    let addedNodes = 0;
+
+                    const observer = new MutationObserver((records) => {
+                        mutationCount += records.length;
+                        for (const record of records) {
+                            addedNodes += (record.addedNodes || []).length;
+                        }
+                    });
+
+                    try {
+                        observer.observe(document.documentElement || document.body, {
+                            childList: true,
+                            subtree: true,
+                            characterData: true,
+                        });
+                    } catch (_) {
+                        resolve({
+                            mutationCount: 0,
+                            addedNodes: 0,
+                            nodeDelta: 0,
+                            textDelta: 0,
+                        });
+                        return;
+                    }
+
+                    setTimeout(() => {
+                        observer.disconnect();
+                        const endNodes = document.querySelectorAll('*').length;
+                        const endText = (document.body?.innerText || '').trim().length;
+                        resolve({
+                            mutationCount,
+                            addedNodes,
+                            nodeDelta: endNodes - startNodes,
+                            textDelta: endText - startText,
+                        });
+                    }, 1200);
+                })
+                """
+            )
+            if isinstance(mutation_snapshot, dict):
+                signals["dom_mutation_count"] = int(mutation_snapshot.get("mutationCount", 0) or 0)
+                signals["dom_nodes_added"] = int(mutation_snapshot.get("addedNodes", 0) or 0)
+                signals["dom_nodes_delta"] = int(mutation_snapshot.get("nodeDelta", 0) or 0)
+                signals["dom_text_delta"] = int(mutation_snapshot.get("textDelta", 0) or 0)
+        except Exception:
+            pass
+
+        try:
+            baseline_snapshot = await page.evaluate(
+                """
+                () => {
+                    const probe = window.__beaconSpaHistoryProbe || { pushStateCalls: 0, replaceStateCalls: 0 };
+                    const routeSelector = [
+                        '[routerlink]',
+                        '[ng-reflect-router-link]',
+                        'a[class*="router-link"]',
+                        'a[data-link]',
+                        'a[data-nuxt-link]',
+                        'a[data-router]',
+                        '[data-nextjs-router]'
+                    ].join(',');
+
+                    return {
+                        historyStateOps: (probe.pushStateCalls || 0) + (probe.replaceStateCalls || 0),
+                        routeMarkerCount: document.querySelectorAll(routeSelector).length,
+                        scriptCount: (document.scripts || []).length,
+                        shellRootDetected: Boolean(document.querySelector('#root, #app, #__next, #__nuxt, app-root, [data-reactroot], [ng-version]')),
+                        bodyTextLength: (document.body?.innerText || '').trim().length,
+                        bodyChildCount: document.body?.children?.length || 0,
+                    };
+                }
+                """
+            )
+            if isinstance(baseline_snapshot, dict):
+                signals["history_state_ops"] = int(baseline_snapshot.get("historyStateOps", 0) or 0)
+                signals["route_marker_count"] = int(baseline_snapshot.get("routeMarkerCount", 0) or 0)
+                signals["script_count"] = int(baseline_snapshot.get("scriptCount", 0) or 0)
+                signals["shell_root_detected"] = bool(baseline_snapshot.get("shellRootDetected", False))
+                signals["body_text_length"] = int(baseline_snapshot.get("bodyTextLength", 0) or 0)
+                signals["body_child_count"] = int(baseline_snapshot.get("bodyChildCount", 0) or 0)
+        except Exception:
+            pass
+
+        return signals
 
     async def _wait_for_spa_hydration(self, page, framework: Optional[str] = None) -> bool:
         """Wait for SPA framework to complete hydration/mounting."""
@@ -487,6 +638,9 @@ class BrowserProber:
         metadata = {
             "spa_framework": None,
             "is_spa": False,
+            "spa_classification": {"is_spa": False, "confidence": "low", "signals": []},
+            "spa_runtime_signals": {},
+            "spa_signal_evidence": {},
             "navigation_strategy": None,
             "hydration_waited": False,
             "adaptive_timeout_policy": self.adaptive_timeouts,
@@ -560,15 +714,18 @@ class BrowserProber:
                 metadata["is_spa"] = self.is_spa
                 
                 # Wait for SPA hydration if detected
-                if self.is_spa:
+                hydration_success = False
+                if self.is_spa or self.legacy_framework:
                     hydration_success = await self._wait_for_spa_hydration(page, framework)
                     metadata["hydration_waited"] = hydration_success
-                    
+
                     # Additional wait for lazy-loaded content
                     try:
                         await page.wait_for_load_state("networkidle", timeout=5000)
                     except:
                         pass
+                else:
+                    metadata["hydration_waited"] = False
 
                 # Check for Shadow DOM
                 has_shadow_dom = await page.evaluate("""
@@ -595,6 +752,36 @@ class BrowserProber:
                     fallback_html = str(max_meta.get("fallback_html", "") or "")
                     if fallback_html.strip():
                         rendered_html = fallback_html
+
+                # Classify SPA/non-SPA using multi-signal runtime evidence.
+                try:
+                    spa_runtime_signals = await self._collect_spa_runtime_signals(
+                        page,
+                        framework=framework,
+                        hydration_waited=bool(metadata.get("hydration_waited", False)),
+                    )
+                    spa_classification = classify_spa(spa_runtime_signals)
+
+                    resolved_is_spa = bool(spa_classification.get("is_spa", False))
+                    resolved_framework = spa_classification.get("framework") or framework
+                    resolved_signals = [str(s) for s in spa_classification.get("signals", [])]
+                    resolved_confidence = str(spa_classification.get("confidence", "low") or "low")
+
+                    metadata["spa_runtime_signals"] = spa_runtime_signals
+                    metadata["spa_signal_evidence"] = dict(spa_classification.get("evidence", {}) or {})
+                    metadata["spa_classification"] = {
+                        "is_spa": resolved_is_spa,
+                        "confidence": resolved_confidence,
+                        "signals": resolved_signals,
+                    }
+                    metadata["spa_framework"] = resolved_framework
+                    metadata["is_spa"] = resolved_is_spa
+
+                    self.is_spa = resolved_is_spa
+                    if resolved_framework:
+                        self.detected_framework = str(resolved_framework)
+                except Exception as e:
+                    logger.warning(f"SPA classification failed: {e}")
                 
                 # If Shadow DOM present, try to extract its content
                 if has_shadow_dom:

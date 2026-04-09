@@ -31,6 +31,53 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.services.audit_runner import run_audit
 from app.audit.failure_taxonomy import classify_failure_reason, normalize_reason
 
+
+def _safe_avg(values: list[float]) -> float:
+    if not values:
+        return 0.0
+    return float(sum(values) / len(values))
+
+
+def _extract_quality_metrics(audit_result: dict) -> tuple[float, float]:
+    rag_issues = [
+        issue
+        for issue in (audit_result.get("issues", []) or [])
+        if bool(issue.get("rag_context"))
+    ]
+    if not rag_issues:
+        return 0.0, 0.0
+
+    issue_quality_scores: list[float] = []
+    issue_acceptance_scores: list[float] = []
+
+    for issue in rag_issues:
+        quality = issue.get("quality_scores", {})
+        if not isinstance(quality, dict):
+            continue
+        usefulness = float(quality.get("usefulness_score", 0.0) or 0.0)
+        correctness = float(quality.get("correctness_score", 0.0) or 0.0)
+        if usefulness > 0 or correctness > 0:
+            issue_quality_scores.append((usefulness + correctness) / 2.0)
+
+        predicted_acceptance = float(
+            quality.get("predicted_acceptance_rate", quality.get("acceptance_rate", 0.0)) or 0.0
+        )
+        if predicted_acceptance > 0:
+            issue_acceptance_scores.append(predicted_acceptance)
+
+    meta_quality = ((audit_result.get("enrichment_meta") or {}).get("quality") or {})
+    rag_effectiveness = _safe_avg(issue_quality_scores)
+    if rag_effectiveness <= 0:
+        rag_effectiveness = float(meta_quality.get("rag_effectiveness", 0.0) or 0.0)
+
+    fix_acceptance_rate = _safe_avg(issue_acceptance_scores)
+    if fix_acceptance_rate <= 0:
+        fix_acceptance_rate = float(
+            meta_quality.get("fix_acceptance_rate", meta_quality.get("acceptance_rate", 0.0)) or 0.0
+        )
+
+    return round(rag_effectiveness, 1), round(fix_acceptance_rate, 1)
+
 # Strategic test sites with their testing purpose
 STRATEGIC_SITES = [
     {
@@ -119,6 +166,8 @@ class StrategicResult:
     fast_time: float = 0.0
     fast_engines: list = field(default_factory=list)
     fast_rag_enriched: int = 0
+    fast_rag_effectiveness: float = 0.0
+    fast_fix_acceptance_rate: float = 0.0
     fast_enrichment_status: str = "off"
     fast_degraded: bool = False
     fast_degraded_reason: Optional[str] = None
@@ -129,6 +178,8 @@ class StrategicResult:
     deep_time: float = 0.0
     deep_engines: list = field(default_factory=list)
     deep_rag_enriched: int = 0
+    deep_rag_effectiveness: float = 0.0
+    deep_fix_acceptance_rate: float = 0.0
     deep_enrichment_status: str = "off"
     deep_degraded: bool = False
     deep_degraded_reason: Optional[str] = None
@@ -178,6 +229,7 @@ async def test_strategic_site(site_data: dict, semaphore) -> StrategicResult:
             result.fast_issues = fast_result.get("total_issues", 0)
             result.fast_engines = fast_result.get("engines_used", [])
             result.fast_rag_enriched = sum(1 for iss in fast_result.get("issues", []) if iss.get("rag_context"))
+            result.fast_rag_effectiveness, result.fast_fix_acceptance_rate = _extract_quality_metrics(fast_result)
             result.fast_enrichment_status = str(fast_result.get("enrichment_status", "off") or "off")
             result.fast_degraded = bool(fast_result.get("degraded_mode", False))
             result.fast_degraded_reason = fast_result.get("degraded_reason") or fast_result.get("degradation_reason")
@@ -187,6 +239,8 @@ async def test_strategic_site(site_data: dict, semaphore) -> StrategicResult:
             print(f"    ✓ Time: {result.fast_time:.1f}s")
             print(f"    ✓ Engines: {', '.join(result.fast_engines)}")
             print(f"    ✓ RAG enriched: {result.fast_rag_enriched} issues")
+            print(f"    ✓ RAG effectiveness: {result.fast_rag_effectiveness:.1f}%")
+            print(f"    ✓ Fix acceptance rate: {result.fast_fix_acceptance_rate:.1f}%")
             
         except Exception as e:
             result.error = f"Fast scan failed: {str(e)[:150]}"
@@ -213,6 +267,7 @@ async def test_strategic_site(site_data: dict, semaphore) -> StrategicResult:
             result.deep_issues = deep_result.get("total_issues", 0)
             result.deep_engines = deep_result.get("engines_used", [])
             result.deep_rag_enriched = sum(1 for iss in deep_result.get("issues", []) if iss.get("rag_context"))
+            result.deep_rag_effectiveness, result.deep_fix_acceptance_rate = _extract_quality_metrics(deep_result)
             result.deep_enrichment_status = str(deep_result.get("enrichment_status", "off") or "off")
             result.deep_degraded = bool(deep_result.get("degraded_mode", False))
             result.deep_degraded_reason = deep_result.get("degraded_reason") or deep_result.get("degradation_reason")
@@ -224,6 +279,8 @@ async def test_strategic_site(site_data: dict, semaphore) -> StrategicResult:
             print(f"    ✓ Time: {result.deep_time:.1f}s")
             print(f"    ✓ Engines: {', '.join(result.deep_engines)}")
             print(f"    ✓ RAG enriched: {result.deep_rag_enriched} issues")
+            print(f"    ✓ RAG effectiveness: {result.deep_rag_effectiveness:.1f}%")
+            print(f"    ✓ Fix acceptance rate: {result.deep_fix_acceptance_rate:.1f}%")
             if result.deep_is_spa:
                 print(f"    ✓ SPA detected: {result.deep_spa_framework or 'Unknown framework'}")
             
@@ -242,6 +299,10 @@ async def test_strategic_site(site_data: dict, semaphore) -> StrategicResult:
             print(f"    Issues found: {result.fast_issues} → {result.deep_issues} ({result.improvement_pct:+.1f}%)")
             print(f"    Speed: {result.fast_time:.1f}s → {result.deep_time:.1f}s ({result.deep_time/result.fast_time:.1f}x)")
             print(f"    RAG impact: {result.fast_rag_enriched} → {result.deep_rag_enriched} enriched issues")
+            print(
+                f"    RAG quality: {result.fast_rag_effectiveness:.1f}% → "
+                f"{result.deep_rag_effectiveness:.1f}%"
+            )
             
             # Check if met expectations (basic heuristic)
             if "90+" in result.expected or "95+" in result.expected:
@@ -312,6 +373,8 @@ async def main():
         for r in completed
         if str(r.deep_enrichment_status).strip().lower() in rag_terminal_statuses
     )
+    rag_effectiveness_values = [r.deep_rag_effectiveness for r in completed if r.deep_rag_effectiveness > 0]
+    fix_acceptance_values = [r.deep_fix_acceptance_rate for r in completed if r.deep_fix_acceptance_rate > 0]
 
     total_sites = len(STRATEGIC_SITES)
     runtime_success_rate = round((len(runtime_successes) / total_sites) * 100, 1)
@@ -319,6 +382,8 @@ async def main():
     degraded_rate = round((degraded_count / len(STRATEGIC_SITES)) * 100, 1)
     timeout_rate = round((timeout_count / len(STRATEGIC_SITES)) * 100, 1)
     rag_completion_rate = round((rag_completed / len(completed)) * 100, 1) if completed else 0.0
+    rag_effectiveness_rate = round(_safe_avg(rag_effectiveness_values), 1) if rag_effectiveness_values else 0.0
+    fix_acceptance_rate = round(_safe_avg(fix_acceptance_values), 1) if fix_acceptance_values else 0.0
     avg_runtime = round(total_time / len(STRATEGIC_SITES), 2)
     fast_mode_usage = round((len(completed) / len(STRATEGIC_SITES)) * 100, 1)
     fast_mode_p95_time = _p95(fast_times)
@@ -351,6 +416,8 @@ async def main():
         print(f"  Fast scan enriched: {total_fast_rag} issues")
         print(f"  Deep scan enriched: {total_deep_rag} issues")
         print(f"  Average enrichment/site: {total_deep_rag/len(completed):.1f} issues")
+        print(f"  RAG effectiveness: {rag_effectiveness_rate:.1f}%")
+        print(f"  Fix acceptance rate: {fix_acceptance_rate:.1f}%")
         
         # SPA detection
         if spas_detected:
@@ -458,6 +525,8 @@ async def main():
             "spa_precision": None,
             "spa_recall": None,
             "rag_completion": rag_completion_rate,
+            "rag_effectiveness": rag_effectiveness_rate,
+            "fix_acceptance_rate": fix_acceptance_rate,
             "timeout_rate": timeout_rate,
             "avg_runtime": avg_runtime,
             "fast_mode_p95_time": fast_mode_p95_time,
@@ -477,6 +546,8 @@ async def main():
                     "time": round(r.fast_time, 2),
                     "engines": r.fast_engines,
                     "rag_enriched": r.fast_rag_enriched,
+                    "rag_effectiveness": r.fast_rag_effectiveness,
+                    "fix_acceptance_rate": r.fast_fix_acceptance_rate,
                     "enrichment_status": r.fast_enrichment_status,
                     "degraded": r.fast_degraded,
                     "degraded_reason": r.fast_degraded_reason,
@@ -487,6 +558,8 @@ async def main():
                     "time": round(r.deep_time, 2),
                     "engines": r.deep_engines,
                     "rag_enriched": r.deep_rag_enriched,
+                    "rag_effectiveness": r.deep_rag_effectiveness,
+                    "fix_acceptance_rate": r.deep_fix_acceptance_rate,
                     "enrichment_status": r.deep_enrichment_status,
                     "degraded": r.deep_degraded,
                     "degraded_reason": r.deep_degraded_reason,
@@ -554,6 +627,16 @@ async def main():
             print(f"  ⚠️  RAG Enrichment: Partial ({100*len(rag_enriched)/len(completed):.0f}% coverage)")
         else:
             print(f"  ❌ RAG Enrichment: Not working ({100*len(rag_enriched)/len(completed):.0f}% coverage)")
+
+        if rag_effectiveness_rate >= 80:
+            print(f"  ✅ RAG Effectiveness: {rag_effectiveness_rate:.1f}%")
+        else:
+            print(f"  ⚠️  RAG Effectiveness below target: {rag_effectiveness_rate:.1f}%")
+
+        if fix_acceptance_rate >= 80:
+            print(f"  ✅ Fix Acceptance Rate: {fix_acceptance_rate:.1f}%")
+        else:
+            print(f"  ⚠️  Fix Acceptance Rate below target: {fix_acceptance_rate:.1f}%")
         
         if avg_improvement > 40:
             print(f"  ✅ Deep vs Fast: Deep scan finds {avg_improvement:.0f}% more issues")

@@ -1,0 +1,278 @@
+{
+  "timestamp": "2026-04-09T10:37:29.272220",
+  "total_time_seconds": 17.86,
+  "configuration": {
+    "rag_enabled": false,
+    "max_enrich_issues": 0,
+    "cognitive_enabled": true,
+    "max_site_time": 20
+  },
+  "summary": {
+    "total": 2,
+    "runtime_successful": 0,
+    "runtime_failed": 2,
+    "scoring_completed": 0,
+    "required_scoring_fields_complete": 0,
+    "expectation_passed": 0,
+    "expectation_failed": 0,
+    "errors": 2,
+    "degraded": 0,
+    "spa_detected": 0,
+    "runtime_success_rate": 0.0,
+    "scoring_completed_rate": 0.0,
+    "required_scoring_fields_rate": 0.0,
+    "expectation_pass_rate": 0.0
+  },
+  "kpi": {
+    "runtime_success_rate": 0.0,
+    "expectation_pass_rate": 0.0,
+    "degraded_rate": 0.0,
+    "scoring_completed_rate": 0.0,
+    "required_scoring_fields_rate": 0.0,
+    "precision": null,
+    "recall": null,
+    "f1": null,
+    "spa_precision": null,
+    "spa_recall": null,
+    "spa_f1": null,
+    "rag_completion": null,
+    "rag_effectiveness": null,
+    "fix_acceptance_rate": null,
+    "timeout_rate": 100.0,
+    "avg_runtime": 8.93,
+    "fast_mode_p95_time": 1.43,
+    "fast_mode_usage": 100.0
+  },
+  "spa_detection": {
+    "total_spa_sites": 0,
+    "frameworks": {},
+    "spa_pass_rate": 0
+  },
+  "spa_confusion_matrix": null,
+  "degraded_failure_analysis": {
+    "top_causes": []
+  },
+  "failure_breakdown": {
+    "timeout": 2,
+    "csp_block": 0,
+    "navigation_error": 0,
+    "partial_load": 0,
+    "network_error": 0,
+    "blocked_request": 0,
+    "dns_failure": 0,
+    "unknown": 0,
+    "dom_parse_error": 0,
+    "render_timeout": 0,
+    "extraction_failure": 0
+  },
+  "category_stats": {
+    "accessibility": {
+      "sites": 2,
+      "passed": 0,
+      "failed": 0,
+      "runtime_failed": 2,
+      "errors": 2,
+      "avg_fast_score": 98.0,
+      "avg_deep_score": 0.0,
+      "avg_fast_time": 1.73,
+      "avg_deep_time": 0.0,
+      "total_issues": 0
+    }
+  },
+  "complexity_stats": {
+    "simple": {
+      "sites": 2,
+      "passed": 0,
+      "runtime_failed": 2,
+      "errors": 2
+    },
+    "moderate": {
+      "sites": 0,
+      "passed": 0,
+      "runtime_failed": 0,
+      "errors": 0
+    },
+    "complex": {
+      "sites": 0,
+      "passed": 0,
+      "runtime_failed": 0,
+      "errors": 0
+    }
+  },
+  "results": [
+    {
+      "name": "A11y Project",
+      "url": "https://www.a11yproject.com/",
+      "category": "accessibility",
+      "complexity": "simple",
+      "fast_score": 97.8,
+      "deep_score": null,
+      "fast_issues": 1,
+      "deep_issues": 0,
+      "fast_time": 2.04,
+      "deep_time": 0.0,
+      "fast_rag_effectiveness": 0.0,
+      "deep_rag_effectiveness": 0.0,
+      "fast_fix_acceptance_rate": 0.0,
+      "deep_fix_acceptance_rate": 0.0,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "off",
+      "engines": [],
+      "wcag_scs": [],
+      "severity": {},
+      "passed": false,
+      "site_status": "runtime_failed",
+      "failure_reason": "timeout",
+      "scoring_completed": false,
+      "required_scoring_fields": false,
+      "failure_type": "runtime_failure",
+      "runtime_failure_type": "timeout",
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": "TIMEOUT",
+      "is_spa": false,
+      "spa_framework": null
+    },
+    {
+      "name": "WebAIM",
+      "url": "https://webaim.org/",
+      "category": "accessibility",
+      "complexity": "simple",
+      "fast_score": 98.2,
+      "deep_score": null,
+      "fast_issues": 1,
+      "deep_issues": 0,
+      "fast_time": 1.43,
+      "deep_time": 0.0,
+      "fast_rag_effectiveness": 0.0,
+      "deep_rag_effectiveness": 0.0,
+      "fast_fix_acceptance_rate": 0.0,
+      "deep_fix_acceptance_rate": 0.0,
+      "fast_enrichment_status": "complete",
+      "deep_enrichment_status": "off",
+      "engines": [],
+      "wcag_scs": [],
+      "severity": {},
+      "passed": false,
+      "site_status": "runtime_failed",
+      "failure_reason": "timeout",
+      "scoring_completed": false,
+      "required_scoring_fields": false,
+      "failure_type": "runtime_failure",
+      "runtime_failure_type": "timeout",
+      "fast_degraded": false,
+      "fast_degraded_reason": null,
+      "deep_degraded": false,
+      "deep_degraded_reason": null,
+      "degraded": false,
+      "degraded_reason": null,
+      "error": "TIMEOUT",
+      "is_spa": false,
+      "spa_framework": null
+    }
+  ],
+  "failure_classification": [
+    {
+      "name": "A11y Project",
+      "url": "https://www.a11yproject.com/",
+      "failure_type": "runtime_failure",
+      "runtime_failure_type": "timeout",
+      "site_status": "runtime_failed",
+      "failure_reason": "timeout",
+      "scoring_completed": false,
+      "required_scoring_fields": false,
+      "score": null,
+      "expected": [
+        70,
+        100
+      ],
+      "error": "TIMEOUT",
+      "degraded": false,
+      "degraded_reason": null
+    },
+    {
+      "name": "WebAIM",
+      "url": "https://webaim.org/",
+      "failure_type": "runtime_failure",
+      "runtime_failure_type": "timeout",
+      "site_status": "runtime_failed",
+      "failure_reason": "timeout",
+      "scoring_completed": false,
+      "required_scoring_fields": false,
+      "score": null,
+      "expected": [
+        70,
+        100
+      ],
+      "error": "TIMEOUT",
+      "degraded": false,
+      "degraded_reason": null
+    }
+  ],
+  "runtime_failure_classification": [
+    {
+      "name": "A11y Project",
+      "url": "https://www.a11yproject.com/",
+      "failure_type": "timeout",
+      "site_status": "runtime_failed",
+      "failure_reason": "timeout",
+      "scoring_completed": false,
+      "error": "TIMEOUT",
+      "degraded_reason": null
+    },
+    {
+      "name": "WebAIM",
+      "url": "https://webaim.org/",
+      "failure_type": "timeout",
+      "site_status": "runtime_failed",
+      "failure_reason": "timeout",
+      "scoring_completed": false,
+      "error": "TIMEOUT",
+      "degraded_reason": null
+    }
+  ],
+  "failures": [
+    {
+      "name": "A11y Project",
+      "url": "https://www.a11yproject.com/",
+      "failure_type": "runtime_failure",
+      "score": null,
+      "expected": [
+        70,
+        100
+      ]
+    },
+    {
+      "name": "WebAIM",
+      "url": "https://webaim.org/",
+      "failure_type": "runtime_failure",
+      "score": null,
+      "expected": [
+        70,
+        100
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "name": "A11y Project",
+      "error": "TIMEOUT"
+    },
+    {
+      "name": "WebAIM",
+      "error": "TIMEOUT"
+    }
+  ],
+  "recommendations": [
+    {
+      "priority": "MEDIUM",
+      "area": "Performance",
+      "issue": "2 sites timed out",
+      "action": "Optimize slow checks, add early-exit for problematic sites"
+    }
+  ]
+}

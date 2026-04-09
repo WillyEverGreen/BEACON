@@ -1,0 +1,75 @@
+{
+  "name": "spa_classification_truth_set_v1",
+  "description": "Labeled URL set for SPA vs non-SPA classification validation.",
+  "targets": {
+    "spa_precision_min": 0.9,
+    "spa_recall_min": 0.9
+  },
+  "cases": [
+    {
+      "name": "Wikipedia",
+      "url": "https://www.wikipedia.org/",
+      "is_spa": false
+    },
+    {
+      "name": "GOV.UK",
+      "url": "https://www.gov.uk/",
+      "is_spa": false
+    },
+    {
+      "name": "USA.gov",
+      "url": "https://www.usa.gov/",
+      "is_spa": false
+    },
+    {
+      "name": "Section508.gov",
+      "url": "https://www.section508.gov/",
+      "is_spa": false
+    },
+    {
+      "name": "WebAIM",
+      "url": "https://webaim.org/",
+      "is_spa": false
+    },
+    {
+      "name": "A11y Project",
+      "url": "https://www.a11yproject.com/",
+      "is_spa": false
+    },
+    {
+      "name": "Craigslist",
+      "url": "https://www.craigslist.org/",
+      "is_spa": false
+    },
+    {
+      "name": "Twitter/X",
+      "url": "https://twitter.com/",
+      "is_spa": true,
+      "expected_framework": "react"
+    },
+    {
+      "name": "Pinterest",
+      "url": "https://www.pinterest.com/",
+      "is_spa": true,
+      "expected_framework": "react"
+    },
+    {
+      "name": "Tumblr",
+      "url": "https://www.tumblr.com/",
+      "is_spa": true,
+      "expected_framework": "react"
+    },
+    {
+      "name": "Khan Academy",
+      "url": "https://www.khanacademy.org/",
+      "is_spa": true,
+      "expected_framework": "react"
+    },
+    {
+      "name": "Coursera",
+      "url": "https://www.coursera.org/",
+      "is_spa": true,
+      "expected_framework": "react"
+    }
+  ]
+}

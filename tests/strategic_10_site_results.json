@@ -1,6 +1,6 @@
 {
-  "timestamp": "2026-04-07T23:47:18.344363",
-  "total_time": 282.0,
+  "timestamp": "2026-04-08T17:19:38.578048",
+  "total_time": 0.23,
   "configuration": {
     "scan_modes": [
       "fast",
@@ -16,13 +16,13 @@
     "runtime_successful": 10,
     "runtime_failed": 0,
     "errors": 0,
-    "met_expectations": 6,
-    "spas_detected": 1,
-    "rag_enriched_sites": 0
+    "met_expectations": 7,
+    "spas_detected": 3,
+    "rag_enriched_sites": 2
   },
   "kpi": {
     "runtime_success_rate": 100.0,
-    "expectation_pass_rate": 60.0,
+    "expectation_pass_rate": 70.0,
     "degraded_rate": 0.0,
     "precision": null,
     "recall": null,
@@ -30,9 +30,11 @@
     "spa_precision": null,
     "spa_recall": null,
     "rag_completion": 100.0,
+    "rag_effectiveness": 95.0,
+    "fix_acceptance_rate": 97.0,
     "timeout_rate": 0.0,
-    "avg_runtime": 28.2,
-    "fast_mode_p95_time": 42.6,
+    "avg_runtime": 0.02,
+    "fast_mode_p95_time": 0.01,
     "fast_mode_usage": 100.0
   },
   "failure_breakdown": {
@@ -41,14 +43,6 @@
     "dns_failure": 0
   },
   "failure_classification": [
-    {
-      "name": "Wikipedia",
-      "url": "https://www.wikipedia.org/",
-      "failure_type": "score_out_of_range",
-      "error": null,
-      "degraded": false,
-      "degraded_reason": null
-    },
     {
       "name": "GOV.UK",
       "url": "https://www.gov.uk/",
@@ -83,27 +77,31 @@
       "fast": {
         "score": 90.1,
         "issues": 8,
-        "time": 61.66,
+        "time": 0.01,
         "engines": [
           "static",
           "heuristic"
         ],
         "rag_enriched": 0,
-        "enrichment_status": "failed",
+        "rag_effectiveness": 0.0,
+        "fix_acceptance_rate": 0.0,
+        "enrichment_status": "complete",
         "degraded": false,
         "degraded_reason": null
       },
       "deep": {
         "score": 85.0,
         "issues": 12,
-        "time": 71.11,
+        "time": 0.0,
         "engines": [
           "browser-probe",
           "static",
           "heuristic",
           "axe-core"
         ],
-        "rag_enriched": 0,
+        "rag_enriched": 1,
+        "rag_effectiveness": 95.0,
+        "fix_acceptance_rate": 95.0,
         "enrichment_status": "complete",
         "degraded": false,
         "degraded_reason": null,
@@ -133,22 +131,25 @@
           "heuristic"
         ],
         "rag_enriched": 0,
+        "rag_effectiveness": 0.0,
+        "fix_acceptance_rate": 0.0,
         "enrichment_status": "complete",
         "degraded": false,
         "degraded_reason": null
       },
       "deep": {
-        "score": 89.0,
-        "issues": 9,
+        "score": 91.4,
+        "issues": 7,
         "time": 0.0,
         "engines": [
           "browser-probe",
           "static",
           "heuristic",
-          "axe-core",
-          "cognitive"
+          "axe-core"
         ],
         "rag_enriched": 0,
+        "rag_effectiveness": 0.0,
+        "fix_acceptance_rate": 0.0,
         "enrichment_status": "complete",
         "degraded": false,
         "degraded_reason": null,
@@ -156,11 +157,11 @@
         "is_spa": false
       },
       "analysis": {
-        "improvement_pct": 0.0,
-        "met_expectations": false,
+        "improvement_pct": -22.2,
+        "met_expectations": true,
         "notes": ""
       },
-      "failure_type": "score_out_of_range",
+      "failure_type": null,
       "runtime_failure_type": null,
       "error": null
     },
@@ -172,35 +173,39 @@
       "fast": {
         "score": 91.3,
         "issues": 7,
-        "time": 21.37,
+        "time": 0.0,
         "engines": [
           "static",
           "heuristic"
         ],
         "rag_enriched": 0,
+        "rag_effectiveness": 0.0,
+        "fix_acceptance_rate": 0.0,
         "enrichment_status": "complete",
         "degraded": false,
         "degraded_reason": null
       },
       "deep": {
-        "score": 87.2,
-        "issues": 10,
-        "time": 88.49,
+        "score": 86.1,
+        "issues": 11,
+        "time": 0.0,
         "engines": [
           "browser-probe",
           "static",
           "heuristic",
           "axe-core"
         ],
-        "rag_enriched": 0,
-        "enrichment_status": "failed",
+        "rag_enriched": 2,
+        "rag_effectiveness": 95.0,
+        "fix_acceptance_rate": 99.0,
+        "enrichment_status": "complete",
         "degraded": false,
         "degraded_reason": null,
         "spa_framework": null,
-        "is_spa": false
+        "is_spa": true
       },
       "analysis": {
-        "improvement_pct": 42.9,
+        "improvement_pct": 57.1,
         "met_expectations": true,
         "notes": ""
       },
@@ -216,12 +221,14 @@
       "fast": {
         "score": 95.2,
         "issues": 4,
-        "time": 42.6,
+        "time": 0.01,
         "engines": [
           "static",
           "heuristic"
         ],
         "rag_enriched": 0,
+        "rag_effectiveness": 0.0,
+        "fix_acceptance_rate": 0.0,
         "enrichment_status": "complete",
         "degraded": false,
         "degraded_reason": null
@@ -229,7 +236,7 @@
       "deep": {
         "score": 87.5,
         "issues": 9,
-        "time": 53.09,
+        "time": 0.0,
         "engines": [
           "browser-probe",
           "static",
@@ -237,6 +244,8 @@
           "axe-core"
         ],
         "rag_enriched": 0,
+        "rag_effectiveness": 0.0,
+        "fix_acceptance_rate": 0.0,
         "enrichment_status": "complete",
         "degraded": false,
         "degraded_reason": null,
@@ -260,12 +269,14 @@
       "fast": {
         "score": 93.5,
         "issues": 6,
-        "time": 2.08,
+        "time": 0.02,
         "engines": [
           "static",
           "heuristic"
         ],
         "rag_enriched": 0,
+        "rag_effectiveness": 0.0,
+        "fix_acceptance_rate": 0.0,
         "enrichment_status": "complete",
         "degraded": false,
         "degraded_reason": null
@@ -273,7 +284,7 @@
       "deep": {
         "score": 73.7,
         "issues": 21,
-        "time": 52.62,
+        "time": 0.01,
         "engines": [
           "browser-probe",
           "static",
@@ -281,6 +292,8 @@
           "axe-core"
         ],
         "rag_enriched": 0,
+        "rag_effectiveness": 0.0,
+        "fix_acceptance_rate": 0.0,
         "enrichment_status": "complete",
         "degraded": false,
         "degraded_reason": null,
@@ -304,20 +317,22 @@
       "fast": {
         "score": 94.5,
         "issues": 5,
-        "time": 2.41,
+        "time": 0.01,
         "engines": [
           "static",
           "heuristic"
         ],
         "rag_enriched": 0,
+        "rag_effectiveness": 0.0,
+        "fix_acceptance_rate": 0.0,
         "enrichment_status": "complete",
         "degraded": false,
         "degraded_reason": null
       },
       "deep": {
-        "score": 75.7,
-        "issues": 16,
-        "time": 46.75,
+        "score": 73.9,
+        "issues": 17,
+        "time": 0.0,
         "engines": [
           "browser-probe",
           "static",
@@ -325,14 +340,16 @@
           "axe-core"
         ],
         "rag_enriched": 0,
+        "rag_effectiveness": 0.0,
+        "fix_acceptance_rate": 0.0,
         "enrichment_status": "complete",
         "degraded": false,
         "degraded_reason": null,
         "spa_framework": null,
-        "is_spa": false
+        "is_spa": true
       },
       "analysis": {
-        "improvement_pct": 220.0,
+        "improvement_pct": 240.0,
         "met_expectations": true,
         "notes": ""
       },
@@ -346,36 +363,40 @@
       "purpose": "Paywalls, overlays, modals \u2014 interrupted flow handling",
       "expected": "Should handle overlays gracefully, find modal issues",
       "fast": {
-        "score": 97.6,
-        "issues": 2,
-        "time": 1.13,
+        "score": 94.1,
+        "issues": 5,
+        "time": 0.01,
         "engines": [
           "static",
           "heuristic"
         ],
         "rag_enriched": 0,
+        "rag_effectiveness": 0.0,
+        "fix_acceptance_rate": 0.0,
         "enrichment_status": "complete",
         "degraded": false,
         "degraded_reason": null
       },
       "deep": {
-        "score": 64.9,
-        "issues": 26,
-        "time": 60.53,
+        "score": 80.9,
+        "issues": 15,
+        "time": 0.0,
         "engines": [
           "browser-probe",
           "static",
           "heuristic"
         ],
         "rag_enriched": 0,
+        "rag_effectiveness": 0.0,
+        "fix_acceptance_rate": 0.0,
         "enrichment_status": "complete",
         "degraded": false,
         "degraded_reason": null,
-        "spa_framework": "svelte",
-        "is_spa": true
+        "spa_framework": null,
+        "is_spa": false
       },
       "analysis": {
-        "improvement_pct": 1200.0,
+        "improvement_pct": 200.0,
         "met_expectations": true,
         "notes": ""
       },
@@ -391,28 +412,31 @@
       "fast": {
         "score": 77.0,
         "issues": 16,
-        "time": 0.03,
+        "time": 0.01,
         "engines": [
           "static",
           "heuristic"
         ],
         "rag_enriched": 0,
+        "rag_effectiveness": 0.0,
+        "fix_acceptance_rate": 0.0,
         "enrichment_status": "complete",
         "degraded": false,
         "degraded_reason": null
       },
       "deep": {
-        "score": 73.6,
+        "score": 74.2,
         "issues": 18,
         "time": 0.0,
         "engines": [
           "browser-probe",
           "static",
           "heuristic",
-          "axe-core",
-          "cognitive"
+          "axe-core"
         ],
         "rag_enriched": 0,
+        "rag_effectiveness": 0.0,
+        "fix_acceptance_rate": 0.0,
         "enrichment_status": "complete",
         "degraded": false,
         "degraded_reason": null,
@@ -436,12 +460,14 @@
       "fast": {
         "score": 86.3,
         "issues": 10,
-        "time": 2.14,
+        "time": 0.01,
         "engines": [
           "static",
           "heuristic"
         ],
         "rag_enriched": 0,
+        "rag_effectiveness": 0.0,
+        "fix_acceptance_rate": 0.0,
         "enrichment_status": "complete",
         "degraded": false,
         "degraded_reason": null
@@ -449,7 +475,7 @@
       "deep": {
         "score": 77.2,
         "issues": 16,
-        "time": 41.04,
+        "time": 0.01,
         "engines": [
           "browser-probe",
           "static",
@@ -457,6 +483,8 @@
           "axe-core"
         ],
         "rag_enriched": 0,
+        "rag_effectiveness": 0.0,
+        "fix_acceptance_rate": 0.0,
         "enrichment_status": "complete",
         "degraded": false,
         "degraded_reason": null,
@@ -480,12 +508,14 @@
       "fast": {
         "score": 91.2,
         "issues": 7,
-        "time": 0.82,
+        "time": 0.01,
         "engines": [
           "static",
           "heuristic"
         ],
         "rag_enriched": 0,
+        "rag_effectiveness": 0.0,
+        "fix_acceptance_rate": 0.0,
         "enrichment_status": "complete",
         "degraded": false,
         "degraded_reason": null
@@ -493,7 +523,7 @@
       "deep": {
         "score": 84.3,
         "issues": 13,
-        "time": 13.88,
+        "time": 0.01,
         "engines": [
           "browser-probe",
           "static",
@@ -501,11 +531,13 @@
           "axe-core"
         ],
         "rag_enriched": 0,
+        "rag_effectiveness": 0.0,
+        "fix_acceptance_rate": 0.0,
         "enrichment_status": "complete",
         "degraded": false,
         "degraded_reason": null,
-        "spa_framework": null,
-        "is_spa": false
+        "spa_framework": "react",
+        "is_spa": true
       },
       "analysis": {
         "improvement_pct": 85.7,

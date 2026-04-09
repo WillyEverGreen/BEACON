@@ -9,8 +9,7 @@ logger = logging.getLogger(__name__)
 
 SEVERITY_EMOJI = {
     "critical": "🔴",
-    "serious": "🟠",
-    "moderate": "🟡",
+    "major": "🟠",
     "minor": "🟢",
 }
 
@@ -36,6 +35,10 @@ def generate_markdown_report(
     score: float,
     issues: list[dict],
     groups: list[dict],
+    severity_breakdown: dict[str, int] = None,
+    prioritized_issues: list[dict] = None,
+    recommendations: list[str] = None,
+    score_breakdown: dict[str, float] = None,
     cognitive_scores: dict = None,
     scan_time: float = 0.0,
     engines_used: list[str] = None,
@@ -66,20 +69,52 @@ def generate_markdown_report(
     lines.append(f"### Accessibility Score: {score_emoji} **{score:.0f}/100**")
     lines.append("")
 
+    if score_breakdown:
+        lines.append("| Score Detail | Value |")
+        lines.append("|-------------|-------|")
+        lines.append(f"| Critical penalty | {score_breakdown.get('critical_penalty', 0):.2f} |")
+        lines.append(f"| Major penalty | {score_breakdown.get('major_penalty', 0):.2f} |")
+        lines.append(f"| Minor penalty | {score_breakdown.get('minor_penalty', 0):.2f} |")
+        lines.append("")
+
     # Issue counts by severity
-    severity_counts = {"critical": 0, "serious": 0, "moderate": 0, "minor": 0}
-    for issue in issues:
-        sev = issue.get("severity", "moderate")
-        severity_counts[sev] = severity_counts.get(sev, 0) + 1
+    severity_counts = {"critical": 0, "major": 0, "minor": 0}
+    if severity_breakdown:
+        severity_counts.update({k: int(v) for k, v in severity_breakdown.items() if k in severity_counts})
+    else:
+        for issue in issues:
+            sev = issue.get("severity", "moderate")
+            if sev == "critical":
+                severity_counts["critical"] += 1
+            elif sev in {"serious", "major"}:
+                severity_counts["major"] += 1
+            else:
+                severity_counts["minor"] += 1
 
     lines.append("| Severity | Count |")
     lines.append("|----------|-------|")
-    for sev in ["critical", "serious", "moderate", "minor"]:
-        count = severity_counts[sev]
+    for sev in ["critical", "major", "minor"]:
+        count = severity_counts.get(sev, 0)
         emoji = SEVERITY_EMOJI.get(sev, "")
         lines.append(f"| {emoji} {sev.capitalize()} | {count} |")
     lines.append(f"| **Total** | **{len(issues)}** |")
     lines.append("")
+
+    if prioritized_issues:
+        lines.append("### 🔎 What to Fix First")
+        lines.append("")
+        for index, issue in enumerate(prioritized_issues[:5], start=1):
+            lines.append(
+                f"{index}. **{issue.get('issue_type', 'unknown')}** "
+                f"({issue.get('severity', 'minor')}, score {float(issue.get('priority_score', 0.0)):.3f})"
+            )
+            why = issue.get("why_important") or issue.get("component")
+            if why:
+                lines.append(f"   - {why}")
+            fix = issue.get("fix")
+            if fix:
+                lines.append(f"   - Fix: {fix}")
+        lines.append("")
 
     # Cognitive scores
     if cognitive_scores:
@@ -167,12 +202,17 @@ def generate_markdown_report(
     lines.append("## 📋 Recommendations")
     lines.append("")
 
+    if recommendations:
+        for recommendation in recommendations:
+            lines.append(f"- {recommendation}")
+        lines.append("")
+
     if severity_counts["critical"] > 0:
         lines.append(f"1. **Fix {severity_counts['critical']} critical issues immediately** — these prevent some users from accessing content")
-    if severity_counts["serious"] > 0:
-        lines.append(f"2. **Address {severity_counts['serious']} serious issues** — these significantly impact accessibility")
-    if severity_counts["moderate"] > 0:
-        lines.append(f"3. **Review {severity_counts['moderate']} moderate issues** — these affect user experience")
+    if severity_counts["major"] > 0:
+        lines.append(f"2. **Address {severity_counts['major']} major issues** — these significantly impact accessibility")
+    if severity_counts["minor"] > 0:
+        lines.append(f"3. **Review {severity_counts['minor']} minor issues** — these affect user experience")
 
     needs_review = sum(1 for i in issues if i.get("needs_manual_review"))
     if needs_review > 0:

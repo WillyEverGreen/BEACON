@@ -309,6 +309,8 @@ CACHE_STATS: dict[str, int] = {
     "llm_hits":    0,
     "llm_misses":  0,
     "llm_writes":  0,
+    "retrieval_hits": 0,
+    "retrieval_misses": 0,
     "fix_hits":    0,
     "fix_misses":  0,
     "fix_writes":  0,
@@ -611,9 +613,17 @@ class Settings(BaseSettings):
     enrichment_enable_llm_cache: bool = True
     llm_cache_max_entries: int = 2000
     enrichment_max_concurrency: int = 2
+    enrichment_batch_max_issues: int = 6
     enrichment_retry_attempts: int = 3
     enrichment_retry_base_delay_seconds: float = 0.4
     enrichment_retry_max_delay_seconds: float = 3.0
+    retrieval_enable_cache: bool = True
+    retrieval_cache_max_entries: int = 1500
+    retrieval_max_chunks: int = 5
+    retrieval_candidate_multiplier: int = 3
+    retrieval_min_relevance: float = 0.15
+    retrieval_local_fallback_enabled: bool = True
+    retrieval_local_max_chunks: int = 2500
     max_tokens_per_audit: int = 12000
     max_llm_cost_per_audit: float = 2.5
     llm_prompt_cost_per_1k_tokens: float = 0.0
