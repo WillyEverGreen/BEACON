@@ -137,6 +137,12 @@ class AuditIssue(BaseModel):
     confidence_sources: list[str] = Field(default_factory=list, description="e.g. ['axe-core', 'heuristic']")
     confidence_reason: str = Field(default="", description="Human-readable reason for the confidence score")
     needs_manual_review: bool = Field(default=False, description="True if confidence < 0.6")
+    rule_trust_score: float = Field(default=0.5, description="ACT-calibrated trust score for this rule")
+    rule_trust_verdict: str = Field(default="uncalibrated", description="trust verdict: suppress|noisy|moderate|trusted")
+    required_signals: list[str] = Field(default_factory=list, description="Hybrid corroboration signals required for this rule")
+    observed_signals: list[str] = Field(default_factory=list, description="Signals observed for this specific issue/rule")
+    missing_signals: list[str] = Field(default_factory=list, description="Required hybrid signals that were not observed")
+    hybrid_enforcement: str = Field(default="", description="Hybrid enforcement status, if applied")
 
     # ── Remediation ──
     description: str = Field(default="", description="Technical description or 'What is broken' in plain English")
@@ -265,8 +271,10 @@ class AuditResponse(BaseModel):
     summary: str = ""
     markdown_report: str = Field(default="", description="Full markdown report")
     scan_time_seconds: float = Field(default=0.0)
+    pages_scanned: int = Field(default=1, description="Number of pages scanned in this audit run")
     engines_used: list[str] = Field(default_factory=list)
     quality_gates: dict = Field(default_factory=dict)
+    trust: dict = Field(default_factory=dict, description="Machine-readable trust/calibration payload")
     browser_probe_metadata: dict = Field(default_factory=dict, description="Browser runtime metadata from Playwright probes")
     spa_framework: Optional[str] = Field(default=None, description="Detected SPA framework, if available")
     is_spa: bool = Field(default=False, description="Final SPA classification decision")
@@ -276,6 +284,7 @@ class AuditResponse(BaseModel):
     )
     enrichment_status: str = Field(default="complete", description="complete | pending | failed")
     audit_id: str = Field(default="", description="Unique ID for this audit run to poll for enrichment")
+    explain: Optional[dict] = Field(default=None, description="Optional explainability breakdown returned when explain=true")
 
 
 class FeedbackResponse(BaseModel):

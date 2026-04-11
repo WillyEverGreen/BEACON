@@ -1,7 +1,11 @@
 """
 Deduplication engine: removes duplicate findings across engines.
 Merges confidence when multiple engines agree on the same issue.
+
+Phase 10.3: Enhanced with hash+proximity clustering to catch
+near-duplicates (e.g., same rule, similar selectors).
 """
+import hashlib
 import logging
 from typing import Optional
 
@@ -127,3 +131,48 @@ def deduplicate(issues: list[dict]) -> list[dict]:
         logger.info(f"  {multi_engine} issues confirmed by multiple engines (boosted confidence)")
 
     return deduped
+
+
+def _fingerprint(issue: dict) -> str:
+    """Generate a sha256 fingerprint for hash-based proximity dedup.
+
+    Uses rule_id + normalized selector prefix (first 60 chars) to catch
+    near-duplicates: same rule on slightly different selector paths
+    (e.g. `div.container > img` vs `div.container > img:nth-child(2)`).
+    """
+    rule_id = str(issue.get("rule_id", "")).strip().lower()
+    selector = str(issue.get("element", "")).strip().lower()[:60]
+    raw = f"{rule_id}:{selector}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+
+
+def proximity_dedup(issues: list[dict]) -> list[dict]:
+    """Second-pass dedup using hash fingerprints.
+
+    Catches near-duplicates that the primary key-based dedup misses,
+    like the same rule firing on multiple similar child elements.
+    Keeps the version with the higher confidence.
+    """
+    if not issues:
+        return []
+
+    seen: dict[str, dict] = {}
+    for issue in issues:
+        fp = _fingerprint(issue)
+        if fp in seen:
+            existing_conf = seen[fp].get("confidence", 0)
+            new_conf = issue.get("confidence", 0)
+            if new_conf > existing_conf:
+                seen[fp] = issue
+            # Merge confidence sources even for proximity dupes
+            existing_sources = set(seen[fp].get("confidence_sources", []))
+            new_sources = set(issue.get("confidence_sources", []))
+            seen[fp]["confidence_sources"] = sorted(existing_sources | new_sources)
+        else:
+            seen[fp] = issue
+
+    result = list(seen.values())
+    removed = len(issues) - len(result)
+    if removed > 0:
+        logger.info(f"Proximity dedup: {len(issues)} → {len(result)} ({removed} near-dupes removed)")
+    return result

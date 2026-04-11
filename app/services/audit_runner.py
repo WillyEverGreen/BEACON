@@ -39,6 +39,7 @@ from app.services.page_cache import (
 )
 from app.services.prioritizer import build_scoring_summary, prioritize_issues
 from app.services.aggregator import aggregate_issues
+from app.services.rule_calibrator import get_rule_trust_entry, get_rule_trust_score
 from app.db.repository import persist_audit_payload, persist_enrichment_payload
 from app.observability.alerts import evaluate_audit_alerts, notify_llm_failure
 from app.observability.telemetry import record_audit_event
@@ -58,6 +59,279 @@ _FETCH_DOMAIN_LOCK = asyncio.Lock()
 _FETCH_PARTIAL_BODY_LIMIT = 200_000
 
 _RULE_QUALITY_POLICY_CACHE: dict[str, Any] | None = None
+
+# Phase 9.4: hybrid corroboration requirements for under-detected critical rules.
+HYBRID_REQUIRED_RULES = {
+    "focus-management": ["static_check", "behavioral_probe", "dom_interaction"],
+    "semantic-html": ["static_check", "dom_structure_heuristic"],
+}
+
+# Phase 9.5: score integrity and anti-gaming policy.
+SCORE_INTEGRITY_RULES = {
+    "perfect_score_conditions": {
+        "engines_used_count_min": 2,
+        "suppression_rate_max": 0.50,
+        "degraded_mode_must_be_false": True,
+        "avg_confidence_min": 0.75,
+    },
+    "partial_audit_max_score": 82.0,
+    "low_signal_max_score": 90.0,
+}
+
+_SIGNAL_SOURCE_MAP: dict[str, set[str]] = {
+    "static": {"static_check"},
+    "browser-probe": {"behavioral_probe", "dom_interaction"},
+    "heuristic": {"dom_structure_heuristic"},
+    "axe-core": {"dom_structure_heuristic"},
+}
+
+
+def _extract_issue_signal_types(issue: dict[str, Any]) -> set[str]:
+    """Map issue-level evidence and engines to normalized signal types."""
+    signals: set[str] = set()
+    sources = issue.get("confidence_sources", [])
+    if isinstance(sources, list):
+        for source in sources:
+            key = str(source).strip().lower()
+            mapped = _SIGNAL_SOURCE_MAP.get(key)
+            if mapped:
+                signals.update(mapped)
+
+    rule_id = str(issue.get("rule_id", ""))
+    # semantic-html detections from static checks are DOM structure-derived by design.
+    if rule_id == "semantic-html" and "static_check" in signals:
+        signals.add("dom_structure_heuristic")
+
+    evidence = issue.get("evidence")
+    if isinstance(evidence, dict):
+        evidence_keys = {str(k).lower() for k in evidence.keys()}
+        if {"tab_key", "focus_cycle", "trap_detected", "haskeyhandler", "hasonclick"} & evidence_keys:
+            signals.add("dom_interaction")
+        if {"role", "landmarks", "structure", "selector", "tag"} & evidence_keys:
+            signals.add("dom_structure_heuristic")
+
+    return signals
+
+
+def _enforce_hybrid_required_rules(
+    issues: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Require multi-signal corroboration metadata for configured hybrid rules."""
+    if not issues:
+        return issues, {
+            "hybrid_required_rules": dict(HYBRID_REQUIRED_RULES),
+            "rule_coverage": {},
+            "warnings": [],
+        }
+
+    by_rule: dict[str, list[dict[str, Any]]] = {}
+    for issue in issues:
+        rule_id = str(issue.get("rule_id", ""))
+        if rule_id in HYBRID_REQUIRED_RULES:
+            by_rule.setdefault(rule_id, []).append(issue)
+
+    warnings: list[str] = []
+    rule_coverage: dict[str, dict[str, Any]] = {}
+
+    for rule_id, required in HYBRID_REQUIRED_RULES.items():
+        scoped_issues = by_rule.get(rule_id, [])
+        if not scoped_issues:
+            continue
+
+        observed: set[str] = set()
+        for issue in scoped_issues:
+            observed.update(_extract_issue_signal_types(issue))
+
+        required_set = set(required)
+        missing = sorted(required_set - observed)
+        observed_sorted = sorted(observed)
+        rule_coverage[rule_id] = {
+            "required_signals": sorted(required_set),
+            "observed_signals": observed_sorted,
+            "missing_signals": missing,
+            "issue_count": len(scoped_issues),
+        }
+
+        for issue in scoped_issues:
+            issue["required_signals"] = sorted(required_set)
+            issue["observed_signals"] = observed_sorted
+            issue["missing_signals"] = missing
+
+        if not missing:
+            continue
+
+        warning = (
+            f"{rule_id} hybrid corroboration incomplete; "
+            f"missing signals: {', '.join(missing)}"
+        )
+        warnings.append(warning)
+
+        # Keep findings visible but explicitly lower trust until all required signals are present.
+        for issue in scoped_issues:
+            current_conf = float(issue.get("confidence", 0.0) or 0.0)
+            issue["confidence"] = round(max(0.05, current_conf * 0.55), 4)
+            issue["confidence_tier"] = "low"
+            issue["issue_type"] = "needs-review"
+            issue["needs_manual_review"] = True
+            issue["hybrid_enforcement"] = "missing_required_signals"
+
+    telemetry = {
+        "hybrid_required_rules": dict(HYBRID_REQUIRED_RULES),
+        "rule_coverage": rule_coverage,
+        "warnings": warnings,
+    }
+    return issues, telemetry
+
+
+def _apply_score_integrity_caps(
+    *,
+    score: float,
+    issues: list[dict[str, Any]],
+    engines_used: list[str],
+    degraded_mode: bool,
+    profile_telemetry: dict[str, Any],
+) -> tuple[float, dict[str, Any]]:
+    """Apply anti-gaming score caps and return integrity metadata."""
+    safe_score = float(score)
+    confidence_values = [
+        float(i.get("confidence", 0.0) or 0.0)
+        for i in issues
+        if isinstance(i, dict)
+    ]
+    avg_confidence = (
+        sum(confidence_values) / len(confidence_values)
+        if confidence_values
+        else 1.0
+    )
+
+    suppression_rate = float((profile_telemetry or {}).get("suppression_rate", 0.0) or 0.0)
+    low_issue_guard_active = bool((profile_telemetry or {}).get("low_issue_guard_active", False))
+    engines_count = len(set(engines_used or []))
+
+    perfect_cfg = SCORE_INTEGRITY_RULES.get("perfect_score_conditions", {})
+    perfect_checks = {
+        "engines_used_count": engines_count >= int(perfect_cfg.get("engines_used_count_min", 2)),
+        "suppression_rate": suppression_rate <= float(perfect_cfg.get("suppression_rate_max", 0.50)),
+        "degraded_mode": (not degraded_mode) if bool(perfect_cfg.get("degraded_mode_must_be_false", True)) else True,
+        "avg_confidence": avg_confidence >= float(perfect_cfg.get("avg_confidence_min", 0.75)),
+    }
+    perfect_allowed = all(perfect_checks.values())
+
+    caps_applied: list[dict[str, Any]] = []
+
+    if safe_score >= 100.0 and not perfect_allowed:
+        capped = min(safe_score, 99.0)
+        if capped < safe_score:
+            caps_applied.append(
+                {
+                    "type": "perfect_score_guard",
+                    "from": round(safe_score, 1),
+                    "to": round(capped, 1),
+                    "failed_checks": [k for k, passed in perfect_checks.items() if not passed],
+                }
+            )
+            safe_score = capped
+
+    if degraded_mode:
+        partial_cap = float(SCORE_INTEGRITY_RULES.get("partial_audit_max_score", 82.0))
+        if safe_score > partial_cap:
+            caps_applied.append(
+                {
+                    "type": "partial_audit_cap",
+                    "from": round(safe_score, 1),
+                    "to": round(partial_cap, 1),
+                }
+            )
+            safe_score = partial_cap
+
+    if low_issue_guard_active:
+        low_signal_cap = float(SCORE_INTEGRITY_RULES.get("low_signal_max_score", 90.0))
+        if safe_score > low_signal_cap:
+            caps_applied.append(
+                {
+                    "type": "low_signal_cap",
+                    "from": round(safe_score, 1),
+                    "to": round(low_signal_cap, 1),
+                }
+            )
+            safe_score = low_signal_cap
+
+    integrity_meta = {
+        "avg_confidence": round(avg_confidence, 4),
+        "suppression_rate": round(suppression_rate, 4),
+        "engines_used_count": engines_count,
+        "perfect_score_allowed": perfect_allowed,
+        "perfect_score_checks": perfect_checks,
+        "caps_applied": caps_applied,
+        "low_issue_guard_active": low_issue_guard_active,
+    }
+    return round(safe_score, 1), integrity_meta
+
+
+def _build_trust_payload(
+    *,
+    issues: list[dict[str, Any]],
+    engines_used: list[str],
+    degraded_mode: bool,
+    profile_telemetry: dict[str, Any],
+    score_integrity: dict[str, Any],
+    hybrid_telemetry: dict[str, Any],
+) -> dict[str, Any]:
+    """Build machine-readable trust observability payload for API/UI clients."""
+    issue_list = issues if isinstance(issues, list) else []
+    unique_rule_ids = sorted({str(i.get("rule_id", "")) for i in issue_list if i.get("rule_id")})
+
+    low_trust_rules: list[str] = []
+    calibration_warnings: list[str] = []
+    for rule_id in unique_rule_ids:
+        entry = get_rule_trust_entry(rule_id)
+        trust_score = float(entry.get("trust_score", get_rule_trust_score(rule_id)))
+        verdict = str(entry.get("verdict", "uncalibrated"))
+        if trust_score < 0.60:
+            low_trust_rules.append(rule_id)
+        if trust_score < 0.40:
+            calibration_warnings.append(
+                f"{rule_id} has low trust ({trust_score:.2f}, verdict={verdict})"
+            )
+
+    hybrid_warnings = hybrid_telemetry.get("warnings", []) if isinstance(hybrid_telemetry, dict) else []
+    if isinstance(hybrid_warnings, list):
+        calibration_warnings.extend(str(w) for w in hybrid_warnings)
+
+    if bool((profile_telemetry or {}).get("suppression_warning", False)):
+        calibration_warnings.append("Suppression safeguard warning triggered during profile filtering")
+
+    engines_set = {str(e).strip().lower() for e in (engines_used or [])}
+    engines_coverage = {
+        "static": "static" in engines_set,
+        "browser": "browser-probe" in engines_set,
+        "axe": "axe-core" in engines_set,
+        "heuristic": "heuristic" in engines_set,
+    }
+
+    confidence_avg = float(score_integrity.get("avg_confidence", 0.0) or 0.0)
+    suppression_rate = float((profile_telemetry or {}).get("suppression_rate", 0.0) or 0.0)
+    if degraded_mode:
+        data_quality = "low"
+    elif confidence_avg >= 0.75 and suppression_rate <= 0.50 and len(engines_set) >= 2:
+        data_quality = "high"
+    elif confidence_avg >= 0.60 and len(engines_set) >= 1:
+        data_quality = "medium"
+    else:
+        data_quality = "low"
+
+    return {
+        "confidence_avg": round(confidence_avg, 4),
+        "suppression_rate": round(suppression_rate, 4),
+        "data_quality": data_quality,
+        "engines_coverage": engines_coverage,
+        "calibration_warnings": sorted(set(calibration_warnings)),
+        "audit_completeness": "partial" if degraded_mode else "full",
+        "low_trust_rules_present": sorted(set(low_trust_rules)),
+        "score_integrity": score_integrity,
+        "hybrid_required_rules": hybrid_telemetry.get("hybrid_required_rules", {}),
+        "hybrid_rule_coverage": hybrid_telemetry.get("rule_coverage", {}),
+    }
 
 
 def _classify_degraded_reason_from_error(exc: Exception | str | None) -> str:
@@ -82,6 +356,7 @@ def _single_page_site_result(*, score: float, total_issues: int, url: str) -> di
         "worst_page": {"url": str(url), "score": safe_score},
         "best_page": {"url": str(url), "score": safe_score},
         "pages_audited": 1,
+        "pages_scanned": 1,
         "pages_discovered": 1,
         "issues": [],
         "priority_ranking": [],
@@ -91,6 +366,7 @@ def _single_page_site_result(*, score: float, total_issues: int, url: str) -> di
             "best_page": {"url": str(url), "score": safe_score},
             "critical_issues": 0,
             "pages_audited": 1,
+            "pages_scanned": 1,
             "pages_discovered": 1,
             "top_fix": top_fix,
         },
@@ -125,7 +401,9 @@ def _enforce_audit_invariants(result: dict[str, Any]) -> dict[str, Any]:
     result["issues"] = issues
     result["total_issues"] = len(issues)
 
-    pages_audited = int(result.get("pages_audited") or 0)
+    pages_audited = int(result.get("pages_audited") or result.get("pages_scanned") or 0)
+    result["pages_audited"] = pages_audited
+    result["pages_scanned"] = pages_audited
     degraded_mode = bool(result.get("degraded_mode", False))
     degraded_reason = normalize_reason(result.get("degraded_reason"))
 
@@ -182,10 +460,42 @@ def _enforce_audit_invariants(result: dict[str, Any]) -> dict[str, Any]:
             if int(site_result.get("pages_audited") or 0) <= 0:
                 logger.error("Invariant violation: site_result.pages_audited <= 0. Repairing value.")
                 site_result["pages_audited"] = pages_audited
+            site_result["pages_scanned"] = int(site_result.get("pages_audited") or pages_audited)
             if float(site_result.get("site_score") or 0.0) <= 0:
                 logger.error("Invariant violation: site_result.site_score <= 0. Repairing value.")
                 site_result["site_score"] = float(result.get("score") or 1.0)
             result["site_result"] = site_result
+
+    trust_payload = result.get("trust")
+    if not isinstance(trust_payload, dict) or not trust_payload:
+        quality = result.get("quality_gates")
+        quality_dict = quality if isinstance(quality, dict) else {}
+        profile_telemetry = result.get("precision_profile_telemetry")
+        if not isinstance(profile_telemetry, dict):
+            profile_telemetry = quality_dict.get("precision_profile_telemetry", {})
+        if not isinstance(profile_telemetry, dict):
+            profile_telemetry = {}
+
+        score_integrity = quality_dict.get("score_integrity", {})
+        if not isinstance(score_integrity, dict):
+            score_integrity = {}
+
+        hybrid_telemetry = quality_dict.get("hybrid_telemetry", {})
+        if not isinstance(hybrid_telemetry, dict):
+            hybrid_telemetry = {
+                "hybrid_required_rules": dict(HYBRID_REQUIRED_RULES),
+                "rule_coverage": {},
+                "warnings": [],
+            }
+
+        result["trust"] = _build_trust_payload(
+            issues=issues,
+            engines_used=result.get("engines_used", []),
+            degraded_mode=degraded_mode,
+            profile_telemetry=profile_telemetry,
+            score_integrity=score_integrity,
+            hybrid_telemetry=hybrid_telemetry,
+        )
 
     return result
 
@@ -554,6 +864,7 @@ async def run_audit(
     max_enrich_issues: int = 20,
     enable_cognitive: bool = True,
     await_enrichment: bool = False,
+    use_cache: bool = True,
 ) -> dict:
     """
     Run the full accessibility audit pipeline.
@@ -588,6 +899,18 @@ async def run_audit(
             "scan_time_seconds": round(time.time() - start_time, 2),
             "engines_used": [],
             "quality_gates": {},
+            "trust": {
+                "confidence_avg": 0.0,
+                "suppression_rate": 0.0,
+                "data_quality": "low",
+                "engines_coverage": {"static": False, "browser": False, "axe": False, "heuristic": False},
+                "calibration_warnings": ["audit_not_started_url_validation_failed"],
+                "audit_completeness": "partial",
+                "low_trust_rules_present": [],
+                "score_integrity": {},
+                "hybrid_required_rules": dict(HYBRID_REQUIRED_RULES),
+                "hybrid_rule_coverage": {},
+            },
             "enrichment_status": "failed",
             "pages_discovered": 0,
             "pages_audited": 0,
@@ -596,15 +919,16 @@ async def run_audit(
     
     # ── Step 0a: Check URL Cache ───────────────────────────────
     url_hash = get_url_hash(url, scan_mode, precision_profile)
-    cached_res = check_cache(url_hash, tier="page")
-    if cached_res:
-        cached_res = _upgrade_cached_deep_result(cached_res, scan_mode)
-        if _is_invalid_cached_result(cached_res):
-            logger.warning("Discarding stale page cache entry for %s (%s mode). Recomputing.", url, scan_mode)
-        else:
-            logger.info(f"Page Cache HIT (URL) for {url}")
-            cached_res["cache_hit"] = True
-            return _finalize_result(cached_res, status="cached", persist_db=False)
+    if use_cache:
+        cached_res = check_cache(url_hash, tier="page")
+        if cached_res:
+            cached_res = _upgrade_cached_deep_result(cached_res, scan_mode)
+            if _is_invalid_cached_result(cached_res):
+                logger.warning("Discarding stale page cache entry for %s (%s mode). Recomputing.", url, scan_mode)
+            else:
+                logger.info(f"Page Cache HIT (URL) for {url}")
+                cached_res["cache_hit"] = True
+                return _finalize_result(cached_res, status="cached", persist_db=False)
 
     degraded_mode = False
     degraded_reason = None
@@ -780,21 +1104,34 @@ async def run_audit(
                 "degraded_reason": degraded_reason,
                 "skipped_components": sorted(set(skipped_components)),
                 "degradation_reason": degradation_reason,
+                "trust": _build_trust_payload(
+                    issues=[fallback_issue],
+                    engines_used=engines_used,
+                    degraded_mode=True,
+                    profile_telemetry={},
+                    score_integrity={"avg_confidence": float(fallback_issue.get("confidence", 0.0) or 0.0)},
+                    hybrid_telemetry={
+                        "hybrid_required_rules": dict(HYBRID_REQUIRED_RULES),
+                        "rule_coverage": {},
+                        "warnings": [],
+                    },
+                ),
                 "site_result": _single_page_site_result(score=fallback_score, total_issues=1, url=url),
             }
             return _finalize_result(failure, status="completed")
 
         # ── Step 1.5: Check Structure / DOM Cache ─────────────────
         dom_hash = get_dom_hash(clean_html_for_hash(html), scan_mode, precision_profile)
-        cached_dom_res = check_cache(dom_hash, tier="dom")
-        if cached_dom_res:
-            cached_dom_res = _upgrade_cached_deep_result(cached_dom_res, scan_mode)
-            if _is_invalid_cached_result(cached_dom_res):
-                logger.warning("Discarding stale DOM cache entry for %s (%s mode). Recomputing.", url, scan_mode)
-            else:
-                logger.info(f"Page Cache HIT (DOM Hash) for {url}")
-                cached_dom_res["cache_hit"] = True
-                return _finalize_result(cached_dom_res, status="cached", persist_db=False)
+        if use_cache:
+            cached_dom_res = check_cache(dom_hash, tier="dom")
+            if cached_dom_res:
+                cached_dom_res = _upgrade_cached_deep_result(cached_dom_res, scan_mode)
+                if _is_invalid_cached_result(cached_dom_res):
+                    logger.warning("Discarding stale DOM cache entry for %s (%s mode). Recomputing.", url, scan_mode)
+                else:
+                    logger.info(f"Page Cache HIT (DOM Hash) for {url}")
+                    cached_dom_res["cache_hit"] = True
+                    return _finalize_result(cached_dom_res, status="cached", persist_db=False)
 
         # ── Step 2: Run check engines (Parallel) ──────────────────────
         def run_static():
@@ -921,6 +1258,22 @@ async def run_audit(
             _mark_degraded("extraction_failure", _degradation_reason_message("extraction_failure", "confidence"))
             skipped_components.append("confidence")
             scored_issues = list(deduped_issues)
+
+        # Enforce hybrid corroboration metadata for critical under-detected rules.
+        hybrid_telemetry: dict[str, Any] = {
+            "hybrid_required_rules": dict(HYBRID_REQUIRED_RULES),
+            "rule_coverage": {},
+            "warnings": [],
+        }
+        try:
+            scored_issues, hybrid_telemetry = _enforce_hybrid_required_rules(scored_issues)
+        except Exception as e:
+            logger.error("Hybrid corroboration enforcement failed: %s", e)
+            hybrid_telemetry = {
+                "hybrid_required_rules": dict(HYBRID_REQUIRED_RULES),
+                "rule_coverage": {},
+                "warnings": ["hybrid_enforcement_error"],
+            }
         
         # ── Step 4: Cognitive checks (deep mode only) ──────────────
         if scan_mode in {"deep", "max"} and enable_cognitive:
@@ -943,8 +1296,9 @@ async def run_audit(
         # ── Step 4.25: Aggregate identical rules ─────────────────────
         scored_issues, compression_telemetry = aggregate_issues(scored_issues)
         # ── Step 4.5: Prioritize issues (NEW) ────────────────────────
-        # Computes deterministic priority scores and rank-ordered issue summaries.
-        scored_issues, priority_ranking = prioritize_issues(scored_issues)
+        # Keep `scored_issues` as the canonical reported issue set. Priority lists
+        # are projections for triage and should not replace the reported findings.
+        _, priority_ranking = prioritize_issues(scored_issues)
         scoring_summary = build_scoring_summary(scored_issues, degraded_mode=degraded_mode)
 
         # ── Step 5: Group issues ──────────────────────────────────
@@ -1034,6 +1388,19 @@ async def run_audit(
         # ── Step 7: Calculate score (deterministic summary) ──────────
         score = float(scoring_summary.get("overall_score", 100.0))
         score_explanation = scoring_summary.get("score_explanation", {})
+
+        score, score_integrity_meta = _apply_score_integrity_caps(
+            score=score,
+            issues=scored_issues,
+            engines_used=engines_used,
+            degraded_mode=degraded_mode,
+            profile_telemetry=profile_telemetry,
+        )
+        if isinstance(score_explanation, dict):
+            score_explanation = dict(score_explanation)
+            score_explanation["score_integrity"] = score_integrity_meta
+        else:
+            score_explanation = {"score_integrity": score_integrity_meta}
         
         # ── Step 8: Generate report ────────────────────────────────
         scan_time = time.time() - start_time
@@ -1065,6 +1432,8 @@ async def run_audit(
             "precision_profile": precision_profile,
             "precision_profile_telemetry": profile_telemetry,
             "compression_telemetry": compression_telemetry,
+            "hybrid_telemetry": hybrid_telemetry,
+            "score_integrity": score_integrity_meta,
             "rule_activity": static_rule_activity,
             "ttfi_ms": ttfi_ms,
             "active_audits": _active_audits,
@@ -1109,6 +1478,15 @@ async def run_audit(
         
         if scan_time > max_runtime:
             logger.warning(f"⚠️ Runtime {scan_time:.1f}s exceeds {max_runtime}s limit")
+
+        trust_payload = _build_trust_payload(
+            issues=scored_issues,
+            engines_used=engines_used,
+            degraded_mode=degraded_mode,
+            profile_telemetry=profile_telemetry,
+            score_integrity=score_integrity_meta,
+            hybrid_telemetry=hybrid_telemetry,
+        )
 
         # ── Step 7: Calculate Expected Score Improvement ───────────────
         top_rule_ids = {r["rule_id"] for r in priority_ranking}
@@ -1174,6 +1552,7 @@ async def run_audit(
             "enrichment_status": enrichment_status,
             "enrichment_meta": enrichment_meta,
             "audit_id": audit_id,
+            "trust": trust_payload,
             "site_result": _single_page_site_result(score=score, total_issues=len(scored_issues), url=url),
             # World-class SPA detection metadata
             "browser_probe_metadata": browser_probe_metadata,
@@ -1192,10 +1571,10 @@ async def run_audit(
         # ── Step 8: Cache Write Policy ─────────────────────────────────
         # Never cache partial pipelines/degraded results to prevent poisoning.
         # Only cache if confidence signals were fully aggregated.
-        if not degraded_mode:
+        if use_cache and not degraded_mode:
             save_to_cache(url_hash, dom_hash, res)
         else:
-            logger.info("Skipping cache write due to degraded execution.")
+            logger.info("Skipping cache write due to degraded execution or cache bypass.")
 
         return _finalize_result(res, status="completed")
 
@@ -1213,7 +1592,15 @@ def _calculate_score(issues: list[dict], degraded_mode: bool = False) -> tuple[f
 
 
 def _apply_precision_profile(issues: list[dict], profile_name: str) -> tuple[list[dict], dict]:
-    """Filter reported issues according to profile to optimize precision/recall tradeoff."""
+    """Filter reported issues according to profile to optimize precision/recall tradeoff.
+
+    Structural FP rules are suppressed via weight-based filtering from
+    rule_quality_policy.json.  Confidence values are NOT modified here
+    (confidence ≠ visibility — see design constraints).
+    """
+    from collections import Counter
+    from app.config import STRUCTURAL_FP_RULES
+
     profile = PRECISION_PROFILES.get(profile_name, PRECISION_PROFILES["balanced"])
     profile = _merge_profile_with_policy(profile_name, profile)
     kept = []
@@ -1222,20 +1609,82 @@ def _apply_precision_profile(issues: list[dict], profile_name: str) -> tuple[lis
     dropped_contextual_single = 0
     dropped_excluded_rule = 0
     dropped_cooccurrence_rule = 0
+    dropped_structural = 0
+    suppressed_by_rule: dict[str, int] = {}
 
     exclude_rules = set(profile.get("exclude_rules", []))
     per_rule_min_conf = profile.get("per_rule_min_confidence", {})
     per_rule_conf_override = profile.get("per_rule_confidence_override", {})
     suppress_when_present = profile.get("suppress_when_present", {})
 
+    # ── Structural FP policy ────────────────────────────────────────
+    policy = _get_rule_quality_policy()
+    structural_policy = policy.get("structural_rules", {}) if isinstance(policy, dict) else {}
+
+    # Pre-count rule occurrences for min_occurrences checks
+    rule_occurrence_counts = Counter(
+        i.get("rule_id", "") for i in issues if i.get("rule_id")
+    )
+
+    # Profiles that use adaptive thresholding for precision-first filtering.
+    _ADAPTIVE_PROFILES = {
+        "high_precision", "tuned_balanced", "high_precision_plus",
+        "high_precision_recall_boost", "high_precision_recall_strict",
+        "high_precision_recall_balanced", "high_precision_recall_exploratory",
+        "very_high_precision", "production",
+    }
+
+    # ── Low-issue guard ─────────────────────────────────────────
+    # Sites with very few issues have sparse signal. Applying aggressive
+    # per-rule confidence overrides on them causes total suppression.
+    # When active: multiply all per-rule thresholds by relaxation_factor.
+    low_issue_cfg = policy.get("low_issue_guard", {}) if isinstance(policy, dict) else {}
+    _low_issue_guard_enabled = bool(low_issue_cfg.get("enabled", False))
+    _low_issue_threshold = int(low_issue_cfg.get("threshold", 5))
+    _relaxation_factor = float(low_issue_cfg.get("relaxation_factor", 0.85))
+    _low_issue_guard_active = (
+        _low_issue_guard_enabled and len(issues) < _low_issue_threshold
+    )
     for issue in issues:
         rule_id = issue.get("rule_id", "")
-        
+
         # Check if rule is explicitly excluded (for ultra_strict and similar profiles)
         if rule_id in exclude_rules:
             dropped_excluded_rule += 1
             continue
-        
+
+        # ── Structural FP suppression (weight-based, config-driven) ──
+        if rule_id in STRUCTURAL_FP_RULES and rule_id in structural_policy:
+            rule_policy = structural_policy[rule_id]
+            severity = issue.get("severity", "moderate")
+            trust_entry = get_rule_trust_entry(rule_id)
+            trust_verdict = str(trust_entry.get("verdict", "uncalibrated")).lower()
+            trust_protected = trust_verdict in {"trusted", "moderate", "underdetected"}
+
+            # NEVER suppress critical-severity structural issues
+            if severity != "critical" and not trust_protected:
+                weight = float(rule_policy.get("weight", 1.0))
+                min_occ = int(rule_policy.get("min_occurrences", 1))
+                report_in_summary = bool(rule_policy.get("report_in_summary", True))
+
+                # Suppress if weight below threshold
+                if weight < 0.5 and not report_in_summary:
+                    dropped_structural += 1
+                    suppressed_by_rule[rule_id] = suppressed_by_rule.get(rule_id, 0) + 1
+                    continue
+
+                # Suppress if below min_occurrences threshold.
+                # Page-size-aware: small pages (< 8 total issues) use min_occ=1
+                # to avoid missing real issues on simple sites.
+                effective_min_occ = min_occ
+                if len(issues) < 8:
+                    effective_min_occ = 1  # small page → don't suppress by count
+                if effective_min_occ > 1 and rule_occurrence_counts.get(rule_id, 0) < effective_min_occ:
+                    dropped_structural += 1
+                    suppressed_by_rule[rule_id] = suppressed_by_rule.get(rule_id, 0) + 1
+                    continue
+
+
         conf = issue.get("confidence", 0.0)
         needs_review = issue.get("needs_manual_review", False)
         rule_type = issue.get("rule_type", "hard")
@@ -1243,7 +1692,7 @@ def _apply_precision_profile(issues: list[dict], profile_name: str) -> tuple[lis
 
         # Adaptive thresholding keeps precision high while avoiding collapse in recall.
         min_conf = profile["min_confidence"]
-        if profile_name in ("high_precision", "tuned_balanced", "high_precision_plus", "high_precision_recall_boost", "high_precision_recall_strict", "high_precision_recall_balanced", "high_precision_recall_exploratory", "very_high_precision"):  # Adaptive thresholds for precision-first profiles
+        if profile_name in _ADAPTIVE_PROFILES:
             if rule_type == "hard":
                 min_conf = 0.62
             elif rule_type == "visual":
@@ -1255,17 +1704,37 @@ def _apply_precision_profile(issues: list[dict], profile_name: str) -> tuple[lis
         # without globally harming precision/recall.
         rule_conf_override = per_rule_conf_override.get(rule_id)
         if rule_conf_override is not None:
-            min_conf = float(rule_conf_override)
+            effective_override = float(rule_conf_override)
+            # Low-issue guard: relax overrides on sparse signal sites
+            if _low_issue_guard_active:
+                effective_override *= _relaxation_factor
+            min_conf = effective_override
         else:
             rule_min_conf = per_rule_min_conf.get(rule_id)
             if rule_min_conf is not None:
-                min_conf = max(min_conf, float(rule_min_conf))
+                effective_min = float(rule_min_conf)
+                if _low_issue_guard_active:
+                    effective_min *= _relaxation_factor
+                min_conf = max(min_conf, effective_min)
+
+        trust_entry = get_rule_trust_entry(rule_id)
+        trust_score = float(trust_entry.get("trust_score", get_rule_trust_score(rule_id)))
+        trust_verdict = str(trust_entry.get("verdict", "uncalibrated")).lower()
+
+        # Trust-aware recall guard: avoid over-filtering rules that calibration marks
+        # as underdetected or reliably trusted.
+        if trust_verdict == "underdetected":
+            min_conf = min(min_conf, 0.30)
+        elif trust_verdict in {"trusted", "moderate"} or trust_score >= 0.70:
+            min_conf = min(min_conf, 0.50)
 
         if conf < min_conf:
             dropped_low_conf += 1
             continue
 
-        if (not profile["include_needs_review"]) and needs_review:
+        allow_needs_review = trust_verdict in {"underdetected", "trusted", "moderate"} and conf >= min_conf
+
+        if (not profile["include_needs_review"]) and needs_review and not allow_needs_review:
             dropped_needs_review += 1
             continue
 
@@ -1287,6 +1756,22 @@ def _apply_precision_profile(issues: list[dict], profile_name: str) -> tuple[lis
             kept = [i for i in kept if i.get("rule_id", "") not in suppress_set]
             dropped_cooccurrence_rule += original_len - len(kept)
 
+    # ── Suppression safeguard ───────────────────────────────────────
+    total_input = max(1, len(issues))
+    total_dropped = total_input - len(kept)
+    suppression_rate = total_dropped / total_input
+    suppression_warning = False
+
+    safeguard = policy.get("suppression_safeguard", {}) if isinstance(policy, dict) else {}
+    max_suppression_rate = float(safeguard.get("max_suppression_rate", 0.70))
+    if suppression_rate > max_suppression_rate:
+        warning_msg = safeguard.get(
+            "warning_message",
+            f"Suppression rate {suppression_rate:.1%} exceeded {max_suppression_rate:.0%} threshold.",
+        )
+        logger.warning("Suppression safeguard: %s", warning_msg)
+        suppression_warning = True
+
     telemetry = {
         "profile": profile_name,
         "input_issues": len(issues),
@@ -1296,6 +1781,11 @@ def _apply_precision_profile(issues: list[dict], profile_name: str) -> tuple[lis
         "dropped_contextual_single_source": dropped_contextual_single,
         "dropped_excluded_rules": dropped_excluded_rule,
         "dropped_cooccurrence_rules": dropped_cooccurrence_rule,
-        "estimated_precision_floor": 0.95 if profile_name in ("high_precision", "tuned_balanced", "high_precision_plus", "high_precision_recall_boost", "high_precision_recall_strict", "high_precision_recall_balanced", "high_precision_recall_exploratory", "very_high_precision") else 0.85,
+        "dropped_structural": dropped_structural,
+        "structural_rules_suppressed": dict(suppressed_by_rule),
+        "suppression_rate": round(suppression_rate, 3),
+        "suppression_warning": suppression_warning,
+        "low_issue_guard_active": _low_issue_guard_active,
+        "estimated_precision_floor": 0.95 if profile_name in _ADAPTIVE_PROFILES else 0.85,
     }
     return kept, telemetry

@@ -2,6 +2,8 @@ const config = require("../../config");
 const jobManager = require("../../jobs/jobManager");
 const { JOB_STATUS } = require("../models/job.model");
 const { invokeBeaconAudit } = require("./beaconEngineClient");
+const { log } = require("../utils/logger");
+const { metrics } = require("../utils/metrics");
 
 let engineExecutor = invokeBeaconAudit;
 
@@ -201,6 +203,8 @@ async function executeAuditJob(jobId) {
     return;
   }
 
+  const requestId = queued.request_id || null;
+
   jobManager.updateJob(jobId, {
     status: JOB_STATUS.RUNNING,
     started_at: new Date(),
@@ -209,11 +213,33 @@ async function executeAuditJob(jobId) {
 
   queueProgressMilestones(jobId);
 
+  // Observability hook: track engine execution start and duration.
+  const executionStartedAt = Date.now();
+  log("info", "engine_started", {
+    request_id: requestId,
+    job_id: jobId,
+    mode: queued.mode,
+    url: queued.url,
+  });
+
   try {
     const result = await Promise.race([
-      engineExecutor({ url: queued.url, mode: queued.mode, jobId }),
+      engineExecutor({
+        url: queued.url,
+        mode: queued.mode,
+        jobId,
+        requestId,
+      }),
       createTimeoutPromise(config.AUDIT_TIMEOUT_MS),
     ]);
+
+    const durationMs = Date.now() - executionStartedAt;
+    metrics.recordExecutionDuration(durationMs);
+    log("info", "engine_completed", {
+      request_id: requestId,
+      job_id: jobId,
+      duration_ms: durationMs,
+    });
 
     const normalized = normalizeEngineResult(queued, result);
 
@@ -225,7 +251,18 @@ async function executeAuditJob(jobId) {
       error: null,
     });
   } catch (error) {
+    const durationMs = Date.now() - executionStartedAt;
+    metrics.recordExecutionDuration(durationMs);
+
     if (error && error.code === "AUDIT_TIMEOUT") {
+      log("error", "engine_failed", {
+        request_id: requestId,
+        job_id: jobId,
+        duration_ms: durationMs,
+        code: error.code,
+        message: safeErrorMessage(error),
+      });
+
       jobManager.updateJob(jobId, {
         status: JOB_STATUS.TIMEOUT,
         completed_at: new Date(),
@@ -237,6 +274,15 @@ async function executeAuditJob(jobId) {
 
     const safeError = safeErrorMessage(error);
     const code = error?.code ? String(error.code) : "AUDIT_EXECUTION_FAILED";
+
+    log("error", "engine_failed", {
+      request_id: requestId,
+      job_id: jobId,
+      duration_ms: durationMs,
+      code,
+      message: safeError,
+    });
+
     jobManager.updateJob(jobId, {
       status: JOB_STATUS.FAILED,
       completed_at: new Date(),
@@ -246,8 +292,8 @@ async function executeAuditJob(jobId) {
   }
 }
 
-function enqueueAuditJob(url, mode, ip) {
-  const job = jobManager.createJob(url, mode, ip);
+function enqueueAuditJob(url, mode, ip, requestId = null) {
+  const job = jobManager.createJob(url, mode, ip, { requestId });
   setImmediate(() => {
     void executeAuditJob(job.id);
   });

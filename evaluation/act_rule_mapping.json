@@ -1,93 +1,295 @@
 {
-  "5f99a7": ["no-headings"],
-  "b5c3f8": ["no-lang", "missing-lang-attr"],
-  "e086e5": ["missing-label", "form-label-missing"],
-  "1a02b0": ["no-title", "missing-page-title"],
-  "2ee8b8": ["no-main-landmark", "missing-landmark"],
-  "2eb176": ["audio-transcript"],
-  "3ea0c8": ["unique-id"],
-  "bc4a75": ["aria-required-parent", "aria-required-children"],
-  "cf77f2": ["bypass-blocks"],
-  "ff89c9": ["aria-role", "aria-required-parent"],
-  "047fe0": ["empty-heading"],
-  "09o5cg": ["text-spacing"],
-  "0ssw9k": ["keyboard-trap"],
-  "0va7u6": ["semantic-html"],
-  "1ea59c": ["video-transcript"],
-  "1ec09b": ["video-transcript"],
-  "23a2a8": ["svg-no-accessible-name"],
-  "24afc2": ["letter-spacing"],
-  "2779a5": ["empty-title"],
-  "307n5z": ["no-lang"],
-  "36b590": ["form-error"],
-  "3e12e1": ["unsafe-external-link"],
-  "46ca7f": ["unsafe-external-link"],
-  "4b1c6c": ["link-purpose"],
-  "4c31df": ["video-transcript"],
-  "4e8ab6": ["aria-role"],
-  "59796f": ["button-name"],
-  "59br37": ["text-spacing"],
-  "5b7ae0": ["semantic-html"],
-  "5c01ea": ["aria-role"],
-  "5effbb": ["empty-link"],
-  "674b10": ["aria-valid-attr-value"],
-  "6a7281": ["aria-valid-attr-value"],
-  "6cfa84": ["no-lang"],
-  "73f2c2": ["aria-valid-attr-value"],
-  "7677a9": ["unsafe-external-link"],
-  "78fd32": ["line-height"],
-  "7d6734": ["svg-no-accessible-name"],
-  "80af7b": ["keyboard-trap"],
-  "80f0bf": ["video-transcript"],
-  "8fc3b6": ["svg-no-accessible-name"],
-  "97a4e1": ["button-name"],
-  "9bd38c": ["media-alternative"],
-  "9e45ec": ["text-spacing"],
-  "9eb3f6": ["svg-no-accessible-name"],
-  "a1b64e": ["keyboard-trap"],
-  "a25f45": ["table-caption"],
-  "aaa1bf": ["no-lang"],
-  "ab4d13": ["media-alternative"],
-  "ac7dc6": ["video-transcript"],
-  "afb423": ["media-alternative"],
-  "afw4f7": ["text-spacing"],
-  "aizyf1": ["empty-link"],
-  "akn7bn": ["no-lang"],
-  "b20e66": ["link-purpose"],
-  "b33eff": ["unsafe-external-link"],
-  "b40fd1": ["main-landmark"],
-  "b49b2e": ["empty-heading"],
-  "b4f0c3": ["meta-refresh"],
-  "bc659a": ["meta-refresh"],
-  "bf051a": ["semantic-html"],
-  "bisz58": ["meta-refresh"],
-  "c249d5": ["unsafe-external-link"],
-  "c3232f": ["video-transcript"],
-  "c487ae": ["empty-link"],
-  "c4a8a4": ["semantic-html"],
-  "c5a4ea": ["video-transcript"],
-  "cae760": ["svg-no-accessible-name"],
-  "cc0f0a": ["form-label-missing"],
-  "d0f69e": ["table-header"],
-  "d7ba54": ["video-transcript"],
-  "de46e4": ["invalid-lang"],
-  "e6952f": ["aria-attribute"],
-  "e7aa44": ["media-alternative"],
-  "e88epe": ["image-alt"],
-  "eac66b": ["video-transcript"],
-  "ebe86a": ["keyboard-trap"],
-  "ee13b5": ["video-transcript"],
-  "efbfc7": ["text-spacing"],
-  "f196ce": ["video-transcript"],
-  "f51b46": ["video-transcript"],
-  "fd26cf": ["media-alternative"],
-  "fd3a94": ["link-purpose"],
-  "ffbc54": ["no-keyboard"],
-  "ffd0e9": ["empty-heading"],
-  "m6b1q3": ["svg-no-accessible-name"],
-  "off6ek": ["semantic-html"],
-  "oj04fd": ["focus-visible"],
-  "qt1vmo": ["svg-no-accessible-name"],
-  "ucwvc8": ["semantic-html"],
-  "ye5d6e": ["focus-management"]
+  "5f99a7": [
+    "no-headings",
+    "page-has-heading-one"
+  ],
+  "b5c3f8": [
+    "no-lang",
+    "missing-lang-attr",
+    "html-has-lang"
+  ],
+  "e086e5": [
+    "missing-label",
+    "form-label-missing",
+    "input-label",
+    "input-name",
+    "label"
+  ],
+  "1a02b0": [
+    "no-title",
+    "missing-page-title",
+    "document-title"
+  ],
+  "2ee8b8": [
+    "no-main-landmark",
+    "missing-landmark",
+    "landmark-one-main"
+  ],
+  "2eb176": [
+    "audio-transcript"
+  ],
+  "3ea0c8": [
+    "unique-id"
+  ],
+  "bc4a75": [
+    "aria-required-parent",
+    "aria-required-children"
+  ],
+  "cf77f2": [
+    "bypass-blocks"
+  ],
+  "ff89c9": [
+    "aria-role",
+    "aria-required-parent"
+  ],
+  "047fe0": [
+    "empty-heading"
+  ],
+  "09o5cg": [
+    "text-spacing"
+  ],
+  "0ssw9k": [
+    "keyboard-trap"
+  ],
+  "0va7u6": [
+    "semantic-html"
+  ],
+  "1ea59c": [
+    "video-transcript"
+  ],
+  "1ec09b": [
+    "video-transcript"
+  ],
+  "23a2a8": [
+    "svg-no-accessible-name"
+  ],
+  "24afc2": [
+    "letter-spacing",
+    "avoid-inline-spacing"
+  ],
+  "2779a5": [
+    "empty-title"
+  ],
+  "307n5z": [
+    "no-lang"
+  ],
+  "36b590": [
+    "form-error"
+  ],
+  "3e12e1": [
+    "unsafe-external-link"
+  ],
+  "46ca7f": [
+    "unsafe-external-link"
+  ],
+  "4b1c6c": [
+    "link-purpose"
+  ],
+  "4c31df": [
+    "video-transcript"
+  ],
+  "4e8ab6": [
+    "aria-role"
+  ],
+  "59796f": [
+    "button-name"
+  ],
+  "59br37": [
+    "text-spacing"
+  ],
+  "5b7ae0": [
+    "semantic-html"
+  ],
+  "5c01ea": [
+    "aria-role"
+  ],
+  "5effbb": [
+    "empty-link"
+  ],
+  "674b10": [
+    "aria-valid-attr-value"
+  ],
+  "6a7281": [
+    "aria-valid-attr-value"
+  ],
+  "6cfa84": [
+    "no-lang"
+  ],
+  "73f2c2": [
+    "aria-valid-attr-value"
+  ],
+  "7677a9": [
+    "unsafe-external-link"
+  ],
+  "78fd32": [
+    "line-height"
+  ],
+  "7d6734": [
+    "svg-no-accessible-name"
+  ],
+  "80af7b": [
+    "keyboard-trap"
+  ],
+  "80f0bf": [
+    "video-transcript"
+  ],
+  "8fc3b6": [
+    "svg-no-accessible-name"
+  ],
+  "97a4e1": [
+    "button-name"
+  ],
+  "9bd38c": [
+    "media-alternative"
+  ],
+  "9e45ec": [
+    "text-spacing"
+  ],
+  "9eb3f6": [
+    "svg-no-accessible-name"
+  ],
+  "a1b64e": [
+    "keyboard-trap"
+  ],
+  "a25f45": [
+    "table-caption"
+  ],
+  "aaa1bf": [
+    "no-lang"
+  ],
+  "ab4d13": [
+    "media-alternative"
+  ],
+  "ac7dc6": [
+    "video-transcript"
+  ],
+  "afb423": [
+    "media-alternative"
+  ],
+  "afw4f7": [
+    "text-spacing"
+  ],
+  "aizyf1": [
+    "empty-link"
+  ],
+  "akn7bn": [
+    "no-lang"
+  ],
+  "b20e66": [
+    "link-purpose"
+  ],
+  "b33eff": [
+    "unsafe-external-link"
+  ],
+  "b40fd1": [
+    "main-landmark"
+  ],
+  "b49b2e": [
+    "empty-heading"
+  ],
+  "b4f0c3": [
+    "meta-refresh"
+  ],
+  "bc659a": [
+    "meta-refresh"
+  ],
+  "bf051a": [
+    "semantic-html"
+  ],
+  "bisz58": [
+    "meta-refresh"
+  ],
+  "c249d5": [
+    "unsafe-external-link"
+  ],
+  "c3232f": [
+    "video-transcript"
+  ],
+  "c487ae": [
+    "empty-link"
+  ],
+  "c4a8a4": [
+    "semantic-html"
+  ],
+  "c5a4ea": [
+    "video-transcript"
+  ],
+  "cae760": [
+    "svg-no-accessible-name"
+  ],
+  "cc0f0a": [
+    "form-label-missing"
+  ],
+  "d0f69e": [
+    "table-header"
+  ],
+  "d7ba54": [
+    "video-transcript"
+  ],
+  "de46e4": [
+    "invalid-lang",
+    "valid-lang"
+  ],
+  "e6952f": [
+    "aria-attribute",
+    "aria-valid-attr",
+    "aria-allowed-attr",
+    "aria-roles",
+    "aria-valid-attr-value"
+  ],
+  "e7aa44": [
+    "media-alternative"
+  ],
+  "e88epe": [
+    "image-alt"
+  ],
+  "eac66b": [
+    "video-transcript"
+  ],
+  "ebe86a": [
+    "keyboard-trap"
+  ],
+  "ee13b5": [
+    "video-transcript"
+  ],
+  "efbfc7": [
+    "text-spacing"
+  ],
+  "f196ce": [
+    "video-transcript"
+  ],
+  "f51b46": [
+    "video-transcript"
+  ],
+  "fd26cf": [
+    "media-alternative"
+  ],
+  "fd3a94": [
+    "link-purpose"
+  ],
+  "ffbc54": [
+    "no-keyboard"
+  ],
+  "ffd0e9": [
+    "empty-heading"
+  ],
+  "m6b1q3": [
+    "svg-no-accessible-name"
+  ],
+  "off6ek": [
+    "semantic-html"
+  ],
+  "oj04fd": [
+    "focus-visible"
+  ],
+  "qt1vmo": [
+    "svg-no-accessible-name"
+  ],
+  "ucwvc8": [
+    "semantic-html"
+  ],
+  "ye5d6e": [
+    "focus-management",
+    "keyboard-trap"
+  ]
 }

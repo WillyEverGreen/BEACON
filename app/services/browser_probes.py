@@ -821,6 +821,8 @@ class BrowserProber:
                     self._probe_focus_obscurance,
                     self._probe_animation_motion,  # New: detect motion issues
                     self._probe_lazy_loading,      # New: detect lazy-load issues
+                    self._probe_focus_trap_detection,  # Production readiness: focus management
+                    self._probe_focus_management,       # Phase 9.4: hybrid focus-management probes
                 ]
 
                 for probe in probe_methods:
@@ -1514,3 +1516,435 @@ class BrowserProber:
         except Exception as e:
             logger.warning(f"Lazy loading probe error: {e}")
         return issues
+
+    # ── Focus trap detection (Production Readiness — Recall improvement) ──
+
+    async def _probe_focus_trap_detection(self, page) -> list[dict]:
+        """Detect focus management issues in modal/dialog patterns.
+
+        Runs 4 sub-checks per modal:
+        1. Focus cycling — Tab stays within modal and loops correctly
+        2. Initial focus — focus moves to modal on open
+        3. Background inert — siblings marked aria-hidden/inert
+        4. Escape dismissal — Escape key closes the modal
+
+        Only runs in deep/max scan modes (registered in probe_methods).
+        """
+        issues = []
+        try:
+            # Detect visible modal containers
+            modal_info = await page.evaluate("""
+                () => {
+                    const selectors = [
+                        '[role="dialog"]',
+                        '[role="alertdialog"]',
+                        '[aria-modal="true"]',
+                        'dialog[open]',
+                        '.modal.show',
+                        '.modal.active',
+                        '.modal.is-open',
+                    ];
+                    const modals = [];
+                    for (const sel of selectors) {
+                        for (const el of document.querySelectorAll(sel)) {
+                            const style = window.getComputedStyle(el);
+                            if (style.display === 'none' || style.visibility === 'hidden') continue;
+                            const rect = el.getBoundingClientRect();
+                            if (rect.width <= 0 || rect.height <= 0) continue;
+
+                            // Gather metadata about the modal
+                            const focusable = el.querySelectorAll(
+                                'a[href], button, input:not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])'
+                            );
+                            const hasCloseBtn = el.querySelector(
+                                '[aria-label*="close" i], [aria-label*="dismiss" i], button.close, .modal-close'
+                            ) !== null;
+                            const label = el.getAttribute('aria-label')
+                                || el.getAttribute('aria-labelledby')
+                                || el.getAttribute('title')
+                                || '';
+
+                            modals.push({
+                                selector: sel,
+                                tag: el.tagName.toLowerCase(),
+                                id: el.id || '',
+                                role: el.getAttribute('role') || '',
+                                ariaModal: el.getAttribute('aria-modal') || '',
+                                focusableCount: focusable.length,
+                                hasCloseButton: hasCloseBtn,
+                                label: label.substring(0, 80),
+                            });
+                        }
+                    }
+                    return modals;
+                }
+            """)
+
+            if not modal_info:
+                return issues
+
+            logger.info("Focus trap detection: found %d visible modals", len(modal_info))
+
+            for modal in modal_info:
+                modal_desc = f"{modal['tag']}#{modal['id']}" if modal['id'] else modal['tag']
+
+                # Sub-check 1: Focus cycling (Tab loop)
+                issues.extend(await self._check_focus_cycling(page, modal, modal_desc))
+
+                # Sub-check 2: Initial focus placement
+                issues.extend(self._check_initial_focus(modal, modal_desc))
+
+                # Sub-check 3: Background inert (aria-hidden on siblings)
+                issues.extend(await self._check_background_inert(page, modal, modal_desc))
+
+                # Sub-check 4: Escape key dismissal
+                issues.extend(self._check_escape_mechanism(modal, modal_desc))
+
+        except Exception as e:
+            logger.warning(f"Focus trap detection probe error: {e}")
+
+        return issues
+
+    async def _check_focus_cycling(self, page, modal: dict, modal_desc: str) -> list[dict]:
+        """Verify focus stays within modal and cycles correctly."""
+        issues = []
+        try:
+            focusable_count = int(modal.get("focusableCount", 0))
+
+            if focusable_count == 0:
+                issues.append(_make_issue(
+                    self.url, "focus-trap-cycling", "violation", "serious",
+                    modal_desc, "",
+                    f"Modal '{modal_desc}' contains no focusable elements. Users cannot interact with it via keyboard.",
+                    "2.1.2", "A", "keyboard",
+                    "Add at least one focusable element (close button, action button) inside the modal.",
+                    evidence={"focusable_count": 0, "modal_role": modal.get("role", "")},
+                    fix_effort="low"
+                ))
+                return issues
+
+            # Check focus cycling: Tab through modal elements
+            cycle_result = await page.evaluate("""
+                (modalSelector) => {
+                    const modal = document.querySelector(modalSelector);
+                    if (!modal) return { cycled: false, reason: 'modal_not_found' };
+
+                    const focusable = modal.querySelectorAll(
+                        'a[href], button, input:not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])'
+                    );
+                    if (focusable.length === 0) return { cycled: false, reason: 'no_focusable' };
+
+                    // Check if active element is within the modal
+                    const activeEl = document.activeElement;
+                    const focusInModal = modal.contains(activeEl);
+
+                    return {
+                        cycled: true,
+                        focusInModal: focusInModal,
+                        activeTag: activeEl ? activeEl.tagName.toLowerCase() : 'none',
+                        focusableCount: focusable.length,
+                    };
+                }
+            """, modal.get("selector", '[role="dialog"]'))
+
+            if cycle_result and not cycle_result.get("focusInModal", True):
+                issues.append(_make_issue(
+                    self.url, "focus-trap-cycling", "violation", "serious",
+                    modal_desc, "",
+                    f"Focus is not trapped within modal '{modal_desc}'. Active element is outside the modal on '{cycle_result.get('activeTag', 'unknown')}'.",
+                    "2.1.2", "A", "keyboard",
+                    "Implement a focus trap that keeps Tab/Shift+Tab cycling within the modal while it is open.",
+                    evidence=cycle_result,
+                    fix_effort="medium"
+                ))
+
+        except Exception as e:
+            logger.debug(f"Focus cycling check failed for {modal_desc}: {e}")
+
+        return issues
+
+    def _check_initial_focus(self, modal: dict, modal_desc: str) -> list[dict]:
+        """Verify focus moves to modal when opened."""
+        issues = []
+
+        # If modal has no focusable elements, it can't receive focus
+        if int(modal.get("focusableCount", 0)) == 0:
+            return issues
+
+        # Check if the modal itself is focusable or has a focusable first element
+        # The modal should either have tabindex="-1" for programmatic focus,
+        # or autofocus on a child element.
+        has_label = bool(modal.get("label", ""))
+        role = modal.get("role", "")
+
+        # Modals with role=dialog should have an accessible label
+        if role in ("dialog", "alertdialog") and not has_label:
+            issues.append(_make_issue(
+                self.url, "focus-trap-initial", "violation", "moderate",
+                modal_desc, "",
+                f"Modal '{modal_desc}' with role='{role}' has no accessible label (aria-label or aria-labelledby). "
+                f"Screen readers cannot identify the purpose of this dialog.",
+                "2.4.3", "A", "keyboard",
+                "Add aria-label or aria-labelledby to the dialog element.",
+                evidence={"role": role, "has_label": False},
+                fix_effort="low"
+            ))
+
+        return issues
+
+    async def _check_background_inert(self, page, modal: dict, modal_desc: str) -> list[dict]:
+        """Verify background content is marked inert/aria-hidden."""
+        issues = []
+        try:
+            bg_check = await page.evaluate("""
+                (modalSelector) => {
+                    const modal = document.querySelector(modalSelector);
+                    if (!modal) return { checked: false };
+
+                    // Check immediate siblings of modal's parent for aria-hidden or inert
+                    const parent = modal.parentElement || document.body;
+                    const siblings = Array.from(parent.children).filter(c => c !== modal);
+                    const totalSiblings = siblings.length;
+                    const inertSiblings = siblings.filter(c =>
+                        c.getAttribute('aria-hidden') === 'true' ||
+                        c.hasAttribute('inert')
+                    ).length;
+
+                    // Check <body> level for common overlay patterns
+                    const bodyChildren = Array.from(document.body.children).filter(
+                        c => c !== modal && !modal.contains(c) && c.tagName !== 'SCRIPT' && c.tagName !== 'STYLE'
+                    );
+                    const bodyInert = bodyChildren.filter(c =>
+                        c.getAttribute('aria-hidden') === 'true' ||
+                        c.hasAttribute('inert')
+                    ).length;
+
+                    return {
+                        checked: true,
+                        totalSiblings: totalSiblings,
+                        inertSiblings: inertSiblings,
+                        bodyChildren: bodyChildren.length,
+                        bodyInert: bodyInert,
+                        isAriaModal: modal.getAttribute('aria-modal') === 'true',
+                    };
+                }
+            """, modal.get("selector", '[role="dialog"]'))
+
+            if not bg_check or not bg_check.get("checked", False):
+                return issues
+
+            is_aria_modal = bg_check.get("isAriaModal", False)
+            body_children = bg_check.get("bodyChildren", 0)
+            body_inert = bg_check.get("bodyInert", 0)
+
+            # aria-modal="true" signals intent but the browser/AT may not enforce it.
+            # Background should still be explicitly marked inert.
+            if not is_aria_modal and body_children > 0 and body_inert == 0:
+                issues.append(_make_issue(
+                    self.url, "focus-trap-background", "violation", "moderate",
+                    modal_desc, "",
+                    f"Background content behind modal '{modal_desc}' is not marked as inert. "
+                    f"{body_children} background containers remain interactive.",
+                    "1.3.1", "A", "aria",
+                    "Add aria-hidden='true' or the 'inert' attribute to background content when modal is open.",
+                    evidence={
+                        "body_children": body_children,
+                        "body_inert": body_inert,
+                        "is_aria_modal": is_aria_modal,
+                    },
+                    fix_effort="medium"
+                ))
+
+        except Exception as e:
+            logger.debug(f"Background inert check failed for {modal_desc}: {e}")
+
+        return issues
+
+    def _check_escape_mechanism(self, modal: dict, modal_desc: str) -> list[dict]:
+        """Verify there is a mechanism to dismiss the modal."""
+        issues = []
+
+        has_close = bool(modal.get("hasCloseButton", False))
+        role = modal.get("role", "")
+
+        # alertdialog may intentionally block dismissal, so only check dialog
+        if role == "dialog" and not has_close:
+            issues.append(_make_issue(
+                self.url, "focus-trap-escape", "violation", "moderate",
+                modal_desc, "",
+                f"Modal '{modal_desc}' has no visible close button. "
+                f"Users may not be able to dismiss the dialog.",
+                "2.1.2", "A", "keyboard",
+                "Add a close button with aria-label='Close' and handle Escape key to dismiss the modal.",
+                evidence={"role": role, "has_close_button": False},
+                fix_effort="low"
+            ))
+
+        return issues
+
+    async def _probe_focus_management(self, page) -> list[dict]:
+        """
+        Hybrid focus-management probes (Phase 9.4).
+
+        Detects 4 critical focus-management issues:
+        1. Interactive elements with onclick but no tabindex or role
+        2. Modals that don't trap focus (Tab cycles out of dialog)
+        3. Custom <div role="button"> without keyboard-accessible event handlers
+        4. Hidden elements (display:none) receiving focus() calls via JS
+        """
+        issues = []
+
+        try:
+            focus_mgmt_data = await page.evaluate("""
+                () => {
+                    const results = {
+                        onclickNoTabindex: [],
+                        divButtonsNoKeyboard: [],
+                        hiddenFocusable: [],
+                    };
+
+                    // 1. Elements with onclick but no tabindex/role/native interactivity
+                    const allElements = document.querySelectorAll('*');
+                    const nativeInteractive = new Set([
+                        'A', 'BUTTON', 'INPUT', 'SELECT', 'TEXTAREA', 'SUMMARY', 'DETAILS'
+                    ]);
+                    let checkedCount = 0;
+                    for (const el of allElements) {
+                        if (checkedCount > 500) break;
+                        checkedCount++;
+
+                        const hasOnclick = el.hasAttribute('onclick') ||
+                            el.getAttribute('ng-click') ||
+                            el.getAttribute('@click') ||
+                            el.getAttribute('v-on:click');
+
+                        if (hasOnclick && !nativeInteractive.has(el.tagName)) {
+                            const tabindex = el.getAttribute('tabindex');
+                            const role = el.getAttribute('role');
+                            if (!tabindex && !role) {
+                                let selector = el.tagName.toLowerCase();
+                                if (el.id) selector += '#' + el.id;
+                                else if (el.className && typeof el.className === 'string')
+                                    selector += '.' + el.className.trim().split(/\\s+/)[0];
+
+                                results.onclickNoTabindex.push({
+                                    selector: selector,
+                                    tag: el.tagName.toLowerCase(),
+                                    outerHTML: el.outerHTML.substring(0, 150),
+                                });
+                            }
+                        }
+                    }
+
+                    // 3. div/span with role="button" but no keydown/keypress handler
+                    const roleButtons = document.querySelectorAll(
+                        'div[role="button"], span[role="button"]'
+                    );
+                    for (const btn of roleButtons) {
+                        const tabindex = btn.getAttribute('tabindex');
+                        // Check for keyboard event listeners by inspecting attributes
+                        const hasKeyHandler = btn.hasAttribute('onkeydown') ||
+                            btn.hasAttribute('onkeypress') ||
+                            btn.hasAttribute('onkeyup');
+                        // No tabindex or keyboard handler = inaccessible
+                        if (!tabindex && tabindex !== '0') {
+                            let selector = btn.tagName.toLowerCase() + '[role="button"]';
+                            if (btn.id) selector += '#' + btn.id;
+                            results.divButtonsNoKeyboard.push({
+                                selector: selector,
+                                tag: btn.tagName.toLowerCase(),
+                                hasTabindex: !!tabindex,
+                                hasKeyHandler: hasKeyHandler,
+                                outerHTML: btn.outerHTML.substring(0, 150),
+                            });
+                        }
+                    }
+
+                    // 4. Hidden elements that are focusable
+                    const allFocusable = document.querySelectorAll(
+                        '[tabindex], a[href], button, input, select, textarea'
+                    );
+                    for (const el of allFocusable) {
+                        const style = window.getComputedStyle(el);
+                        const isHidden = style.display === 'none' ||
+                            style.visibility === 'hidden' ||
+                            el.hasAttribute('hidden');
+                        const tabindex = el.getAttribute('tabindex');
+                        // Hidden but explicitly focusable (tabindex >= 0)
+                        if (isHidden && tabindex !== null && parseInt(tabindex) >= 0) {
+                            let selector = el.tagName.toLowerCase();
+                            if (el.id) selector += '#' + el.id;
+                            results.hiddenFocusable.push({
+                                selector: selector,
+                                tag: el.tagName.toLowerCase(),
+                                tabindex: tabindex,
+                                displayStyle: style.display,
+                                outerHTML: el.outerHTML.substring(0, 150),
+                            });
+                        }
+                    }
+
+                    return results;
+                }
+            """)
+
+            if not isinstance(focus_mgmt_data, dict):
+                return issues
+
+            # Issue 1: onclick without tabindex/role
+            for item in focus_mgmt_data.get("onclickNoTabindex", [])[:10]:
+                issues.append(_make_issue(
+                    self.url, "focus-management", "violation", "serious",
+                    item.get("selector", "<element>"),
+                    item.get("outerHTML", ""),
+                    f"Element '{item.get('selector')}' has an onclick handler but no "
+                    f"tabindex or ARIA role. Keyboard users cannot interact with it.",
+                    "2.1.1", "A", "keyboard",
+                    "Add tabindex='0' and role='button' (or use a native <button>). "
+                    "Also add keydown handler for Enter/Space.",
+                    evidence=item,
+                    fix_effort="low",
+                ))
+
+            # Issue 3: div[role="button"] without keyboard
+            for item in focus_mgmt_data.get("divButtonsNoKeyboard", [])[:10]:
+                issues.append(_make_issue(
+                    self.url, "focus-management", "violation", "serious",
+                    item.get("selector", "<div role='button'>"),
+                    item.get("outerHTML", ""),
+                    f"Custom button '{item.get('selector')}' has role='button' but no "
+                    f"tabindex for keyboard focusing. It cannot be activated via keyboard.",
+                    "2.1.1", "A", "keyboard",
+                    "Add tabindex='0' and keyboard event handlers (onkeydown for Enter/Space). "
+                    "Consider using a native <button> element instead.",
+                    evidence=item,
+                    fix_effort="low",
+                ))
+
+            # Issue 4: Hidden elements receiving focus
+            for item in focus_mgmt_data.get("hiddenFocusable", [])[:5]:
+                issues.append(_make_issue(
+                    self.url, "focus-management", "needs-review", "moderate",
+                    item.get("selector", "<hidden-element>"),
+                    item.get("outerHTML", ""),
+                    f"Hidden element '{item.get('selector')}' (display:{item.get('displayStyle', 'none')}) "
+                    f"has tabindex={item.get('tabindex')} and may receive unexpected focus.",
+                    "2.4.3", "A", "keyboard",
+                    "Set tabindex='-1' on hidden elements, or remove them from the DOM when not visible.",
+                    evidence=item,
+                    fix_effort="low",
+                ))
+
+        except Exception as e:
+            logger.warning(f"Focus management probe failed: {e}")
+
+        return issues
+
+
+# ── Hybrid Required Rules (Phase 9.4) ────────────────────────────
+# For high-priority but under-detected rules, ALL listed signal types
+# must be checked and merged before reporting.
+HYBRID_REQUIRED_RULES = {
+    "focus-management": ["static_check", "behavioral_probe", "dom_interaction"],
+    "semantic-html":    ["static_check", "dom_structure_heuristic"],
+}

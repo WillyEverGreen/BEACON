@@ -267,6 +267,42 @@ export default function ProjectDetailPage() {
       issues.filter((i: any) => i.severity === "minor").length,
   };
 
+  const trust = latestScan?.trust || {};
+  const trustWarnings: string[] = Array.isArray(trust.calibration_warnings)
+    ? trust.calibration_warnings
+    : [];
+  const lowTrustRules: string[] = Array.isArray(trust.low_trust_rules_present)
+    ? trust.low_trust_rules_present
+    : [];
+  const enginesCoverage =
+    trust.engines_coverage && typeof trust.engines_coverage === "object"
+      ? trust.engines_coverage
+      : {};
+  const confidenceAvg =
+    typeof trust.confidence_avg === "number"
+      ? trust.confidence_avg
+      : latestScan?.issues?.length
+        ? latestScan.issues.reduce(
+            (sum: number, issue: any) => sum + (Number(issue?.confidence) || 0),
+            0,
+          ) / latestScan.issues.length
+        : 0;
+  const suppressionRate =
+    typeof trust.suppression_rate === "number" ? trust.suppression_rate : 0;
+  const trustDataQuality =
+    typeof trust.data_quality === "string" && trust.data_quality
+      ? trust.data_quality
+      : "unknown";
+  const trustCompleteness =
+    typeof trust.audit_completeness === "string" && trust.audit_completeness
+      ? trust.audit_completeness
+      : latestScan?.degraded_mode
+        ? "partial"
+        : "full";
+  const trustIntegrityCaps: any[] = Array.isArray(trust.score_integrity?.caps_applied)
+    ? trust.score_integrity.caps_applied
+    : [];
+
   const pieData = Object.entries(severityCounts)
     .filter(([, v]) => v > 0)
     .map(([sev, count]) => ({
@@ -744,6 +780,100 @@ export default function ProjectDetailPage() {
               </div>
             </div>
           )}
+
+          {/* Trust Observability */}
+          <div className="glass-card p-6 border-l-[6px] border-l-[var(--beacon-primary)]">
+            <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+              <h3 className="text-sm font-bold uppercase tracking-[0.15em] text-[var(--beacon-text)]">
+                Trust Observability
+              </h3>
+              <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.1em]">
+                <span className="bg-[var(--beacon-surface)] border border-[var(--beacon-border)] px-2 py-1 rounded">
+                  Data Quality: {trustDataQuality}
+                </span>
+                <span className="bg-[var(--beacon-surface)] border border-[var(--beacon-border)] px-2 py-1 rounded">
+                  Completeness: {trustCompleteness}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              <div className="bg-[var(--beacon-surface)] border border-[var(--beacon-border)] rounded-md p-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--beacon-text-muted)]">
+                  Avg Confidence
+                </p>
+                <p className="text-xl font-extrabold text-[var(--beacon-text)] mt-1">
+                  {(confidenceAvg * 100).toFixed(1)}%
+                </p>
+              </div>
+              <div className="bg-[var(--beacon-surface)] border border-[var(--beacon-border)] rounded-md p-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--beacon-text-muted)]">
+                  Suppression Rate
+                </p>
+                <p className="text-xl font-extrabold text-[var(--beacon-text)] mt-1">
+                  {(suppressionRate * 100).toFixed(1)}%
+                </p>
+              </div>
+              <div className="bg-[var(--beacon-surface)] border border-[var(--beacon-border)] rounded-md p-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--beacon-text-muted)]">
+                  Low-Trust Rules
+                </p>
+                <p className="text-xl font-extrabold text-[var(--beacon-text)] mt-1">
+                  {lowTrustRules.length}
+                </p>
+              </div>
+              <div className="bg-[var(--beacon-surface)] border border-[var(--beacon-border)] rounded-md p-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--beacon-text-muted)]">
+                  Integrity Caps
+                </p>
+                <p className="text-xl font-extrabold text-[var(--beacon-text)] mt-1">
+                  {trustIntegrityCaps.length}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2 mb-3">
+              {[
+                ["Static", !!enginesCoverage.static],
+                ["Browser", !!enginesCoverage.browser],
+                ["Axe", !!enginesCoverage.axe],
+                ["Heuristic", !!enginesCoverage.heuristic],
+              ].map(([label, enabled]) => (
+                <span
+                  key={String(label)}
+                  className={`text-[10px] font-extrabold uppercase tracking-[0.1em] px-2 py-1 rounded border ${
+                    enabled
+                      ? "bg-[var(--beacon-success)]/15 text-[var(--beacon-success)] border-[var(--beacon-success)]/40"
+                      : "bg-[var(--beacon-surface)] text-[var(--beacon-text-muted)] border-[var(--beacon-border)]"
+                  }`}
+                >
+                  {label}: {enabled ? "on" : "off"}
+                </span>
+              ))}
+            </div>
+
+            {lowTrustRules.length > 0 && (
+              <div className="mb-3 text-xs font-medium text-[var(--beacon-text-soft)]">
+                <span className="font-bold text-[var(--beacon-text)] uppercase tracking-[0.08em] text-[10px]">
+                  Low-Trust Rules:
+                </span>{" "}
+                {lowTrustRules.join(", ")}
+              </div>
+            )}
+
+            {trustWarnings.length > 0 && (
+              <div className="space-y-2">
+                {trustWarnings.slice(0, 4).map((warning, idx) => (
+                  <p
+                    key={`${warning}-${idx}`}
+                    className="text-xs font-medium text-[var(--beacon-warning)] bg-[var(--beacon-warning)]/10 border border-[var(--beacon-warning)]/30 rounded px-3 py-2"
+                  >
+                    {warning}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Engines & Meta */}
           <div className="glass-card p-5 px-6 flex flex-wrap items-center justify-between gap-6 text-xs text-[var(--beacon-text-muted)] font-bold">

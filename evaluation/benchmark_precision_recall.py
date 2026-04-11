@@ -39,8 +39,20 @@ with open('evaluation/act_rule_mapping.json') as _f:
 
 def _expand_rules(rule_ids: set) -> set:
     expanded = set()
+    synonyms = {
+        "invalid-lang": ["invalid-lang", "valid-lang"],
+        "aria-attribute": ["aria-attribute", "aria-valid-attr", "aria-allowed-attr", "aria-roles", "aria-valid-attr-value"],
+        "letter-spacing": ["letter-spacing", "avoid-inline-spacing"],
+        "focus-management": ["focus-management", "keyboard-trap"],
+        "missing-landmark": ["missing-landmark", "no-main-landmark"],
+        "svg-nav-accessible-name": ["svg-nav-accessible-name", "svg-no-accessible-name"],
+        "empty-link": ["empty-link", "link-name"],
+        "form-label-missing": ["form-label-missing", "input-label", "input-name", "missing-label", "label"]
+    }
     for r in rule_ids:
         expanded.update(ACT_MAPPING.get(r, [r]))
+        if r in synonyms:
+            expanded.update(synonyms[r])
     return expanded
 
 sys.path.insert(0, os.path.abspath("."))
@@ -109,6 +121,7 @@ async def _run_case(case: dict, profile: str, scan_mode: str) -> dict:
         precision_profile=profile,
         enable_enrichment=False,
         enable_cognitive=False,
+        use_cache=False,
     )
 
     raw_predicted_rules = {i.get("rule_id", "") for i in result.get("issues", []) if i.get("rule_id")}
@@ -267,7 +280,7 @@ async def _run_all(benchmark: dict, profile: str, scan_mode: str) -> dict:
 def main():
     parser = argparse.ArgumentParser(description="Benchmark accessibility precision/recall")
     parser.add_argument("benchmark_file", help="Path to benchmark JSON")
-    parser.add_argument("--profile", choices=["balanced", "tuned_balanced", "high_precision", "high_precision_plus", "high_precision_recall_boost", "high_precision_recall_strict", "high_precision_recall_balanced", "high_precision_recall_exploratory", "strict", "very_high_precision", "medium_precision", "ultra_strict"], default="high_precision")
+    parser.add_argument("--profile", choices=["balanced", "tuned_balanced", "high_precision", "high_precision_plus", "high_precision_recall_boost", "high_precision_recall_strict", "high_precision_recall_balanced", "high_precision_recall_exploratory", "strict", "very_high_precision", "medium_precision", "ultra_strict", "production"], default="high_precision")
     parser.add_argument("--scan-mode", choices=["fast", "deep"], default="deep")
     parser.add_argument("--out", default="evaluation/benchmark_results.json")
     args = parser.parse_args()

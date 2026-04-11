@@ -277,6 +277,13 @@ PRECISION_PROFILES = {
         "include_needs_review": False,
         "exclude_contextual_single_source": True,
     },
+    # Production profile: tuned for trust via rule_quality_policy.json.
+    # Phase 1: opt-in only. Phase 2: A/B test. Phase 3: default.
+    "production": {
+        "min_confidence": 0.75,
+        "include_needs_review": False,
+        "exclude_contextual_single_source": True,
+    },
 }
 
 # ── Confidence Weights ──────────────────────────────────────────
@@ -357,6 +364,36 @@ SCORING_CONFIG = {
 
     # Starting score ceiling (before penalties)
     "score_max": 100,
+}
+
+# ── Trust Calibration (Phase 10) ─────────────────────────────
+# Config-driven calibration knobs to tune score behavior without rewriting
+# detector logic or API contracts.
+TRUST_CALIBRATION = {
+    "min_confidence_for_scoring": 0.60,
+    "min_confidence_for_summary": 0.60,
+    "penalty_exponent": 0.65,              # was 0.70 — more aggressive diminishing returns
+    "repeat_instance_weight": 0.20,
+    "hidden_element_penalty_multiplier": 0.30,
+    "above_fold_penalty_multiplier": 1.50,
+    "category_base_weights": {
+        "critical": 4.0,
+        "major": 2.1,
+        "minor": 0.8,
+    },
+    "category_penalty_caps": {
+        "critical": 22.0,
+        "major": 14.0,
+        "minor": 8.0,
+    },
+    "high_quality_floor": {
+        "enabled": True,
+        "signal_threshold": 0.85,
+        "score_floor": 75.0,
+        "max_critical_issues": 0,
+        "max_scorable_issues": 8,
+        "min_high_confidence_ratio": 0.70,
+    },
 }
 
 # ── Domain Classification ──────────────────────────────────────
@@ -473,6 +510,27 @@ PAGE_LEVEL_RULES = {
     "no-lang", "missing-lang", "no-title", "no-headings", "no-main-landmark",
     "no-h1", "no-nav-landmark", "no-header-landmark", "no-footer-landmark",
     "missing-skip-link",
+}
+
+# ── Structural FP Rules (Production Readiness) ──────────────────
+# Rules that generate technically-correct but contextually-irrelevant findings.
+# Suppressed via weight-based filtering in _apply_precision_profile, NOT by
+# reducing confidence (confidence ≠ visibility — see design constraints).
+STRUCTURAL_FP_RULES = {
+    "landmark-roles", "no-main-landmark", "region",
+    "no-nav-landmark", "no-header-landmark", "no-footer-landmark",
+    "no-headings",
+}
+
+# ── Canonical Metric Definitions ─────────────────────────────────
+# Ensures p95 is calculated identically across all benchmark suites.
+METRIC_DEFINITIONS = {
+    "fast_mode_p95_time": {
+        "scope": "successful_audits_only",
+        "exclude_degraded": True,
+        "exclude_timeouts": True,
+        "timeout_threshold_seconds": 30,
+    },
 }
 
 # ── User Impact Scores ─────────────────────────────────────────────

@@ -1,0 +1,612 @@
+{
+  "balanced": [
+    {
+      "name": "Apple",
+      "url": "https://www.apple.com",
+      "tier": "gold",
+      "profile": "balanced",
+      "score": 91.6,
+      "total_issues": 4,
+      "structural_fp_count": 0,
+      "structural_rules_found": [],
+      "severity_breakdown": {
+        "serious": 2,
+        "critical": 1,
+        "moderate": 1
+      },
+      "scan_time_seconds": 1.01,
+      "degraded_mode": false,
+      "engines_used": [
+        "static",
+        "heuristic"
+      ],
+      "top_rules": [
+        "aria-hidden-focusable",
+        "duplicate-id",
+        "empty-link",
+        "missing-skip-link"
+      ],
+      "dropped_structural": 2,
+      "suppression_rate": 0.25,
+      "suppression_warning": false,
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "GOV.UK",
+      "url": "https://www.gov.uk",
+      "tier": "gold",
+      "profile": "balanced",
+      "score": 98.2,
+      "total_issues": 1,
+      "structural_fp_count": 0,
+      "structural_rules_found": [],
+      "severity_breakdown": {
+        "critical": 1
+      },
+      "scan_time_seconds": 0.41,
+      "degraded_mode": false,
+      "engines_used": [
+        "static",
+        "heuristic"
+      ],
+      "top_rules": [
+        "aria-hidden-focusable"
+      ],
+      "dropped_structural": 0,
+      "suppression_rate": 0.125,
+      "suppression_warning": false,
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "Wikipedia",
+      "url": "https://en.wikipedia.org",
+      "tier": "gold",
+      "profile": "balanced",
+      "score": 91.7,
+      "total_issues": 4,
+      "structural_fp_count": 0,
+      "structural_rules_found": [],
+      "severity_breakdown": {
+        "serious": 3,
+        "minor": 1
+      },
+      "scan_time_seconds": 1.14,
+      "degraded_mode": false,
+      "engines_used": [
+        "static",
+        "heuristic"
+      ],
+      "top_rules": [
+        "empty-link",
+        "table-no-caption",
+        "table-no-headers",
+        "unlabeled-icon"
+      ],
+      "dropped_structural": 1,
+      "suppression_rate": 0.133,
+      "suppression_warning": false,
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "BBC",
+      "url": "https://www.bbc.com",
+      "tier": "high",
+      "profile": "balanced",
+      "score": 86.0,
+      "total_issues": 9,
+      "structural_fp_count": 0,
+      "structural_rules_found": [],
+      "severity_breakdown": {
+        "critical": 2,
+        "serious": 7
+      },
+      "scan_time_seconds": 0.49,
+      "degraded_mode": false,
+      "engines_used": [
+        "static",
+        "heuristic"
+      ],
+      "top_rules": [
+        "duplicate-id",
+        "empty-link",
+        "form-label-missing",
+        "input-label",
+        "missing-alt",
+        "missing-h1",
+        "missing-label",
+        "placeholder-as-label",
+        "svg-accessible-name"
+      ],
+      "dropped_structural": 1,
+      "suppression_rate": 0.158,
+      "suppression_warning": false,
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "GitHub",
+      "url": "https://github.com",
+      "tier": "high",
+      "profile": "balanced",
+      "score": 86.0,
+      "total_issues": 9,
+      "structural_fp_count": 0,
+      "structural_rules_found": [],
+      "severity_breakdown": {
+        "critical": 2,
+        "serious": 5,
+        "moderate": 2
+      },
+      "scan_time_seconds": 0.54,
+      "degraded_mode": false,
+      "engines_used": [
+        "static",
+        "heuristic"
+      ],
+      "top_rules": [
+        "aria-required-children",
+        "broken-aria-description",
+        "form-label-missing",
+        "input-label",
+        "input-name",
+        "missing-label",
+        "multiple-h1",
+        "role-no-name",
+        "unsafe-external-link"
+      ],
+      "dropped_structural": 1,
+      "suppression_rate": 0.105,
+      "suppression_warning": false,
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "MDN Web Docs",
+      "url": "https://developer.mozilla.org",
+      "tier": "high",
+      "profile": "balanced",
+      "score": 92.4,
+      "total_issues": 4,
+      "structural_fp_count": 0,
+      "structural_rules_found": [],
+      "severity_breakdown": {
+        "critical": 1,
+        "serious": 2,
+        "moderate": 1
+      },
+      "scan_time_seconds": 0.8,
+      "degraded_mode": false,
+      "engines_used": [
+        "static",
+        "heuristic"
+      ],
+      "top_rules": [
+        "button-name",
+        "empty-link",
+        "svg-accessible-name",
+        "unsafe-external-link"
+      ],
+      "dropped_structural": 2,
+      "suppression_rate": 0.273,
+      "suppression_warning": false,
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "Stack Overflow",
+      "url": "https://stackoverflow.com",
+      "tier": "medium",
+      "profile": "balanced",
+      "score": 86.0,
+      "total_issues": 9,
+      "structural_fp_count": 0,
+      "structural_rules_found": [],
+      "severity_breakdown": {
+        "serious": 6,
+        "moderate": 3
+      },
+      "scan_time_seconds": 1.73,
+      "degraded_mode": false,
+      "engines_used": [
+        "static",
+        "heuristic"
+      ],
+      "top_rules": [
+        "aria-required-children",
+        "broken-aria-description",
+        "broken-aria-label",
+        "duplicate-id",
+        "empty-link",
+        "heading-order",
+        "link-purpose",
+        "multiple-h1",
+        "svg-accessible-name"
+      ],
+      "dropped_structural": 0,
+      "suppression_rate": 0.042,
+      "suppression_warning": false,
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "Reddit",
+      "url": "https://www.reddit.com",
+      "tier": "medium",
+      "profile": "balanced",
+      "score": 96.4,
+      "total_issues": 2,
+      "structural_fp_count": 0,
+      "structural_rules_found": [],
+      "severity_breakdown": {
+        "serious": 2
+      },
+      "scan_time_seconds": 0.32,
+      "degraded_mode": false,
+      "engines_used": [
+        "static",
+        "heuristic"
+      ],
+      "top_rules": [
+        "no-headings",
+        "svg-accessible-name"
+      ],
+      "dropped_structural": 3,
+      "suppression_rate": 0.6,
+      "suppression_warning": false,
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "Amazon",
+      "url": "https://www.amazon.com",
+      "tier": "complex",
+      "profile": "balanced",
+      "score": 98.2,
+      "total_issues": 1,
+      "structural_fp_count": 0,
+      "structural_rules_found": [],
+      "severity_breakdown": {
+        "serious": 1
+      },
+      "scan_time_seconds": 0.38,
+      "degraded_mode": false,
+      "engines_used": [
+        "static",
+        "heuristic"
+      ],
+      "top_rules": [
+        "no-title"
+      ],
+      "dropped_structural": 5,
+      "suppression_rate": 0.833,
+      "suppression_warning": true,
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "YouTube",
+      "url": "https://www.youtube.com",
+      "tier": "complex",
+      "profile": "balanced",
+      "score": 98.2,
+      "total_issues": 1,
+      "structural_fp_count": 0,
+      "structural_rules_found": [],
+      "severity_breakdown": {
+        "serious": 1
+      },
+      "scan_time_seconds": 0.61,
+      "degraded_mode": false,
+      "engines_used": [
+        "static",
+        "heuristic"
+      ],
+      "top_rules": [
+        "no-headings"
+      ],
+      "dropped_structural": 5,
+      "suppression_rate": 0.833,
+      "suppression_warning": true,
+      "success": true,
+      "error": null
+    }
+  ],
+  "production": [
+    {
+      "name": "Apple",
+      "url": "https://www.apple.com",
+      "tier": "gold",
+      "profile": "production",
+      "score": 93.4,
+      "total_issues": 3,
+      "structural_fp_count": 0,
+      "structural_rules_found": [],
+      "severity_breakdown": {
+        "serious": 2,
+        "critical": 1
+      },
+      "scan_time_seconds": 0.63,
+      "degraded_mode": false,
+      "engines_used": [
+        "static",
+        "heuristic"
+      ],
+      "top_rules": [
+        "aria-hidden-focusable",
+        "duplicate-id",
+        "empty-link"
+      ],
+      "dropped_structural": 2,
+      "suppression_rate": 0.5,
+      "suppression_warning": false,
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "GOV.UK",
+      "url": "https://www.gov.uk",
+      "tier": "gold",
+      "profile": "production",
+      "score": 98.2,
+      "total_issues": 1,
+      "structural_fp_count": 0,
+      "structural_rules_found": [],
+      "severity_breakdown": {
+        "critical": 1
+      },
+      "scan_time_seconds": 0.47,
+      "degraded_mode": false,
+      "engines_used": [
+        "static",
+        "heuristic"
+      ],
+      "top_rules": [
+        "aria-hidden-focusable"
+      ],
+      "dropped_structural": 0,
+      "suppression_rate": 0.875,
+      "suppression_warning": true,
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "Wikipedia",
+      "url": "https://en.wikipedia.org",
+      "tier": "gold",
+      "profile": "production",
+      "score": 95.1,
+      "total_issues": 2,
+      "structural_fp_count": 0,
+      "structural_rules_found": [],
+      "severity_breakdown": {
+        "serious": 2
+      },
+      "scan_time_seconds": 1.46,
+      "degraded_mode": false,
+      "engines_used": [
+        "static",
+        "heuristic"
+      ],
+      "top_rules": [
+        "empty-link",
+        "unlabeled-icon"
+      ],
+      "dropped_structural": 1,
+      "suppression_rate": 0.533,
+      "suppression_warning": false,
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "BBC",
+      "url": "https://www.bbc.com",
+      "tier": "high",
+      "profile": "production",
+      "score": 86.6,
+      "total_issues": 7,
+      "structural_fp_count": 0,
+      "structural_rules_found": [],
+      "severity_breakdown": {
+        "critical": 1,
+        "serious": 6
+      },
+      "scan_time_seconds": 0.53,
+      "degraded_mode": false,
+      "engines_used": [
+        "static",
+        "heuristic"
+      ],
+      "top_rules": [
+        "duplicate-id",
+        "empty-link",
+        "form-label-missing",
+        "input-label",
+        "missing-h1",
+        "missing-label",
+        "svg-accessible-name"
+      ],
+      "dropped_structural": 1,
+      "suppression_rate": 0.474,
+      "suppression_warning": false,
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "GitHub",
+      "url": "https://github.com",
+      "tier": "high",
+      "profile": "production",
+      "score": 87.3,
+      "total_issues": 7,
+      "structural_fp_count": 0,
+      "structural_rules_found": [],
+      "severity_breakdown": {
+        "critical": 2,
+        "serious": 4,
+        "moderate": 1
+      },
+      "scan_time_seconds": 0.66,
+      "degraded_mode": false,
+      "engines_used": [
+        "static",
+        "heuristic"
+      ],
+      "top_rules": [
+        "aria-required-children",
+        "broken-aria-description",
+        "form-label-missing",
+        "input-label",
+        "input-name",
+        "missing-label",
+        "multiple-h1"
+      ],
+      "dropped_structural": 1,
+      "suppression_rate": 0.632,
+      "suppression_warning": false,
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "MDN Web Docs",
+      "url": "https://developer.mozilla.org",
+      "tier": "high",
+      "profile": "production",
+      "score": 94.2,
+      "total_issues": 3,
+      "structural_fp_count": 0,
+      "structural_rules_found": [],
+      "severity_breakdown": {
+        "critical": 1,
+        "serious": 2
+      },
+      "scan_time_seconds": 0.8,
+      "degraded_mode": false,
+      "engines_used": [
+        "static",
+        "heuristic"
+      ],
+      "top_rules": [
+        "button-name",
+        "empty-link",
+        "svg-accessible-name"
+      ],
+      "dropped_structural": 1,
+      "suppression_rate": 0.636,
+      "suppression_warning": false,
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "Stack Overflow",
+      "url": "https://stackoverflow.com",
+      "tier": "medium",
+      "profile": "production",
+      "score": 86.0,
+      "total_issues": 9,
+      "structural_fp_count": 0,
+      "structural_rules_found": [],
+      "severity_breakdown": {
+        "serious": 6,
+        "moderate": 3
+      },
+      "scan_time_seconds": 1.8,
+      "degraded_mode": false,
+      "engines_used": [
+        "static",
+        "heuristic"
+      ],
+      "top_rules": [
+        "aria-required-children",
+        "broken-aria-description",
+        "broken-aria-label",
+        "duplicate-id",
+        "empty-link",
+        "heading-order",
+        "link-purpose",
+        "multiple-h1",
+        "svg-accessible-name"
+      ],
+      "dropped_structural": 0,
+      "suppression_rate": 0.333,
+      "suppression_warning": false,
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "Reddit",
+      "url": "https://www.reddit.com",
+      "tier": "medium",
+      "profile": "production",
+      "score": 98.2,
+      "total_issues": 1,
+      "structural_fp_count": 0,
+      "structural_rules_found": [],
+      "severity_breakdown": {
+        "serious": 1
+      },
+      "scan_time_seconds": 0.34,
+      "degraded_mode": false,
+      "engines_used": [
+        "static",
+        "heuristic"
+      ],
+      "top_rules": [
+        "svg-accessible-name"
+      ],
+      "dropped_structural": 3,
+      "suppression_rate": 0.8,
+      "suppression_warning": true,
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "Amazon",
+      "url": "https://www.amazon.com",
+      "tier": "complex",
+      "profile": "production",
+      "score": 100.0,
+      "total_issues": 0,
+      "structural_fp_count": 0,
+      "structural_rules_found": [],
+      "severity_breakdown": {},
+      "scan_time_seconds": 0.31,
+      "degraded_mode": false,
+      "engines_used": [
+        "static",
+        "heuristic"
+      ],
+      "top_rules": [],
+      "dropped_structural": 4,
+      "suppression_rate": 1.0,
+      "suppression_warning": true,
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "YouTube",
+      "url": "https://www.youtube.com",
+      "tier": "complex",
+      "profile": "production",
+      "score": 100.0,
+      "total_issues": 0,
+      "structural_fp_count": 0,
+      "structural_rules_found": [],
+      "severity_breakdown": {},
+      "scan_time_seconds": 0.65,
+      "degraded_mode": false,
+      "engines_used": [
+        "static",
+        "heuristic"
+      ],
+      "top_rules": [],
+      "dropped_structural": 4,
+      "suppression_rate": 1.0,
+      "suppression_warning": true,
+      "success": true,
+      "error": null
+    }
+  ]
+}

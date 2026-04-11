@@ -10,7 +10,7 @@ const JOB_STATUS = Object.freeze({
 
 const ALLOWED_MODES = Object.freeze(["fast", "balanced", "deep"]);
 
-function createJobRecord({ url, mode, ip }) {
+function createJobRecord({ url, mode, ip, request_id = null }) {
   return {
     id: uuidv4(),
     url,
@@ -23,6 +23,7 @@ function createJobRecord({ url, mode, ip }) {
     result: null,
     error: null,
     ip: ip || "unknown",
+    request_id,
   };
 }
 

@@ -6,7 +6,7 @@ import asyncio
 import json
 import logging
 import time
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from app.models import (
     AuditRequest, AuditResponse, AuditIssue, IssueGroup,
@@ -20,8 +20,65 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/audit", tags=["Audit"])
 
 
+def _build_explain_payload(result: dict) -> dict:
+    score_distribution = result.get("score_distribution") if isinstance(result.get("score_distribution"), dict) else {}
+    score_explanation = result.get("score_explanation") if isinstance(result.get("score_explanation"), dict) else {}
+    issues = result.get("issues") if isinstance(result.get("issues"), list) else []
+
+    confidence_summary = {"high": 0, "medium": 0, "low": 0}
+    for issue in issues:
+        if not isinstance(issue, dict):
+            continue
+        tier = str(issue.get("confidence_tier") or "").strip().lower()
+        if tier not in confidence_summary:
+            confidence = issue.get("confidence", 0.0)
+            try:
+                confidence_value = float(confidence)
+            except (TypeError, ValueError):
+                confidence_value = 0.0
+            if confidence_value >= 0.85:
+                tier = "high"
+            elif confidence_value >= 0.60:
+                tier = "medium"
+            else:
+                tier = "low"
+        confidence_summary[tier] += 1
+
+    top_impact_issues = []
+    for item in result.get("priority_ranking", [])[:5]:
+        if not isinstance(item, dict):
+            continue
+        top_impact_issues.append(
+            {
+                "rule": item.get("rule_id", "unknown"),
+                "impact": item.get("severity", "unknown"),
+                "occurrences": int(item.get("affected_count") or 1),
+            }
+        )
+
+    critical_penalty = float(score_distribution.get("critical_penalty", 0.0) or 0.0)
+    major_penalty = float(score_distribution.get("major_penalty", 0.0) or 0.0)
+    minor_penalty = float(score_distribution.get("minor_penalty", 0.0) or 0.0)
+    quality_bonus = float(score_explanation.get("quality_bonus", 0.0) or 0.0)
+
+    return {
+        "score_breakdown": {
+            "critical_penalty": round(critical_penalty, 3),
+            "serious_penalty": round(major_penalty, 3),
+            "major_penalty": round(major_penalty, 3),
+            "minor_penalty": round(minor_penalty, 3),
+            "quality_bonus": round(quality_bonus, 3),
+        },
+        "top_impact_issues": top_impact_issues,
+        "confidence_summary": confidence_summary,
+    }
+
+
 @router.post("", response_model=AuditResponse)
-async def audit_url(request: AuditRequest):
+async def audit_url(
+    request: AuditRequest,
+    explain: bool = Query(default=False, description="Include explainability payload in response"),
+):
     """
     Run accessibility audit on a URL.
     
@@ -112,8 +169,10 @@ async def audit_url(request: AuditRequest):
             summary=result["summary"],
             markdown_report=result.get("markdown_report", ""),
             scan_time_seconds=result.get("scan_time_seconds", 0),
+            pages_scanned=int(result.get("pages_scanned") or result.get("pages_audited") or 1),
             engines_used=result.get("engines_used", []),
             quality_gates=result.get("quality_gates", {}),
+            trust=result.get("trust", {}),
             browser_probe_metadata=result.get("browser_probe_metadata", {}),
             spa_framework=result.get("spa_framework"),
             is_spa=result.get("is_spa", False),
@@ -127,6 +186,7 @@ async def audit_url(request: AuditRequest):
             prioritized_issues=result.get("prioritized_issues", []),
             recommendations=result.get("recommendations", []),
             cognitive_mode=result.get("cognitive_mode", "off"),
+            explain=_build_explain_payload(result) if explain else None,
         )
 
     except Exception as e:

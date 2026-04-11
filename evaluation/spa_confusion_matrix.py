@@ -50,6 +50,7 @@ async def _evaluate_case(
                     max_enrich_issues=0,
                     enable_cognitive=False,
                     await_enrichment=False,
+                    use_cache=False,
                 ),
                 timeout=timeout_seconds,
             )

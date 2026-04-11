@@ -6,11 +6,20 @@ const { formatError } = require("./api/controllers/responseFormatter");
 const auditRoutes = require("./api/routes/audit.routes");
 const resultsRoutes = require("./api/routes/results.routes");
 const healthRoutes = require("./api/routes/health.routes");
+const monitoringRoutes = require("./api/routes/monitoring");
 
-const requestLogger = require("./api/middlewares/requestLogger");
 const timeoutGuard = require("./api/middlewares/timeoutGuard");
 const { rateLimiter } = require("./api/middlewares/rateLimiter");
 const errorHandler = require("./api/middlewares/errorHandler");
+const {
+  observabilityMiddleware,
+  registerProcessErrorHandlers,
+} = require("./api/middleware/observability");
+const { log } = require("./api/utils/logger");
+
+function isMonitoringRoute(pathname) {
+  return pathname === "/health" || pathname === "/metrics" || pathname === "/jobs/summary";
+}
 
 function createApp() {
   const app = express();
@@ -18,10 +27,16 @@ function createApp() {
   app.disable("x-powered-by");
   app.set("trust proxy", true);
 
-  app.use(requestLogger);
+  // Observability hook: request correlation + metrics + request lifecycle logs.
+  app.use(observabilityMiddleware);
   app.use(express.json({ limit: "1mb" }));
   app.use(timeoutGuard);
-  app.use(rateLimiter);
+  app.use((req, res, next) => {
+    if (isMonitoringRoute(req.path)) {
+      return next();
+    }
+    return rateLimiter(req, res, next);
+  });
 
   app.use((req, res, next) => {
     if (!jobManager.isAcceptingJobs() && req.method === "POST" && req.path === "/audit") {
@@ -33,6 +48,7 @@ function createApp() {
   app.use(auditRoutes);
   app.use(resultsRoutes);
   app.use(healthRoutes);
+  app.use(monitoringRoutes);
 
   app.use((req, res) => {
     res.status(404).json(formatError("Route not found", "ROUTE_NOT_FOUND"));
@@ -58,16 +74,14 @@ async function waitForRunningJobs(timeoutMs) {
 }
 
 function startServer() {
+  registerProcessErrorHandlers();
+
   const app = createApp();
   const server = app.listen(config.PORT, () => {
-    console.log(
-      JSON.stringify({
-        timestamp: new Date().toISOString(),
-        event: "server_started",
-        port: config.PORT,
-        node_env: config.NODE_ENV,
-      }),
-    );
+    log("info", "server_started", {
+      port: config.PORT,
+      node_env: config.NODE_ENV,
+    });
   });
 
   let shuttingDown = false;
@@ -78,13 +92,9 @@ function startServer() {
     }
     shuttingDown = true;
 
-    console.log(
-      JSON.stringify({
-        timestamp: new Date().toISOString(),
-        event: "shutdown_requested",
-        signal,
-      }),
-    );
+    log("warn", "shutdown_requested", {
+      signal,
+    });
 
     jobManager.setAcceptingJobs(false);
 
@@ -105,29 +115,6 @@ function startServer() {
 
   process.on("SIGTERM", () => {
     void shutdown("SIGTERM");
-  });
-
-  process.on("unhandledRejection", (reason) => {
-    console.error(
-      JSON.stringify({
-        timestamp: new Date().toISOString(),
-        level: "error",
-        event: "unhandled_rejection",
-        reason: String(reason),
-      }),
-    );
-  });
-
-  process.on("uncaughtException", (error) => {
-    console.error(
-      JSON.stringify({
-        timestamp: new Date().toISOString(),
-        level: "error",
-        event: "uncaught_exception",
-        message: error.message,
-        stack: error.stack,
-      }),
-    );
   });
 
   return { app, server };

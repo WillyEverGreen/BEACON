@@ -99,6 +99,7 @@ async def _run_real_world_coverage() -> list[dict]:
                 precision_profile="high_precision",
                 enable_enrichment=False,
                 enable_cognitive=False,
+                use_cache=False,
             )
             issues = result.get("issues", [])
             for rule_id in GROUP1_RULES:

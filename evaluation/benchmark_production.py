@@ -1,0 +1,353 @@
+"""
+Production Readiness — Comprehensive 10-Site Benchmark (Fast + Deep).
+
+Tests the hardened production profile against 10 real-world sites spanning:
+1. Government/Public services (USA.gov, IRCTC)
+2. News (BBC News, NDTV) — dynamic + ads
+3. E-commerce niche (Etsy, Meesho) — user-generated content
+4. Dev/docs (MDN, Stack Overflow) — precision checks
+5. Design/portfolio (Dribbble, Awwwards) — poor semantics
+
+Each site is audited in BOTH fast and deep modes with the production profile.
+"""
+import asyncio
+import json
+import sys
+import os
+import time
+from pathlib import Path
+from collections import defaultdict
+
+sys.path.insert(0, os.path.abspath("."))
+
+from app.services.audit_runner import run_audit
+
+
+BENCHMARK_SITES = [
+    # Government / public services
+    {"name": "USA.gov",         "url": "https://www.usa.gov",            "category": "government",  "expected": "high"},
+    {"name": "IRCTC",           "url": "https://www.irctc.co.in",       "category": "government",  "expected": "medium"},
+    # News
+    {"name": "BBC News",        "url": "https://www.bbc.com/news",       "category": "news",        "expected": "high"},
+    {"name": "NDTV",            "url": "https://www.ndtv.com",           "category": "news",        "expected": "medium"},
+    # E-commerce niche
+    {"name": "Etsy",            "url": "https://www.etsy.com",           "category": "ecommerce",   "expected": "medium"},
+    {"name": "Meesho",          "url": "https://www.meesho.com",         "category": "ecommerce",   "expected": "low"},
+    # Dev / docs
+    {"name": "MDN Web Docs",    "url": "https://developer.mozilla.org",  "category": "dev-docs",    "expected": "high"},
+    {"name": "Stack Overflow",  "url": "https://stackoverflow.com",      "category": "dev-docs",    "expected": "medium"},
+    # Design / portfolio
+    {"name": "Dribbble",        "url": "https://dribbble.com",           "category": "design",      "expected": "low"},
+    {"name": "Awwwards",        "url": "https://www.awwwards.com",       "category": "design",      "expected": "low"},
+]
+
+
+async def audit_site(site: dict, scan_mode: str) -> dict:
+    """Audit a single site and capture comprehensive telemetry."""
+    start = time.time()
+    try:
+        result = await run_audit(
+            site["url"],
+            scan_mode=scan_mode,
+            precision_profile="production",
+            enable_enrichment=False,
+            enable_cognitive=False,
+            use_cache=False,
+        )
+        elapsed = round(time.time() - start, 2)
+
+        issues = result.get("issues", [])
+        structural_rules = {
+            "landmark-roles", "no-main-landmark", "region",
+            "no-nav-landmark", "no-header-landmark", "no-footer-landmark",
+        }
+
+        # Severity breakdown
+        severity_counts = defaultdict(int)
+        for i in issues:
+            severity_counts[i.get("severity", "unknown")] += 1
+
+        # Rule distribution
+        rule_counts = defaultdict(int)
+        for i in issues:
+            rule_counts[i.get("rule_id", "unknown")] += 1
+
+        top_rules = sorted(rule_counts.items(), key=lambda x: -x[1])[:8]
+        structural_fp = sum(1 for i in issues if i.get("rule_id", "") in structural_rules)
+
+        # Category distribution
+        cat_counts = defaultdict(int)
+        for i in issues:
+            cat_counts[i.get("category", "other")] += 1
+
+        # Confidence stats
+        confidences = [i.get("confidence", 0) for i in issues]
+        avg_conf = sum(confidences) / len(confidences) if confidences else 0
+        low_conf_count = sum(1 for c in confidences if c < 0.7)
+
+        # Precision telemetry
+        pt = result.get("precision_profile_telemetry", {})
+
+        return {
+            "name": site["name"],
+            "url": site["url"],
+            "category": site["category"],
+            "expected_tier": site["expected"],
+            "scan_mode": scan_mode,
+            "score": result.get("score", 0),
+            "total_issues": len(issues),
+            "structural_fp": structural_fp,
+            "severity": dict(severity_counts),
+            "top_rules": [{"rule": r, "count": c} for r, c in top_rules],
+            "categories": dict(cat_counts),
+            "avg_confidence": round(avg_conf, 3),
+            "low_confidence_count": low_conf_count,
+            "scan_time_s": elapsed,
+            "degraded_mode": result.get("degraded_mode", False),
+            "engines_used": result.get("engines_used", []),
+            "telemetry": {
+                "input_issues": pt.get("input_issues", 0),
+                "reported_issues": pt.get("reported_issues", 0),
+                "dropped_structural": pt.get("dropped_structural", 0),
+                "dropped_low_confidence": pt.get("dropped_low_confidence", 0),
+                "dropped_excluded_rules": pt.get("dropped_excluded_rules", 0),
+                "suppression_rate": pt.get("suppression_rate", 0),
+                "suppression_warning": pt.get("suppression_warning", False),
+                "low_issue_guard_active": pt.get("low_issue_guard_active", False),
+            },
+            "success": True,
+            "error": None,
+        }
+    except Exception as e:
+        elapsed = round(time.time() - start, 2)
+        return {
+            "name": site["name"],
+            "url": site["url"],
+            "category": site["category"],
+            "expected_tier": site["expected"],
+            "scan_mode": scan_mode,
+            "score": 0,
+            "total_issues": 0,
+            "structural_fp": 0,
+            "severity": {},
+            "top_rules": [],
+            "categories": {},
+            "avg_confidence": 0,
+            "low_confidence_count": 0,
+            "scan_time_s": elapsed,
+            "degraded_mode": True,
+            "engines_used": [],
+            "telemetry": {},
+            "success": False,
+            "error": str(e)[:300],
+        }
+
+
+def print_header(title: str):
+    print(f"\n{'═' * 72}")
+    print(f"  {title}")
+    print(f"{'═' * 72}")
+
+
+def print_section(title: str):
+    print(f"\n{'─' * 60}")
+    print(f"  {title}")
+    print(f"{'─' * 60}")
+
+
+async def main():
+    print_header("BEACON Production Readiness — 10-Site Comprehensive Benchmark")
+    print(f"  Profile: production | Modes: fast + deep")
+    print(f"  Sites: {len(BENCHMARK_SITES)} | Expected audits: {len(BENCHMARK_SITES) * 2}")
+
+    all_results = {"fast": [], "deep": []}
+
+    for mode in ["fast", "deep"]:
+        print_header(f"SCAN MODE: {mode.upper()}")
+
+        for site in BENCHMARK_SITES:
+            print(f"  [{mode:4s}] {site['name']:20s} → ", end="", flush=True)
+            result = await audit_site(site, mode)
+            all_results[mode].append(result)
+
+            status = "✅" if result["success"] else "❌"
+            guard = " 🛡️" if result.get("telemetry", {}).get("low_issue_guard_active") else ""
+            warn = " ⚠️" if result.get("telemetry", {}).get("suppression_warning") else ""
+
+            print(
+                f"{status} score={result['score']:5.1f}  "
+                f"issues={result['total_issues']:3d}  "
+                f"strFP={result['structural_fp']}  "
+                f"time={result['scan_time_s']:.1f}s"
+                f"{guard}{warn}"
+            )
+
+    # ════════════════════════════════════════════════════════════
+    # DETAILED RESULTS
+    # ════════════════════════════════════════════════════════════
+
+    print_header("DETAILED COMPARISON TABLE: FAST vs DEEP")
+    hdr = f"{'Site':20s} │ {'F.Score':>7s} {'D.Score':>7s} {'Δ':>5s} │ {'F.Iss':>5s} {'D.Iss':>5s} │ {'F.Time':>6s} {'D.Time':>6s} │ {'Cat':>10s}"
+    print(hdr)
+    print("─" * len(hdr))
+
+    for f, d in zip(all_results["fast"], all_results["deep"]):
+        if not f["success"] and not d["success"]:
+            print(f"{f['name']:20s} │ {'ERR':>7s} {'ERR':>7s} {'':>5s} │ {'':>5s} {'':>5s} │ {'':>6s} {'':>6s} │ {f['category']:>10s}")
+            continue
+
+        fs = f["score"] if f["success"] else 0
+        ds = d["score"] if d["success"] else 0
+        delta = ds - fs
+        d_str = f"+{delta:.1f}" if delta >= 0 else f"{delta:.1f}"
+
+        print(
+            f"{f['name']:20s} │ "
+            f"{fs:7.1f} {ds:7.1f} {d_str:>5s} │ "
+            f"{f['total_issues']:5d} {d['total_issues']:5d} │ "
+            f"{f['scan_time_s']:6.1f} {d['scan_time_s']:6.1f} │ "
+            f"{f['category']:>10s}"
+        )
+
+    # ── Per-site deep analysis ──────────────────────────────────
+    print_header("PER-SITE ANALYSIS (Production Profile)")
+
+    for mode in ["fast", "deep"]:
+        print_section(f"Mode: {mode.upper()}")
+        for r in all_results[mode]:
+            if not r["success"]:
+                print(f"\n  ❌ {r['name']}: {r['error'][:80]}")
+                continue
+
+            print(f"\n  {'━' * 50}")
+            print(f"  {r['name']} ({r['url']})")
+            print(f"  {'━' * 50}")
+            print(f"  Score: {r['score']:.1f}/100 | Issues: {r['total_issues']} | Time: {r['scan_time_s']:.2f}s")
+            print(f"  Expected: {r['expected_tier']} | Category: {r['category']}")
+            print(f"  Engines: {', '.join(r['engines_used'])}")
+
+            if r["severity"]:
+                sev_str = ", ".join(f"{k}={v}" for k, v in sorted(r["severity"].items()))
+                print(f"  Severity: {sev_str}")
+
+            if r["top_rules"]:
+                print(f"  Top rules:")
+                for rule in r["top_rules"][:5]:
+                    print(f"    • {rule['rule']:35s} ×{rule['count']}")
+
+            t = r.get("telemetry", {})
+            print(f"  Filtering: {t.get('input_issues', 0)} → {t.get('reported_issues', 0)} "
+                  f"(dropped: struct={t.get('dropped_structural',0)}, "
+                  f"conf={t.get('dropped_low_confidence',0)}, "
+                  f"excl={t.get('dropped_excluded_rules',0)})")
+            print(f"  Suppression rate: {t.get('suppression_rate', 0):.1%}"
+                  f" | Guard: {'🛡️ ACTIVE' if t.get('low_issue_guard_active') else 'off'}"
+                  f" | Warning: {'⚠️ YES' if t.get('suppression_warning') else 'no'}")
+
+            # Precision signal check
+            if r["avg_confidence"] > 0.85 and r["total_issues"] > 0:
+                print(f"  ✅ High avg confidence ({r['avg_confidence']:.2f}) → strong precision signal")
+            elif r["low_confidence_count"] > r["total_issues"] * 0.3:
+                print(f"  ⚠️ {r['low_confidence_count']}/{r['total_issues']} issues have low confidence → review")
+
+    # ── Aggregate metrics ───────────────────────────────────────
+    print_header("AGGREGATE PRODUCTION READINESS METRICS")
+
+    for mode in ["fast", "deep"]:
+        results = [r for r in all_results[mode] if r["success"]]
+        if not results:
+            continue
+
+        scores = [r["score"] for r in results]
+        times = [r["scan_time_s"] for r in results]
+        issues = [r["total_issues"] for r in results]
+        warnings = sum(1 for r in results if r.get("telemetry", {}).get("suppression_warning"))
+        guards = sum(1 for r in results if r.get("telemetry", {}).get("low_issue_guard_active"))
+
+        print(f"\n  {mode.upper()} MODE ({len(results)}/{len(BENCHMARK_SITES)} sites successful)")
+        print(f"  ├─ Avg Score:        {sum(scores)/len(scores):.1f}")
+        print(f"  ├─ Score Range:      {min(scores):.1f} – {max(scores):.1f}")
+        print(f"  ├─ Avg Issues:       {sum(issues)/len(issues):.1f}")
+        print(f"  ├─ Avg Scan Time:    {sum(times)/len(times):.2f}s")
+        print(f"  ├─ P95 Scan Time:    {sorted(times)[int(len(times)*0.95)]:.2f}s")
+        print(f"  ├─ Safeguard Warns:  {warnings}/{len(results)}")
+        print(f"  ├─ Guard Activations:{guards}/{len(results)}")
+
+        # Category breakdown
+        cat_scores = defaultdict(list)
+        for r in results:
+            cat_scores[r["category"]].append(r["score"])
+        print(f"  └─ By Category:")
+        for cat, cat_s in sorted(cat_scores.items()):
+            print(f"     ├─ {cat:12s}: avg={sum(cat_s)/len(cat_s):.1f} ({len(cat_s)} sites)")
+
+    # ── Production readiness verdict ────────────────────────────
+    print_header("PRODUCTION READINESS VERDICT")
+
+    fast_results = [r for r in all_results["fast"] if r["success"]]
+    deep_results = [r for r in all_results["deep"] if r["success"]]
+
+    checks = []
+
+    # Check 1: success rate
+    success_rate = (len(fast_results) + len(deep_results)) / (len(BENCHMARK_SITES) * 2)
+    checks.append(("Runtime success rate", success_rate >= 0.90,
+                    f"{success_rate:.0%} ({'≥90%' if success_rate >= 0.90 else '<90%'})"))
+
+    # Check 2: no zero-score on >1-issue sites
+    zero_scores = [r for r in fast_results + deep_results if r["score"] == 0 and r["success"]]
+    checks.append(("No false zero scores", len(zero_scores) == 0,
+                    f"{len(zero_scores)} found"))
+
+    # Check 3: suppression safeguard
+    total_warns = sum(1 for r in fast_results + deep_results
+                       if r.get("telemetry", {}).get("suppression_warning"))
+    checks.append(("Suppression safeguard", total_warns <= 2,
+                    f"{total_warns} warnings (≤2 acceptable)"))
+
+    # Check 4: fast mode p95 < 3s
+    fast_times = sorted([r["scan_time_s"] for r in fast_results])
+    p95 = fast_times[int(len(fast_times) * 0.95)] if fast_times else 0
+    checks.append(("Fast mode P95 < 3s", p95 < 3.0, f"{p95:.2f}s"))
+
+    # Check 5: deep mode p95 < 60s
+    deep_times = sorted([r["scan_time_s"] for r in deep_results])
+    p95d = deep_times[int(len(deep_times) * 0.95)] if deep_times else 0
+    checks.append(("Deep mode P95 < 60s", p95d < 60.0, f"{p95d:.2f}s"))
+
+    # Check 6: avg score distribution makes sense
+    if fast_results:
+        avg_score = sum(r["score"] for r in fast_results) / len(fast_results)
+        checks.append(("Avg score 70-95 range", 70 <= avg_score <= 95,
+                        f"{avg_score:.1f}"))
+
+    # Check 7: high confidence ratio
+    if fast_results:
+        all_confs = [r["avg_confidence"] for r in fast_results if r["avg_confidence"] > 0]
+        avg_conf = sum(all_confs) / len(all_confs) if all_confs else 0
+        checks.append(("Avg confidence > 0.70", avg_conf > 0.70,
+                        f"{avg_conf:.2f}"))
+
+    all_pass = True
+    for name, passed, detail in checks:
+        icon = "✅" if passed else "❌"
+        print(f"  {icon} {name:35s} {detail}")
+        if not passed:
+            all_pass = False
+
+    print()
+    if all_pass:
+        print("  🎉 ALL CHECKS PASSED — Production profile is ready for rollout!")
+    else:
+        print("  ⚠️  Some checks failed — review before promoting to default.")
+
+    # ── Save full results ───────────────────────────────────────
+    out_path = Path("evaluation/production_benchmark_results.json")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with out_path.open("w", encoding="utf-8") as f:
+        json.dump(all_results, f, indent=2, default=str)
+    print(f"\n  Full results saved: {out_path}")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

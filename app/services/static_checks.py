@@ -246,12 +246,24 @@ class StaticChecker:
         missing_lang_violations = 0
         sample_elements_checked: list[str] = []
         sample_violations: list[str] = []
+        invalid_lang_checked = 0
+        invalid_lang_violations = 0
+        invalid_lang_checked_samples: list[str] = []
+        invalid_lang_violation_samples: list[str] = []
+
+        def _is_valid_lang_tag(lang_value: str) -> bool:
+            # Practical BCP47 subset validator (language + optional subtags).
+            return bool(re.match(r"^[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8})*$", lang_value))
 
         html_tag = self.soup.find("html")
         if html_tag:
             checked = 1
             sample_elements_checked.append("<html>")
             lang = str(html_tag.get("lang", "")).strip()
+            if lang:
+                invalid_lang_checked += 1
+                if len(invalid_lang_checked_samples) < 5:
+                    invalid_lang_checked_samples.append(f"html[lang=\"{lang}\"]")
             if not lang:
                 issues.append(_issue(
                     self.url, "missing-lang", "violation", "serious",
@@ -262,7 +274,7 @@ class StaticChecker:
                 ))
                 missing_lang_violations += 1
                 sample_violations.append("<html>")
-            elif len(lang) < 2:
+            elif not _is_valid_lang_tag(lang):
                 issues.append(_issue(
                     self.url, "invalid-lang", "violation", "serious",
                     "<html>", f'<html lang="{lang}">',
@@ -270,6 +282,33 @@ class StaticChecker:
                     "3.1.1", "A", "html",
                     'Use a valid language code like "en", "es", "fr".'
                 ))
+                invalid_lang_violations += 1
+                if len(invalid_lang_violation_samples) < 5:
+                    invalid_lang_violation_samples.append(f'<html lang="{lang}">')
+
+        for node in self.soup.find_all(attrs={"lang": True}):
+            if not isinstance(node, Tag) or node.name == "html":
+                continue
+            lang = str(node.get("lang", "")).strip()
+            if not lang:
+                continue
+            invalid_lang_checked += 1
+            selector = _css_selector(node)
+            if len(invalid_lang_checked_samples) < 5:
+                invalid_lang_checked_samples.append(f'{selector}[lang="{lang}"]')
+            if _is_valid_lang_tag(lang):
+                continue
+
+            issues.append(_issue(
+                self.url, "invalid-lang", "violation", "serious",
+                selector, _snippet(node, 200),
+                f'Element has invalid language code "{lang}". Use a valid BCP 47 language tag.',
+                "3.1.2", "AA", "html",
+                'Use a valid language code like "en", "es", "fr", or region tags like "en-US".'
+            ))
+            invalid_lang_violations += 1
+            if len(invalid_lang_violation_samples) < 5:
+                invalid_lang_violation_samples.append(_snippet(node, 200))
 
         self._track_rule_activity(
             "missing-lang",
@@ -278,6 +317,15 @@ class StaticChecker:
             confidence_bucket="high",
             sample_elements_checked=sample_elements_checked,
             sample_violations=sample_violations,
+        )
+
+        self._track_rule_activity(
+            "invalid-lang",
+            elements_checked=invalid_lang_checked,
+            violations_found=invalid_lang_violations,
+            confidence_bucket="high",
+            sample_elements_checked=invalid_lang_checked_samples,
+            sample_violations=invalid_lang_violation_samples,
         )
 
         return issues
@@ -2082,6 +2130,7 @@ class StaticChecker:
     def check_advanced_detect(self) -> list[dict]:
         """Advanced checks beyond basic axe-core rules."""
         issues = []
+        issues.extend(self._check_semantic_html_signals())
         issues.extend(self._check_link_accessibility_cluster())
         issues.extend(self._check_aria_valid_attr_values())
         issues.extend(self._check_text_spacing_signals())

@@ -1,4 +1,5 @@
 {
+  "benchmark_name": "sampled_cases",
   "cases": [
     {
       "name": "ACT case 1",
@@ -15,13 +16,15 @@
       "unmapped_act_rule_ids": []
     },
     {
-      "name": "ACT case 2",
-      "url": "https://act-rules.github.io/testcases/5f99a7/4084cf8b4837f69d8ffca44fc13f6a4e3f51fc84.html",
+      "name": "ACT case 51",
+      "url": "https://act-rules.github.io/testcases/bc4a75/08cc7a024982a7fc21ad20c1fe9c945a1e7c30d9.html",
       "expected_rule_ids": [
-        "no-headings"
+        "aria-required-children",
+        "aria-required-parent"
       ],
       "known_valid_rule_ids": [
-        "no-headings"
+        "aria-required-children",
+        "aria-required-parent"
       ],
       "known_invalid_rule_ids": [],
       "source_id": "act_testcases",
@@ -29,13 +32,13 @@
       "unmapped_act_rule_ids": []
     },
     {
-      "name": "ACT case 3",
-      "url": "https://act-rules.github.io/testcases/5f99a7/bd673776fddce4f81a3f7ec43c5986ee21983341.html",
+      "name": "ACT case 101",
+      "url": "https://act-rules.github.io/testcases/e6952f/9ff048cc0df58172e0ce3da550c08ac7a1c5445b.html",
       "expected_rule_ids": [
-        "no-headings"
+        "aria-attribute"
       ],
       "known_valid_rule_ids": [
-        "no-headings"
+        "aria-attribute"
       ],
       "known_invalid_rule_ids": [],
       "source_id": "act_testcases",
@@ -43,13 +46,13 @@
       "unmapped_act_rule_ids": []
     },
     {
-      "name": "ACT case 4",
-      "url": "https://act-rules.github.io/testcases/5f99a7/bc5dc64fa7070b8eeb02023dbcdf6699fca53b77.html",
+      "name": "ACT case 151",
+      "url": "https://act-rules.github.io/testcases/4c31df/06e3bcbe22a1fb452df499d522ab74305ab95b06.html",
       "expected_rule_ids": [
-        "no-headings"
+        "video-transcript"
       ],
       "known_valid_rule_ids": [
-        "no-headings"
+        "video-transcript"
       ],
       "known_invalid_rule_ids": [],
       "source_id": "act_testcases",
@@ -57,13 +60,13 @@
       "unmapped_act_rule_ids": []
     },
     {
-      "name": "ACT case 5",
-      "url": "https://act-rules.github.io/testcases/5f99a7/5552a82ba7fd830b212b4e858205521f1b52d5ee.html",
+      "name": "ACT case 201",
+      "url": "https://act-rules.github.io/testcases/97a4e1/3b85f76d3bb6a9266944e3d90c8ffe0fda73df02.html",
       "expected_rule_ids": [
-        "no-headings"
+        "button-name"
       ],
       "known_valid_rule_ids": [
-        "no-headings"
+        "button-name"
       ],
       "known_invalid_rule_ids": [],
       "source_id": "act_testcases",
@@ -71,13 +74,13 @@
       "unmapped_act_rule_ids": []
     },
     {
-      "name": "ACT case 6",
-      "url": "https://act-rules.github.io/testcases/5f99a7/8a920a0a51a6eecba025b59d037e46f6a1d775ea.html",
+      "name": "ACT case 251",
+      "url": "https://act-rules.github.io/testcases/047fe0/d56bc7480b632e380e89b36a1b0243758c081c89.html",
       "expected_rule_ids": [
-        "no-headings"
+        "empty-heading"
       ],
       "known_valid_rule_ids": [
-        "no-headings"
+        "empty-heading"
       ],
       "known_invalid_rule_ids": [],
       "source_id": "act_testcases",
@@ -85,13 +88,13 @@
       "unmapped_act_rule_ids": []
     },
     {
-      "name": "ACT case 7",
-      "url": "https://act-rules.github.io/testcases/5f99a7/deab475b4823df6c12ff62ea36fc1f64ecf79b3f.html",
+      "name": "ACT case 301",
+      "url": "https://act-rules.github.io/testcases/de46e4/ca2f0f03e0dddd80cef6554814b919fac1666c02.html",
       "expected_rule_ids": [
-        "no-headings"
+        "invalid-lang"
       ],
       "known_valid_rule_ids": [
-        "no-headings"
+        "invalid-lang"
       ],
       "known_invalid_rule_ids": [],
       "source_id": "act_testcases",
@@ -99,13 +102,13 @@
       "unmapped_act_rule_ids": []
     },
     {
-      "name": "ACT case 262",
-      "url": "https://act-rules.github.io/testcases/ye5d6e/5992ca49bbaffa4303c725ab90b9facb1c667eb1.html",
+      "name": "ACT case 351",
+      "url": "https://act-rules.github.io/testcases/ebe86a/4cf15d1b1716679d654eff92f59a6b1a7f3bc344.html",
       "expected_rule_ids": [
-        "ye5d6e"
+        "keyboard-trap"
       ],
       "known_valid_rule_ids": [
-        "ye5d6e"
+        "keyboard-trap"
       ],
       "known_invalid_rule_ids": [],
       "source_id": "act_testcases",
@@ -113,13 +116,13 @@
       "unmapped_act_rule_ids": []
     },
     {
-      "name": "ACT case 263",
-      "url": "https://act-rules.github.io/testcases/ye5d6e/86c25bdad0581d460dbbfd7e3eb6c2adf931e40f.html",
+      "name": "ACT case 401",
+      "url": "https://act-rules.github.io/testcases/b49b2e/439e4f0379f4b0920aa858fadc663681ec15536b.html",
       "expected_rule_ids": [
-        "ye5d6e"
+        "empty-heading"
       ],
       "known_valid_rule_ids": [
-        "ye5d6e"
+        "empty-heading"
       ],
       "known_invalid_rule_ids": [],
       "source_id": "act_testcases",
@@ -127,13 +130,13 @@
       "unmapped_act_rule_ids": []
     },
     {
-      "name": "ACT case 264",
-      "url": "https://act-rules.github.io/testcases/ye5d6e/77410c3d221754053f172ac1cbfd6c10b1579dd8.html",
+      "name": "ACT case 451",
+      "url": "https://act-rules.github.io/testcases/ucwvc8/2f7b367cd2275113214c1a6d8c33aec89c6ed994.html",
       "expected_rule_ids": [
-        "ye5d6e"
+        "semantic-html"
       ],
       "known_valid_rule_ids": [
-        "ye5d6e"
+        "semantic-html"
       ],
       "known_invalid_rule_ids": [],
       "source_id": "act_testcases",
@@ -141,13 +144,13 @@
       "unmapped_act_rule_ids": []
     },
     {
-      "name": "ACT case 265",
-      "url": "https://act-rules.github.io/testcases/ye5d6e/7c583b3646f8a9b2f559cc4c36c75519cf12df1f.html",
+      "name": "ACT case 501",
+      "url": "https://act-rules.github.io/testcases/4b1c6c/fd08806c48992079eb5d61f6202bd60126d6620d.html",
       "expected_rule_ids": [
-        "ye5d6e"
+        "link-purpose"
       ],
       "known_valid_rule_ids": [
-        "ye5d6e"
+        "link-purpose"
       ],
       "known_invalid_rule_ids": [],
       "source_id": "act_testcases",
@@ -155,13 +158,13 @@
       "unmapped_act_rule_ids": []
     },
     {
-      "name": "ACT case 266",
-      "url": "https://act-rules.github.io/testcases/ye5d6e/618ad37654f4800f7e32f00490ced2ac629d84ef.html",
+      "name": "ACT case 551",
+      "url": "https://act-rules.github.io/testcases/qt1vmo/7a17a37233303419f232230ee2bece7502ed8f96.html",
       "expected_rule_ids": [
-        "ye5d6e"
+        "svg-no-accessible-name"
       ],
       "known_valid_rule_ids": [
-        "ye5d6e"
+        "svg-no-accessible-name"
       ],
       "known_invalid_rule_ids": [],
       "source_id": "act_testcases",
@@ -169,13 +172,13 @@
       "unmapped_act_rule_ids": []
     },
     {
-      "name": "ACT case 267",
-      "url": "https://act-rules.github.io/testcases/ye5d6e/48a080ede0a4d5ce7023a91e251850c232db68c5.html",
+      "name": "ACT case 601",
+      "url": "https://act-rules.github.io/testcases/23a2a8/d0f14d0af325e5884f505681ae2de654a3fb2ae6.html",
       "expected_rule_ids": [
-        "ye5d6e"
+        "svg-no-accessible-name"
       ],
       "known_valid_rule_ids": [
-        "ye5d6e"
+        "svg-no-accessible-name"
       ],
       "known_invalid_rule_ids": [],
       "source_id": "act_testcases",
@@ -183,13 +186,13 @@
       "unmapped_act_rule_ids": []
     },
     {
-      "name": "ACT case 268",
-      "url": "https://act-rules.github.io/testcases/ye5d6e/db0aede0e26992e19068775811f9cf14eb47617c.html",
+      "name": "ACT case 651",
+      "url": "https://act-rules.github.io/testcases/24afc2/619f6afb037b508d7dbf3c0e1fdbbf8929e87b94.html",
       "expected_rule_ids": [
-        "ye5d6e"
+        "letter-spacing"
       ],
       "known_valid_rule_ids": [
-        "ye5d6e"
+        "letter-spacing"
       ],
       "known_invalid_rule_ids": [],
       "source_id": "act_testcases",
@@ -197,13 +200,13 @@
       "unmapped_act_rule_ids": []
     },
     {
-      "name": "ACT case 269",
-      "url": "https://act-rules.github.io/testcases/ye5d6e/b73f6c782e63adbc54e2bf47dc67ea62188c8172.html",
+      "name": "ACT case 701",
+      "url": "https://act-rules.github.io/testcases/5effbb/75db8879bf7db22dcb4455dd0ebc7e244fdde2ae.html",
       "expected_rule_ids": [
-        "ye5d6e"
+        "empty-link"
       ],
       "known_valid_rule_ids": [
-        "ye5d6e"
+        "empty-link"
       ],
       "known_invalid_rule_ids": [],
       "source_id": "act_testcases",
@@ -211,13 +214,13 @@
       "unmapped_act_rule_ids": []
     },
     {
-      "name": "ACT case 270",
-      "url": "https://act-rules.github.io/testcases/ye5d6e/1da3a98e05717667e48c93680f6fad96f5f42284.html",
+      "name": "ACT case 751",
+      "url": "https://act-rules.github.io/testcases/b20e66/7e49b921e94770de269b1b266802e99155759dac.html",
       "expected_rule_ids": [
-        "ye5d6e"
+        "link-purpose"
       ],
       "known_valid_rule_ids": [
-        "ye5d6e"
+        "link-purpose"
       ],
       "known_invalid_rule_ids": [],
       "source_id": "act_testcases",
@@ -225,13 +228,13 @@
       "unmapped_act_rule_ids": []
     },
     {
-      "name": "ACT case 271",
-      "url": "https://act-rules.github.io/testcases/ye5d6e/9151a8da1b9e23f587b8a9eb6fdb71b7fba798a4.html",
+      "name": "ACT case 801",
+      "url": "https://act-rules.github.io/testcases/bisz58/d789ff3d0c087c77117a02527e71a646a343d4a3.html",
       "expected_rule_ids": [
-        "ye5d6e"
+        "meta-refresh"
       ],
       "known_valid_rule_ids": [
-        "ye5d6e"
+        "meta-refresh"
       ],
       "known_invalid_rule_ids": [],
       "source_id": "act_testcases",
@@ -239,13 +242,13 @@
       "unmapped_act_rule_ids": []
     },
     {
-      "name": "ACT case 272",
-      "url": "https://act-rules.github.io/testcases/ye5d6e/5f65afbaca39bfffad6cacdc4ed864757f6ca296.html",
+      "name": "ACT case 851",
+      "url": "https://act-rules.github.io/testcases/8fc3b6/d108cbe5fc7504de20a2432938baffa3074b0553.html",
       "expected_rule_ids": [
-        "ye5d6e"
+        "svg-no-accessible-name"
       ],
       "known_valid_rule_ids": [
-        "ye5d6e"
+        "svg-no-accessible-name"
       ],
       "known_invalid_rule_ids": [],
       "source_id": "act_testcases",
@@ -253,13 +256,13 @@
       "unmapped_act_rule_ids": []
     },
     {
-      "name": "ACT case 273",
-      "url": "https://act-rules.github.io/testcases/ye5d6e/ffa1d2eef43242e335f68220bd1ab737989922b4.svg",
+      "name": "ACT case 901",
+      "url": "https://act-rules.github.io/testcases/0ssw9k/d2b3882cadab2dbceab406958ee1e78d24757640.html",
       "expected_rule_ids": [
-        "ye5d6e"
+        "keyboard-trap"
       ],
       "known_valid_rule_ids": [
-        "ye5d6e"
+        "keyboard-trap"
       ],
       "known_invalid_rule_ids": [],
       "source_id": "act_testcases",
@@ -267,13 +270,57 @@
       "unmapped_act_rule_ids": []
     },
     {
-      "name": "ACT case 282",
-      "url": "https://act-rules.github.io/testcases/off6ek/b45615c6247f428fc7d73c0501f91021a57f0e94.html",
+      "name": "ACT case 951",
+      "url": "https://act-rules.github.io/testcases/afw4f7/3501cb7303834d272bc333b973995e9a9ae0f0e8.html",
       "expected_rule_ids": [
-        "off6ek"
+        "text-spacing"
       ],
       "known_valid_rule_ids": [
-        "off6ek"
+        "text-spacing"
+      ],
+      "known_invalid_rule_ids": [],
+      "source_id": "act_testcases",
+      "source_tier": 1,
+      "unmapped_act_rule_ids": []
+    },
+    {
+      "name": "ACT case 1001",
+      "url": "https://act-rules.github.io/testcases/09o5cg/7fec538e6e839366e15d7250123502c6fa6185b9.html",
+      "expected_rule_ids": [
+        "text-spacing"
+      ],
+      "known_valid_rule_ids": [
+        "text-spacing"
+      ],
+      "known_invalid_rule_ids": [],
+      "source_id": "act_testcases",
+      "source_tier": 1,
+      "unmapped_act_rule_ids": []
+    },
+    {
+      "name": "ACT case 1051",
+      "url": "https://act-rules.github.io/testcases/c3232f/f0a60f2924c927d3dc97676d02c83ab38025955f.html",
+      "expected_rule_ids": [
+        "video-transcript"
+      ],
+      "known_valid_rule_ids": [
+        "video-transcript"
+      ],
+      "known_invalid_rule_ids": [],
+      "source_id": "act_testcases",
+      "source_tier": 1,
+      "unmapped_act_rule_ids": []
+    },
+    {
+      "name": "ACT case 1101",
+      "url": "https://act-rules.github.io/testcases/2ee8b8/97c411f7ba63c4ca712f200eb8a845c9744e20a2.html",
+      "expected_rule_ids": [
+        "missing-landmark",
+        "no-main-landmark"
+      ],
+      "known_valid_rule_ids": [
+        "missing-landmark",
+        "no-main-landmark"
       ],
       "known_invalid_rule_ids": [],
       "source_id": "act_testcases",

@@ -1,6 +1,7 @@
 """
 Confidence scoring and false-positive control.
-Multi-signal formula: source reliability + signal strength + cross-engine agreement + evidence quality.
+Multi-signal formula: source reliability + signal strength + cross-engine agreement
++ evidence quality + rule trust (from adaptive trust registry).
 """
 import logging
 
@@ -12,6 +13,7 @@ from app.config import (
     IMPACT_SUMMARIES,
     PAGE_LEVEL_RULES,
 )
+from app.services.rule_calibrator import get_rule_trust_score, get_rule_trust_entry
 
 
 logger = logging.getLogger(__name__)
@@ -119,6 +121,62 @@ def document_completeness_score(html: str) -> float:
     return min(1.0, signals / 5.0)
 
 
+def compute_final_confidence(
+    base_confidence: float,
+    rule_id: str,
+    engine_agreement: float,
+    behavioral_signal: float = 0.5,
+) -> float:
+    """
+    Final confidence is a calibrated, evidence-weighted score.
+
+    This prevents both under-reporting and noisy over-reporting:
+    - A low-trust rule (landmark-one-main, trust=0.0) found only by static
+      gets a confidence of ~0.20 → fails the min_confidence gate.
+    - A high-trust rule (missing-alt, trust=0.89) found by both browser
+      AND static gets confidence ~0.88 → passes the gate.
+
+    Formula (blended, not fully multiplicative):
+        final = (0.55 * base)
+              + (0.20 * engine_agreement)
+              + (0.15 * effective_trust)
+              + (0.10 * behavioral_signal)
+
+    A small suppress-penalty remains for low-agreement noisy rules.
+    """
+    trust_entry = get_rule_trust_entry(rule_id)
+    trust = float(trust_entry.get("trust_score", get_rule_trust_score(rule_id)))
+    verdict = str(trust_entry.get("verdict", "uncalibrated")).lower()
+
+    base = min(1.0, max(0.0, float(base_confidence)))
+    engine = min(1.0, max(0.0, float(engine_agreement)))
+    behavioral = min(1.0, max(0.0, float(behavioral_signal)))
+    effective_trust = min(1.0, max(0.0, trust))
+
+    if verdict == "underdetected":
+        # Avoid suppressing rules where benchmark evidence says we are missing detections.
+        effective_trust = max(effective_trust, 0.50)
+    elif verdict == "uncalibrated":
+        effective_trust = max(effective_trust, 0.45)
+    elif verdict == "suppress":
+        effective_trust = min(effective_trust, 0.25)
+
+    final = (
+        (0.55 * base)
+        + (0.20 * engine)
+        + (0.15 * effective_trust)
+        + (0.10 * behavioral)
+    )
+
+    if verdict == "suppress" and engine < 0.5:
+        final *= 0.75
+
+    if engine >= 0.7:
+        final = max(final, base * 0.85)
+
+    return round(min(final, 0.99), 4)
+
+
 def calculate_confidence(issue: dict, html: str = "") -> float:
     """
     Calculate calibrated confidence score using 5-signal formula:
@@ -135,6 +193,7 @@ def calculate_confidence(issue: dict, html: str = "") -> float:
     confidence reduction so they are filtered by precision profiles automatically.
     """
     sources = issue.get("confidence_sources", [])
+    rule_id = issue.get("rule_id", "")
 
     source_reliability = _calc_source_reliability(sources)
     signal_strength    = _calc_signal_strength(issue)
@@ -142,7 +201,7 @@ def calculate_confidence(issue: dict, html: str = "") -> float:
     evidence_quality   = _calc_evidence_quality(issue)
     user_impact        = _calc_user_impact(issue)
 
-    confidence = (
+    base_confidence = (
         CONFIDENCE_WEIGHTS["source_reliability"]     * source_reliability +
         CONFIDENCE_WEIGHTS["signal_strength"]        * signal_strength    +
         CONFIDENCE_WEIGHTS["cross_engine_agreement"] * cross_agreement    +
@@ -151,31 +210,42 @@ def calculate_confidence(issue: dict, html: str = "") -> float:
     )
 
     # Calibrate by rule type: hard checks are more objective, contextual less so.
-    rule_type = RULE_TYPE_MAP.get(issue.get("rule_id", ""), "hard")
+    rule_type = RULE_TYPE_MAP.get(rule_id, "hard")
     if rule_type == "hard":
-        confidence += 0.03
+        base_confidence += 0.03
     elif rule_type == "visual":
-        confidence -= 0.02
+        base_confidence -= 0.02
     elif rule_type == "contextual":
-        confidence -= 0.07
+        base_confidence -= 0.07
 
     # ── Fragment Penalty ────────────────────────────────────────────────
-    # Page-level rules (no-lang, no-title, etc.) on HTML fragments are almost
-    # always false positives. Apply a graduated penalty based on how incomplete
-    # the document is. This replaces the old blunt exclude_rules approach.
-    rule_id = issue.get("rule_id", "")
     if html and rule_id in PAGE_LEVEL_RULES:
         completeness = document_completeness_score(html)
         if completeness < 0.6:
-            # Scale penalty: completeness 0.0 → -0.45; completeness 0.59 → -0.07
             penalty = 0.45 * (1.0 - completeness / 0.6)
-            confidence -= penalty
+            base_confidence -= penalty
             logger.debug(
                 f"Fragment penalty: {rule_id} completeness={completeness:.2f} "
-                f"penalty=-{penalty:.2f} → confidence={confidence:.3f}"
+                f"penalty=-{penalty:.2f} → base_confidence={base_confidence:.3f}"
             )
 
-    return round(min(1.0, max(0.0, confidence)), 3)
+    base_confidence = round(min(1.0, max(0.0, base_confidence)), 3)
+
+    # ── Trust-Weighted Final Confidence ──────────────────────────────
+    # Apply the multi-signal trust formula from Phase 9.3.
+    # This modulates confidence by rule trustworthiness (from the registry),
+    # engine agreement level, and behavioral signal strength.
+    engine_agreement = cross_agreement  # Already 0.0–1.0
+    behavioral = evidence_quality       # Use evidence quality as behavioral proxy
+
+    confidence = compute_final_confidence(
+        base_confidence=base_confidence,
+        rule_id=rule_id,
+        engine_agreement=engine_agreement,
+        behavioral_signal=behavioral,
+    )
+
+    return confidence
 
 
 def _confidence_tier(confidence: float) -> str:
@@ -207,17 +277,10 @@ def apply_confidence_rules(issues: list[dict], html: str = "") -> list[dict]:
     for issue in issues:
         sources = issue.get("confidence_sources", [])
         unique_sources = set(sources)
+        rule_id = issue.get("rule_id", "")
 
-        # Calculate confidence (with fragment detection)
+        # Calculate confidence (with fragment detection + trust weighting)
         confidence = calculate_confidence(issue, html=html)
-
-        # Rule: ≥3 engines → auto-confirm
-        if len(unique_sources) >= 3:
-            confidence = 0.95
-
-        # Rule: ≥2 engines → floor at 0.8
-        elif len(unique_sources) >= 2:
-            confidence = max(confidence, 0.8)
 
         # Rule: heuristic-only → needs-review
         if unique_sources == {"heuristic"}:
@@ -226,7 +289,12 @@ def apply_confidence_rules(issues: list[dict], html: str = "") -> list[dict]:
 
         issue["confidence"] = confidence
         issue["confidence_tier"] = _confidence_tier(confidence)
-        issue["rule_type"] = RULE_TYPE_MAP.get(issue.get("rule_id", ""), "hard")
+        issue["rule_type"] = RULE_TYPE_MAP.get(rule_id, "hard")
+
+        # ── Attach trust metadata (Phase 9 requirement) ─────────────
+        trust_entry = get_rule_trust_entry(rule_id)
+        issue["rule_trust_score"] = trust_entry.get("trust_score", 0.50)
+        issue["rule_trust_verdict"] = trust_entry.get("verdict", "uncalibrated")
 
         # Rule: confidence < 0.4 → downgrade severity
         if confidence < 0.4:
@@ -279,6 +347,8 @@ def apply_confidence_rules(issues: list[dict], html: str = "") -> list[dict]:
         rule_id = issue.get("rule_id", "")
         issue["impact_summary"] = IMPACT_SUMMARIES.get(rule_id, IMPACT_SUMMARIES["_default"])
 
+    issues = _boost_cross_engine_agreement(issues)
+
     # Log summary
     avg_confidence = sum(i.get("confidence", 0) for i in issues) / len(issues) if issues else 0
     needs_review = sum(1 for i in issues if i.get("needs_manual_review"))
@@ -288,7 +358,7 @@ def apply_confidence_rules(issues: list[dict], html: str = "") -> list[dict]:
         f"{needs_review} flagged for manual review"
     )
 
-    return _boost_cross_engine_agreement(issues)
+    return issues
 
 
 def _boost_cross_engine_agreement(issues: list[dict]) -> list[dict]:
@@ -312,11 +382,122 @@ def _boost_cross_engine_agreement(issues: list[dict]) -> list[dict]:
         confirming = rule_sources.get(rule_id, set())
         if len(confirming) >= 2:
             current = issue.get("confidence", 0.0)
-            # Strong boost: 2 engines → floor at 0.92
-            issue["confidence"] = max(current, 0.92)
+            floor = 0.95 if len(confirming) >= 3 else 0.85
+            issue["confidence"] = max(current, floor)
             issue["confidence_tier"] = "high"
             logger.debug(
                 f"Cross-engine boost: {rule_id} confirmed by {confirming} → confidence={issue['confidence']}"
             )
 
     return issues
+
+
+# ── Score computation utilities (Production Readiness) ─────────────
+# DESIGN CONSTRAINT: These functions affect SCORE COMPUTATION ONLY.
+# They do NOT affect visibility filtering.  Confidence ≠ visibility.
+# Visibility decisions happen in audit_runner._apply_precision_profile().
+
+import math
+import re
+
+
+def detect_semantic_html_density(html: str) -> float:
+    """Measure the ratio of semantic HTML elements to total elements.
+
+    Returns a 0.0–1.0 density value.  High values (>0.85) signal a
+    well-structured page unlikely to have real structural accessibility
+    issues — used by apply_quality_bonus() to floor scores.
+    """
+    if not html:
+        return 0.0
+
+    _SEMANTIC_TAGS = {
+        "main", "nav", "header", "footer", "article", "section",
+        "aside", "figure", "figcaption", "details", "summary",
+        "dialog", "mark", "time",
+    }
+
+    try:
+        # Count all opening tags vs semantic tags (cheap regex, no parser)
+        all_tags = re.findall(r"<([a-zA-Z][a-zA-Z0-9]*)", html)
+        if not all_tags:
+            return 0.0
+        semantic_count = sum(1 for tag in all_tags if tag.lower() in _SEMANTIC_TAGS)
+        density = semantic_count / len(all_tags)
+        return round(min(1.0, density), 3)
+    except Exception:
+        return 0.0
+
+
+def apply_quality_bonus(score: float, site_signals: dict) -> float:
+    """Apply score floor for high-quality sites.
+
+    Prevents over-penalisation of well-built pages that happen to trigger
+    minor structural rules.  Affects final score only, never visibility.
+
+    Args:
+        score:        Current score (0-100).
+        site_signals: Dict with keys like ``semantic_html_density``,
+                      ``has_skip_link``, ``has_lang_attr``,
+                      ``has_critical_violations``, etc.
+
+    Returns:
+        Adjusted score (may be floored upward, never lowered).
+    """
+    # GUARD: Never apply quality bonus when critical violations exist.
+    # Prevents bad sites from gaming the system with semantic tags.
+    if bool(site_signals.get("has_critical_violations", False)):
+        return score
+
+    density = float(site_signals.get("semantic_html_density", 0.0))
+    has_skip_link = bool(site_signals.get("has_skip_link", False))
+    has_lang_attr = bool(site_signals.get("has_lang_attr", False))
+
+    quality_indicators = sum([
+        density > 0.85,
+        has_skip_link,
+        has_lang_attr,
+    ])
+
+    # Floor: if 2+ quality indicators present, score cannot drop below 75
+    if quality_indicators >= 2 and score < 75.0:
+        logger.debug(
+            "Quality bonus: flooring score from %.1f to 75.0 (density=%.2f, indicators=%d)",
+            score, density, quality_indicators,
+        )
+        return 75.0
+
+    # Small bonus for very high quality sites (capped at 100)
+    if quality_indicators >= 3:
+        bonus = min(3.0, 100.0 - score)
+        if bonus > 0:
+            logger.debug("Quality bonus: adding +%.1f bonus (all indicators met)", bonus)
+            return round(score + bonus, 1)
+
+    return score
+
+
+def calculate_diminishing_penalty(
+    count: int,
+    base_weight: float,
+    *,
+    exponent: float = 0.65,
+) -> float:
+    """Sub-linear penalty: 10 repeated issues ≠ 10× penalty.
+
+    Used by the scoring system to prevent repeated structural rules from
+    collapsing the score.  This is a pure math utility.
+
+    Args:
+        count:       Number of occurrences.
+        base_weight: Per-issue penalty weight.
+        exponent:    Diminishing returns exponent (default 0.65 from TRUST_CALIBRATION).
+
+    Returns:
+        Total penalty for all occurrences.
+    """
+    safe_count = max(1, int(count))
+    safe_weight = max(0.0, float(base_weight))
+    safe_exponent = max(0.3, min(1.0, float(exponent)))
+    return round(safe_weight * (safe_count ** safe_exponent), 3)
+

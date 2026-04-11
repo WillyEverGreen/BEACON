@@ -326,6 +326,7 @@ async def start_scan(data: ScanStart):
         "issues": [],
         "groups": [],
         "priority_ranking": [],
+        "trust": {},
         "engines_used": [],
         "scan_time_seconds": 0,
         "degraded_mode": False,
@@ -352,6 +353,7 @@ async def start_scan(data: ScanStart):
                 scan_record["engines_used"] = result.get("engines_used", [])
                 scan_record["scan_time_seconds"] = result.get("scan_time_seconds", 0)
                 scan_record["enrichment_status"] = "failed"
+                scan_record["trust"] = result.get("trust", {})
                 scan_record["completed_at"] = _utc_now_iso()
                 save_data(SCANS_FILE, DB_SCANS)
                 logger.warning(f"Scan {scan_id} failed early: {failure_reason}")
@@ -379,6 +381,7 @@ async def start_scan(data: ScanStart):
             scan_record["priority_ranking"] = result.get("priority_ranking", [])
             scan_record["engines_used"] = result.get("engines_used", [])
             scan_record["scan_time_seconds"] = result.get("scan_time_seconds", 0)
+            scan_record["trust"] = result.get("trust", {})
             scan_record["degraded_mode"] = result.get("degraded_mode", False)
             scan_record["degraded_reason"] = result.get("degraded_reason")
             scan_record["skipped_components"] = result.get("skipped_components", [])
@@ -465,6 +468,7 @@ async def start_scan(data: ScanStart):
             scan_record["summary"] = f"Scan failed: {str(e)}"
             scan_record["ai_analysis"] = f"❌ Scan failed: {str(e)}"
             scan_record["enrichment_status"] = "failed"
+            scan_record["trust"] = scan_record.get("trust") or {}
             scan_record["completed_at"] = _utc_now_iso()
             save_data(SCANS_FILE, DB_SCANS)
             logger.error(f"Scan {scan_id} failed: {e}", exc_info=True)

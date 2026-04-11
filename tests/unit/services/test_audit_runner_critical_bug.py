@@ -60,7 +60,7 @@ def _isolate_runner(monkeypatch):
 @pytest.mark.asyncio
 async def test_wikipedia_like_static_site_returns_non_zero_score_and_valid_site_result(monkeypatch):
     async def _fake_fetch(url: str, timeout: float = 15.0):
-        return "<html><head><title>Wikipedia</title></head><body><main>encyclopedia</main></body></html>"
+        return "<html><head><title>Wikipedia</title></head><body><main>encyclopedia</main></body></html>", "", {}
 
     monkeypatch.setattr(audit_runner, "_fetch_html", _fake_fetch)
     monkeypatch.setattr(audit_runner.StaticChecker, "run_all", lambda self, checks=None: [])
@@ -78,12 +78,13 @@ async def test_wikipedia_like_static_site_returns_non_zero_score_and_valid_site_
     assert isinstance(result.get("issues"), list)
     assert isinstance(result.get("site_result"), dict)
     assert result["site_result"].get("pages_audited", 0) > 0
+    assert result.get("pages_scanned", 0) > 0
 
 
 @pytest.mark.asyncio
 async def test_enrichment_failure_does_not_invalidate_base_audit(monkeypatch):
     async def _fake_fetch(url: str, timeout: float = 15.0):
-        return "<html><head><title>Example</title></head><body><main><img src='hero.png'></main></body></html>"
+        return "<html><head><title>Example</title></head><body><main><img src='hero.png'></main></body></html>", "", {}
 
     async def _fail_enrich(*args, **kwargs):
         raise RuntimeError("forced llm failure")
@@ -119,7 +120,7 @@ async def test_enrichment_failure_does_not_invalidate_base_audit(monkeypatch):
 @pytest.mark.asyncio
 async def test_empty_issue_set_never_defaults_to_zero_score(monkeypatch):
     async def _fake_fetch(url: str, timeout: float = 15.0):
-        return "<html><head><title>No Issues</title></head><body><main>content</main></body></html>"
+        return "<html><head><title>No Issues</title></head><body><main>content</main></body></html>", "", {}
 
     monkeypatch.setattr(audit_runner, "_fetch_html", _fake_fetch)
     monkeypatch.setattr(audit_runner.StaticChecker, "run_all", lambda self, checks=None: [])
@@ -135,6 +136,7 @@ async def test_empty_issue_set_never_defaults_to_zero_score(monkeypatch):
     assert result["total_issues"] == 0
     assert result["score"] >= 90.0
     assert result["score"] != 0.0
+    assert result.get("pages_scanned", 0) > 0
 
 
 @pytest.mark.asyncio
@@ -209,7 +211,7 @@ async def test_stale_poisoned_cache_entry_is_ignored_and_recomputed(monkeypatch)
 
     async def _fake_fetch(url: str, timeout: float = 15.0):
         call_state["fetched"] = True
-        return "<html><head><title>Recomputed</title></head><body><main>ok</main></body></html>"
+        return "<html><head><title>Recomputed</title></head><body><main>ok</main></body></html>", "", {}
 
     monkeypatch.setattr(audit_runner, "check_cache", _fake_cache_read)
     monkeypatch.setattr(audit_runner, "_fetch_html", _fake_fetch)

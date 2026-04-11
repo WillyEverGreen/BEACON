@@ -13,6 +13,9 @@ def _issue(
     user_impact=None,
     severity: str = "moderate",
     fix=None,
+    confidence: float = 0.9,
+    html_snippet: str = "",
+    evidence: dict | None = None,
 ):
     return {
         "rule_id": rule_id,
@@ -25,7 +28,9 @@ def _issue(
         "fix": fix or {"description": f"Fix {rule_id}"},
         "message": f"{rule_id} issue",
         "domain": "forms" if element_type in {"input", "button", "form"} else "structure",
-        "confidence": 0.9,
+        "confidence": confidence,
+        "html_snippet": html_snippet,
+        "evidence": evidence or {},
     }
 
 
@@ -103,3 +108,63 @@ def test_duplicate_pattern_grouping_is_stable():
     assert len(by_pattern) == 1
     assert by_pattern[0]["issue_count"] == 3
     assert by_pattern[0]["frequency"] == 6.0
+
+
+def test_repeated_occurrences_have_diminishing_penalty():
+    single = build_scoring_summary([
+        _issue("link-purpose", element_type="link", frequency=1, user_impact="confusing", severity="moderate"),
+    ])
+    repeated = build_scoring_summary([
+        _issue("link-purpose", element_type="link", frequency=10, user_impact="confusing", severity="moderate"),
+    ])
+
+    single_penalty = float(single["score_distribution"]["major_penalty"])
+    repeated_penalty = float(repeated["score_distribution"]["major_penalty"])
+
+    assert repeated_penalty > single_penalty
+    # Sub-linear scaling should be materially below a linear x10 penalty jump.
+    assert repeated_penalty < (single_penalty * 6.0)
+
+
+def test_low_confidence_issues_are_excluded_from_score_and_summary():
+    summary = build_scoring_summary(
+        [
+            _issue(
+                "missing-label",
+                element_type="input",
+                frequency=1,
+                user_impact="blocks action",
+                severity="critical",
+                confidence=0.2,
+            ),
+            _issue(
+                "link-purpose",
+                element_type="link",
+                frequency=1,
+                user_impact="confusing",
+                severity="moderate",
+                confidence=0.9,
+            ),
+        ]
+    )
+
+    assert summary["severity_breakdown"]["critical"] == 0
+    assert all(issue["rule_id"] != "missing-label" for issue in summary["prioritized_issues"])
+    assert summary["score_explanation"]["low_confidence_excluded_count"] >= 1
+
+
+def test_hidden_elements_have_reduced_penalty_weight():
+    visible = build_scoring_summary([
+        _issue("svg-accessible-name", severity="serious", confidence=0.9, html_snippet="<svg></svg>"),
+    ])
+    hidden = build_scoring_summary([
+        _issue(
+            "svg-accessible-name",
+            severity="serious",
+            confidence=0.9,
+            html_snippet='<svg aria-hidden="true"></svg>',
+        ),
+    ])
+
+    assert hidden["overall_score"] >= visible["overall_score"]
+    assert hidden["score_distribution"]["major_penalty"] < visible["score_distribution"]["major_penalty"]

@@ -1,6 +1,7 @@
 const auditService = require("../services/auditService");
 const { validateAuditRequest } = require("../services/validationService");
 const { formatResponse, formatError } = require("./responseFormatter");
+const { log } = require("../utils/logger");
 
 function selectErrorStatus(code) {
   if (code === "INVALID_MODE" || code === "BLOCKED_HOST") {
@@ -17,11 +18,21 @@ async function enqueueAudit(req, res, next) {
         message: "Invalid request",
         code: "INVALID_REQUEST",
       };
+
+      // Observability hook: explicit validation failure event.
+      log("warn", "validation_error", {
+        request_id: req.request_id || null,
+        path: req.originalUrl,
+        code: first.code,
+        message: first.message,
+      });
+
       return res.status(selectErrorStatus(first.code)).json(formatError(first.message, first.code));
     }
 
     const { url, mode } = validation.normalized;
-    const job = auditService.enqueueAuditJob(url, mode, req.ip);
+  // Observability hook: carry request correlation id into job + engine path.
+    const job = auditService.enqueueAuditJob(url, mode, req.ip, req.request_id || null);
     res.locals.job_id = job.id;
 
     return res.status(202).json(

@@ -1,0 +1,62 @@
+{
+  "baseline_file": "evaluation\\baseline_v10.json",
+  "current_file": "evaluation\\calib_iter1b_uncached.json",
+  "kpi_baseline": {
+    "runtime_success_rate": 90.0,
+    "timeout_rate": 0.0,
+    "degraded_rate": 10.0,
+    "avg_runtime": 11.08,
+    "fast_mode_p95_time": 3.21,
+    "fast_mode_usage": 100.0
+  },
+  "kpi_current": {
+    "runtime_success_rate": 90.0,
+    "timeout_rate": 0.0,
+    "degraded_rate": 10.0,
+    "avg_runtime": 9.67,
+    "fast_mode_p95_time": 2.18,
+    "fast_mode_usage": 100.0
+  },
+  "kpi_delta": {
+    "runtime_success_rate": 0.0,
+    "timeout_rate": 0.0,
+    "degraded_rate": 0.0,
+    "avg_runtime": -1.41,
+    "fast_mode_p95_time": -1.03,
+    "fast_mode_usage": 0.0
+  },
+  "scoring_alignment": {
+    "baseline": {
+      "n": 9,
+      "spearman": 0.3726
+    },
+    "current": {
+      "n": 9,
+      "spearman": 0.2832
+    }
+  },
+  "issue_pressure": {
+    "baseline": {
+      "median_deep_issues": 7.0,
+      "mean_deep_issues": 7.556,
+      "p90_deep_issues": 11.0
+    },
+    "current": {
+      "median_deep_issues": 6.0,
+      "mean_deep_issues": 6.333,
+      "p90_deep_issues": 9.0
+    }
+  },
+  "gold_floor": {
+    "baseline": {
+      "sites": 4,
+      "min_score": 78.6,
+      "below_85_count": 1
+    },
+    "current": {
+      "sites": 4,
+      "min_score": 86.0,
+      "below_85_count": 0
+    }
+  }
+}
