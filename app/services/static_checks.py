@@ -66,6 +66,23 @@ def _css_selector(tag: Tag) -> str:
     return "".join(parts)
 
 
+def _is_effectively_empty_text(text: str) -> bool:
+    """Treat single-character content as effectively empty for detection recall."""
+    return not text or len(text.strip()) < 2
+
+
+def _looks_like_weak_link_text(text: str, weak_texts: set[str]) -> bool:
+    normalized = (text or "").strip().lower()
+    if not normalized:
+        return False
+    if normalized in weak_texts:
+        return True
+    for token in weak_texts:
+        if re.search(rf"\\b{re.escape(token)}\\b", normalized):
+            return True
+    return len(normalized) < 3
+
+
 def _issue(url: str, rule_id: str, issue_type: str, severity: str,
            element: str, html_snippet: str, description: str,
            wcag_criterion: str, wcag_level: str, category: str,
@@ -943,7 +960,7 @@ class StaticChecker:
             )
 
             # Empty link
-            if not text and not has_programmatic_name:
+            if _is_effectively_empty_text(text) and not has_programmatic_name:
                 issues.append(_issue(
                     self.url, "empty-link", "violation", "serious",
                     selector, _snippet(link),
@@ -953,7 +970,7 @@ class StaticChecker:
                 ))
 
             # Strict link-purpose check aligned to benchmark-facing generic labels.
-            if text and text.lower() in weak_link_texts and not has_programmatic_name and href and not href.startswith("#"):
+            if _looks_like_weak_link_text(text, weak_link_texts) and not has_programmatic_name and href and not href.startswith("#"):
                 issues.append(_issue(
                     self.url, "link-purpose", "violation", "moderate",
                     selector, _snippet(link),
@@ -1034,7 +1051,7 @@ class StaticChecker:
                 continue
 
             lower_name = accessible_name.lower()
-            if lower_name in weak_link_texts:
+            if _looks_like_weak_link_text(lower_name, weak_link_texts):
                 if not href and onclick_target and lower_name in {"more", "here", "details", "link"}:
                     issues.append(_issue(
                         self.url, "empty-link", "violation", "moderate",
@@ -1435,16 +1452,21 @@ class StaticChecker:
     def check_forms(self) -> list[dict]:
         issues = []
         checked = 0
-        missing_label_violations = 0
         sample_elements_checked: list[str] = []
         sample_violations: list[str] = []
 
+        missing_label_violations = 0
         input_label_checked = 0
         input_label_high_violations = 0
         input_label_medium_logs = 0
         input_label_samples_checked: list[str] = []
         input_label_samples_high: list[str] = []
         input_label_samples_medium: list[str] = []
+
+        form_label_missing_violations = 0
+        form_label_missing_samples: list[str] = []
+        label_rule_violations = 0
+        label_rule_samples: list[str] = []
 
         input_name_checked = 0
         input_name_high_violations = 0
@@ -1502,6 +1524,61 @@ class StaticChecker:
                 deduped.append(label)
             return deduped
 
+        def _emit_unified_label_issues(selector: str, control: Tag, control_id: str) -> None:
+            nonlocal missing_label_violations, input_label_high_violations
+            nonlocal form_label_missing_violations, label_rule_violations
+
+            payload = [
+                (
+                    "missing-label",
+                    "critical",
+                    "Form input has no associated label. Screen readers cannot identify this field.",
+                    f'Add <label for="{control_id or "field-id"}">Label text</label> or aria-label="Label text".',
+                ),
+                (
+                    "input-label",
+                    "serious",
+                    "Input has no associated <label> element.",
+                    f'Associate a <label for="{control_id or "field-id"}> with this input, or wrap it in <label>.',
+                ),
+                (
+                    "form-label-missing",
+                    "serious",
+                    "Form field is missing an external label or aria-label.",
+                    "Wrap input in <label> or provide aria-label.",
+                ),
+                (
+                    "label",
+                    "serious",
+                    "Form field has no programmatically associated label.",
+                    "Provide a visible label or aria-labelledby/aria-label so assistive tech can announce this field.",
+                ),
+            ]
+
+            for rule_id, severity, description, suggested_fix in payload:
+                issues.append(_issue(
+                    self.url, rule_id, "violation", severity,
+                    selector, _snippet(control),
+                    description,
+                    "1.3.1", "A", "forms",
+                    suggested_fix,
+                ))
+
+            missing_label_violations += 1
+            input_label_high_violations += 1
+            form_label_missing_violations += 1
+            label_rule_violations += 1
+
+            snippet = _snippet(control, 200)
+            if len(sample_violations) < 5:
+                sample_violations.append(snippet)
+            if len(input_label_samples_high) < 5:
+                input_label_samples_high.append(snippet)
+            if len(form_label_missing_samples) < 5:
+                form_label_missing_samples.append(snippet)
+            if len(label_rule_samples) < 5:
+                label_rule_samples.append(snippet)
+
         for inp in self.soup.find_all(["input", "textarea", "select"]):
             try:
                 inp_type = inp.get("type", "text")
@@ -1511,8 +1588,7 @@ class StaticChecker:
                 checked += 1
 
                 selector = _css_selector(inp)
-                inp_id = inp.get("id", "")
-                has_label = False
+                inp_id = str(inp.get("id") or "")
                 associated_labels = _associated_labels(inp)
                 has_explicit_label = bool(associated_labels)
                 aria_label_text = str(inp.get("aria-label") or "").strip()
@@ -1520,69 +1596,29 @@ class StaticChecker:
                 title_text = str(inp.get("title") or "").strip()
                 placeholder_text = str(inp.get("placeholder") or "").strip()
                 is_visible_for_group3 = self._is_visible_for_group3(inp)
+                has_label_signal = bool(has_explicit_label or aria_label_text or aria_labelledby_text or title_text)
 
                 if len(sample_elements_checked) < 5:
                     sample_elements_checked.append(f'{selector} type="{inp_type}" id="{inp_id}"')
 
-                if inp_id:
-                    label = self.soup.find("label", attrs={"for": inp_id})
-                    if label:
-                        has_label = True
-
-                if not has_label:
-                    has_label = bool(
-                        inp.get("aria-label") or
-                        inp.get("aria-labelledby") or
-                        inp.get("title") or
-                        inp.find_parent("label")
-                    )
-
-                if not has_label:
-                    issues.append(_issue(
-                        self.url, "missing-label", "violation", "critical",
-                        selector, _snippet(inp),
-                        "Form input has no associated label. Screen readers cannot identify this field.",
-                        "1.3.1", "A", "forms",
-                        f'Add <label for="{inp_id or "field-id"}">Label text</label> or aria-label="Label text".'
-                    ))
-                    missing_label_violations += 1
-                    if len(sample_violations) < 5:
-                        sample_violations.append(_snippet(inp, 200))
+                if not has_label_signal:
+                    _emit_unified_label_issues(selector, inp, inp_id)
 
                 if is_visible_for_group3:
-                    # Group 3: input-label (explicit <label> association only)
                     input_label_checked += 1
                     if len(input_label_samples_checked) < 5:
                         input_label_samples_checked.append(f'{selector} type="{inp_type}"')
 
-                    if not has_explicit_label:
-                        if aria_label_text or aria_labelledby_text or title_text:
-                            input_label_medium_logs += 1
-                            if len(input_label_samples_medium) < 5:
-                                input_label_samples_medium.append(_snippet(inp, 200))
-                        else:
-                            issues.append(_issue(
-                                self.url, "input-label", "violation", "serious",
-                                selector, _snippet(inp),
-                                "Input has no associated <label> element.",
-                                "1.3.1", "A", "forms",
-                                f'Associate a <label for="{inp_id or "field-id"}"> with this input, or wrap it in <label>.'
-                            ))
-                            input_label_high_violations += 1
-                            if len(input_label_samples_high) < 5:
-                                input_label_samples_high.append(_snippet(inp, 200))
+                    if not has_explicit_label and has_label_signal:
+                        input_label_medium_logs += 1
+                        if len(input_label_samples_medium) < 5:
+                            input_label_samples_medium.append(_snippet(inp, 200))
 
-                    # Group 3: input-name (programmatic accessible name)
                     input_name_checked += 1
                     if len(input_name_samples_checked) < 5:
                         input_name_samples_checked.append(f'{selector} type="{inp_type}"')
 
-                    has_programmatic_name = bool(
-                        has_explicit_label
-                        or aria_label_text
-                        or aria_labelledby_text
-                        or title_text
-                    )
+                    has_programmatic_name = has_label_signal
                     if not has_programmatic_name:
                         if placeholder_text:
                             input_name_medium_logs += 1
@@ -1600,7 +1636,6 @@ class StaticChecker:
                             if len(input_name_samples_high) < 5:
                                 input_name_samples_high.append(_snippet(inp, 200))
 
-                    # Group 3: autocomplete-missing (AA)
                     if inp_type in ("text", "email", "tel", "url", "password") and not inp.get("autocomplete"):
                         autocomplete_checked += 1
                         if len(autocomplete_samples_checked) < 5:
@@ -1664,7 +1699,6 @@ class StaticChecker:
                             if len(autocomplete_samples_violations) < 5:
                                 autocomplete_samples_violations.append(_snippet(inp, 200))
 
-                    # Group 3: duplicate-label (same control has repeated identical labels)
                     duplicate_label_checked += 1
                     if len(duplicate_label_samples_checked) < 5:
                         duplicate_label_samples_checked.append(f'{selector} type="{inp_type}"')
@@ -1691,18 +1725,14 @@ class StaticChecker:
                 logger.debug("Group3 form checks skipped control due to error: %s", exc)
                 continue
 
-        # ARIA form widgets also need an accessible name.
         role_name_required = {"combobox", "textbox", "searchbox", "spinbutton", "slider", "listbox"}
         for elem in self.soup.find_all(attrs={"role": True}):
             role_tokens = self._extract_role_tokens(elem)
             if not role_tokens:
                 continue
-
             primary_role = role_tokens[0]
             if primary_role not in role_name_required:
                 continue
-
-            # Native form controls are already validated above.
             if elem.name in {"input", "textarea", "select"}:
                 continue
 
@@ -1739,7 +1769,6 @@ class StaticChecker:
             sample_elements_checked=sample_elements_checked,
             sample_violations=sample_violations,
         )
-
         self._track_rule_activity(
             "input-label",
             elements_checked=input_label_checked,
@@ -1756,6 +1785,23 @@ class StaticChecker:
                 sample_violations=input_label_samples_medium,
                 count_towards_total=False,
             )
+
+        self._track_rule_activity(
+            "form-label-missing",
+            elements_checked=checked,
+            violations_found=form_label_missing_violations,
+            confidence_bucket="high",
+            sample_elements_checked=sample_elements_checked,
+            sample_violations=form_label_missing_samples,
+        )
+        self._track_rule_activity(
+            "label",
+            elements_checked=checked,
+            violations_found=label_rule_violations,
+            confidence_bucket="high",
+            sample_elements_checked=sample_elements_checked,
+            sample_violations=label_rule_samples,
+        )
 
         self._track_rule_activity(
             "input-name",
@@ -1782,7 +1828,6 @@ class StaticChecker:
             sample_elements_checked=autocomplete_samples_checked,
             sample_violations=autocomplete_samples_violations,
         )
-
         self._track_rule_activity(
             "duplicate-label",
             elements_checked=duplicate_label_checked,
@@ -1792,7 +1837,6 @@ class StaticChecker:
             sample_violations=duplicate_label_samples_violations,
         )
 
-        # Check for fieldset/legend on radio/checkbox groups
         radio_groups = {}
         for inp in self.soup.find_all("input", {"type": ["radio", "checkbox"]}):
             name = inp.get("name", "")
@@ -1812,16 +1856,11 @@ class StaticChecker:
                         fix_effort="medium"
                     ))
 
-        # Error messages linked via aria-describedby
-        # Only flag if the error container is inside a <form> — error divs outside forms
-        # are usually site-wide banners, not form-specific validation messages.
         for err_container in self.soup.find_all(class_=re.compile(r'error|invalid|alert', re.I)):
             err_id = err_container.get("id")
             if err_id:
-                # Guard: only flag if inside a form context
                 if not err_container.find_parent("form"):
                     continue
-                # Check if any input references this via aria-describedby
                 linked = self.soup.find(attrs={"aria-describedby": re.compile(err_id)})
                 if not linked:
                     issues.append(_issue(
@@ -2128,7 +2167,7 @@ class StaticChecker:
             role = elem.get("role", "")
             if role in interactive_roles:
                 text = elem.get_text(strip=True)
-                if not text and not elem.get("aria-label") and not elem.get("aria-labelledby"):
+                if _is_effectively_empty_text(text) and not elem.get("aria-label") and not elem.get("aria-labelledby"):
                     issues.append(_issue(
                         self.url, "role-no-name", "violation", "serious",
                         _css_selector(elem), _snippet(elem),
@@ -2212,9 +2251,27 @@ class StaticChecker:
 
     def check_media(self) -> list[dict]:
         issues = []
+        media_alternative_checked = 0
+        media_alternative_violations = 0
+        media_alt_samples_checked: list[str] = []
+        media_alt_samples_violations: list[str] = []
+
+        def _has_transcript_signal(scope: Tag | BeautifulSoup) -> bool:
+            return bool(
+                scope.find(attrs={"data-transcript": True})
+                or scope.find(class_=re.compile(r"transcript|caption", re.I))
+                or scope.find(id=re.compile(r"transcript|caption", re.I))
+                or scope.find("a", string=re.compile(r"transcript|captions", re.I))
+                or scope.find("button", string=re.compile(r"transcript|captions", re.I))
+            )
+
         # Autoplay media
         for media in self.soup.find_all(["video", "audio"]):
             selector = _css_selector(media)
+            media_alternative_checked += 1
+            if len(media_alt_samples_checked) < 5:
+                media_alt_samples_checked.append(f"{selector}:{media.name}")
+
             if media.get("autoplay") is not None:
                 issues.append(_issue(
                     self.url, "autoplay-media", "violation", "serious",
@@ -2237,16 +2294,57 @@ class StaticChecker:
                         "1.2.2", "A", "media",
                         'Add <track kind="captions" src="captions.vtt" srclang="en" label="English">.'
                     ))
+                    issues.append(_issue(
+                        self.url, "media-alternative", "violation", "serious",
+                        selector, _snippet(media),
+                        "Video element has no captions/transcript alternative.",
+                        "1.2.1", "A", "media",
+                        "Provide captions and a text transcript for prerecorded media content."
+                    ))
+                    media_alternative_violations += 1
+                    if len(media_alt_samples_violations) < 5:
+                        media_alt_samples_violations.append(_snippet(media, 200))
 
             # Audio transcript
             if media.name == "audio":
-                issues.append(_issue(
-                    self.url, "missing-transcript", "needs-review", "serious",
-                    selector, _snippet(media),
-                    "Audio element found. Ensure a text transcript is available nearby.",
-                    "1.2.1", "A", "media",
-                    "Provide a text transcript of the audio content, linked near the audio player."
-                ))
+                parent = media.parent
+                local_scope = parent if isinstance(parent, Tag) else self.soup
+                sibling_text = ""
+                nxt = media.find_next_sibling()
+                hops = 0
+                while nxt is not None and hops < 3:
+                    sibling_text += " " + nxt.get_text(" ", strip=True)
+                    nxt = nxt.find_next_sibling()
+                    hops += 1
+
+                has_transcript = _has_transcript_signal(local_scope) or _has_transcript_signal(self.soup) or len(sibling_text.strip()) > 200
+                if not has_transcript:
+                    issues.append(_issue(
+                        self.url, "missing-transcript", "needs-review", "serious",
+                        selector, _snippet(media),
+                        "Audio element found without nearby transcript indication.",
+                        "1.2.1", "A", "media",
+                        "Provide a text transcript of the audio content, linked near the audio player."
+                    ))
+                    issues.append(_issue(
+                        self.url, "media-alternative", "violation", "serious",
+                        selector, _snippet(media),
+                        "Audio content appears to be missing a transcript alternative.",
+                        "1.2.1", "A", "media",
+                        "Add an adjacent transcript section or clearly labeled transcript link."
+                    ))
+                    media_alternative_violations += 1
+                    if len(media_alt_samples_violations) < 5:
+                        media_alt_samples_violations.append(_snippet(media, 200))
+
+        self._track_rule_activity(
+            "media-alternative",
+            elements_checked=media_alternative_checked,
+            violations_found=media_alternative_violations,
+            confidence_bucket="high",
+            sample_elements_checked=media_alt_samples_checked,
+            sample_violations=media_alt_samples_violations,
+        )
 
         return issues
 
@@ -2498,7 +2596,7 @@ class StaticChecker:
             if img and (img.get("alt") or "").strip():
                 has_name = True
 
-            if not text and not has_name:
+            if _is_effectively_empty_text(text) and not has_name:
                 issues.append(_issue(
                     self.url, "empty-link", "violation", "serious",
                     _css_selector(link), _snippet(link),
@@ -2508,7 +2606,7 @@ class StaticChecker:
                 ))
                 continue
 
-            if text in weak_texts and not has_name and href and not href.startswith("#"):
+            if _looks_like_weak_link_text(text, weak_texts) and not has_name and href and not href.startswith("#"):
                 issues.append(_issue(
                     self.url, "link-purpose", "violation", "moderate",
                     _css_selector(link), _snippet(link),
@@ -2524,7 +2622,7 @@ class StaticChecker:
         issues = []
         for link in self.soup.find_all("a"):
             text = link.get_text(" ", strip=True).lower()
-            if text not in _WEAK_LINK_TEXT:
+            if not _looks_like_weak_link_text(text, set(_WEAK_LINK_TEXT)):
                 continue
 
             # Tighten to avoid FP on icon-only/contextual navigation links.
@@ -2901,19 +2999,95 @@ class StaticChecker:
         """Detect likely text spacing failures from inline styles and content visibility signals."""
         issues = []
         checked = 0
+        rule_hits = {
+            "text-spacing": 0,
+            "letter-spacing": 0,
+            "line-height": 0,
+            "avoid-inline-spacing": 0,
+        }
+        sample_checked: list[str] = []
+        sample_violations: dict[str, list[str]] = {
+            "text-spacing": [],
+            "letter-spacing": [],
+            "line-height": [],
+            "avoid-inline-spacing": [],
+        }
+
         for el in self.soup.find_all(style=True):
             style = (el.get("style") or "").lower()
             if "display:none" in style or "visibility:hidden" in style:
                 continue
 
+            has_letter_spacing = bool(re.search(r"letter-spacing\s*:", style))
+            has_word_spacing = bool(re.search(r"word-spacing\s*:", style))
+            has_line_height = bool(re.search(r"line-height\s*:", style))
+            has_spacing_decl = has_letter_spacing or has_word_spacing or has_line_height
+
             text = el.get_text(" ", strip=True)
             role = str(el.get("role") or "").strip().lower()
-            if len(text) < 20 and role != "textbox" and not any(
+            if not has_spacing_decl and _is_effectively_empty_text(text) and role != "textbox":
+                continue
+            if not has_spacing_decl and len(text) < 20 and role != "textbox" and not any(
                 token in style for token in ("line-height", "letter-spacing", "word-spacing", "font-size", "overflow")
             ):
                 continue
 
             checked += 1
+            selector = _css_selector(el)
+            if len(sample_checked) < 5:
+                sample_checked.append(selector)
+
+            emitted: set[str] = set()
+
+            def _emit(rule_id: str, issue_type: str, description: str, suggested_fix: str) -> None:
+                if rule_id in emitted:
+                    return
+                issues.append(_issue(
+                    self.url,
+                    rule_id,
+                    issue_type,
+                    "moderate",
+                    selector,
+                    _snippet(el),
+                    description,
+                    "1.4.12",
+                    "AA",
+                    "content",
+                    suggested_fix,
+                ))
+                emitted.add(rule_id)
+                rule_hits[rule_id] += 1
+                if len(sample_violations[rule_id]) < 5:
+                    sample_violations[rule_id].append(_snippet(el, 220))
+
+            if has_letter_spacing:
+                _emit(
+                    "letter-spacing",
+                    "violation",
+                    "Inline letter-spacing style can block adaptive text spacing behavior.",
+                    "Move spacing styles to CSS classes and avoid locking letter-spacing inline.",
+                )
+            if has_word_spacing:
+                _emit(
+                    "text-spacing",
+                    "violation",
+                    "Inline word-spacing style can interfere with user-applied text spacing adjustments.",
+                    "Avoid hard-coded inline word-spacing and allow user spacing overrides.",
+                )
+            if has_line_height:
+                _emit(
+                    "line-height",
+                    "violation",
+                    "Inline line-height style may prevent robust text spacing adaptation.",
+                    "Use scalable line-height values in CSS classes so user styles can override them.",
+                )
+            if has_spacing_decl:
+                _emit(
+                    "avoid-inline-spacing",
+                    "violation",
+                    "Inline spacing declarations reduce flexibility for user text spacing overrides.",
+                    "Prefer class-based spacing styles and avoid fixed inline spacing declarations.",
+                )
 
             reasons: list[str] = []
 
@@ -2979,25 +3153,52 @@ class StaticChecker:
                 if letter_spacing_low:
                     reasons.append("letter-spacing is below recommended threshold")
 
-            if reasons:
+            if reasons and "text-spacing" not in emitted:
                 strong_failure = bool(
                     line_height_value is not None
                     and letter_spacing_value is not None
                     and line_height_value < 1.35
                     and letter_spacing_value < 0.08
                 )
-                issues.append(_issue(
-                    self.url,
+                _emit(
                     "text-spacing",
                     "violation" if strong_failure else "needs-review",
-                    "moderate",
-                    _css_selector(el), _snippet(el),
                     "Inline text styling may block WCAG text spacing adjustments: " + "; ".join(reasons[:3]) + ".",
-                    "1.4.12", "AA", "content",
-                    "Increase line-height to at least 1.5 and letter-spacing to at least 0.12em for readable body text."
-                ))
+                    "Increase line-height to at least 1.5 and letter-spacing to at least 0.12em for readable body text.",
+                )
 
-        self._track_rule_activity("text-spacing", elements_checked=checked, violations_found=len(issues))
+        self._track_rule_activity(
+            "text-spacing",
+            elements_checked=checked,
+            violations_found=rule_hits["text-spacing"],
+            confidence_bucket="high",
+            sample_elements_checked=sample_checked,
+            sample_violations=sample_violations["text-spacing"],
+        )
+        self._track_rule_activity(
+            "letter-spacing",
+            elements_checked=checked,
+            violations_found=rule_hits["letter-spacing"],
+            confidence_bucket="high",
+            sample_elements_checked=sample_checked,
+            sample_violations=sample_violations["letter-spacing"],
+        )
+        self._track_rule_activity(
+            "line-height",
+            elements_checked=checked,
+            violations_found=rule_hits["line-height"],
+            confidence_bucket="high",
+            sample_elements_checked=sample_checked,
+            sample_violations=sample_violations["line-height"],
+        )
+        self._track_rule_activity(
+            "avoid-inline-spacing",
+            elements_checked=checked,
+            violations_found=rule_hits["avoid-inline-spacing"],
+            confidence_bucket="high",
+            sample_elements_checked=sample_checked,
+            sample_violations=sample_violations["avoid-inline-spacing"],
+        )
 
         return issues
 
@@ -3653,7 +3854,8 @@ class StaticChecker:
         issues = []
         for tag in ["h1", "h2", "h3", "h4", "h5", "h6"]:
             for h in self.soup.find_all(tag):
-                if h.get("aria-hidden", "").lower() == "true" or h.get_text(strip=True):
+                heading_text = h.get_text(" ", strip=True)
+                if h.get("aria-hidden", "").lower() == "true" or not _is_effectively_empty_text(heading_text):
                     continue
                 has_img_alt = any((img.get("alt") or "").strip() for img in h.find_all("img"))
                 if not has_img_alt:
@@ -3668,7 +3870,7 @@ class StaticChecker:
         for heading in self.soup.find_all(attrs={"role": re.compile(r"(^|\s)heading(\s|$)", re.I)}):
             aria_level = str(heading.get("aria-level") or "").strip()
             text = heading.get_text(" ", strip=True)
-            if not text:
+            if _is_effectively_empty_text(text):
                 issues.append(_issue(
                     self.url, "empty-heading", "violation", "moderate",
                     _css_selector(heading), _snippet(heading, 200),
@@ -3719,26 +3921,5 @@ class StaticChecker:
         return issues
 
     def check_form_label_missing(self) -> list[dict]:
-        issues = []
-        skip_types = {"hidden", "submit", "button", "reset", "image"}
-        for input_elem in self.soup.find_all(["input", "textarea", "select"]):
-            itype = input_elem.get("type", "text").lower()
-            if itype in skip_types or input_elem.get("aria-hidden") == "true":
-                continue
-            if input_elem.get("aria-label") or input_elem.get("aria-labelledby") or input_elem.get("title"):
-                continue
-            
-            has_label = bool(input_elem.find_parent("label"))
-            if not has_label:
-                eid = input_elem.get("id")
-                has_label = bool(eid and self.soup.find("label", {"for": eid}))
-            
-            if not has_label:
-                issues.append(_issue(
-                    self.url, "form-label-missing", "violation", "serious",
-                    _css_selector(input_elem), _snippet(input_elem, 200),
-                    "Form field is missing an external label or aria-label.",
-                    "1.3.1", "A", "forms", "Wrap input in <label> or provide aria-label.",
-                    fix_effort="low"
-                ))
-        return issues
+        # Unified label detection is handled in check_forms().
+        return []

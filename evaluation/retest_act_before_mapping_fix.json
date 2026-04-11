@@ -558,7 +558,7 @@
         "predicted_in_adjudicated_space": 2,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 serious | Score: 99.4/100 | Engines: static, heuristic | Time: 0.3s",
+      "scan_summary": "Found 1 accessibility issues | 1 serious | Score: 99.0/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 9,
@@ -571,8 +571,8 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.3378,
-        "avg_confidence_after_filtering": 0.7154,
+        "avg_confidence_before_filtering": 0.3088,
+        "avg_confidence_after_filtering": 0.5041,
         "dropped_low_confidence": 2,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
@@ -1097,7 +1097,7 @@
         "predicted_in_adjudicated_space": 0,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 0 accessibility issues | Score: 99.0/100 | Engines: static, heuristic | Time: 0.0s",
+      "scan_summary": "Found 0 accessibility issues | Score: 99.0/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 14,
@@ -1110,7 +1110,7 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.3648,
+        "avg_confidence_before_filtering": 0.3598,
         "avg_confidence_after_filtering": 0.0,
         "dropped_low_confidence": 8,
         "dropped_needs_review": 0,
@@ -1634,17 +1634,15 @@
       "name": "ACT case 151",
       "url": "https://act-rules.github.io/testcases/4c31df/06e3bcbe22a1fb452df499d522ab74305ab95b06.html",
       "expected_rule_ids": [
-        "media-alternative",
         "video-transcript"
       ],
       "predicted_rule_ids": [
-        "media-alternative",
         "video-transcript"
       ],
       "missing_rule_ids": [],
       "unexpected_rule_ids": [],
       "metrics": {
-        "tp": 2,
+        "tp": 1,
         "fp": 0,
         "fn": 0,
         "precision": 1.0,
@@ -1652,38 +1650,38 @@
         "f1": 1.0
       },
       "adjudicated_metrics": {
-        "tp": 2,
+        "tp": 1,
         "fp": 0,
         "fn": 0,
         "precision": 1.0,
         "recall": 1.0,
         "f1": 1.0,
-        "adjudicated_rule_count": 2,
-        "predicted_in_adjudicated_space": 2,
+        "adjudicated_rule_count": 1,
+        "predicted_in_adjudicated_space": 1,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 2 accessibility issues | 2 serious | Score: 96.3/100 | Engines: static, heuristic | Time: 0.3s",
+      "scan_summary": "Found 1 accessibility issues | 1 serious | Score: 98.2/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 12,
-        "reported_issues": 2,
+        "reported_issues": 1,
         "issues_before_filtering": 12,
-        "issues_after_filtering": 2,
+        "issues_after_filtering": 1,
         "min_confidence_threshold": 0.75,
         "min_confidence_thresholds_by_rule_type": {
           "hard": 0.62,
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.4467,
-        "avg_confidence_after_filtering": 0.7056,
+        "avg_confidence_before_filtering": 0.4319,
+        "avg_confidence_after_filtering": 0.7002,
         "dropped_low_confidence": 4,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
         "dropped_excluded_rules": 0,
         "dropped_cooccurrence_rules": 0,
         "dropped_structural": 6,
-        "dropped_trust_block": 0,
+        "dropped_trust_block": 1,
         "dropped_stability_trim": 0,
         "filtered_breakdown": {
           "low_confidence": 4,
@@ -1692,10 +1690,12 @@
           "excluded_rule": 0,
           "cooccurrence_rule": 0,
           "structural": 6,
-          "trust_block": 0,
+          "trust_block": 1,
           "stability_trim": 0
         },
-        "trust_blocked_rules": {},
+        "trust_blocked_rules": {
+          "media-alternative": 1
+        },
         "structural_rules_suppressed": {
           "no-main-landmark": 1,
           "no-nav-landmark": 1,
@@ -1717,7 +1717,7 @@
           "fixture_recovery_block": true
         },
         "confidence_floor_adjustments": 0,
-        "suppression_rate": 0.833,
+        "suppression_rate": 0.917,
         "suppression_warning": true,
         "suppression_warning_rule": {
           "threshold": 0.7,
@@ -2209,8 +2209,8 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.4381,
-        "avg_confidence_after_filtering": 0.7216,
+        "avg_confidence_before_filtering": 0.4207,
+        "avg_confidence_after_filtering": 0.6753,
         "dropped_low_confidence": 2,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
@@ -2727,7 +2727,7 @@
         "predicted_in_adjudicated_space": 1,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 moderate | Score: 98.2/100 | Engines: static, heuristic | Time: 0.3s",
+      "scan_summary": "Found 1 accessibility issues | 1 moderate | Score: 99.0/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 8,
@@ -2740,8 +2740,8 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.4615,
-        "avg_confidence_after_filtering": 0.6991,
+        "avg_confidence_before_filtering": 0.4393,
+        "avg_confidence_after_filtering": 0.4929,
         "dropped_low_confidence": 2,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
@@ -3274,8 +3274,8 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.4856,
-        "avg_confidence_after_filtering": 0.7138,
+        "avg_confidence_before_filtering": 0.4725,
+        "avg_confidence_after_filtering": 0.6762,
         "dropped_low_confidence": 2,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
@@ -3768,52 +3768,52 @@
       "expected_rule_ids": [
         "keyboard-trap"
       ],
-      "predicted_rule_ids": [
+      "predicted_rule_ids": [],
+      "missing_rule_ids": [
         "keyboard-trap"
       ],
-      "missing_rule_ids": [],
       "unexpected_rule_ids": [],
       "metrics": {
-        "tp": 1,
+        "tp": 0,
         "fp": 0,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
+        "fn": 1,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
       },
       "adjudicated_metrics": {
-        "tp": 1,
+        "tp": 0,
         "fp": 0,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0,
+        "fn": 1,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
         "adjudicated_rule_count": 1,
-        "predicted_in_adjudicated_space": 1,
+        "predicted_in_adjudicated_space": 0,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 2 accessibility issues | 2 serious | Score: 96.3/100 | Engines: static, heuristic | Time: 0.1s",
+      "scan_summary": "Found 0 accessibility issues | Score: 99.0/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 10,
-        "reported_issues": 2,
+        "reported_issues": 0,
         "issues_before_filtering": 10,
-        "issues_after_filtering": 2,
+        "issues_after_filtering": 0,
         "min_confidence_threshold": 0.75,
         "min_confidence_thresholds_by_rule_type": {
           "hard": 0.62,
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.4025,
-        "avg_confidence_after_filtering": 0.85,
+        "avg_confidence_before_filtering": 0.3505,
+        "avg_confidence_after_filtering": 0.0,
         "dropped_low_confidence": 2,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
         "dropped_excluded_rules": 0,
         "dropped_cooccurrence_rules": 0,
         "dropped_structural": 6,
-        "dropped_trust_block": 0,
+        "dropped_trust_block": 2,
         "dropped_stability_trim": 0,
         "filtered_breakdown": {
           "low_confidence": 2,
@@ -3822,10 +3822,12 @@
           "excluded_rule": 0,
           "cooccurrence_rule": 0,
           "structural": 6,
-          "trust_block": 0,
+          "trust_block": 2,
           "stability_trim": 0
         },
-        "trust_blocked_rules": {},
+        "trust_blocked_rules": {
+          "keyboard-trap": 2
+        },
         "structural_rules_suppressed": {
           "no-main-landmark": 1,
           "no-nav-landmark": 1,
@@ -3847,7 +3849,7 @@
           "fixture_recovery_block": true
         },
         "confidence_floor_adjustments": 0,
-        "suppression_rate": 0.8,
+        "suppression_rate": 1.0,
         "suppression_warning": true,
         "suppression_warning_rule": {
           "threshold": 0.7,
@@ -4332,7 +4334,7 @@
         "predicted_in_adjudicated_space": 1,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 moderate | Score: 98.2/100 | Engines: static, heuristic | Time: 0.3s",
+      "scan_summary": "Found 1 accessibility issues | 1 moderate | Score: 99.0/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 8,
@@ -4345,8 +4347,8 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.4394,
-        "avg_confidence_after_filtering": 0.6991,
+        "avg_confidence_before_filtering": 0.4031,
+        "avg_confidence_after_filtering": 0.4929,
         "dropped_low_confidence": 1,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
@@ -4855,7 +4857,7 @@
         "predicted_in_adjudicated_space": 0,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 0 accessibility issues | Score: 99.0/100 | Engines: static, heuristic | Time: 0.0s",
+      "scan_summary": "Found 0 accessibility issues | Score: 99.0/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 8,
@@ -4868,7 +4870,7 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.4421,
+        "avg_confidence_before_filtering": 0.432,
         "avg_confidence_after_filtering": 0.0,
         "dropped_low_confidence": 2,
         "dropped_needs_review": 0,
@@ -5392,8 +5394,8 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.4525,
-        "avg_confidence_after_filtering": 0.8041,
+        "avg_confidence_before_filtering": 0.4209,
+        "avg_confidence_after_filtering": 0.6613,
         "dropped_low_confidence": 1,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
@@ -5884,52 +5886,52 @@
       "expected_rule_ids": [
         "svg-no-accessible-name"
       ],
-      "predicted_rule_ids": [
+      "predicted_rule_ids": [],
+      "missing_rule_ids": [
         "svg-no-accessible-name"
       ],
-      "missing_rule_ids": [],
       "unexpected_rule_ids": [],
       "metrics": {
-        "tp": 1,
+        "tp": 0,
         "fp": 0,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
+        "fn": 1,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
       },
       "adjudicated_metrics": {
-        "tp": 1,
+        "tp": 0,
         "fp": 0,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0,
+        "fn": 1,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
         "adjudicated_rule_count": 1,
-        "predicted_in_adjudicated_space": 1,
+        "predicted_in_adjudicated_space": 0,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 serious | Score: 98.1/100 | Engines: static, heuristic | Time: 0.0s",
+      "scan_summary": "Found 0 accessibility issues | Score: 99.0/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 9,
-        "reported_issues": 1,
+        "reported_issues": 0,
         "issues_before_filtering": 9,
-        "issues_after_filtering": 1,
+        "issues_after_filtering": 0,
         "min_confidence_threshold": 0.75,
         "min_confidence_thresholds_by_rule_type": {
           "hard": 0.62,
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.3541,
-        "avg_confidence_after_filtering": 0.862,
+        "avg_confidence_before_filtering": 0.3206,
+        "avg_confidence_after_filtering": 0.0,
         "dropped_low_confidence": 2,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
         "dropped_excluded_rules": 0,
         "dropped_cooccurrence_rules": 0,
         "dropped_structural": 6,
-        "dropped_trust_block": 0,
+        "dropped_trust_block": 1,
         "dropped_stability_trim": 0,
         "filtered_breakdown": {
           "low_confidence": 2,
@@ -5938,10 +5940,12 @@
           "excluded_rule": 0,
           "cooccurrence_rule": 0,
           "structural": 6,
-          "trust_block": 0,
+          "trust_block": 1,
           "stability_trim": 0
         },
-        "trust_blocked_rules": {},
+        "trust_blocked_rules": {
+          "svg-no-accessible-name": 1
+        },
         "structural_rules_suppressed": {
           "no-main-landmark": 1,
           "no-nav-landmark": 1,
@@ -5963,7 +5967,7 @@
           "fixture_recovery_block": true
         },
         "confidence_floor_adjustments": 0,
-        "suppression_rate": 0.889,
+        "suppression_rate": 1.0,
         "suppression_warning": true,
         "suppression_warning_rule": {
           "threshold": 0.7,
@@ -6417,52 +6421,52 @@
       "expected_rule_ids": [
         "svg-no-accessible-name"
       ],
-      "predicted_rule_ids": [
+      "predicted_rule_ids": [],
+      "missing_rule_ids": [
         "svg-no-accessible-name"
       ],
-      "missing_rule_ids": [],
       "unexpected_rule_ids": [],
       "metrics": {
-        "tp": 1,
+        "tp": 0,
         "fp": 0,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
+        "fn": 1,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
       },
       "adjudicated_metrics": {
-        "tp": 1,
+        "tp": 0,
         "fp": 0,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0,
+        "fn": 1,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
         "adjudicated_rule_count": 1,
-        "predicted_in_adjudicated_space": 1,
+        "predicted_in_adjudicated_space": 0,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 moderate | Score: 98.1/100 | Engines: static, heuristic | Time: 0.0s",
+      "scan_summary": "Found 0 accessibility issues | Score: 99.0/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 9,
-        "reported_issues": 1,
+        "reported_issues": 0,
         "issues_before_filtering": 9,
-        "issues_after_filtering": 1,
+        "issues_after_filtering": 0,
         "min_confidence_threshold": 0.75,
         "min_confidence_thresholds_by_rule_type": {
           "hard": 0.62,
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.353,
-        "avg_confidence_after_filtering": 0.8518,
+        "avg_confidence_before_filtering": 0.3199,
+        "avg_confidence_after_filtering": 0.0,
         "dropped_low_confidence": 2,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
         "dropped_excluded_rules": 0,
         "dropped_cooccurrence_rules": 0,
         "dropped_structural": 6,
-        "dropped_trust_block": 0,
+        "dropped_trust_block": 1,
         "dropped_stability_trim": 0,
         "filtered_breakdown": {
           "low_confidence": 2,
@@ -6471,10 +6475,12 @@
           "excluded_rule": 0,
           "cooccurrence_rule": 0,
           "structural": 6,
-          "trust_block": 0,
+          "trust_block": 1,
           "stability_trim": 0
         },
-        "trust_blocked_rules": {},
+        "trust_blocked_rules": {
+          "svg-no-accessible-name": 1
+        },
         "structural_rules_suppressed": {
           "no-main-landmark": 1,
           "no-nav-landmark": 1,
@@ -6496,7 +6502,7 @@
           "fixture_recovery_block": true
         },
         "confidence_floor_adjustments": 0,
-        "suppression_rate": 0.889,
+        "suppression_rate": 1.0,
         "suppression_warning": true,
         "suppression_warning_rule": {
           "threshold": 0.7,
@@ -6955,47 +6961,47 @@
         "avoid-inline-spacing",
         "letter-spacing"
       ],
-      "predicted_rule_ids": [
+      "predicted_rule_ids": [],
+      "missing_rule_ids": [
         "avoid-inline-spacing",
         "letter-spacing"
       ],
-      "missing_rule_ids": [],
       "unexpected_rule_ids": [],
       "metrics": {
-        "tp": 2,
+        "tp": 0,
         "fp": 0,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
+        "fn": 2,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
       },
       "adjudicated_metrics": {
-        "tp": 2,
+        "tp": 0,
         "fp": 0,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0,
+        "fn": 2,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
         "adjudicated_rule_count": 2,
-        "predicted_in_adjudicated_space": 2,
+        "predicted_in_adjudicated_space": 0,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 2 accessibility issues | 2 moderate | Score: 96.4/100 | Engines: static, heuristic | Time: 0.0s",
+      "scan_summary": "Found 0 accessibility issues | Score: 99.0/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 11,
-        "reported_issues": 2,
+        "reported_issues": 0,
         "issues_before_filtering": 11,
-        "issues_after_filtering": 2,
+        "issues_after_filtering": 0,
         "min_confidence_threshold": 0.75,
         "min_confidence_thresholds_by_rule_type": {
           "hard": 0.62,
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.4012,
-        "avg_confidence_after_filtering": 0.85,
-        "dropped_low_confidence": 3,
+        "avg_confidence_before_filtering": 0.319,
+        "avg_confidence_after_filtering": 0.0,
+        "dropped_low_confidence": 5,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
         "dropped_excluded_rules": 0,
@@ -7004,7 +7010,7 @@
         "dropped_trust_block": 0,
         "dropped_stability_trim": 0,
         "filtered_breakdown": {
-          "low_confidence": 3,
+          "low_confidence": 5,
           "needs_review": 0,
           "contextual_single_source": 0,
           "excluded_rule": 0,
@@ -7035,7 +7041,7 @@
           "fixture_recovery_block": true
         },
         "confidence_floor_adjustments": 0,
-        "suppression_rate": 0.818,
+        "suppression_rate": 1.0,
         "suppression_warning": true,
         "suppression_warning_rule": {
           "threshold": 0.7,
@@ -7542,8 +7548,8 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.3469,
-        "avg_confidence_after_filtering": 0.8061,
+        "avg_confidence_before_filtering": 0.3271,
+        "avg_confidence_after_filtering": 0.7447,
         "dropped_low_confidence": 2,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
@@ -8071,8 +8077,8 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.4525,
-        "avg_confidence_after_filtering": 0.8041,
+        "avg_confidence_before_filtering": 0.4209,
+        "avg_confidence_after_filtering": 0.6613,
         "dropped_low_confidence": 1,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
@@ -8590,7 +8596,7 @@
         "predicted_in_adjudicated_space": 1,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 serious | Score: 98.2/100 | Engines: static, heuristic | Time: 0.3s",
+      "scan_summary": "Found 1 accessibility issues | 1 serious | Score: 99.0/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 9,
@@ -8603,8 +8609,8 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.3847,
-        "avg_confidence_after_filtering": 0.7066,
+        "avg_confidence_before_filtering": 0.3562,
+        "avg_confidence_after_filtering": 0.5002,
         "dropped_low_confidence": 2,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
@@ -9091,52 +9097,52 @@
       "expected_rule_ids": [
         "svg-no-accessible-name"
       ],
-      "predicted_rule_ids": [
+      "predicted_rule_ids": [],
+      "missing_rule_ids": [
         "svg-no-accessible-name"
       ],
-      "missing_rule_ids": [],
       "unexpected_rule_ids": [],
       "metrics": {
-        "tp": 1,
+        "tp": 0,
         "fp": 0,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
+        "fn": 1,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
       },
       "adjudicated_metrics": {
-        "tp": 1,
+        "tp": 0,
         "fp": 0,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0,
+        "fn": 1,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
         "adjudicated_rule_count": 1,
-        "predicted_in_adjudicated_space": 1,
+        "predicted_in_adjudicated_space": 0,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 serious | Score: 98.1/100 | Engines: static, heuristic | Time: 0.1s",
+      "scan_summary": "Found 0 accessibility issues | Score: 99.0/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 9,
-        "reported_issues": 1,
+        "reported_issues": 0,
         "issues_before_filtering": 9,
-        "issues_after_filtering": 1,
+        "issues_after_filtering": 0,
         "min_confidence_threshold": 0.75,
         "min_confidence_thresholds_by_rule_type": {
           "hard": 0.62,
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.3541,
-        "avg_confidence_after_filtering": 0.862,
+        "avg_confidence_before_filtering": 0.3206,
+        "avg_confidence_after_filtering": 0.0,
         "dropped_low_confidence": 2,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
         "dropped_excluded_rules": 0,
         "dropped_cooccurrence_rules": 0,
         "dropped_structural": 6,
-        "dropped_trust_block": 0,
+        "dropped_trust_block": 1,
         "dropped_stability_trim": 0,
         "filtered_breakdown": {
           "low_confidence": 2,
@@ -9145,10 +9151,12 @@
           "excluded_rule": 0,
           "cooccurrence_rule": 0,
           "structural": 6,
-          "trust_block": 0,
+          "trust_block": 1,
           "stability_trim": 0
         },
-        "trust_blocked_rules": {},
+        "trust_blocked_rules": {
+          "svg-no-accessible-name": 1
+        },
         "structural_rules_suppressed": {
           "no-main-landmark": 1,
           "no-nav-landmark": 1,
@@ -9170,7 +9178,7 @@
           "fixture_recovery_block": true
         },
         "confidence_floor_adjustments": 0,
-        "suppression_rate": 0.889,
+        "suppression_rate": 1.0,
         "suppression_warning": true,
         "suppression_warning_rule": {
           "threshold": 0.7,
@@ -9622,46 +9630,46 @@
       "expected_rule_ids": [
         "keyboard-trap"
       ],
-      "predicted_rule_ids": [
+      "predicted_rule_ids": [],
+      "missing_rule_ids": [
         "keyboard-trap"
       ],
-      "missing_rule_ids": [],
       "unexpected_rule_ids": [],
       "metrics": {
-        "tp": 1,
+        "tp": 0,
         "fp": 0,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
+        "fn": 1,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
       },
       "adjudicated_metrics": {
-        "tp": 1,
+        "tp": 0,
         "fp": 0,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0,
+        "fn": 1,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
         "adjudicated_rule_count": 1,
-        "predicted_in_adjudicated_space": 1,
+        "predicted_in_adjudicated_space": 0,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 moderate | Score: 99.4/100 | Engines: static, heuristic | Time: 0.1s",
+      "scan_summary": "Found 0 accessibility issues | Score: 99.0/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 9,
-        "reported_issues": 1,
+        "reported_issues": 0,
         "issues_before_filtering": 9,
-        "issues_after_filtering": 1,
+        "issues_after_filtering": 0,
         "min_confidence_threshold": 0.75,
         "min_confidence_thresholds_by_rule_type": {
           "hard": 0.62,
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.3417,
-        "avg_confidence_after_filtering": 0.85,
-        "dropped_low_confidence": 3,
+        "avg_confidence_before_filtering": 0.3022,
+        "avg_confidence_after_filtering": 0.0,
+        "dropped_low_confidence": 4,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
         "dropped_excluded_rules": 0,
@@ -9670,7 +9678,7 @@
         "dropped_trust_block": 0,
         "dropped_stability_trim": 0,
         "filtered_breakdown": {
-          "low_confidence": 3,
+          "low_confidence": 4,
           "needs_review": 0,
           "contextual_single_source": 0,
           "excluded_rule": 0,
@@ -9700,7 +9708,7 @@
           "fixture_recovery_block": true
         },
         "confidence_floor_adjustments": 0,
-        "suppression_rate": 0.889,
+        "suppression_rate": 1.0,
         "suppression_warning": true,
         "suppression_warning_rule": {
           "threshold": 0.7,
@@ -10168,48 +10176,48 @@
         "letter-spacing",
         "text-spacing"
       ],
-      "predicted_rule_ids": [
+      "predicted_rule_ids": [],
+      "missing_rule_ids": [
         "avoid-inline-spacing",
         "letter-spacing",
         "text-spacing"
       ],
-      "missing_rule_ids": [],
       "unexpected_rule_ids": [],
       "metrics": {
-        "tp": 3,
+        "tp": 0,
         "fp": 0,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
+        "fn": 3,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
       },
       "adjudicated_metrics": {
-        "tp": 3,
+        "tp": 0,
         "fp": 0,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0,
+        "fn": 3,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
         "adjudicated_rule_count": 3,
-        "predicted_in_adjudicated_space": 3,
+        "predicted_in_adjudicated_space": 0,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 moderate | Score: 98.2/100 | Engines: static, heuristic | Time: 0.1s",
+      "scan_summary": "Found 0 accessibility issues | Score: 99.0/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
-        "input_issues": 11,
-        "reported_issues": 1,
-        "issues_before_filtering": 11,
-        "issues_after_filtering": 1,
+        "input_issues": 9,
+        "reported_issues": 0,
+        "issues_before_filtering": 9,
+        "issues_after_filtering": 0,
         "min_confidence_threshold": 0.75,
         "min_confidence_thresholds_by_rule_type": {
           "hard": 0.62,
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.3491,
-        "avg_confidence_after_filtering": 0.85,
-        "dropped_low_confidence": 4,
+        "avg_confidence_before_filtering": 0.2929,
+        "avg_confidence_after_filtering": 0.0,
+        "dropped_low_confidence": 3,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
         "dropped_excluded_rules": 0,
@@ -10218,7 +10226,7 @@
         "dropped_trust_block": 0,
         "dropped_stability_trim": 0,
         "filtered_breakdown": {
-          "low_confidence": 4,
+          "low_confidence": 3,
           "needs_review": 0,
           "contextual_single_source": 0,
           "excluded_rule": 0,
@@ -10241,15 +10249,15 @@
         "recovered_issues_guardrail_fallback": 0,
         "recovery_eligible": false,
         "fixture_like_input": true,
-        "recovery_input_total": 11,
-        "recovery_input_non_shell": 3,
+        "recovery_input_total": 9,
+        "recovery_input_non_shell": 1,
         "recovery_input_shell": 8,
         "recovery_input_thresholds": {
           "min_total_input_issues": 5,
           "fixture_recovery_block": true
         },
         "confidence_floor_adjustments": 0,
-        "suppression_rate": 0.909,
+        "suppression_rate": 1.0,
         "suppression_warning": true,
         "suppression_warning_rule": {
           "threshold": 0.7,
@@ -10711,48 +10719,48 @@
         "letter-spacing",
         "text-spacing"
       ],
-      "predicted_rule_ids": [
+      "predicted_rule_ids": [],
+      "missing_rule_ids": [
         "avoid-inline-spacing",
         "letter-spacing",
         "text-spacing"
       ],
-      "missing_rule_ids": [],
       "unexpected_rule_ids": [],
       "metrics": {
-        "tp": 3,
+        "tp": 0,
         "fp": 0,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
+        "fn": 3,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
       },
       "adjudicated_metrics": {
-        "tp": 3,
+        "tp": 0,
         "fp": 0,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0,
+        "fn": 3,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
         "adjudicated_rule_count": 3,
-        "predicted_in_adjudicated_space": 3,
+        "predicted_in_adjudicated_space": 0,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 moderate | Score: 98.2/100 | Engines: static, heuristic | Time: 0.1s",
+      "scan_summary": "Found 0 accessibility issues | Score: 99.0/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
-        "input_issues": 11,
-        "reported_issues": 1,
-        "issues_before_filtering": 11,
-        "issues_after_filtering": 1,
+        "input_issues": 9,
+        "reported_issues": 0,
+        "issues_before_filtering": 9,
+        "issues_after_filtering": 0,
         "min_confidence_threshold": 0.75,
         "min_confidence_thresholds_by_rule_type": {
           "hard": 0.62,
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.3491,
-        "avg_confidence_after_filtering": 0.85,
-        "dropped_low_confidence": 4,
+        "avg_confidence_before_filtering": 0.2929,
+        "avg_confidence_after_filtering": 0.0,
+        "dropped_low_confidence": 3,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
         "dropped_excluded_rules": 0,
@@ -10761,7 +10769,7 @@
         "dropped_trust_block": 0,
         "dropped_stability_trim": 0,
         "filtered_breakdown": {
-          "low_confidence": 4,
+          "low_confidence": 3,
           "needs_review": 0,
           "contextual_single_source": 0,
           "excluded_rule": 0,
@@ -10784,15 +10792,15 @@
         "recovered_issues_guardrail_fallback": 0,
         "recovery_eligible": false,
         "fixture_like_input": true,
-        "recovery_input_total": 11,
-        "recovery_input_non_shell": 3,
+        "recovery_input_total": 9,
+        "recovery_input_non_shell": 1,
         "recovery_input_shell": 8,
         "recovery_input_thresholds": {
           "min_total_input_issues": 5,
           "fixture_recovery_block": true
         },
         "confidence_floor_adjustments": 0,
-        "suppression_rate": 0.909,
+        "suppression_rate": 1.0,
         "suppression_warning": true,
         "suppression_warning_rule": {
           "threshold": 0.7,
@@ -11257,17 +11265,15 @@
       "name": "ACT case 1051",
       "url": "https://act-rules.github.io/testcases/c3232f/f0a60f2924c927d3dc97676d02c83ab38025955f.html",
       "expected_rule_ids": [
-        "media-alternative",
         "video-transcript"
       ],
       "predicted_rule_ids": [
-        "media-alternative",
         "video-transcript"
       ],
       "missing_rule_ids": [],
       "unexpected_rule_ids": [],
       "metrics": {
-        "tp": 2,
+        "tp": 1,
         "fp": 0,
         "fn": 0,
         "precision": 1.0,
@@ -11275,38 +11281,38 @@
         "f1": 1.0
       },
       "adjudicated_metrics": {
-        "tp": 2,
+        "tp": 1,
         "fp": 0,
         "fn": 0,
         "precision": 1.0,
         "recall": 1.0,
         "f1": 1.0,
-        "adjudicated_rule_count": 2,
-        "predicted_in_adjudicated_space": 2,
+        "adjudicated_rule_count": 1,
+        "predicted_in_adjudicated_space": 1,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 2 accessibility issues | 2 serious | Score: 96.3/100 | Engines: static, heuristic | Time: 0.3s",
+      "scan_summary": "Found 1 accessibility issues | 1 serious | Score: 98.2/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 10,
-        "reported_issues": 2,
+        "reported_issues": 1,
         "issues_before_filtering": 10,
-        "issues_after_filtering": 2,
+        "issues_after_filtering": 1,
         "min_confidence_threshold": 0.75,
         "min_confidence_thresholds_by_rule_type": {
           "hard": 0.62,
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.461,
-        "avg_confidence_after_filtering": 0.7056,
+        "avg_confidence_before_filtering": 0.4432,
+        "avg_confidence_after_filtering": 0.7002,
         "dropped_low_confidence": 2,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
         "dropped_excluded_rules": 0,
         "dropped_cooccurrence_rules": 0,
         "dropped_structural": 6,
-        "dropped_trust_block": 0,
+        "dropped_trust_block": 1,
         "dropped_stability_trim": 0,
         "filtered_breakdown": {
           "low_confidence": 2,
@@ -11315,10 +11321,12 @@
           "excluded_rule": 0,
           "cooccurrence_rule": 0,
           "structural": 6,
-          "trust_block": 0,
+          "trust_block": 1,
           "stability_trim": 0
         },
-        "trust_blocked_rules": {},
+        "trust_blocked_rules": {
+          "media-alternative": 1
+        },
         "structural_rules_suppressed": {
           "no-main-landmark": 1,
           "no-nav-landmark": 1,
@@ -11340,7 +11348,7 @@
           "fixture_recovery_block": true
         },
         "confidence_floor_adjustments": 0,
-        "suppression_rate": 0.8,
+        "suppression_rate": 0.9,
         "suppression_warning": true,
         "suppression_warning_rule": {
           "threshold": 0.7,
@@ -11816,7 +11824,7 @@
         "predicted_in_adjudicated_space": 0,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 0 accessibility issues | Score: 99.0/100 | Engines: static, heuristic | Time: 0.0s",
+      "scan_summary": "Found 0 accessibility issues | Score: 99.0/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 8,
@@ -11829,7 +11837,7 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.3069,
+        "avg_confidence_before_filtering": 0.2976,
         "avg_confidence_after_filtering": 0.0,
         "dropped_low_confidence": 3,
         "dropped_needs_review": 0,
@@ -12316,33 +12324,47 @@
   "aggregate": {
     "micro": {
       "precision": 1.0,
-      "recall": 0.7895,
-      "f1": 0.8824,
-      "tp": 30,
+      "recall": 0.4167,
+      "f1": 0.5882,
+      "tp": 15,
       "fp": 0,
-      "fn": 8
+      "fn": 21
     },
     "adjudicated_micro": {
       "precision": 1.0,
-      "recall": 0.7895,
-      "f1": 0.8824,
-      "tp": 30,
+      "recall": 0.4167,
+      "f1": 0.5882,
+      "tp": 15,
       "fp": 0,
-      "fn": 8
+      "fn": 21
     },
     "macro": {
-      "precision": 0.8696,
-      "recall": 0.8696,
-      "f1": 0.8696
+      "precision": 0.5217,
+      "recall": 0.5217,
+      "f1": 0.5217
     }
   },
   "per_rule_metrics": {
-    "invalid-lang": {
+    "valid-lang": {
       "tp": 1,
       "fp": 0,
       "fn": 0,
       "precision": 1.0,
       "recall": 1.0
+    },
+    "text-spacing": {
+      "tp": 0,
+      "fp": 0,
+      "fn": 2,
+      "precision": null,
+      "recall": 0.0
+    },
+    "aria-allowed-attr": {
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "precision": null,
+      "recall": 0.0
     },
     "aria-required-parent": {
       "tp": 1,
@@ -12351,57 +12373,8 @@
       "precision": 1.0,
       "recall": 1.0
     },
-    "button-name": {
-      "tp": 1,
-      "fp": 0,
-      "fn": 0,
-      "precision": 1.0,
-      "recall": 1.0
-    },
-    "text-spacing": {
+    "link-purpose": {
       "tp": 2,
-      "fp": 0,
-      "fn": 0,
-      "precision": 1.0,
-      "recall": 1.0
-    },
-    "aria-valid-attr": {
-      "tp": 0,
-      "fp": 0,
-      "fn": 1,
-      "precision": null,
-      "recall": 0.0
-    },
-    "aria-required-children": {
-      "tp": 1,
-      "fp": 0,
-      "fn": 0,
-      "precision": 1.0,
-      "recall": 1.0
-    },
-    "media-alternative": {
-      "tp": 2,
-      "fp": 0,
-      "fn": 0,
-      "precision": 1.0,
-      "recall": 1.0
-    },
-    "aria-attribute": {
-      "tp": 0,
-      "fp": 0,
-      "fn": 1,
-      "precision": null,
-      "recall": 0.0
-    },
-    "svg-no-accessible-name": {
-      "tp": 3,
-      "fp": 0,
-      "fn": 0,
-      "precision": 1.0,
-      "recall": 1.0
-    },
-    "link-name": {
-      "tp": 1,
       "fp": 0,
       "fn": 0,
       "precision": 1.0,
@@ -12414,27 +12387,6 @@
       "precision": 1.0,
       "recall": 1.0
     },
-    "semantic-html": {
-      "tp": 0,
-      "fp": 0,
-      "fn": 1,
-      "precision": null,
-      "recall": 0.0
-    },
-    "video-transcript": {
-      "tp": 2,
-      "fp": 0,
-      "fn": 0,
-      "precision": 1.0,
-      "recall": 1.0
-    },
-    "letter-spacing": {
-      "tp": 3,
-      "fp": 0,
-      "fn": 0,
-      "precision": 1.0,
-      "recall": 1.0
-    },
     "aria-valid-attr-value": {
       "tp": 0,
       "fp": 0,
@@ -12442,35 +12394,7 @@
       "precision": null,
       "recall": 0.0
     },
-    "valid-lang": {
-      "tp": 1,
-      "fp": 0,
-      "fn": 0,
-      "precision": 1.0,
-      "recall": 1.0
-    },
-    "empty-heading": {
-      "tp": 2,
-      "fp": 0,
-      "fn": 0,
-      "precision": 1.0,
-      "recall": 1.0
-    },
-    "aria-allowed-attr": {
-      "tp": 0,
-      "fp": 0,
-      "fn": 1,
-      "precision": null,
-      "recall": 0.0
-    },
-    "meta-refresh": {
-      "tp": 1,
-      "fp": 0,
-      "fn": 0,
-      "precision": 1.0,
-      "recall": 1.0
-    },
-    "no-headings": {
+    "link-name": {
       "tp": 1,
       "fp": 0,
       "fn": 0,
@@ -12484,22 +12408,29 @@
       "precision": null,
       "recall": 0.0
     },
-    "no-main-landmark": {
+    "invalid-lang": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "aria-attribute": {
       "tp": 0,
       "fp": 0,
       "fn": 1,
       "precision": null,
       "recall": 0.0
     },
-    "avoid-inline-spacing": {
-      "tp": 3,
+    "empty-heading": {
+      "tp": 2,
       "fp": 0,
       "fn": 0,
       "precision": 1.0,
       "recall": 1.0
     },
-    "keyboard-trap": {
-      "tp": 2,
+    "meta-refresh": {
+      "tp": 1,
       "fp": 0,
       "fn": 0,
       "precision": 1.0,
@@ -12512,12 +12443,82 @@
       "precision": null,
       "recall": 0.0
     },
-    "link-purpose": {
+    "semantic-html": {
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "precision": null,
+      "recall": 0.0
+    },
+    "no-headings": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "no-main-landmark": {
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "precision": null,
+      "recall": 0.0
+    },
+    "letter-spacing": {
+      "tp": 0,
+      "fp": 0,
+      "fn": 3,
+      "precision": null,
+      "recall": 0.0
+    },
+    "aria-required-children": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "svg-no-accessible-name": {
+      "tp": 0,
+      "fp": 0,
+      "fn": 3,
+      "precision": null,
+      "recall": 0.0
+    },
+    "aria-valid-attr": {
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "precision": null,
+      "recall": 0.0
+    },
+    "keyboard-trap": {
+      "tp": 0,
+      "fp": 0,
+      "fn": 2,
+      "precision": null,
+      "recall": 0.0
+    },
+    "video-transcript": {
       "tp": 2,
       "fp": 0,
       "fn": 0,
       "precision": 1.0,
       "recall": 1.0
+    },
+    "button-name": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "avoid-inline-spacing": {
+      "tp": 0,
+      "fp": 0,
+      "fn": 3,
+      "precision": null,
+      "recall": 0.0
     }
   },
   "recalibration": {

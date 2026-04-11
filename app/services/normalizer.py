@@ -90,9 +90,21 @@ AXE_CATEGORY_MAP = {
 # Maps internal engine/axe IDs to standard ACT benchmark expects.
 RULE_TRANSLATIONS = {
     "svg-img-alt": "svg-no-accessible-name",
-    "link-name": "link-purpose",
     "image-redundant-alt": "redundant-alt",
+    "invalid-role": "aria-role",
+    "aria-roles": "aria-role",
+    "link-text-missing": "link-name",
+    "empty-anchor": "empty-link",
+    "missing-alt": "image-alt",
+    "missing-lang": "no-lang",
+    "missing-lang-attr": "no-lang",
+    "html-has-lang": "no-lang",
 }
+
+
+def _translate_rule_id(rule_id: str) -> str:
+    clean = str(rule_id or "").strip()
+    return RULE_TRANSLATIONS.get(clean, clean)
 
 # ── High-Frequency Rules that should be grouped ───────────────
 AXE_GROUPABLE_RULES = {
@@ -119,10 +131,10 @@ def normalize_axe_results(axe_violations: list[dict], url: str) -> list[dict]:
     issues = []
     for violation in axe_violations:
         raw_rule_id = violation.get("id", "unknown")
-        rule_id = RULE_TRANSLATIONS.get(raw_rule_id, raw_rule_id)
+        rule_id = _translate_rule_id(raw_rule_id)
         severity = AXE_SEVERITY_MAP.get(violation.get("impact", "moderate"), "moderate")
-        wcag_info = AXE_WCAG_MAP.get(raw_rule_id, ("", ""))
-        category = AXE_CATEGORY_MAP.get(raw_rule_id, "general")
+        wcag_info = AXE_WCAG_MAP.get(raw_rule_id, AXE_WCAG_MAP.get(rule_id, ("", "")))
+        category = AXE_CATEGORY_MAP.get(raw_rule_id, AXE_CATEGORY_MAP.get(rule_id, "general"))
         nodes = violation.get("nodes", [])
 
         if raw_rule_id in AXE_GROUPABLE_RULES and nodes:
@@ -156,7 +168,7 @@ def normalize_axe_results(axe_violations: list[dict], url: str) -> list[dict]:
                 "code_fix": first.get("failureSummary", ""),
                 "fix_effort": "medium" if affected > 10 else "low",
                 "group_id": "",
-                "domain": RULE_DOMAIN_MAP.get(raw_rule_id, ""),
+                "domain": RULE_DOMAIN_MAP.get(rule_id, ""),
                 "evidence": {
                     "axe_help_url": violation.get("helpUrl", ""),
                     "axe_tags": violation.get("tags", []),
@@ -208,6 +220,7 @@ def normalize_static_results(static_issues: list[dict]) -> list[dict]:
     Just ensure domain is populated from the rule_id mapping.
     """
     for issue in static_issues:
+        issue["rule_id"] = _translate_rule_id(issue.get("rule_id", ""))
         if not issue.get("domain"):
             issue["domain"] = RULE_DOMAIN_MAP.get(issue.get("rule_id", ""), "")
     return static_issues
@@ -219,6 +232,7 @@ def normalize_heuristic_results(heuristic_issues: list[dict]) -> list[dict]:
     Populate domain and ensure needs_manual_review is set.
     """
     for issue in heuristic_issues:
+        issue["rule_id"] = _translate_rule_id(issue.get("rule_id", ""))
         if not issue.get("domain"):
             issue["domain"] = RULE_DOMAIN_MAP.get(issue.get("rule_id", ""), "")
         issue["needs_manual_review"] = True
@@ -232,6 +246,7 @@ def normalize_browser_results(browser_issues: list[dict]) -> list[dict]:
     Populate domain from rule_id mapping.
     """
     for issue in browser_issues:
+        issue["rule_id"] = _translate_rule_id(issue.get("rule_id", ""))
         if not issue.get("domain"):
             issue["domain"] = RULE_DOMAIN_MAP.get(issue.get("rule_id", ""), "")
     return browser_issues

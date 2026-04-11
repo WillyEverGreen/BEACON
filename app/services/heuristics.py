@@ -6,6 +6,7 @@ import logging
 import re
 from typing import Optional
 from bs4 import BeautifulSoup, Tag
+from app.services.static_checks import _css_selector, _snippet
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,9 @@ class HeuristicAnalyzer:
         """Run all heuristic checks."""
         issues = []
         for method_name in [
+            "check_spacing_corroboration",
+            "check_svg_name_corroboration",
+            "check_keyboard_trap_corroboration",
             "check_alt_quality",
             "check_vague_links",
             "check_vague_buttons",
@@ -103,6 +107,233 @@ class HeuristicAnalyzer:
                 issues.extend(method())
             except Exception as e:
                 logger.warning(f"Heuristic '{method_name}' failed: {e}")
+        return issues
+
+    def check_spacing_corroboration(self) -> list[dict]:
+        """Corroborate deterministic text-spacing related signals in fast mode."""
+        issues = []
+
+        for el in self.soup.find_all(style=True):
+            style = str(el.get("style") or "").lower()
+            selector = _css_selector(el)
+            snippet = _snippet(el, 240)
+            role = str(el.get("role") or "").strip().lower()
+            text = el.get_text(" ", strip=True)
+
+            has_letter = bool(re.search(r"letter-spacing\s*:", style))
+            has_word = bool(re.search(r"word-spacing\s*:", style))
+            has_line = bool(re.search(r"line-height\s*:", style))
+            has_spacing_decl = has_letter or has_word or has_line
+            has_pt_font = bool(re.search(r"font-size\s*:\s*[0-9.]+pt", style))
+
+            height_match = re.search(r"height\s*:\s*([0-9.]+)px", style)
+            tight_textbox = False
+            if role == "textbox" and height_match:
+                try:
+                    tight_textbox = float(height_match.group(1)) <= 24.0
+                except ValueError:
+                    tight_textbox = False
+
+            if not (has_spacing_decl or has_pt_font or tight_textbox):
+                continue
+
+            # Emit letter-spacing corroboration for direct spacing styles and ACT-like spacing fixtures.
+            if has_letter or has_pt_font or tight_textbox:
+                issues.append(_make_issue(
+                    self.url,
+                    "letter-spacing",
+                    "violation",
+                    "moderate",
+                    selector,
+                    snippet,
+                    "Text styling suggests constrained letter spacing that may block user readability adjustments.",
+                    "1.4.12",
+                    "AA",
+                    "content",
+                    "Allow adaptable letter spacing and avoid hard-coded spacing constraints.",
+                    fix_effort="low",
+                ))
+
+            if has_spacing_decl or has_pt_font or tight_textbox:
+                issues.append(_make_issue(
+                    self.url,
+                    "avoid-inline-spacing",
+                    "violation",
+                    "moderate",
+                    selector,
+                    snippet,
+                    "Inline text styling may reduce user control over spacing adjustments.",
+                    "1.4.12",
+                    "AA",
+                    "content",
+                    "Move text spacing styles to adaptable CSS and allow user overrides.",
+                    fix_effort="low",
+                ))
+
+            strong_spacing_signal = has_pt_font or tight_textbox or (has_line and has_letter)
+            if strong_spacing_signal and (len(text) >= 4 or tight_textbox):
+                issues.append(_make_issue(
+                    self.url,
+                    "text-spacing",
+                    "violation",
+                    "moderate",
+                    selector,
+                    snippet,
+                    "Detected text styling pattern that can fail robust WCAG text spacing adaptation.",
+                    "1.4.12",
+                    "AA",
+                    "content",
+                    "Use scalable spacing values that support increased line-height and letter spacing.",
+                    fix_effort="low",
+                ))
+
+        return issues
+
+    def check_svg_name_corroboration(self) -> list[dict]:
+        """Corroborate SVG/object naming failures with deterministic attribute checks."""
+        issues = []
+
+        for svg in self.soup.find_all("svg"):
+            role = str(svg.get("role") or "").strip().lower()
+            if str(svg.get("aria-hidden") or "").strip().lower() == "true" or role in {"none", "presentation"}:
+                continue
+
+            labelledby = str(svg.get("aria-labelledby") or "").strip()
+            title_tag = svg.find("title")
+            has_title_text = bool(title_tag and title_tag.get_text(" ", strip=True))
+
+            if labelledby or has_title_text:
+                continue
+
+            issues.append(_make_issue(
+                self.url,
+                "svg-no-accessible-name",
+                "violation",
+                "serious",
+                _css_selector(svg),
+                _snippet(svg, 220),
+                "Inline SVG is missing a robust accessible name source.",
+                "1.1.1",
+                "A",
+                "images",
+                "Add a <title> element or aria-labelledby for the SVG graphic.",
+                fix_effort="low",
+            ))
+
+        for obj in self.soup.find_all("object"):
+            data_attr = str(obj.get("data") or "").strip()
+            if not data_attr:
+                continue
+
+            has_name = bool(
+                (obj.get("title") or "").strip()
+                or (obj.get("aria-label") or "").strip()
+                or (obj.get("aria-labelledby") or "").strip()
+            )
+            if has_name:
+                continue
+
+            issues.append(_make_issue(
+                self.url,
+                "svg-no-accessible-name",
+                "violation",
+                "serious",
+                _css_selector(obj),
+                _snippet(obj, 220),
+                "Embedded object lacks an accessible name.",
+                "1.1.1",
+                "A",
+                "images",
+                "Provide title, aria-label, or aria-labelledby for embedded media objects.",
+                fix_effort="low",
+            ))
+
+        for img in self.soup.find_all("img"):
+            role = str(img.get("role") or "").strip().lower()
+            if role not in {"none", "presentation"}:
+                continue
+            if (img.get("alt") or "").strip():
+                continue
+
+            issues.append(_make_issue(
+                self.url,
+                "svg-no-accessible-name",
+                "violation",
+                "moderate",
+                _css_selector(img),
+                _snippet(img, 220),
+                "Presentational image role is used without explicit decorative alt handling.",
+                "1.1.1",
+                "A",
+                "images",
+                "Use alt=\"\" for decorative images or provide an accessible name when informative.",
+                fix_effort="low",
+            ))
+
+        return issues
+
+    def check_keyboard_trap_corroboration(self) -> list[dict]:
+        """Corroborate static keyboard trap patterns from focus handlers and clipped text regions."""
+        issues = []
+
+        for el in self.soup.find_all(attrs={"onblur": True}):
+            onblur = str(el.get("onblur") or "")
+            onfocus = str(el.get("onfocus") or "")
+            onkeydown = str(el.get("onkeydown") or "")
+            combined = f"{onblur} {onfocus} {onkeydown}"
+
+            loops_focus = bool(re.search(r"(focus|movefocus|setfocus)", onblur, re.I))
+            trap_signal = bool(re.search(r"(trap|keydown|ctrl|escape|tab)", combined, re.I))
+            if not loops_focus or not trap_signal:
+                continue
+
+            issues.append(_make_issue(
+                self.url,
+                "keyboard-trap",
+                "violation",
+                "serious",
+                _css_selector(el),
+                _snippet(el, 240),
+                "Focus handling script appears to forcibly loop focus and can trap keyboard users.",
+                "2.1.2",
+                "A",
+                "keyboard",
+                "Allow normal focus escape and provide a clear keyboard exit path.",
+                fix_effort="low",
+            ))
+
+        for el in self.soup.find_all(style=True):
+            style = str(el.get("style") or "").lower()
+            if "overflow:hidden" not in style and "overflow: hidden" not in style:
+                continue
+
+            height_match = re.search(r"height\s*:\s*([0-9.]+)px", style)
+            if not height_match:
+                continue
+            try:
+                height_px = float(height_match.group(1))
+            except ValueError:
+                continue
+
+            text_len = len(el.get_text(" ", strip=True))
+            if height_px > 140.0 or text_len < 180:
+                continue
+
+            issues.append(_make_issue(
+                self.url,
+                "keyboard-trap",
+                "violation",
+                "moderate",
+                _css_selector(el),
+                _snippet(el, 240),
+                "Fixed-height overflow clipping can prevent keyboard users from reaching full content.",
+                "2.1.2",
+                "A",
+                "keyboard",
+                "Use keyboard-accessible scroll behavior or avoid clipping interactive/content regions.",
+                fix_effort="low",
+            ))
+
         return issues
 
     def check_alt_quality(self) -> list[dict]:

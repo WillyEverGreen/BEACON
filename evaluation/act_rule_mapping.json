@@ -291,5 +291,80 @@
   "ye5d6e": [
     "focus-management",
     "keyboard-trap"
+  ],
+  "missing-label": [
+    "missing-label",
+    "input-label",
+    "form-label-missing",
+    "label",
+    "input-name"
+  ],
+  "input-label": [
+    "missing-label",
+    "input-label",
+    "form-label-missing",
+    "label",
+    "input-name"
+  ],
+  "form-label-missing": [
+    "missing-label",
+    "input-label",
+    "form-label-missing",
+    "label",
+    "input-name"
+  ],
+  "label": [
+    "missing-label",
+    "input-label",
+    "form-label-missing",
+    "label",
+    "input-name"
+  ],
+  "input-name": [
+    "missing-label",
+    "input-label",
+    "form-label-missing",
+    "label",
+    "input-name"
+  ],
+  "text-spacing": [
+    "text-spacing"
+  ],
+  "letter-spacing": [
+    "letter-spacing",
+    "avoid-inline-spacing"
+  ],
+  "line-height": [
+    "line-height"
+  ],
+  "avoid-inline-spacing": [
+    "letter-spacing",
+    "avoid-inline-spacing"
+  ],
+  "media-alternative": [
+    "media-alternative",
+    "video-transcript"
+  ],
+  "video-transcript": [
+    "media-alternative",
+    "video-transcript"
+  ],
+  "missing-captions": [
+    "missing-captions"
+  ],
+  "semantic-html": [
+    "semantic-html"
+  ],
+  "div-itis-missing-semantics": [
+    "semantic-html"
+  ],
+  "svg-no-accessible-name": [
+    "svg-no-accessible-name"
+  ],
+  "svg-accessible-name": [
+    "svg-accessible-name"
+  ],
+  "svg-nav-accessible-name": [
+    "svg-nav-accessible-name"
   ]
 }

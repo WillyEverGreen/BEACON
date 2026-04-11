@@ -43,6 +43,26 @@ HIGH_CONFIDENCE_RULES = {
 }
 
 
+HIGH_FN_RULES = {
+    "missing-label",
+    "input-label",
+    "form-label-missing",
+    "label",
+    "input-name",
+    "letter-spacing",
+    "line-height",
+    "text-spacing",
+    "avoid-inline-spacing",
+    "aria-role",
+    "media-alternative",
+    "svg-no-accessible-name",
+    "no-lang",
+    "empty-link",
+    "link-name",
+    "link-purpose",
+}
+
+
 def _apply_production_confidence_boost(issue: dict, confidence: float, rule_occurrences: int) -> float:
     """Boost confidence using multiple corroborating signals for production reliability."""
     rule_id = issue.get("rule_id", "")
@@ -355,6 +375,9 @@ def apply_confidence_rules(issues: list[dict], html: str = "") -> list[dict]:
             confidence,
             rule_occurrences=rule_occurrence_counts.get(rule_id, 1),
         )
+
+        if rule_id in HIGH_FN_RULES:
+            confidence = round(min(confidence + 0.10, 0.99), 4)
 
         # Rule: heuristic-only → needs-review
         if unique_sources == {"heuristic"}:

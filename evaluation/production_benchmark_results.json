@@ -47,7 +47,7 @@
       },
       "avg_confidence": 0.7,
       "low_confidence_count": 3,
-      "scan_time_s": 1.13,
+      "scan_time_s": 0.92,
       "degraded_mode": false,
       "engines_used": [
         "static",
@@ -92,7 +92,7 @@
       },
       "avg_confidence": 0.9,
       "low_confidence_count": 0,
-      "scan_time_s": 16.45,
+      "scan_time_s": 16.46,
       "degraded_mode": true,
       "engines_used": [],
       "telemetry": {
@@ -121,14 +121,18 @@
       "total_issues": 10,
       "structural_fp": 0,
       "severity": {
-        "serious": 7,
-        "minor": 2,
-        "critical": 1
+        "critical": 1,
+        "moderate": 2,
+        "serious": 7
       },
       "top_rules": [
         {
           "rule": "svg-no-accessible-name",
           "count": 3
+        },
+        {
+          "rule": "link-purpose",
+          "count": 2
         },
         {
           "rule": "empty-link",
@@ -139,35 +143,30 @@
           "count": 2
         },
         {
-          "rule": "div-itis-missing-semantics",
-          "count": 2
-        },
-        {
-          "rule": "missing-alt",
+          "rule": "image-alt",
           "count": 1
         }
       ],
       "categories": {
-        "navigation": 2,
         "images": 4,
-        "html": 2,
-        "structure": 2
+        "navigation": 4,
+        "html": 2
       },
-      "avg_confidence": 0.7,
+      "avg_confidence": 0.754,
       "low_confidence_count": 3,
-      "scan_time_s": 0.86,
+      "scan_time_s": 0.67,
       "degraded_mode": false,
       "engines_used": [
         "static",
         "heuristic"
       ],
       "telemetry": {
-        "input_issues": 19,
+        "input_issues": 22,
         "reported_issues": 10,
         "dropped_structural": 1,
         "dropped_low_confidence": 8,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.474,
+        "suppression_rate": 0.545,
         "suppression_warning": false,
         "low_issue_guard_active": false
       },
@@ -193,7 +192,7 @@
       },
       "top_rules": [
         {
-          "rule": "missing-lang",
+          "rule": "no-lang",
           "count": 1
         },
         {
@@ -222,7 +221,7 @@
       },
       "avg_confidence": 0.7,
       "low_confidence_count": 3,
-      "scan_time_s": 0.24,
+      "scan_time_s": 0.29,
       "degraded_mode": true,
       "engines_used": [
         "static",
@@ -232,7 +231,7 @@
         "input_issues": 6,
         "reported_issues": 6,
         "dropped_structural": 5,
-        "dropped_low_confidence": 1,
+        "dropped_low_confidence": 0,
         "dropped_excluded_rules": 0,
         "suppression_rate": 0.0,
         "suppression_warning": false,
@@ -289,7 +288,7 @@
       },
       "avg_confidence": 0.7,
       "low_confidence_count": 3,
-      "scan_time_s": 0.21,
+      "scan_time_s": 0.19,
       "degraded_mode": true,
       "engines_used": [
         "static",
@@ -327,7 +326,7 @@
       },
       "top_rules": [
         {
-          "rule": "missing-lang",
+          "rule": "no-lang",
           "count": 1
         },
         {
@@ -356,7 +355,7 @@
       },
       "avg_confidence": 0.7,
       "low_confidence_count": 3,
-      "scan_time_s": 0.18,
+      "scan_time_s": 0.2,
       "degraded_mode": true,
       "engines_used": [
         "static",
@@ -366,7 +365,7 @@
         "input_issues": 6,
         "reported_issues": 6,
         "dropped_structural": 5,
-        "dropped_low_confidence": 1,
+        "dropped_low_confidence": 0,
         "dropped_excluded_rules": 0,
         "suppression_rate": 0.0,
         "suppression_warning": false,
@@ -431,8 +430,8 @@
         "html": 2
       },
       "avg_confidence": 0.7,
-      "low_confidence_count": 5,
-      "scan_time_s": 0.9,
+      "low_confidence_count": 6,
+      "scan_time_s": 0.95,
       "degraded_mode": false,
       "engines_used": [
         "static",
@@ -461,11 +460,11 @@
       "expected_alignment_distance": 0,
       "scan_mode": "fast",
       "score": 70.0,
-      "total_issues": 10,
+      "total_issues": 11,
       "structural_fp": 0,
       "severity": {
         "moderate": 5,
-        "serious": 5
+        "serious": 6
       },
       "top_rules": [
         {
@@ -477,12 +476,12 @@
           "count": 3
         },
         {
-          "rule": "link-purpose",
+          "rule": "empty-link",
           "count": 2
         },
         {
-          "rule": "empty-link",
-          "count": 1
+          "rule": "link-purpose",
+          "count": 2
         },
         {
           "rule": "svg-no-accessible-name",
@@ -491,25 +490,25 @@
       ],
       "categories": {
         "html": 3,
-        "navigation": 3,
+        "navigation": 4,
         "aria": 3,
         "images": 1
       },
-      "avg_confidence": 0.746,
-      "low_confidence_count": 1,
-      "scan_time_s": 2.39,
+      "avg_confidence": 0.725,
+      "low_confidence_count": 7,
+      "scan_time_s": 1.95,
       "degraded_mode": false,
       "engines_used": [
         "static",
         "heuristic"
       ],
       "telemetry": {
-        "input_issues": 24,
-        "reported_issues": 10,
+        "input_issues": 26,
+        "reported_issues": 11,
         "dropped_structural": 0,
         "dropped_low_confidence": 4,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.583,
+        "suppression_rate": 0.577,
         "suppression_warning": false,
         "low_issue_guard_active": false
       },
@@ -521,24 +520,25 @@
       "url": "https://dribbble.com",
       "category": "design",
       "expected_tier": "low",
-      "predicted_tier": "high",
+      "predicted_tier": "medium",
       "expected_alignment": false,
-      "expected_alignment_distance": 2,
+      "expected_alignment_distance": 1,
       "scan_mode": "fast",
-      "score": 85.0,
+      "score": 70.0,
       "total_issues": 10,
       "structural_fp": 0,
       "severity": {
         "serious": 5,
-        "moderate": 5
+        "moderate": 3,
+        "minor": 2
       },
       "top_rules": [
         {
-          "rule": "unsafe-external-link",
-          "count": 3
+          "rule": "empty-link",
+          "count": 2
         },
         {
-          "rule": "placeholder-as-label",
+          "rule": "redundant-alt",
           "count": 2
         },
         {
@@ -546,7 +546,7 @@
           "count": 1
         },
         {
-          "rule": "empty-link",
+          "rule": "link-purpose",
           "count": 1
         },
         {
@@ -558,32 +558,36 @@
           "count": 1
         },
         {
-          "rule": "no-aria-live",
+          "rule": "media-alternative",
+          "count": 1
+        },
+        {
+          "rule": "line-height",
           "count": 1
         }
       ],
       "categories": {
         "html": 1,
-        "navigation": 5,
-        "media": 1,
-        "forms": 2,
-        "aria": 1
+        "navigation": 4,
+        "media": 2,
+        "images": 2,
+        "content": 1
       },
-      "avg_confidence": 0.7,
+      "avg_confidence": 0.718,
       "low_confidence_count": 6,
-      "scan_time_s": 2.44,
+      "scan_time_s": 2.36,
       "degraded_mode": false,
       "engines_used": [
         "static",
         "heuristic"
       ],
       "telemetry": {
-        "input_issues": 30,
+        "input_issues": 38,
         "reported_issues": 10,
         "dropped_structural": 2,
-        "dropped_low_confidence": 14,
+        "dropped_low_confidence": 18,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.667,
+        "suppression_rate": 0.737,
         "suppression_warning": false,
         "low_issue_guard_active": false
       },
@@ -624,21 +628,21 @@
         "navigation": 4,
         "images": 6
       },
-      "avg_confidence": 0.753,
+      "avg_confidence": 0.774,
       "low_confidence_count": 1,
-      "scan_time_s": 1.21,
+      "scan_time_s": 1.28,
       "degraded_mode": false,
       "engines_used": [
         "static",
         "heuristic"
       ],
       "telemetry": {
-        "input_issues": 21,
+        "input_issues": 22,
         "reported_issues": 10,
         "dropped_structural": 3,
-        "dropped_low_confidence": 5,
+        "dropped_low_confidence": 6,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.524,
+        "suppression_rate": 0.545,
         "suppression_warning": false,
         "low_issue_guard_active": false
       },
@@ -686,9 +690,9 @@
         "keyboard": 5,
         "general": 2
       },
-      "avg_confidence": 0.71,
+      "avg_confidence": 0.739,
       "low_confidence_count": 7,
-      "scan_time_s": 16.42,
+      "scan_time_s": 19.91,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -718,7 +722,7 @@
       "expected_alignment": false,
       "expected_alignment_distance": 1,
       "scan_mode": "deep",
-      "score": 98.1,
+      "score": 96.3,
       "total_issues": 8,
       "structural_fp": 5,
       "severity": {
@@ -732,7 +736,7 @@
           "count": 1
         },
         {
-          "rule": "missing-lang",
+          "rule": "no-lang",
           "count": 1
         },
         {
@@ -765,7 +769,7 @@
       },
       "avg_confidence": 0.7,
       "low_confidence_count": 4,
-      "scan_time_s": 3.3,
+      "scan_time_s": 3.1,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -776,7 +780,7 @@
         "input_issues": 8,
         "reported_issues": 8,
         "dropped_structural": 6,
-        "dropped_low_confidence": 2,
+        "dropped_low_confidence": 1,
         "dropped_excluded_rules": 0,
         "suppression_rate": 0.0,
         "suppression_warning": false,
@@ -798,26 +802,22 @@
       "total_issues": 10,
       "structural_fp": 0,
       "severity": {
-        "serious": 6,
-        "moderate": 2,
-        "minor": 2
+        "critical": 1,
+        "moderate": 5,
+        "serious": 4
       },
       "top_rules": [
+        {
+          "rule": "link-purpose",
+          "count": 5
+        },
         {
           "rule": "svg-no-accessible-name",
           "count": 3
         },
         {
-          "rule": "link-purpose",
-          "count": 2
-        },
-        {
-          "rule": "duplicate-id",
-          "count": 2
-        },
-        {
-          "rule": "div-itis-missing-semantics",
-          "count": 2
+          "rule": "image-alt",
+          "count": 1
         },
         {
           "rule": "empty-link",
@@ -825,14 +825,12 @@
         }
       ],
       "categories": {
-        "navigation": 3,
-        "images": 3,
-        "html": 2,
-        "structure": 2
+        "images": 4,
+        "navigation": 6
       },
-      "avg_confidence": 0.729,
-      "low_confidence_count": 2,
-      "scan_time_s": 26.85,
+      "avg_confidence": 0.764,
+      "low_confidence_count": 1,
+      "scan_time_s": 20.67,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -841,12 +839,12 @@
         "axe-core"
       ],
       "telemetry": {
-        "input_issues": 23,
+        "input_issues": 27,
         "reported_issues": 10,
         "dropped_structural": 0,
         "dropped_low_confidence": 10,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.565,
+        "suppression_rate": 0.63,
         "suppression_warning": false,
         "low_issue_guard_active": false
       },
@@ -862,21 +860,21 @@
       "expected_alignment": false,
       "expected_alignment_distance": 1,
       "scan_mode": "deep",
-      "score": 98.2,
+      "score": 94.5,
       "total_issues": 9,
       "structural_fp": 6,
       "severity": {
-        "moderate": 3,
         "serious": 3,
+        "moderate": 3,
         "minor": 3
       },
       "top_rules": [
         {
-          "rule": "region",
-          "count": 1
+          "rule": "no-lang",
+          "count": 2
         },
         {
-          "rule": "missing-lang",
+          "rule": "region",
           "count": 1
         },
         {
@@ -885,10 +883,6 @@
         },
         {
           "rule": "landmark-roles",
-          "count": 1
-        },
-        {
-          "rule": "html-has-lang",
           "count": 1
         },
         {
@@ -902,6 +896,10 @@
         {
           "rule": "no-header-landmark",
           "count": 1
+        },
+        {
+          "rule": "no-footer-landmark",
+          "count": 1
         }
       ],
       "categories": {
@@ -909,7 +907,7 @@
       },
       "avg_confidence": 0.7,
       "low_confidence_count": 4,
-      "scan_time_s": 4.05,
+      "scan_time_s": 4.26,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -921,7 +919,7 @@
         "input_issues": 9,
         "reported_issues": 9,
         "dropped_structural": 6,
-        "dropped_low_confidence": 3,
+        "dropped_low_confidence": 1,
         "dropped_excluded_rules": 0,
         "suppression_rate": 0.0,
         "suppression_warning": false,
@@ -987,7 +985,7 @@
       },
       "avg_confidence": 0.7,
       "low_confidence_count": 4,
-      "scan_time_s": 4.59,
+      "scan_time_s": 5.03,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -1017,21 +1015,21 @@
       "expected_alignment": false,
       "expected_alignment_distance": 2,
       "scan_mode": "deep",
-      "score": 98.2,
+      "score": 94.5,
       "total_issues": 9,
       "structural_fp": 6,
       "severity": {
-        "moderate": 3,
         "serious": 3,
+        "moderate": 3,
         "minor": 3
       },
       "top_rules": [
         {
-          "rule": "region",
-          "count": 1
+          "rule": "no-lang",
+          "count": 2
         },
         {
-          "rule": "missing-lang",
+          "rule": "region",
           "count": 1
         },
         {
@@ -1040,10 +1038,6 @@
         },
         {
           "rule": "landmark-roles",
-          "count": 1
-        },
-        {
-          "rule": "html-has-lang",
           "count": 1
         },
         {
@@ -1057,6 +1051,10 @@
         {
           "rule": "no-header-landmark",
           "count": 1
+        },
+        {
+          "rule": "no-footer-landmark",
+          "count": 1
         }
       ],
       "categories": {
@@ -1064,7 +1062,7 @@
       },
       "avg_confidence": 0.7,
       "low_confidence_count": 4,
-      "scan_time_s": 5.33,
+      "scan_time_s": 4.23,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -1076,7 +1074,7 @@
         "input_issues": 9,
         "reported_issues": 9,
         "dropped_structural": 6,
-        "dropped_low_confidence": 3,
+        "dropped_low_confidence": 1,
         "dropped_excluded_rules": 0,
         "suppression_rate": 0.0,
         "suppression_warning": false,
@@ -1094,7 +1092,7 @@
       "expected_alignment": true,
       "expected_alignment_distance": 0,
       "scan_mode": "deep",
-      "score": 96.4,
+      "score": 94.5,
       "total_issues": 10,
       "structural_fp": 1,
       "severity": {
@@ -1141,7 +1139,7 @@
       },
       "avg_confidence": 0.7,
       "low_confidence_count": 7,
-      "scan_time_s": 14.49,
+      "scan_time_s": 13.92,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -1207,7 +1205,7 @@
       },
       "avg_confidence": 0.7,
       "low_confidence_count": 2,
-      "scan_time_s": 10.3,
+      "scan_time_s": 10.91,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -1238,30 +1236,30 @@
       "expected_alignment_distance": 0,
       "scan_mode": "deep",
       "score": 64.0,
-      "total_issues": 102,
+      "total_issues": 111,
       "structural_fp": 0,
       "severity": {
-        "serious": 14,
-        "moderate": 1,
+        "serious": 18,
         "critical": 46,
-        "minor": 41
+        "moderate": 2,
+        "minor": 45
       },
       "top_rules": [
         {
-          "rule": "button-name",
-          "count": 46
+          "rule": "redundant-alt",
+          "count": 45
         },
         {
-          "rule": "redundant-alt",
-          "count": 41
+          "rule": "button-name",
+          "count": 45
         },
         {
           "rule": "empty-link",
-          "count": 3
+          "count": 4
         },
         {
-          "rule": "video-transcript",
-          "count": 3
+          "rule": "color-contrast",
+          "count": 4
         },
         {
           "rule": "svg-no-accessible-name",
@@ -1272,26 +1270,27 @@
           "count": 3
         },
         {
-          "rule": "empty-heading",
-          "count": 1
+          "rule": "video-transcript",
+          "count": 2
         },
         {
-          "rule": "missing-skip-link",
+          "rule": "empty-heading",
           "count": 1
         }
       ],
       "categories": {
         "html": 1,
-        "navigation": 5,
-        "media": 3,
-        "images": 3,
+        "images": 8,
+        "navigation": 7,
+        "media": 2,
         "keyboard": 3,
-        "forms": 46,
+        "forms": 45,
+        "color": 4,
         "general": 41
       },
-      "avg_confidence": 0.822,
-      "low_confidence_count": 8,
-      "scan_time_s": 30.78,
+      "avg_confidence": 0.861,
+      "low_confidence_count": 7,
+      "scan_time_s": 31.8,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -1300,12 +1299,12 @@
         "axe-core"
       ],
       "telemetry": {
-        "input_issues": 144,
-        "reported_issues": 102,
+        "input_issues": 153,
+        "reported_issues": 111,
         "dropped_structural": 2,
-        "dropped_low_confidence": 21,
+        "dropped_low_confidence": 22,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.292,
+        "suppression_rate": 0.275,
         "suppression_warning": false,
         "low_issue_guard_active": false
       },
@@ -1321,11 +1320,11 @@
       "expected_alignment": true,
       "expected_alignment_distance": 0,
       "scan_mode": "deep",
-      "score": 67.2,
-      "total_issues": 14,
+      "score": 64.0,
+      "total_issues": 15,
       "structural_fp": 0,
       "severity": {
-        "serious": 11,
+        "serious": 12,
         "moderate": 2,
         "minor": 1
       },
@@ -1336,7 +1335,7 @@
         },
         {
           "rule": "empty-link",
-          "count": 4
+          "count": 5
         },
         {
           "rule": "link-purpose",
@@ -1356,14 +1355,14 @@
         }
       ],
       "categories": {
-        "navigation": 6,
+        "navigation": 7,
         "images": 6,
         "keyboard": 1,
         "general": 1
       },
-      "avg_confidence": 0.747,
-      "low_confidence_count": 3,
-      "scan_time_s": 22.96,
+      "avg_confidence": 0.763,
+      "low_confidence_count": 4,
+      "scan_time_s": 19.91,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -1372,12 +1371,12 @@
         "axe-core"
       ],
       "telemetry": {
-        "input_issues": 39,
-        "reported_issues": 14,
+        "input_issues": 42,
+        "reported_issues": 15,
         "dropped_structural": 3,
-        "dropped_low_confidence": 14,
+        "dropped_low_confidence": 16,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.641,
+        "suppression_rate": 0.643,
         "suppression_warning": false,
         "low_issue_guard_active": false
       },
@@ -1388,16 +1387,16 @@
   "summary": {
     "fast": {
       "successful_sites": 10,
-      "avg_score": 78.88,
-      "avg_scan_time_s": 2.601,
+      "avg_score": 77.38,
+      "avg_scan_time_s": 2.527,
       "expectation_alignment_rate": 0.5,
-      "avg_alignment_distance": 0.6,
+      "avg_alignment_distance": 0.5,
       "suppression_warnings": 0
     },
     "deep": {
       "successful_sites": 10,
-      "avg_score": 87.25,
-      "avg_scan_time_s": 13.907,
+      "avg_score": 85.82,
+      "avg_scan_time_s": 13.374,
       "expectation_alignment_rate": 0.4,
       "avg_alignment_distance": 0.7,
       "suppression_warnings": 0
@@ -1405,7 +1404,7 @@
     "overall": {
       "successful_audits": 20,
       "expectation_alignment_rate": 0.45,
-      "avg_alignment_distance": 0.65
+      "avg_alignment_distance": 0.6
     }
   }
 }
