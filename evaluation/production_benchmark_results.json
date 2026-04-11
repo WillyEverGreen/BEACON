@@ -5,30 +5,63 @@
       "url": "https://www.usa.gov",
       "category": "government",
       "expected_tier": "high",
+      "predicted_tier": "high",
+      "expected_alignment": true,
+      "expected_alignment_distance": 0,
       "scan_mode": "fast",
-      "score": 90.0,
-      "total_issues": 0,
+      "score": 94.3,
+      "total_issues": 8,
       "structural_fp": 0,
-      "severity": {},
-      "top_rules": [],
-      "categories": {},
-      "avg_confidence": 0,
-      "low_confidence_count": 0,
-      "scan_time_s": 0.87,
+      "severity": {
+        "serious": 5,
+        "moderate": 1,
+        "minor": 2
+      },
+      "top_rules": [
+        {
+          "rule": "svg-no-accessible-name",
+          "count": 3
+        },
+        {
+          "rule": "focus-management",
+          "count": 2
+        },
+        {
+          "rule": "redundant-entry",
+          "count": 1
+        },
+        {
+          "rule": "short-link-text",
+          "count": 1
+        },
+        {
+          "rule": "empty-alt",
+          "count": 1
+        }
+      ],
+      "categories": {
+        "images": 4,
+        "forms": 1,
+        "navigation": 1,
+        "keyboard": 2
+      },
+      "avg_confidence": 0.7,
+      "low_confidence_count": 3,
+      "scan_time_s": 1.13,
       "degraded_mode": false,
       "engines_used": [
         "static",
         "heuristic"
       ],
       "telemetry": {
-        "input_issues": 4,
-        "reported_issues": 0,
+        "input_issues": 8,
+        "reported_issues": 8,
         "dropped_structural": 0,
-        "dropped_low_confidence": 4,
+        "dropped_low_confidence": 5,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 1.0,
-        "suppression_warning": true,
-        "low_issue_guard_active": true
+        "suppression_rate": 0.0,
+        "suppression_warning": false,
+        "low_issue_guard_active": false
       },
       "success": true,
       "error": null
@@ -38,6 +71,9 @@
       "url": "https://www.irctc.co.in",
       "category": "government",
       "expected_tier": "medium",
+      "predicted_tier": "medium",
+      "expected_alignment": true,
+      "expected_alignment_distance": 0,
       "scan_mode": "fast",
       "score": 83.5,
       "total_issues": 1,
@@ -56,7 +92,7 @@
       },
       "avg_confidence": 0.9,
       "low_confidence_count": 0,
-      "scan_time_s": 12.81,
+      "scan_time_s": 16.45,
       "degraded_mode": true,
       "engines_used": [],
       "telemetry": {
@@ -77,43 +113,62 @@
       "url": "https://www.bbc.com/news",
       "category": "news",
       "expected_tier": "high",
+      "predicted_tier": "medium",
+      "expected_alignment": false,
+      "expected_alignment_distance": 1,
       "scan_mode": "fast",
-      "score": 98.2,
-      "total_issues": 2,
+      "score": 70.0,
+      "total_issues": 10,
       "structural_fp": 0,
       "severity": {
-        "critical": 1,
-        "serious": 1
+        "serious": 7,
+        "minor": 2,
+        "critical": 1
       },
       "top_rules": [
         {
-          "rule": "missing-alt",
-          "count": 1
+          "rule": "svg-no-accessible-name",
+          "count": 3
         },
         {
           "rule": "empty-link",
+          "count": 2
+        },
+        {
+          "rule": "duplicate-id",
+          "count": 2
+        },
+        {
+          "rule": "div-itis-missing-semantics",
+          "count": 2
+        },
+        {
+          "rule": "missing-alt",
           "count": 1
         }
       ],
       "categories": {
-        "other": 2
+        "navigation": 2,
+        "images": 4,
+        "html": 2,
+        "structure": 2
       },
-      "avg_confidence": 0.602,
-      "low_confidence_count": 2,
-      "scan_time_s": 0.72,
+      "avg_confidence": 0.7,
+      "low_confidence_count": 3,
+      "scan_time_s": 0.86,
       "degraded_mode": false,
       "engines_used": [
         "static",
         "heuristic"
       ],
       "telemetry": {
-        "input_issues": 15,
-        "reported_issues": 2,
+        "input_issues": 19,
+        "reported_issues": 10,
         "dropped_structural": 1,
-        "dropped_low_confidence": 12,
+        "dropped_low_confidence": 8,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.867,
-        "suppression_warning": true,
+        "suppression_rate": 0.474,
+        "suppression_warning": false,
         "low_issue_guard_active": false
       },
       "success": true,
@@ -124,29 +179,63 @@
       "url": "https://www.ndtv.com",
       "category": "news",
       "expected_tier": "medium",
+      "predicted_tier": "medium",
+      "expected_alignment": true,
+      "expected_alignment_distance": 0,
       "scan_mode": "fast",
-      "score": 99.0,
-      "total_issues": 0,
-      "structural_fp": 0,
-      "severity": {},
-      "top_rules": [],
-      "categories": {},
-      "avg_confidence": 0,
-      "low_confidence_count": 0,
-      "scan_time_s": 0.2,
-      "degraded_mode": false,
+      "score": 82.0,
+      "total_issues": 6,
+      "structural_fp": 5,
+      "severity": {
+        "serious": 2,
+        "moderate": 1,
+        "minor": 3
+      },
+      "top_rules": [
+        {
+          "rule": "missing-lang",
+          "count": 1
+        },
+        {
+          "rule": "no-main-landmark",
+          "count": 1
+        },
+        {
+          "rule": "landmark-roles",
+          "count": 1
+        },
+        {
+          "rule": "no-nav-landmark",
+          "count": 1
+        },
+        {
+          "rule": "no-header-landmark",
+          "count": 1
+        },
+        {
+          "rule": "no-footer-landmark",
+          "count": 1
+        }
+      ],
+      "categories": {
+        "html": 6
+      },
+      "avg_confidence": 0.7,
+      "low_confidence_count": 3,
+      "scan_time_s": 0.24,
+      "degraded_mode": true,
       "engines_used": [
         "static",
         "heuristic"
       ],
       "telemetry": {
         "input_issues": 6,
-        "reported_issues": 0,
-        "dropped_structural": 4,
+        "reported_issues": 6,
+        "dropped_structural": 5,
         "dropped_low_confidence": 1,
-        "dropped_excluded_rules": 1,
-        "suppression_rate": 1.0,
-        "suppression_warning": true,
+        "dropped_excluded_rules": 0,
+        "suppression_rate": 0.0,
+        "suppression_warning": false,
         "low_issue_guard_active": false
       },
       "success": true,
@@ -157,29 +246,63 @@
       "url": "https://www.etsy.com",
       "category": "ecommerce",
       "expected_tier": "medium",
+      "predicted_tier": "medium",
+      "expected_alignment": true,
+      "expected_alignment_distance": 0,
       "scan_mode": "fast",
-      "score": 99.0,
-      "total_issues": 0,
-      "structural_fp": 0,
-      "severity": {},
-      "top_rules": [],
-      "categories": {},
-      "avg_confidence": 0,
-      "low_confidence_count": 0,
-      "scan_time_s": 0.13,
-      "degraded_mode": false,
+      "score": 82.0,
+      "total_issues": 6,
+      "structural_fp": 5,
+      "severity": {
+        "serious": 2,
+        "moderate": 1,
+        "minor": 3
+      },
+      "top_rules": [
+        {
+          "rule": "no-headings",
+          "count": 1
+        },
+        {
+          "rule": "no-main-landmark",
+          "count": 1
+        },
+        {
+          "rule": "landmark-roles",
+          "count": 1
+        },
+        {
+          "rule": "no-nav-landmark",
+          "count": 1
+        },
+        {
+          "rule": "no-header-landmark",
+          "count": 1
+        },
+        {
+          "rule": "no-footer-landmark",
+          "count": 1
+        }
+      ],
+      "categories": {
+        "html": 6
+      },
+      "avg_confidence": 0.7,
+      "low_confidence_count": 3,
+      "scan_time_s": 0.21,
+      "degraded_mode": true,
       "engines_used": [
         "static",
         "heuristic"
       ],
       "telemetry": {
         "input_issues": 6,
-        "reported_issues": 0,
-        "dropped_structural": 5,
+        "reported_issues": 6,
+        "dropped_structural": 6,
         "dropped_low_confidence": 0,
-        "dropped_excluded_rules": 1,
-        "suppression_rate": 1.0,
-        "suppression_warning": true,
+        "dropped_excluded_rules": 0,
+        "suppression_rate": 0.0,
+        "suppression_warning": false,
         "low_issue_guard_active": false
       },
       "success": true,
@@ -190,29 +313,63 @@
       "url": "https://www.meesho.com",
       "category": "ecommerce",
       "expected_tier": "low",
+      "predicted_tier": "medium",
+      "expected_alignment": false,
+      "expected_alignment_distance": 1,
       "scan_mode": "fast",
-      "score": 99.0,
-      "total_issues": 0,
-      "structural_fp": 0,
-      "severity": {},
-      "top_rules": [],
-      "categories": {},
-      "avg_confidence": 0,
-      "low_confidence_count": 0,
+      "score": 82.0,
+      "total_issues": 6,
+      "structural_fp": 5,
+      "severity": {
+        "serious": 2,
+        "moderate": 1,
+        "minor": 3
+      },
+      "top_rules": [
+        {
+          "rule": "missing-lang",
+          "count": 1
+        },
+        {
+          "rule": "no-main-landmark",
+          "count": 1
+        },
+        {
+          "rule": "landmark-roles",
+          "count": 1
+        },
+        {
+          "rule": "no-nav-landmark",
+          "count": 1
+        },
+        {
+          "rule": "no-header-landmark",
+          "count": 1
+        },
+        {
+          "rule": "no-footer-landmark",
+          "count": 1
+        }
+      ],
+      "categories": {
+        "html": 6
+      },
+      "avg_confidence": 0.7,
+      "low_confidence_count": 3,
       "scan_time_s": 0.18,
-      "degraded_mode": false,
+      "degraded_mode": true,
       "engines_used": [
         "static",
         "heuristic"
       ],
       "telemetry": {
         "input_issues": 6,
-        "reported_issues": 0,
-        "dropped_structural": 4,
+        "reported_issues": 6,
+        "dropped_structural": 5,
         "dropped_low_confidence": 1,
-        "dropped_excluded_rules": 1,
-        "suppression_rate": 1.0,
-        "suppression_warning": true,
+        "dropped_excluded_rules": 0,
+        "suppression_rate": 0.0,
+        "suppression_warning": false,
         "low_issue_guard_active": false
       },
       "success": true,
@@ -223,43 +380,72 @@
       "url": "https://developer.mozilla.org",
       "category": "dev-docs",
       "expected_tier": "high",
+      "predicted_tier": "medium",
+      "expected_alignment": false,
+      "expected_alignment_distance": 1,
       "scan_mode": "fast",
-      "score": 99.0,
-      "total_issues": 2,
-      "structural_fp": 0,
+      "score": 70.0,
+      "total_issues": 10,
+      "structural_fp": 1,
       "severity": {
-        "serious": 1,
-        "critical": 1
+        "serious": 3,
+        "critical": 1,
+        "minor": 3,
+        "moderate": 3
       },
       "top_rules": [
         {
+          "rule": "div-itis-missing-semantics",
+          "count": 3
+        },
+        {
           "rule": "empty-link",
-          "count": 1
+          "count": 2
         },
         {
           "rule": "button-name",
           "count": 1
+        },
+        {
+          "rule": "svg-no-accessible-name",
+          "count": 1
+        },
+        {
+          "rule": "missing-landmark",
+          "count": 1
+        },
+        {
+          "rule": "unsafe-external-link",
+          "count": 1
+        },
+        {
+          "rule": "no-main-landmark",
+          "count": 1
         }
       ],
       "categories": {
-        "other": 2
+        "navigation": 3,
+        "forms": 1,
+        "images": 1,
+        "structure": 3,
+        "html": 2
       },
-      "avg_confidence": 0.572,
-      "low_confidence_count": 2,
-      "scan_time_s": 1.05,
+      "avg_confidence": 0.7,
+      "low_confidence_count": 5,
+      "scan_time_s": 0.9,
       "degraded_mode": false,
       "engines_used": [
         "static",
         "heuristic"
       ],
       "telemetry": {
-        "input_issues": 11,
-        "reported_issues": 3,
-        "dropped_structural": 1,
-        "dropped_low_confidence": 6,
-        "dropped_excluded_rules": 1,
-        "suppression_rate": 0.727,
-        "suppression_warning": true,
+        "input_issues": 12,
+        "reported_issues": 10,
+        "dropped_structural": 2,
+        "dropped_low_confidence": 2,
+        "dropped_excluded_rules": 0,
+        "suppression_rate": 0.167,
+        "suppression_warning": false,
         "low_issue_guard_active": false
       },
       "success": true,
@@ -270,34 +456,48 @@
       "url": "https://stackoverflow.com",
       "category": "dev-docs",
       "expected_tier": "medium",
+      "predicted_tier": "medium",
+      "expected_alignment": true,
+      "expected_alignment_distance": 0,
       "scan_mode": "fast",
-      "score": 97.7,
-      "total_issues": 3,
+      "score": 70.0,
+      "total_issues": 10,
       "structural_fp": 0,
       "severity": {
-        "serious": 2,
-        "moderate": 1
+        "moderate": 5,
+        "serious": 5
       },
       "top_rules": [
+        {
+          "rule": "heading-order",
+          "count": 3
+        },
+        {
+          "rule": "aria-required-children",
+          "count": 3
+        },
+        {
+          "rule": "link-purpose",
+          "count": 2
+        },
         {
           "rule": "empty-link",
           "count": 1
         },
         {
-          "rule": "link-purpose",
-          "count": 1
-        },
-        {
-          "rule": "aria-required-children",
+          "rule": "svg-no-accessible-name",
           "count": 1
         }
       ],
       "categories": {
-        "other": 3
+        "html": 3,
+        "navigation": 3,
+        "aria": 3,
+        "images": 1
       },
-      "avg_confidence": 0.587,
-      "low_confidence_count": 3,
-      "scan_time_s": 2.37,
+      "avg_confidence": 0.746,
+      "low_confidence_count": 1,
+      "scan_time_s": 2.39,
       "degraded_mode": false,
       "engines_used": [
         "static",
@@ -305,12 +505,12 @@
       ],
       "telemetry": {
         "input_issues": 24,
-        "reported_issues": 7,
+        "reported_issues": 10,
         "dropped_structural": 0,
-        "dropped_low_confidence": 17,
+        "dropped_low_confidence": 4,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.708,
-        "suppression_warning": true,
+        "suppression_rate": 0.583,
+        "suppression_warning": false,
         "low_issue_guard_active": false
       },
       "success": true,
@@ -321,15 +521,26 @@
       "url": "https://dribbble.com",
       "category": "design",
       "expected_tier": "low",
+      "predicted_tier": "high",
+      "expected_alignment": false,
+      "expected_alignment_distance": 2,
       "scan_mode": "fast",
-      "score": 98.3,
-      "total_issues": 4,
+      "score": 85.0,
+      "total_issues": 10,
       "structural_fp": 0,
       "severity": {
-        "serious": 3,
-        "moderate": 1
+        "serious": 5,
+        "moderate": 5
       },
       "top_rules": [
+        {
+          "rule": "unsafe-external-link",
+          "count": 3
+        },
+        {
+          "rule": "placeholder-as-label",
+          "count": 2
+        },
         {
           "rule": "empty-heading",
           "count": 1
@@ -345,14 +556,22 @@
         {
           "rule": "video-transcript",
           "count": 1
+        },
+        {
+          "rule": "no-aria-live",
+          "count": 1
         }
       ],
       "categories": {
-        "other": 4
+        "html": 1,
+        "navigation": 5,
+        "media": 1,
+        "forms": 2,
+        "aria": 1
       },
-      "avg_confidence": 0.579,
-      "low_confidence_count": 4,
-      "scan_time_s": 2.34,
+      "avg_confidence": 0.7,
+      "low_confidence_count": 6,
+      "scan_time_s": 2.44,
       "degraded_mode": false,
       "engines_used": [
         "static",
@@ -360,12 +579,12 @@
       ],
       "telemetry": {
         "input_issues": 30,
-        "reported_issues": 4,
+        "reported_issues": 10,
         "dropped_structural": 2,
-        "dropped_low_confidence": 24,
+        "dropped_low_confidence": 14,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.867,
-        "suppression_warning": true,
+        "suppression_rate": 0.667,
+        "suppression_warning": false,
         "low_issue_guard_active": false
       },
       "success": true,
@@ -376,18 +595,25 @@
       "url": "https://www.awwwards.com",
       "category": "design",
       "expected_tier": "low",
+      "predicted_tier": "medium",
+      "expected_alignment": false,
+      "expected_alignment_distance": 1,
       "scan_mode": "fast",
-      "score": 99.0,
-      "total_issues": 2,
+      "score": 70.0,
+      "total_issues": 10,
       "structural_fp": 0,
       "severity": {
-        "serious": 1,
+        "serious": 9,
         "moderate": 1
       },
       "top_rules": [
         {
+          "rule": "svg-no-accessible-name",
+          "count": 6
+        },
+        {
           "rule": "empty-link",
-          "count": 1
+          "count": 3
         },
         {
           "rule": "missing-skip-link",
@@ -395,24 +621,25 @@
         }
       ],
       "categories": {
-        "other": 2
+        "navigation": 4,
+        "images": 6
       },
-      "avg_confidence": 0.564,
-      "low_confidence_count": 2,
-      "scan_time_s": 1.44,
+      "avg_confidence": 0.753,
+      "low_confidence_count": 1,
+      "scan_time_s": 1.21,
       "degraded_mode": false,
       "engines_used": [
         "static",
         "heuristic"
       ],
       "telemetry": {
-        "input_issues": 19,
-        "reported_issues": 4,
-        "dropped_structural": 2,
-        "dropped_low_confidence": 12,
-        "dropped_excluded_rules": 1,
-        "suppression_rate": 0.789,
-        "suppression_warning": true,
+        "input_issues": 21,
+        "reported_issues": 10,
+        "dropped_structural": 3,
+        "dropped_low_confidence": 5,
+        "dropped_excluded_rules": 0,
+        "suppression_rate": 0.524,
+        "suppression_warning": false,
         "low_issue_guard_active": false
       },
       "success": true,
@@ -425,14 +652,26 @@
       "url": "https://www.usa.gov",
       "category": "government",
       "expected_tier": "high",
+      "predicted_tier": "high",
+      "expected_alignment": true,
+      "expected_alignment_distance": 0,
       "scan_mode": "deep",
-      "score": 96.5,
-      "total_issues": 2,
+      "score": 86.0,
+      "total_issues": 10,
       "structural_fp": 0,
       "severity": {
+        "serious": 8,
         "moderate": 2
       },
       "top_rules": [
+        {
+          "rule": "no-focus-style",
+          "count": 5
+        },
+        {
+          "rule": "svg-no-accessible-name",
+          "count": 3
+        },
         {
           "rule": "landmark-banner-is-top-level",
           "count": 1
@@ -443,11 +682,13 @@
         }
       ],
       "categories": {
-        "other": 2
+        "images": 3,
+        "keyboard": 5,
+        "general": 2
       },
-      "avg_confidence": 0.665,
-      "low_confidence_count": 2,
-      "scan_time_s": 18.87,
+      "avg_confidence": 0.71,
+      "low_confidence_count": 7,
+      "scan_time_s": 16.42,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -456,13 +697,13 @@
         "axe-core"
       ],
       "telemetry": {
-        "input_issues": 15,
-        "reported_issues": 2,
+        "input_issues": 19,
+        "reported_issues": 10,
         "dropped_structural": 0,
-        "dropped_low_confidence": 13,
+        "dropped_low_confidence": 8,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.867,
-        "suppression_warning": true,
+        "suppression_rate": 0.474,
+        "suppression_warning": false,
         "low_issue_guard_active": false
       },
       "success": true,
@@ -473,16 +714,58 @@
       "url": "https://www.irctc.co.in",
       "category": "government",
       "expected_tier": "medium",
+      "predicted_tier": "high",
+      "expected_alignment": false,
+      "expected_alignment_distance": 1,
       "scan_mode": "deep",
-      "score": 99.0,
-      "total_issues": 0,
-      "structural_fp": 0,
-      "severity": {},
-      "top_rules": [],
-      "categories": {},
-      "avg_confidence": 0,
-      "low_confidence_count": 0,
-      "scan_time_s": 3.6,
+      "score": 98.1,
+      "total_issues": 8,
+      "structural_fp": 5,
+      "severity": {
+        "serious": 3,
+        "moderate": 2,
+        "minor": 3
+      },
+      "top_rules": [
+        {
+          "rule": "no-headings",
+          "count": 1
+        },
+        {
+          "rule": "missing-lang",
+          "count": 1
+        },
+        {
+          "rule": "no-main-landmark",
+          "count": 1
+        },
+        {
+          "rule": "landmark-roles",
+          "count": 1
+        },
+        {
+          "rule": "no-nav-landmark",
+          "count": 1
+        },
+        {
+          "rule": "no-header-landmark",
+          "count": 1
+        },
+        {
+          "rule": "no-footer-landmark",
+          "count": 1
+        },
+        {
+          "rule": "no-title",
+          "count": 1
+        }
+      ],
+      "categories": {
+        "html": 8
+      },
+      "avg_confidence": 0.7,
+      "low_confidence_count": 4,
+      "scan_time_s": 3.3,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -491,12 +774,12 @@
       ],
       "telemetry": {
         "input_issues": 8,
-        "reported_issues": 0,
-        "dropped_structural": 5,
+        "reported_issues": 8,
+        "dropped_structural": 6,
         "dropped_low_confidence": 2,
-        "dropped_excluded_rules": 1,
-        "suppression_rate": 1.0,
-        "suppression_warning": true,
+        "dropped_excluded_rules": 0,
+        "suppression_rate": 0.0,
+        "suppression_warning": false,
         "low_issue_guard_active": false
       },
       "success": true,
@@ -507,35 +790,49 @@
       "url": "https://www.bbc.com/news",
       "category": "news",
       "expected_tier": "high",
+      "predicted_tier": "medium",
+      "expected_alignment": false,
+      "expected_alignment_distance": 1,
       "scan_mode": "deep",
-      "score": 98.2,
-      "total_issues": 3,
+      "score": 70.0,
+      "total_issues": 10,
       "structural_fp": 0,
       "severity": {
-        "critical": 1,
-        "serious": 1,
-        "moderate": 1
+        "serious": 6,
+        "moderate": 2,
+        "minor": 2
       },
       "top_rules": [
         {
-          "rule": "missing-alt",
-          "count": 1
+          "rule": "svg-no-accessible-name",
+          "count": 3
+        },
+        {
+          "rule": "link-purpose",
+          "count": 2
+        },
+        {
+          "rule": "duplicate-id",
+          "count": 2
+        },
+        {
+          "rule": "div-itis-missing-semantics",
+          "count": 2
         },
         {
           "rule": "empty-link",
           "count": 1
-        },
-        {
-          "rule": "link-purpose",
-          "count": 1
         }
       ],
       "categories": {
-        "other": 3
+        "navigation": 3,
+        "images": 3,
+        "html": 2,
+        "structure": 2
       },
-      "avg_confidence": 0.585,
-      "low_confidence_count": 3,
-      "scan_time_s": 18.75,
+      "avg_confidence": 0.729,
+      "low_confidence_count": 2,
+      "scan_time_s": 26.85,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -544,13 +841,13 @@
         "axe-core"
       ],
       "telemetry": {
-        "input_issues": 21,
-        "reported_issues": 5,
+        "input_issues": 23,
+        "reported_issues": 10,
         "dropped_structural": 0,
-        "dropped_low_confidence": 16,
+        "dropped_low_confidence": 10,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.762,
-        "suppression_warning": true,
+        "suppression_rate": 0.565,
+        "suppression_warning": false,
         "low_issue_guard_active": false
       },
       "success": true,
@@ -561,16 +858,58 @@
       "url": "https://www.ndtv.com",
       "category": "news",
       "expected_tier": "medium",
+      "predicted_tier": "high",
+      "expected_alignment": false,
+      "expected_alignment_distance": 1,
       "scan_mode": "deep",
-      "score": 99.0,
-      "total_issues": 0,
-      "structural_fp": 0,
-      "severity": {},
-      "top_rules": [],
-      "categories": {},
-      "avg_confidence": 0,
-      "low_confidence_count": 0,
-      "scan_time_s": 5.11,
+      "score": 98.2,
+      "total_issues": 9,
+      "structural_fp": 6,
+      "severity": {
+        "moderate": 3,
+        "serious": 3,
+        "minor": 3
+      },
+      "top_rules": [
+        {
+          "rule": "region",
+          "count": 1
+        },
+        {
+          "rule": "missing-lang",
+          "count": 1
+        },
+        {
+          "rule": "no-main-landmark",
+          "count": 1
+        },
+        {
+          "rule": "landmark-roles",
+          "count": 1
+        },
+        {
+          "rule": "html-has-lang",
+          "count": 1
+        },
+        {
+          "rule": "landmark-one-main",
+          "count": 1
+        },
+        {
+          "rule": "no-nav-landmark",
+          "count": 1
+        },
+        {
+          "rule": "no-header-landmark",
+          "count": 1
+        }
+      ],
+      "categories": {
+        "html": 9
+      },
+      "avg_confidence": 0.7,
+      "low_confidence_count": 4,
+      "scan_time_s": 4.05,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -580,12 +919,12 @@
       ],
       "telemetry": {
         "input_issues": 9,
-        "reported_issues": 0,
-        "dropped_structural": 5,
+        "reported_issues": 9,
+        "dropped_structural": 6,
         "dropped_low_confidence": 3,
-        "dropped_excluded_rules": 1,
-        "suppression_rate": 1.0,
-        "suppression_warning": true,
+        "dropped_excluded_rules": 0,
+        "suppression_rate": 0.0,
+        "suppression_warning": false,
         "low_issue_guard_active": false
       },
       "success": true,
@@ -596,16 +935,59 @@
       "url": "https://www.etsy.com",
       "category": "ecommerce",
       "expected_tier": "medium",
+      "predicted_tier": "high",
+      "expected_alignment": false,
+      "expected_alignment_distance": 1,
       "scan_mode": "deep",
-      "score": 99.0,
-      "total_issues": 0,
-      "structural_fp": 0,
-      "severity": {},
-      "top_rules": [],
-      "categories": {},
-      "avg_confidence": 0,
-      "low_confidence_count": 0,
-      "scan_time_s": 5.72,
+      "score": 98.1,
+      "total_issues": 8,
+      "structural_fp": 5,
+      "severity": {
+        "serious": 2,
+        "moderate": 3,
+        "minor": 3
+      },
+      "top_rules": [
+        {
+          "rule": "no-headings",
+          "count": 1
+        },
+        {
+          "rule": "no-main-landmark",
+          "count": 1
+        },
+        {
+          "rule": "landmark-roles",
+          "count": 1
+        },
+        {
+          "rule": "landmark-one-main",
+          "count": 1
+        },
+        {
+          "rule": "page-has-heading-one",
+          "count": 1
+        },
+        {
+          "rule": "no-nav-landmark",
+          "count": 1
+        },
+        {
+          "rule": "no-header-landmark",
+          "count": 1
+        },
+        {
+          "rule": "no-footer-landmark",
+          "count": 1
+        }
+      ],
+      "categories": {
+        "html": 7,
+        "general": 1
+      },
+      "avg_confidence": 0.7,
+      "low_confidence_count": 4,
+      "scan_time_s": 4.59,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -615,12 +997,12 @@
       ],
       "telemetry": {
         "input_issues": 8,
-        "reported_issues": 0,
-        "dropped_structural": 5,
+        "reported_issues": 8,
+        "dropped_structural": 6,
         "dropped_low_confidence": 2,
-        "dropped_excluded_rules": 1,
-        "suppression_rate": 1.0,
-        "suppression_warning": true,
+        "dropped_excluded_rules": 0,
+        "suppression_rate": 0.0,
+        "suppression_warning": false,
         "low_issue_guard_active": false
       },
       "success": true,
@@ -631,16 +1013,58 @@
       "url": "https://www.meesho.com",
       "category": "ecommerce",
       "expected_tier": "low",
+      "predicted_tier": "high",
+      "expected_alignment": false,
+      "expected_alignment_distance": 2,
       "scan_mode": "deep",
-      "score": 99.0,
-      "total_issues": 0,
-      "structural_fp": 0,
-      "severity": {},
-      "top_rules": [],
-      "categories": {},
-      "avg_confidence": 0,
-      "low_confidence_count": 0,
-      "scan_time_s": 4.96,
+      "score": 98.2,
+      "total_issues": 9,
+      "structural_fp": 6,
+      "severity": {
+        "moderate": 3,
+        "serious": 3,
+        "minor": 3
+      },
+      "top_rules": [
+        {
+          "rule": "region",
+          "count": 1
+        },
+        {
+          "rule": "missing-lang",
+          "count": 1
+        },
+        {
+          "rule": "no-main-landmark",
+          "count": 1
+        },
+        {
+          "rule": "landmark-roles",
+          "count": 1
+        },
+        {
+          "rule": "html-has-lang",
+          "count": 1
+        },
+        {
+          "rule": "landmark-one-main",
+          "count": 1
+        },
+        {
+          "rule": "no-nav-landmark",
+          "count": 1
+        },
+        {
+          "rule": "no-header-landmark",
+          "count": 1
+        }
+      ],
+      "categories": {
+        "html": 9
+      },
+      "avg_confidence": 0.7,
+      "low_confidence_count": 4,
+      "scan_time_s": 5.33,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -650,12 +1074,12 @@
       ],
       "telemetry": {
         "input_issues": 9,
-        "reported_issues": 0,
-        "dropped_structural": 5,
+        "reported_issues": 9,
+        "dropped_structural": 6,
         "dropped_low_confidence": 3,
-        "dropped_excluded_rules": 1,
-        "suppression_rate": 1.0,
-        "suppression_warning": true,
+        "dropped_excluded_rules": 0,
+        "suppression_rate": 0.0,
+        "suppression_warning": false,
         "low_issue_guard_active": false
       },
       "success": true,
@@ -666,16 +1090,58 @@
       "url": "https://developer.mozilla.org",
       "category": "dev-docs",
       "expected_tier": "high",
+      "predicted_tier": "high",
+      "expected_alignment": true,
+      "expected_alignment_distance": 0,
       "scan_mode": "deep",
-      "score": 99.0,
-      "total_issues": 0,
-      "structural_fp": 0,
-      "severity": {},
-      "top_rules": [],
-      "categories": {},
-      "avg_confidence": 0,
-      "low_confidence_count": 0,
-      "scan_time_s": 13.96,
+      "score": 96.4,
+      "total_issues": 10,
+      "structural_fp": 1,
+      "severity": {
+        "serious": 5,
+        "minor": 3,
+        "moderate": 2
+      },
+      "top_rules": [
+        {
+          "rule": "div-itis-missing-semantics",
+          "count": 3
+        },
+        {
+          "rule": "no-focus-style",
+          "count": 2
+        },
+        {
+          "rule": "svg-no-accessible-name",
+          "count": 1
+        },
+        {
+          "rule": "keyboard-unreachable",
+          "count": 1
+        },
+        {
+          "rule": "responsive-reflow",
+          "count": 1
+        },
+        {
+          "rule": "missing-landmark",
+          "count": 1
+        },
+        {
+          "rule": "no-main-landmark",
+          "count": 1
+        }
+      ],
+      "categories": {
+        "images": 1,
+        "keyboard": 3,
+        "structure": 3,
+        "content": 1,
+        "html": 2
+      },
+      "avg_confidence": 0.7,
+      "low_confidence_count": 7,
+      "scan_time_s": 14.49,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -684,13 +1150,13 @@
         "axe-core"
       ],
       "telemetry": {
-        "input_issues": 11,
-        "reported_issues": 0,
-        "dropped_structural": 1,
-        "dropped_low_confidence": 9,
-        "dropped_excluded_rules": 1,
-        "suppression_rate": 1.0,
-        "suppression_warning": true,
+        "input_issues": 13,
+        "reported_issues": 10,
+        "dropped_structural": 2,
+        "dropped_low_confidence": 3,
+        "dropped_excluded_rules": 0,
+        "suppression_rate": 0.231,
+        "suppression_warning": false,
         "low_issue_guard_active": false
       },
       "success": true,
@@ -701,25 +1167,47 @@
       "url": "https://stackoverflow.com",
       "category": "dev-docs",
       "expected_tier": "medium",
+      "predicted_tier": "high",
+      "expected_alignment": false,
+      "expected_alignment_distance": 1,
       "scan_mode": "deep",
-      "score": 98.2,
-      "total_issues": 1,
-      "structural_fp": 0,
+      "score": 96.3,
+      "total_issues": 5,
+      "structural_fp": 3,
       "severity": {
-        "critical": 1
+        "critical": 1,
+        "serious": 1,
+        "minor": 3
       },
       "top_rules": [
         {
           "rule": "meta-refresh",
           "count": 1
+        },
+        {
+          "rule": "no-headings",
+          "count": 1
+        },
+        {
+          "rule": "no-nav-landmark",
+          "count": 1
+        },
+        {
+          "rule": "no-header-landmark",
+          "count": 1
+        },
+        {
+          "rule": "no-footer-landmark",
+          "count": 1
         }
       ],
       "categories": {
-        "other": 1
+        "content": 1,
+        "html": 4
       },
-      "avg_confidence": 0.679,
-      "low_confidence_count": 1,
-      "scan_time_s": 11.31,
+      "avg_confidence": 0.7,
+      "low_confidence_count": 2,
+      "scan_time_s": 10.3,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -729,12 +1217,12 @@
       ],
       "telemetry": {
         "input_issues": 5,
-        "reported_issues": 1,
+        "reported_issues": 5,
         "dropped_structural": 4,
         "dropped_low_confidence": 0,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.8,
-        "suppression_warning": true,
+        "suppression_rate": 0.0,
+        "suppression_warning": false,
         "low_issue_guard_active": false
       },
       "success": true,
@@ -745,56 +1233,65 @@
       "url": "https://dribbble.com",
       "category": "design",
       "expected_tier": "low",
+      "predicted_tier": "low",
+      "expected_alignment": true,
+      "expected_alignment_distance": 0,
       "scan_mode": "deep",
-      "score": 69.4,
-      "total_issues": 9,
+      "score": 64.0,
+      "total_issues": 102,
       "structural_fp": 0,
       "severity": {
-        "serious": 5,
-        "critical": 2,
+        "serious": 14,
         "moderate": 1,
-        "minor": 1
+        "critical": 46,
+        "minor": 41
       },
       "top_rules": [
+        {
+          "rule": "button-name",
+          "count": 46
+        },
+        {
+          "rule": "redundant-alt",
+          "count": 41
+        },
+        {
+          "rule": "empty-link",
+          "count": 3
+        },
+        {
+          "rule": "video-transcript",
+          "count": 3
+        },
+        {
+          "rule": "svg-no-accessible-name",
+          "count": 3
+        },
+        {
+          "rule": "no-focus-style",
+          "count": 3
+        },
         {
           "rule": "empty-heading",
           "count": 1
         },
         {
-          "rule": "missing-alt",
-          "count": 1
-        },
-        {
-          "rule": "empty-link",
-          "count": 1
-        },
-        {
           "rule": "missing-skip-link",
-          "count": 1
-        },
-        {
-          "rule": "video-transcript",
-          "count": 1
-        },
-        {
-          "rule": "button-name",
-          "count": 1
-        },
-        {
-          "rule": "color-contrast",
-          "count": 1
-        },
-        {
-          "rule": "redundant-alt",
           "count": 1
         }
       ],
       "categories": {
-        "other": 9
+        "html": 1,
+        "navigation": 5,
+        "media": 3,
+        "images": 3,
+        "keyboard": 3,
+        "forms": 46,
+        "general": 41
       },
-      "avg_confidence": 0.63,
-      "low_confidence_count": 9,
-      "scan_time_s": 30.14,
+      "avg_confidence": 0.822,
+      "low_confidence_count": 8,
+      "scan_time_s": 30.78,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -803,12 +1300,12 @@
         "axe-core"
       ],
       "telemetry": {
-        "input_issues": 135,
-        "reported_issues": 94,
+        "input_issues": 144,
+        "reported_issues": 102,
         "dropped_structural": 2,
-        "dropped_low_confidence": 39,
+        "dropped_low_confidence": 21,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.304,
+        "suppression_rate": 0.292,
         "suppression_warning": false,
         "low_issue_guard_active": false
       },
@@ -820,19 +1317,26 @@
       "url": "https://www.awwwards.com",
       "category": "design",
       "expected_tier": "low",
+      "predicted_tier": "low",
+      "expected_alignment": true,
+      "expected_alignment_distance": 0,
       "scan_mode": "deep",
-      "score": 98.3,
-      "total_issues": 4,
+      "score": 67.2,
+      "total_issues": 14,
       "structural_fp": 0,
       "severity": {
-        "serious": 1,
+        "serious": 11,
         "moderate": 2,
         "minor": 1
       },
       "top_rules": [
         {
+          "rule": "svg-no-accessible-name",
+          "count": 6
+        },
+        {
           "rule": "empty-link",
-          "count": 1
+          "count": 4
         },
         {
           "rule": "link-purpose",
@@ -843,16 +1347,23 @@
           "count": 1
         },
         {
+          "rule": "focus-obscured",
+          "count": 1
+        },
+        {
           "rule": "empty-table-header",
           "count": 1
         }
       ],
       "categories": {
-        "other": 4
+        "navigation": 6,
+        "images": 6,
+        "keyboard": 1,
+        "general": 1
       },
-      "avg_confidence": 0.584,
-      "low_confidence_count": 4,
-      "scan_time_s": 20.36,
+      "avg_confidence": 0.747,
+      "low_confidence_count": 3,
+      "scan_time_s": 22.96,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -861,17 +1372,40 @@
         "axe-core"
       ],
       "telemetry": {
-        "input_issues": 36,
-        "reported_issues": 7,
-        "dropped_structural": 2,
-        "dropped_low_confidence": 26,
-        "dropped_excluded_rules": 1,
-        "suppression_rate": 0.806,
-        "suppression_warning": true,
+        "input_issues": 39,
+        "reported_issues": 14,
+        "dropped_structural": 3,
+        "dropped_low_confidence": 14,
+        "dropped_excluded_rules": 0,
+        "suppression_rate": 0.641,
+        "suppression_warning": false,
         "low_issue_guard_active": false
       },
       "success": true,
       "error": null
     }
-  ]
+  ],
+  "summary": {
+    "fast": {
+      "successful_sites": 10,
+      "avg_score": 78.88,
+      "avg_scan_time_s": 2.601,
+      "expectation_alignment_rate": 0.5,
+      "avg_alignment_distance": 0.6,
+      "suppression_warnings": 0
+    },
+    "deep": {
+      "successful_sites": 10,
+      "avg_score": 87.25,
+      "avg_scan_time_s": 13.907,
+      "expectation_alignment_rate": 0.4,
+      "avg_alignment_distance": 0.7,
+      "suppression_warnings": 0
+    },
+    "overall": {
+      "successful_audits": 20,
+      "expectation_alignment_rate": 0.45,
+      "avg_alignment_distance": 0.65
+    }
+  }
 }

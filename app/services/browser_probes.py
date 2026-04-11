@@ -97,7 +97,7 @@ class BrowserProber:
         ],
     }
 
-    def __init__(self, url: str, timeout: int = 30000, max_retries: int = 1):
+    def __init__(self, url: str, timeout: int = 30000, max_retries: int = 2):
         self.url = url
         base_timeout_seconds = max(8, int(timeout / 1000))
         self.adaptive_timeouts = resolve_adaptive_timeouts(
@@ -1657,6 +1657,15 @@ class BrowserProber:
                     evidence=cycle_result,
                     fix_effort="medium"
                 ))
+                issues.append(_make_issue(
+                    self.url, "keyboard-trap", "violation", "serious",
+                    modal_desc, "",
+                    f"Modal '{modal_desc}' is not maintaining keyboard focus; users can become disoriented or trapped in inconsistent focus flow.",
+                    "2.1.2", "A", "keyboard",
+                    "Ensure modal focus loops consistently and provide a deterministic escape route (Escape key and close control).",
+                    evidence=cycle_result,
+                    fix_effort="medium"
+                ))
 
         except Exception as e:
             logger.debug(f"Focus cycling check failed for {modal_desc}: {e}")
@@ -1779,6 +1788,15 @@ class BrowserProber:
                 evidence={"role": role, "has_close_button": False},
                 fix_effort="low"
             ))
+            issues.append(_make_issue(
+                self.url, "keyboard-trap", "violation", "moderate",
+                modal_desc, "",
+                f"Dialog '{modal_desc}' lacks an obvious dismissal control and may trap keyboard users.",
+                "2.1.2", "A", "keyboard",
+                "Add a focusable close button and Escape handling so keyboard users can always exit the dialog.",
+                evidence={"role": role, "has_close_button": False},
+                fix_effort="low"
+            ))
 
         return issues
 
@@ -1801,6 +1819,7 @@ class BrowserProber:
                         onclickNoTabindex: [],
                         divButtonsNoKeyboard: [],
                         hiddenFocusable: [],
+                        activeDescendantNoFocusHost: [],
                     };
 
                     // 1. Elements with onclick but no tabindex/role/native interactivity
@@ -1884,6 +1903,39 @@ class BrowserProber:
                         }
                     }
 
+                    // 5. aria-activedescendant host must itself be keyboard-focusable.
+                    const activeDescendantHosts = document.querySelectorAll('[aria-activedescendant]');
+                    for (const host of activeDescendantHosts) {
+                        const tabindex = host.getAttribute('tabindex');
+                        const tag = (host.tagName || '').toUpperCase();
+                        const naturallyFocusable = (
+                            tag === 'INPUT' ||
+                            tag === 'TEXTAREA' ||
+                            tag === 'SELECT' ||
+                            tag === 'BUTTON' ||
+                            (tag === 'A' && host.hasAttribute('href'))
+                        );
+                        const parsedTabindex = tabindex !== null ? parseInt(tabindex, 10) : null;
+                        const hostFocusable = naturallyFocusable || (
+                            tabindex !== null && !Number.isNaN(parsedTabindex) && parsedTabindex >= 0
+                        );
+
+                        if (!hostFocusable) {
+                            let selector = host.tagName.toLowerCase();
+                            if (host.id) selector += '#' + host.id;
+                            else if (host.className && typeof host.className === 'string') {
+                                selector += '.' + host.className.trim().split(/\\s+/)[0];
+                            }
+                            results.activeDescendantNoFocusHost.push({
+                                selector: selector,
+                                tag: host.tagName.toLowerCase(),
+                                tabindex: tabindex,
+                                activeDescendant: host.getAttribute('aria-activedescendant') || '',
+                                outerHTML: host.outerHTML.substring(0, 180),
+                            });
+                        }
+                    }
+
                     return results;
                 }
             """)
@@ -1931,6 +1983,19 @@ class BrowserProber:
                     f"has tabindex={item.get('tabindex')} and may receive unexpected focus.",
                     "2.4.3", "A", "keyboard",
                     "Set tabindex='-1' on hidden elements, or remove them from the DOM when not visible.",
+                    evidence=item,
+                    fix_effort="low",
+                ))
+
+            # Issue 5: aria-activedescendant host is not focusable.
+            for item in focus_mgmt_data.get("activeDescendantNoFocusHost", [])[:10]:
+                issues.append(_make_issue(
+                    self.url, "focus-management", "violation", "serious",
+                    item.get("selector", "<aria-activedescendant-host>"),
+                    item.get("outerHTML", ""),
+                    f"Element '{item.get('selector')}' uses aria-activedescendant but is not keyboard-focusable.",
+                    "4.1.2", "A", "keyboard",
+                    "Make the active-descendant container keyboard-focusable (tabindex='0' or native focusable control).",
                     evidence=item,
                     fix_effort="low",
                 ))

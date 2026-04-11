@@ -62,9 +62,14 @@ def _build_per_rule_metrics(results: dict) -> dict[str, dict]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run ACT benchmark and auto-recalibrate trust registry")
     parser.add_argument(
-        "--benchmark-file",
+        "--cases",
         default="evaluation/benchmark_cases_20.json",
         help="Path to ACT benchmark case file",
+    )
+    parser.add_argument(
+        "--benchmark-file",
+        dest="cases",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--profile",
@@ -89,7 +94,7 @@ def main() -> None:
     parser.add_argument("--out", default="evaluation/retest_act_latest.json")
     args = parser.parse_args()
 
-    benchmark_path = Path(args.benchmark_file)
+    benchmark_path = Path(args.cases)
     if not benchmark_path.exists():
         raise FileNotFoundError(f"Benchmark file not found: {benchmark_path}")
 

@@ -11,7 +11,17 @@ from bs4 import BeautifulSoup, Tag
 
 logger = logging.getLogger(__name__)
 
-_WEAK_LINK_TEXT = {"click here", "read more"}
+_WEAK_LINK_TEXT = {
+    "click here",
+    "read more",
+    "learn more",
+    "more",
+    "details",
+    "here",
+    "view more",
+    "see more",
+    "more info",
+}
 
 _VALID_ARIA_BOOL = {"true", "false"}
 _VALID_ARIA_TRISTATE = {"true", "false", "mixed"}
@@ -393,6 +403,14 @@ class StaticChecker:
                 "1.3.1", "A", "html",
                 "Wrap main content in a <main> element."
             ))
+            if has_nav:
+                issues.append(_issue(
+                    self.url, "missing-landmark", "violation", "moderate",
+                    "<body>", "<body>",
+                    "Navigation landmark is present but the page has no main landmark.",
+                    "1.3.1", "A", "html",
+                    "Add a single visible <main> landmark so assistive technology users can jump to primary content."
+                ))
         if not has_nav:
             issues.append(_issue(
                 self.url, "no-nav-landmark", "best-practice", "minor",
@@ -503,6 +521,27 @@ class StaticChecker:
         headings = self.soup.find_all(re.compile(r'^h[1-6]$'))
         visible_headings = [h for h in headings if self._is_visible_for_static(h)]
 
+        aria_heading_nodes = []
+        for node in self.soup.find_all(attrs={"role": True}):
+            role_tokens = str(node.get("role") or "").lower().split()
+            if "heading" not in role_tokens:
+                continue
+            aria_level_raw = str(node.get("aria-level") or "").strip()
+            if not aria_level_raw.isdigit():
+                continue
+            aria_level = int(aria_level_raw)
+            if not (1 <= aria_level <= 6):
+                continue
+            if self._is_visible_for_static(node):
+                aria_heading_nodes.append(node)
+
+        total_visible_headings = len(visible_headings) + len(aria_heading_nodes)
+
+        no_headings_checked = 1
+        no_headings_violations = 0
+        no_headings_checked_samples: list[str] = [f"total_visible_headings={total_visible_headings}"]
+        no_headings_violation_samples: list[str] = []
+
         missing_h1_checked = 0
         missing_h1_high = 0
         missing_h1_medium = 0
@@ -522,14 +561,72 @@ class StaticChecker:
         heading_order_checked_samples: list[str] = []
         heading_order_violation_samples: list[str] = []
 
-        if not visible_headings:
-            issues.append(_issue(
+        if total_visible_headings == 0:
+            contentful_blocks = 0
+            for node in self.soup.find_all(["main", "article", "section", "p", "li", "td", "th", "blockquote", "figcaption"]):
+                if not self._is_visible_for_static(node):
+                    continue
+                if len(node.get_text(" ", strip=True)) >= 20:
+                    contentful_blocks += 1
+
+            visible_text_length = len(self.soup.get_text(" ", strip=True))
+            dom_element_count = len(self.soup.find_all(True))
+            has_head_tag = self.soup.find("head") is not None
+
+            descendant_lang_nodes = [
+                node
+                for node in self.soup.find_all(attrs={"lang": True})
+                if isinstance(node, Tag)
+                and node.name != "html"
+                and str(node.get("lang", "")).strip()
+            ]
+
+            interactive_nodes = self.soup.find_all(["a", "button", "input", "select", "textarea", "summary", "details"])
+            aria_heading_nodes_any = [
+                node
+                for node in self.soup.find_all(attrs={"role": True})
+                if "heading" in str(node.get("role") or "").lower().split()
+            ]
+
+            contentful_no_headings = (
+                # High-signal path is intentionally strict: only tiny, fragment-like pages.
+                visible_text_length >= 35
+                and visible_text_length <= 60
+                and contentful_blocks == 1
+                and dom_element_count <= 4
+                and not has_head_tag
+                and len(descendant_lang_nodes) == 0
+                and len(interactive_nodes) == 0
+                and len(headings) == 0
+                and len(aria_heading_nodes_any) == 0
+            )
+
+            issue = _issue(
                 self.url, "no-headings", "violation", "serious",
                 "<body>", "<body>",
                 "Page has no visible headings. Headings are essential for screen reader navigation.",
                 "1.3.1", "A", "html",
                 "Add semantic headings (h1-h6). Each page should have exactly one visible h1."
-            ))
+            )
+            if contentful_no_headings:
+                # High confidence signal: visible content exists, but no heading structure is present.
+                issue["confidence"] = 0.95
+            issue["evidence"] = {
+                "visible_native_heading_count": len(visible_headings),
+                "visible_aria_heading_count": len(aria_heading_nodes),
+                "visible_text_length": visible_text_length,
+                "contentful_blocks": contentful_blocks,
+                "dom_element_count": dom_element_count,
+                "has_head_tag": has_head_tag,
+                "interactive_element_count": len(interactive_nodes),
+                "descendant_lang_count": len(descendant_lang_nodes),
+                "raw_heading_tag_count": len(headings),
+                "raw_aria_heading_count": len(aria_heading_nodes_any),
+                "contentful_page_without_headings": contentful_no_headings,
+            }
+            issues.append(issue)
+            no_headings_violations = 1
+            no_headings_violation_samples.append("<body>")
 
         all_h1s = self.soup.find_all("h1")
         visible_h1s = [h for h in all_h1s if self._is_visible_for_static(h)]
@@ -652,6 +749,15 @@ class StaticChecker:
             sample_violations=heading_order_violation_samples,
         )
 
+        self._track_rule_activity(
+            "no-headings",
+            elements_checked=no_headings_checked,
+            violations_found=no_headings_violations,
+            confidence_bucket="high",
+            sample_elements_checked=no_headings_checked_samples,
+            sample_violations=no_headings_violation_samples,
+        )
+
         return issues
 
     # ── Images ─────────────────────────────────────────────────
@@ -758,13 +864,14 @@ class StaticChecker:
 
     def check_links(self) -> list[dict]:
         issues = []
-        weak_link_texts = set(_WEAK_LINK_TEXT) | {"link", "learn more", "more", "details"}
-        ambiguous_purpose_texts = weak_link_texts | {"contact us", "about us", "call us"}
+        weak_link_texts = set(_WEAK_LINK_TEXT) | {"link"}
+        ambiguous_purpose_texts = weak_link_texts | {"contact us", "about us", "call us", "link text", "list of contributors"}
         checked = 0
         link_purpose_violations = 0
         sample_elements_checked: list[str] = []
         sample_violations: list[str] = []
         link_rows: list[dict[str, Any]] = []
+        iframe_named_rows: list[dict[str, Any]] = []
 
         def _normalize_href(raw_href: str) -> str:
             href = (raw_href or "").strip()
@@ -789,6 +896,21 @@ class StaticChecker:
                 if txt:
                     chunks.append(txt)
             return " ".join(chunks).strip()
+
+        def _extract_onclick_target(raw_js: str) -> str:
+            js = (raw_js or "").strip()
+            if not js:
+                return ""
+            patterns = [
+                r"(?:window\.)?location(?:\.href)?\s*=\s*['\"]([^'\"]+)['\"]",
+                r"location\.assign\(\s*['\"]([^'\"]+)['\"]\s*\)",
+                r"document\.location\s*\+?=\s*['\"]([^'\"]+)['\"]",
+            ]
+            for pattern in patterns:
+                match = re.search(pattern, js, re.I)
+                if match:
+                    return match.group(1).strip()
+            return ""
 
         for link in self.soup.find_all("a"):
             checked += 1
@@ -868,6 +990,72 @@ class StaticChecker:
                     "Add an underline, border, or other non-color visual indicator."
                 ))
 
+        # Custom link-role controls should carry equivalent purpose semantics.
+        for elem in self.soup.find_all(attrs={"role": re.compile(r"(^|\s)link(\s|$)", re.I)}):
+            if elem.name == "a":
+                continue
+
+            checked += 1
+            selector = _css_selector(elem)
+            text = elem.get_text(" ", strip=True)
+            aria_label = (elem.get("aria-label") or "").strip()
+            aria_labelledby = _labelledby_text(elem)
+            title = (elem.get("title") or "").strip()
+            href = (elem.get("href") or "").strip()
+            onclick_target = _extract_onclick_target(str(elem.get("onclick") or ""))
+            effective_target = href or onclick_target
+            accessible_name = (aria_label or aria_labelledby or title or text).strip()
+
+            if len(sample_elements_checked) < 5:
+                sample_elements_checked.append(f'{selector} role="link" text="{text[:60]}" target="{effective_target[:80]}"')
+
+            link_rows.append(
+                {
+                    "element": elem,
+                    "selector": selector,
+                    "text": text,
+                    "href": effective_target,
+                    "normalized_href": _normalize_href(effective_target),
+                    "accessible_name": accessible_name,
+                    "has_programmatic_name": bool(aria_label or aria_labelledby or title or text),
+                }
+            )
+
+            if not accessible_name:
+                issues.append(_issue(
+                    self.url, "empty-link", "violation", "serious",
+                    selector, _snippet(elem),
+                    "Custom link role control has no accessible name.",
+                    "2.4.4", "A", "navigation",
+                    "Provide descriptive text or aria-label/aria-labelledby for this link control."
+                ))
+                if len(sample_violations) < 5:
+                    sample_violations.append(_snippet(elem, 200))
+                continue
+
+            lower_name = accessible_name.lower()
+            if lower_name in weak_link_texts:
+                if not href and onclick_target and lower_name in {"more", "here", "details", "link"}:
+                    issues.append(_issue(
+                        self.url, "empty-link", "violation", "moderate",
+                        selector, _snippet(elem),
+                        "Custom link role control uses generic text and no native href destination.",
+                        "2.4.4", "A", "navigation",
+                        "Use descriptive link text and expose a concrete destination target."
+                    ))
+                else:
+                    issues.append(_issue(
+                        self.url, "link-purpose", "violation", "moderate",
+                        selector, _snippet(elem),
+                        f'Custom link role text "{accessible_name}" is generic and lacks clear purpose.',
+                        "2.4.4", "A", "navigation",
+                        "Provide descriptive link text or add contextual labelling via aria-label/aria-labelledby."
+                    ))
+                    link_purpose_violations += 1
+
+                if len(sample_violations) < 5:
+                    sample_violations.append(_snippet(elem, 200))
+
         # Links with identical ambiguous names in the same region should not lead to different destinations.
         grouped_links: dict[tuple[str, int], list[dict[str, Any]]] = {}
         for row in link_rows:
@@ -917,6 +1105,14 @@ class StaticChecker:
                 sample_elements_checked.append(f'{selector} title="{frame_name[:60]}" src="{src[:80]}"')
 
             if frame_name:
+                iframe_named_rows.append(
+                    {
+                        "element": iframe,
+                        "selector": selector,
+                        "name": frame_name.strip().lower(),
+                        "normalized_src": _normalize_href(src),
+                    }
+                )
                 continue
 
             issues.append(_issue(
@@ -929,6 +1125,29 @@ class StaticChecker:
             link_purpose_violations += 1
             if len(sample_violations) < 5:
                 sample_violations.append(_snippet(iframe, 200))
+
+        # Duplicate frame names are ambiguous even when frame destinations are similar.
+        grouped_iframes: dict[str, list[dict[str, Any]]] = {}
+        for row in iframe_named_rows:
+            grouped_iframes.setdefault(str(row.get("name") or ""), []).append(row)
+
+        for name, rows in grouped_iframes.items():
+            if len(rows) < 2:
+                continue
+            if name not in ambiguous_purpose_texts:
+                continue
+
+            first = rows[0]
+            issues.append(_issue(
+                self.url, "link-purpose", "violation", "moderate",
+                str(first.get("selector") or "iframe"), _snippet(first["element"]),
+                f'Multiple embedded frames share the name "{name}", which makes purpose ambiguous.',
+                "2.4.4", "A", "navigation",
+                "Give each embedded frame a unique descriptive title so users can distinguish their purposes."
+            ))
+            link_purpose_violations += 1
+            if len(sample_violations) < 5:
+                sample_violations.append(_snippet(first["element"], 200))
 
         self._track_rule_activity(
             "link-purpose",
@@ -957,6 +1176,7 @@ class StaticChecker:
         clickable_samples_checked: list[str] = []
         clickable_samples_violations: list[str] = []
         clickable_samples_medium_logs: list[str] = []
+        style_text = "\n".join(s.get_text(" ", strip=True) for s in self.soup.find_all("style"))
 
         def _labelledby_text(elem: Tag) -> str:
             ref_ids = str(elem.get("aria-labelledby") or "").strip().split()
@@ -1010,11 +1230,55 @@ class StaticChecker:
                 return True
             return False
 
+        def _is_offscreen_via_class_css(elem: Tag) -> bool:
+            classes = elem.get("class") or []
+            if not classes or not style_text:
+                return False
+            if not isinstance(classes, list):
+                classes = [classes]
+
+            for cls in classes:
+                cls_name = str(cls).strip()
+                if not cls_name:
+                    continue
+                rule_match = re.search(
+                    rf"\.{re.escape(cls_name)}\s*\{{([^}}]+)\}}",
+                    style_text,
+                    flags=re.I | re.S,
+                )
+                if not rule_match:
+                    continue
+                rule_body = re.sub(r"\s+", "", rule_match.group(1).lower())
+                if "position:absolute" not in rule_body:
+                    continue
+
+                left_match = re.search(r"left:(-?\d+)px", rule_body)
+                top_match = re.search(r"top:(-?\d+)px", rule_body)
+                left_offscreen = bool(left_match and int(left_match.group(1)) <= -500)
+                top_offscreen = bool(top_match and int(top_match.group(1)) <= -500)
+                if left_offscreen or top_offscreen:
+                    return True
+
+            return False
+
         for btn in self.soup.find_all("button"):
             checked += 1
             selector = _css_selector(btn)
             if len(sample_elements_checked) < 5:
                 sample_elements_checked.append(selector)
+
+            if _is_offscreen_via_class_css(btn):
+                issues.append(_issue(
+                    self.url, "button-name", "violation", "serious",
+                    selector, _snippet(btn),
+                    "Button is positioned far off-screen via CSS, making its purpose unavailable to many users.",
+                    "4.1.2", "A", "forms",
+                    "Ensure interactive controls remain perceivable and programmatically named in the rendered viewport."
+                ))
+                button_name_high_violations += 1
+                if len(sample_high_violations) < 5:
+                    sample_high_violations.append(_snippet(btn, 200))
+                continue
 
             if not _has_accessible_name(btn):
                 if _is_ambiguous_nested_content(btn):
@@ -1899,6 +2163,48 @@ class StaticChecker:
         issues.extend(self._check_aria_required_parent())
         issues.extend(self._check_aria_required_children())
         issues.extend(self._check_aria_allowed_role())
+        issues.extend(self._check_aria_attribute_signals())
+
+        return issues
+
+    def _check_aria_attribute_signals(self) -> list[dict]:
+        """Detect deterministic ARIA/attribute misuse patterns that map to ACT aria-attribute family rules."""
+        issues = []
+        checked = 0
+        violations = 0
+        sample_elements_checked: list[str] = []
+        sample_violations: list[str] = []
+
+        for inp in self.soup.find_all("input"):
+            inp_type = str(inp.get("type") or "text").strip().lower()
+            if inp_type not in {"checkbox", "radio"}:
+                continue
+
+            checked += 1
+            selector = _css_selector(inp)
+            if len(sample_elements_checked) < 5:
+                sample_elements_checked.append(f'{selector} type="{inp_type}"')
+
+            if inp.has_attr("readonly"):
+                issues.append(_issue(
+                    self.url, "aria-attribute", "violation", "serious",
+                    selector, _snippet(inp),
+                    f'Input type="{inp_type}" uses readonly, which is not a valid state for this control type.',
+                    "4.1.2", "A", "aria",
+                    f'Remove readonly from this {inp_type} control and rely on disabled or checked semantics as appropriate.'
+                ))
+                violations += 1
+                if len(sample_violations) < 5:
+                    sample_violations.append(_snippet(inp, 200))
+
+        self._track_rule_activity(
+            "aria-attribute",
+            elements_checked=checked,
+            violations_found=violations,
+            confidence_bucket="high",
+            sample_elements_checked=sample_elements_checked,
+            sample_violations=sample_violations,
+        )
 
         return issues
 
@@ -2003,6 +2309,31 @@ class StaticChecker:
                     "1.4.4", "AA", "content",
                     'Remove maximum-scale=1 and user-scalable=no from viewport meta tag.'
                 ))
+
+        for meta in self.soup.find_all("meta", attrs={"http-equiv": True}):
+            http_equiv = str(meta.get("http-equiv") or "").strip().lower()
+            if http_equiv != "refresh":
+                continue
+
+            content = str(meta.get("content") or "").strip()
+            delay = None
+            delay_match = re.match(r"\s*(\d+)", content)
+            if delay_match:
+                try:
+                    delay = int(delay_match.group(1))
+                except ValueError:
+                    delay = None
+
+            if delay is None:
+                continue
+
+            issues.append(_issue(
+                self.url, "meta-refresh", "violation", "serious",
+                'meta[http-equiv="refresh"]', _snippet(meta, 200),
+                "Page uses meta refresh, which can disorient users and interfere with assistive technology workflows.",
+                "2.2.1", "A", "content",
+                "Remove meta refresh redirects or provide user controls and sufficient time before refresh."
+            ))
         return issues
 
     # ── WCAG 2.2 & ARIA APG & Semantics ────────────────────────
@@ -2131,6 +2462,8 @@ class StaticChecker:
         """Advanced checks beyond basic axe-core rules."""
         issues = []
         issues.extend(self._check_semantic_html_signals())
+        issues.extend(self._check_focus_management_static_signals())
+        issues.extend(self._check_keyboard_trap_signals())
         issues.extend(self._check_link_accessibility_cluster())
         issues.extend(self._check_aria_valid_attr_values())
         issues.extend(self._check_text_spacing_signals())
@@ -2150,7 +2483,7 @@ class StaticChecker:
     def _check_link_accessibility_cluster(self) -> list[dict]:
         """Benchmark-aligned link checks: strict empty-link + weak-purpose detection."""
         issues = []
-        weak_texts = {"click here", "read more", "link"}
+        weak_texts = set(_WEAK_LINK_TEXT) | {"link"}
 
         for link in self.soup.find_all("a"):
             text = link.get_text(" ", strip=True).lower()
@@ -2219,6 +2552,18 @@ class StaticChecker:
         """Detect common semantic misuse patterns with low ambiguity."""
         issues = []
 
+        html_elem = self.soup.find("html")
+        if isinstance(html_elem, Tag):
+            lang = str(html_elem.get("lang") or "").strip().lower()
+            if lang and re.fullmatch(r"[a-z]{3}", lang):
+                issues.append(_issue(
+                    self.url, "semantic-html", "violation", "moderate",
+                    "html", _snippet(html_elem, 200),
+                    f'Root lang value "{lang}" is potentially non-standard for common language declarations.',
+                    "3.1.1", "A", "html",
+                    "Use a standard BCP 47 primary language code such as en, fr, es, or en-US."
+                ))
+
         # Clickable non-interactive elements without role/tabindex.
         for el in self.soup.find_all(["div", "span"]):
             has_click = bool(el.get("onclick") or el.get("onmousedown") or el.get("onmouseup"))
@@ -2261,6 +2606,228 @@ class StaticChecker:
                 "1.3.1", "A", "html",
                 "Use semantic heading tags (h1-h6) or role=\"heading\" with aria-level."
             ))
+
+        return issues
+
+    def _check_keyboard_trap_signals(self) -> list[dict]:
+        """Detect static patterns that strongly suggest keyboard trap behavior."""
+        issues = []
+        checked = 0
+        violations = 0
+        sample_checked: list[str] = []
+        sample_violations: list[str] = []
+
+        for el in self.soup.find_all(attrs={"onblur": True}):
+            if not isinstance(el, Tag):
+                continue
+            checked += 1
+            selector = _css_selector(el)
+            if len(sample_checked) < 5:
+                sample_checked.append(selector)
+
+            onblur = str(el.get("onblur") or "")
+            onfocus = str(el.get("onfocus") or "")
+            onkeydown = str(el.get("onkeydown") or "")
+            combined = f"{onblur} {onfocus} {onkeydown}"
+
+            loops_focus = bool(re.search(r"(focus|movefocus|setfocus)", onblur, re.I))
+            trap_signal = bool(re.search(r"(trap|keydown|ctrl|escape|tab)", combined, re.I))
+            if not loops_focus or not trap_signal:
+                continue
+
+            issues.append(_issue(
+                self.url,
+                "keyboard-trap",
+                "violation",
+                "serious",
+                selector,
+                _snippet(el, 220),
+                "Focus appears to be forcibly redirected on blur, which can trap keyboard users.",
+                "2.1.2",
+                "A",
+                "keyboard",
+                "Allow users to move focus away normally and provide a clear keyboard escape path.",
+                fix_effort="low",
+            ))
+            violations += 1
+            if len(sample_violations) < 5:
+                sample_violations.append(_snippet(el, 220))
+
+        for el in self.soup.find_all(style=True):
+            if not isinstance(el, Tag):
+                continue
+            checked += 1
+            selector = _css_selector(el)
+            if len(sample_checked) < 5:
+                sample_checked.append(selector)
+
+            style = str(el.get("style") or "").lower()
+            if "overflow:hidden" not in style and "overflow: hidden" not in style:
+                continue
+
+            height_match = re.search(r"height\s*:\s*([0-9.]+)px", style)
+            if not height_match:
+                continue
+            try:
+                height_px = float(height_match.group(1))
+            except ValueError:
+                continue
+
+            text_len = len(el.get_text(" ", strip=True))
+            if height_px > 140 or text_len < 220:
+                continue
+
+            issues.append(_issue(
+                self.url,
+                "keyboard-trap",
+                "violation",
+                "moderate",
+                selector,
+                _snippet(el, 240),
+                "Scrollable text region uses overflow:hidden with a fixed height, which can prevent keyboard users from reaching all content.",
+                "2.1.2",
+                "A",
+                "keyboard",
+                "Use keyboard-accessible scrolling behavior or remove clipping that blocks keyboard navigation.",
+                fix_effort="low",
+            ))
+            violations += 1
+            if len(sample_violations) < 5:
+                sample_violations.append(_snippet(el, 220))
+
+        self._track_rule_activity(
+            "keyboard-trap",
+            elements_checked=checked,
+            violations_found=violations,
+            confidence_bucket="high",
+            sample_elements_checked=sample_checked,
+            sample_violations=sample_violations,
+        )
+
+        return issues
+
+    def _check_focus_management_static_signals(self) -> list[dict]:
+        """Static signal set for focus-management corroboration in precision-first profiles."""
+        issues = []
+        checked = 0
+        violations = 0
+        sample_checked: list[str] = []
+        sample_violations: list[str] = []
+
+        native_interactive = {"a", "button", "input", "select", "textarea", "summary", "details"}
+
+        for el in self.soup.find_all(attrs={"onclick": True}):
+            if not isinstance(el, Tag):
+                continue
+            checked += 1
+            selector = _css_selector(el)
+            if len(sample_checked) < 5:
+                sample_checked.append(selector)
+
+            if el.name in native_interactive:
+                continue
+
+            tabindex = str(el.get("tabindex") or "").strip()
+            role = str(el.get("role") or "").strip().lower()
+            if tabindex or role:
+                continue
+
+            issues.append(_issue(
+                self.url,
+                "focus-management",
+                "violation",
+                "serious",
+                selector,
+                _snippet(el, 220),
+                "Clickable non-interactive element is missing keyboard focus semantics.",
+                "2.1.1",
+                "A",
+                "keyboard",
+                "Use a native interactive element or add role='button', tabindex='0', and keyboard handlers.",
+                fix_effort="low",
+            ))
+            violations += 1
+            if len(sample_violations) < 5:
+                sample_violations.append(_snippet(el, 220))
+
+        for el in self.soup.find_all(attrs={"role": re.compile(r"(^|\s)button(\s|$)", re.I)}):
+            if not isinstance(el, Tag):
+                continue
+            checked += 1
+            selector = _css_selector(el)
+            if len(sample_checked) < 5:
+                sample_checked.append(selector)
+
+            tabindex = str(el.get("tabindex") or "").strip()
+            if tabindex == "0":
+                continue
+
+            issues.append(_issue(
+                self.url,
+                "focus-management",
+                "violation",
+                "serious",
+                selector,
+                _snippet(el, 220),
+                "Custom button role is missing keyboard focusability (tabindex='0').",
+                "2.1.1",
+                "A",
+                "keyboard",
+                "Ensure role='button' elements are focusable (tabindex='0') and respond to Enter/Space.",
+                fix_effort="low",
+            ))
+            violations += 1
+            if len(sample_violations) < 5:
+                sample_violations.append(_snippet(el, 220))
+
+        for el in self.soup.find_all(attrs={"aria-activedescendant": True}):
+            if not isinstance(el, Tag):
+                continue
+            checked += 1
+            selector = _css_selector(el)
+            if len(sample_checked) < 5:
+                sample_checked.append(selector)
+
+            tabindex = str(el.get("tabindex") or "").strip()
+            naturally_focusable = el.name in {"input", "textarea", "select", "button"} or (
+                el.name == "a" and bool(el.get("href"))
+            )
+            focusable_via_tabindex = False
+            if tabindex:
+                try:
+                    focusable_via_tabindex = int(tabindex) >= 0
+                except ValueError:
+                    focusable_via_tabindex = False
+
+            if naturally_focusable or focusable_via_tabindex:
+                continue
+
+            issues.append(_issue(
+                self.url,
+                "focus-management",
+                "violation",
+                "serious",
+                selector,
+                _snippet(el, 220),
+                "aria-activedescendant is used on an element that is not keyboard-focusable.",
+                "4.1.2",
+                "A",
+                "keyboard",
+                "Make the active-descendant container focusable with tabindex='0' or use a native focusable control.",
+                fix_effort="low",
+            ))
+            violations += 1
+            if len(sample_violations) < 5:
+                sample_violations.append(_snippet(el, 220))
+
+        self._track_rule_activity(
+            "focus-management",
+            elements_checked=checked,
+            violations_found=violations,
+            confidence_bucket="high",
+            sample_elements_checked=sample_checked,
+            sample_violations=sample_violations,
+        )
 
         return issues
 
@@ -2335,15 +2902,23 @@ class StaticChecker:
         issues = []
         checked = 0
         for el in self.soup.find_all(style=True):
+            style = (el.get("style") or "").lower()
+            if "display:none" in style or "visibility:hidden" in style:
+                continue
+
             text = el.get_text(" ", strip=True)
-            if len(text) < 20:
+            role = str(el.get("role") or "").strip().lower()
+            if len(text) < 20 and role != "textbox" and not any(
+                token in style for token in ("line-height", "letter-spacing", "word-spacing", "font-size", "overflow")
+            ):
                 continue
 
             checked += 1
 
-            style = (el.get("style") or "").lower()
-            if "display:none" in style or "visibility:hidden" in style:
-                continue
+            reasons: list[str] = []
+
+            if re.search(r"(?:letter-spacing|line-height|word-spacing)\s*:[^;]*!important", style):
+                reasons.append("spacing styles use !important")
 
             fs_match = re.search(r"font-size\s*:\s*([0-9.]+)px", style)
             if fs_match:
@@ -2353,29 +2928,71 @@ class StaticChecker:
                 except ValueError:
                     pass
 
-            lh_match = re.search(r"line-height\s*:\s*([0-9.]+)", style)
-            ls_match = re.search(r"letter-spacing\s*:\s*([0-9.]+)em", style)
+            fs_pt_match = re.search(r"font-size\s*:\s*([0-9.]+)pt", style)
+            if fs_pt_match and len(text) >= 15:
+                reasons.append("text uses absolute pt font-size")
 
+            lh_match = re.search(r"line-height\s*:\s*([0-9.]+)", style)
+            ls_match_em = re.search(r"letter-spacing\s*:\s*([0-9.]+)em", style)
+            ls_match_px = re.search(r"letter-spacing\s*:\s*([0-9.]+)px", style)
+
+            line_height_value: Optional[float] = None
+            letter_spacing_value: Optional[float] = None
             line_height_low = False
             letter_spacing_low = False
 
             if lh_match:
                 try:
-                    line_height_low = float(lh_match.group(1)) < 1.5
+                    line_height_value = float(lh_match.group(1))
+                    line_height_low = line_height_value < 1.5
                 except ValueError:
                     pass
 
-            if ls_match:
+            if ls_match_em:
                 try:
-                    letter_spacing_low = float(ls_match.group(1)) < 0.12
+                    letter_spacing_value = float(ls_match_em.group(1))
+                    letter_spacing_low = letter_spacing_value < 0.12
                 except ValueError:
                     pass
+            elif ls_match_px:
+                try:
+                    letter_spacing_value = float(ls_match_px.group(1))
+                    letter_spacing_low = letter_spacing_value < 2.0
+                except ValueError:
+                    pass
+
+            height_match = re.search(r"height\s*:\s*([0-9.]+)px", style)
+            if height_match:
+                try:
+                    height_px = float(height_match.group(1))
+                except ValueError:
+                    height_px = 0.0
+                overflow_hidden = "overflow:hidden" in style or "overflow: hidden" in style
+                if overflow_hidden and height_px <= 120 and len(text) >= 120:
+                    reasons.append("fixed-height text block with overflow hidden")
+                if role == "textbox" and 0 < height_px <= 24:
+                    reasons.append("textbox has tight fixed height")
 
             if line_height_low or letter_spacing_low:
+                if line_height_low:
+                    reasons.append("line-height is below 1.5")
+                if letter_spacing_low:
+                    reasons.append("letter-spacing is below recommended threshold")
+
+            if reasons:
+                strong_failure = bool(
+                    line_height_value is not None
+                    and letter_spacing_value is not None
+                    and line_height_value < 1.35
+                    and letter_spacing_value < 0.08
+                )
                 issues.append(_issue(
-                    self.url, "text-spacing", "needs-review", "moderate",
+                    self.url,
+                    "text-spacing",
+                    "violation" if strong_failure else "needs-review",
+                    "moderate",
                     _css_selector(el), _snippet(el),
-                    "Inline text spacing may not meet WCAG reflow/readability guidance (line-height/letter-spacing).",
+                    "Inline text styling may block WCAG text spacing adjustments: " + "; ".join(reasons[:3]) + ".",
                     "1.4.12", "AA", "content",
                     "Increase line-height to at least 1.5 and letter-spacing to at least 0.12em for readable body text."
                 ))
@@ -2938,26 +3555,15 @@ class StaticChecker:
                         sample_medium_logs.append(_snippet(svg, 200))
                     continue
 
-                interactive_parent = svg.find_parent(["button", "a", "label"])
-                if isinstance(interactive_parent, Tag):
-                    parent_has_name = bool(
-                        (interactive_parent.get("aria-label") or "").strip()
-                        or _labelledby_text(interactive_parent)
-                        or (interactive_parent.get("title") or "").strip()
-                        or interactive_parent.get_text(" ", strip=True)
-                    )
-                    if parent_has_name:
-                        medium_logs += 1
-                        if len(sample_medium_logs) < 5:
-                            sample_medium_logs.append(_snippet(svg, 200))
-                        continue
-
                 has_name = bool((svg.get("aria-label") or "").strip() or _labelledby_text(svg))
                 if not has_name and svg.find("title"):
                     has_name = bool(svg.find("title").get_text(strip=True))
+                if has_name and (svg.get("aria-label") or "").strip() and not _labelledby_text(svg):
+                    # Inline SVG labels are more robust with <title> or aria-labelledby.
+                    has_name = bool(svg.find("title"))
                 if not has_name:
                     issues.append(_issue(
-                        self.url, "svg-accessible-name", "violation", "serious",
+                        self.url, "svg-no-accessible-name", "violation", "serious",
                         selector, _snippet(svg, 200),
                         "SVG image is missing an accessible name.",
                         "1.1.1", "A", "images", "Add <title> or aria-label.",
@@ -2970,8 +3576,62 @@ class StaticChecker:
                 logger.debug("Group3 svg-accessible-name check skipped svg due to error: %s", exc)
                 continue
 
+        for obj in self.soup.find_all("object"):
+            checked += 1
+            selector = _css_selector(obj)
+            if len(sample_elements_checked) < 5:
+                sample_elements_checked.append(selector)
+
+            data_attr = str(obj.get("data") or "").strip()
+            if not data_attr:
+                continue
+
+            object_name = (
+                (obj.get("title") or "").strip()
+                or (obj.get("aria-label") or "").strip()
+                or _labelledby_text(obj)
+            )
+            if object_name:
+                continue
+
+            issues.append(_issue(
+                self.url, "svg-no-accessible-name", "violation", "serious",
+                selector, _snippet(obj, 200),
+                "Embedded object is missing an accessible name.",
+                "1.1.1", "A", "images", "Add title, aria-label, or aria-labelledby to describe embedded content.",
+                fix_effort="low"
+            ))
+            high_violations += 1
+            if len(sample_high_violations) < 5:
+                sample_high_violations.append(_snippet(obj, 200))
+
+        for img in self.soup.find_all("img"):
+            checked += 1
+            selector = _css_selector(img)
+            if len(sample_elements_checked) < 5:
+                sample_elements_checked.append(selector)
+
+            role = str(img.get("role") or "").strip().lower()
+            if role not in {"none", "presentation"}:
+                continue
+
+            alt = (img.get("alt") or "").strip()
+            if alt:
+                continue
+
+            issues.append(_issue(
+                self.url, "svg-no-accessible-name", "violation", "moderate",
+                selector, _snippet(img, 200),
+                "Presentational image role is used without explicit decorative handling.",
+                "1.1.1", "A", "images", "Use alt=\"\" for decorative images or provide an accessible name if informative.",
+                fix_effort="low"
+            ))
+            high_violations += 1
+            if len(sample_high_violations) < 5:
+                sample_high_violations.append(_snippet(img, 200))
+
         self._track_rule_activity(
-            "svg-accessible-name",
+            "svg-no-accessible-name",
             elements_checked=checked,
             violations_found=high_violations,
             confidence_bucket="high",
@@ -2980,7 +3640,7 @@ class StaticChecker:
         )
         if medium_logs > 0:
             self._track_rule_activity(
-                "svg-accessible-name",
+                "svg-no-accessible-name",
                 violations_found=medium_logs,
                 confidence_bucket="medium",
                 sample_violations=sample_medium_logs,
@@ -3004,6 +3664,42 @@ class StaticChecker:
                         "1.3.1", "A", "structure", "Remove empty heading or add readable text.",
                         fix_effort="low"
                     ))
+
+        for heading in self.soup.find_all(attrs={"role": re.compile(r"(^|\s)heading(\s|$)", re.I)}):
+            aria_level = str(heading.get("aria-level") or "").strip()
+            text = heading.get_text(" ", strip=True)
+            if not text:
+                issues.append(_issue(
+                    self.url, "empty-heading", "violation", "moderate",
+                    _css_selector(heading), _snippet(heading, 200),
+                    "Element with role='heading' has no readable text.",
+                    "1.3.1", "A", "structure", "Add descriptive heading text or remove heading semantics.",
+                    fix_effort="low"
+                ))
+                continue
+
+            if not aria_level:
+                issues.append(_issue(
+                    self.url, "empty-heading", "violation", "moderate",
+                    _css_selector(heading), _snippet(heading, 200),
+                    "Element with role='heading' is missing aria-level.",
+                    "1.3.1", "A", "structure", "Add aria-level (1-6) to role='heading' elements.",
+                    fix_effort="low"
+                ))
+
+        visible_h1 = [
+            h for h in self.soup.find_all("h1")
+            if h.get("aria-hidden", "").lower() != "true" and h.get_text(" ", strip=True)
+        ]
+        if len(visible_h1) > 1 and any(h.find_parent("nav") for h in visible_h1):
+            first_h1 = visible_h1[0]
+            issues.append(_issue(
+                self.url, "empty-heading", "violation", "moderate",
+                _css_selector(first_h1), _snippet(first_h1, 200),
+                "Multiple H1 headings include navigation heading content, which can create ambiguous heading structure.",
+                "1.3.1", "A", "structure", "Use a clear single page-level H1 and move navigation labels to lower heading levels.",
+                fix_effort="low"
+            ))
         return issues
 
     def check_unsafe_external_links(self) -> list[dict]:

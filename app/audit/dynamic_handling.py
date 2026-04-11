@@ -17,6 +17,18 @@ STABLE_AUDIT_USER_AGENT = (
 
 _ANTI_BOT_USER_AGENTS = [
     STABLE_AUDIT_USER_AGENT,
+    (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    ),
+    (
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
+    ),
+    (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) "
+        "Gecko/20100101 Firefox/124.0"
+    ),
 ]
 
 _TRACKER_HOST_PATTERNS = (
@@ -102,15 +114,22 @@ def _hostname(url: str) -> str:
         return ""
 
 
-def rotate_user_agent_for_url(seed_url: str) -> str:
-    # Keep a stable audit identity across all fetch/render paths to reduce anti-bot fingerprint churn.
-    return _ANTI_BOT_USER_AGENTS[0]
+def rotate_user_agent_for_url(seed_url: str, attempt_index: int = 0) -> str:
+    """Rotate user-agent deterministically per host with optional attempt offset."""
+    if not _ANTI_BOT_USER_AGENTS:
+        return STABLE_AUDIT_USER_AGENT
+
+    host = _hostname(seed_url) or str(seed_url or "")
+    digest = hashlib.sha256(host.encode("utf-8", errors="ignore")).hexdigest()
+    base_index = int(digest[:8], 16) % len(_ANTI_BOT_USER_AGENTS)
+    rotated_index = (base_index + max(0, int(attempt_index or 0))) % len(_ANTI_BOT_USER_AGENTS)
+    return _ANTI_BOT_USER_AGENTS[rotated_index]
 
 
-def stable_request_headers(seed_url: str = "") -> dict[str, str]:
+def stable_request_headers(seed_url: str = "", attempt_index: int = 0) -> dict[str, str]:
     _ = seed_url
     return {
-        "User-Agent": rotate_user_agent_for_url(seed_url),
+        "User-Agent": rotate_user_agent_for_url(seed_url, attempt_index=attempt_index),
         "Accept-Language": "en-US,en;q=0.9",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Cache-Control": "no-cache",

@@ -12,11 +12,62 @@ from app.config import (
     USER_IMPACT_SCORES,
     IMPACT_SUMMARIES,
     PAGE_LEVEL_RULES,
+    STRUCTURAL_FP_RULES,
 )
 from app.services.rule_calibrator import get_rule_trust_score, get_rule_trust_entry
 
 
 logger = logging.getLogger(__name__)
+
+
+# Deterministic/structural rules we can trust more when additional signals agree.
+HIGH_CONFIDENCE_RULES = {
+    "missing-alt",
+    "image-alt",
+    "empty-link",
+    "link-name",
+    "button-name",
+    "button-no-name",
+    "form-label",
+    "table-no-headers",
+    "table-no-caption",
+    "th-no-scope",
+    "missing-lang",
+    "invalid-lang",
+    "valid-lang",
+    "missing-autocomplete",
+    "autocomplete-missing",
+    "meta-viewport-zoom",
+    "focus-management",
+    "no-headings",
+}
+
+
+def _apply_production_confidence_boost(issue: dict, confidence: float, rule_occurrences: int) -> float:
+    """Boost confidence using multiple corroborating signals for production reliability."""
+    rule_id = issue.get("rule_id", "")
+    source_count = len(set(issue.get("confidence_sources", [])))
+    occurrence_count = max(
+        1,
+        int(
+            issue.get("count")
+            or issue.get("affected_count")
+            or issue.get("occurrence_count")
+            or rule_occurrences
+            or 1
+        ),
+    )
+    trust_score = float(issue.get("rule_trust_score", get_rule_trust_score(rule_id)))
+
+    boosted = float(confidence)
+    if source_count >= 2:
+        boosted += 0.15
+    if occurrence_count > 1:
+        boosted += 0.10
+    if rule_id in HIGH_CONFIDENCE_RULES or rule_id in STRUCTURAL_FP_RULES or trust_score >= 0.70:
+        boosted += 0.10
+
+    return round(min(boosted, 0.95), 4)
 
 
 def _calc_source_reliability(sources: list[str]) -> float:
@@ -194,6 +245,10 @@ def calculate_confidence(issue: dict, html: str = "") -> float:
     """
     sources = issue.get("confidence_sources", [])
     rule_id = issue.get("rule_id", "")
+    evidence = issue.get("evidence") if isinstance(issue.get("evidence"), dict) else {}
+    high_signal_no_headings = bool(
+        rule_id == "no-headings" and evidence.get("contentful_page_without_headings", False)
+    )
 
     source_reliability = _calc_source_reliability(sources)
     signal_strength    = _calc_signal_strength(issue)
@@ -245,6 +300,9 @@ def calculate_confidence(issue: dict, html: str = "") -> float:
         behavioral_signal=behavioral,
     )
 
+    if high_signal_no_headings:
+        confidence = max(confidence, 0.74)
+
     return confidence
 
 
@@ -273,6 +331,10 @@ def apply_confidence_rules(issues: list[dict], html: str = "") -> list[dict]:
     - Fragment penalty: page-level rules on incomplete HTML get reduced confidence
     """
     severity_order = ["minor", "moderate", "serious", "critical"]
+    rule_occurrence_counts = {}
+    for issue in issues:
+        rid = issue.get("rule_id", "")
+        rule_occurrence_counts[rid] = rule_occurrence_counts.get(rid, 0) + 1
 
     for issue in issues:
         sources = issue.get("confidence_sources", [])
@@ -282,6 +344,18 @@ def apply_confidence_rules(issues: list[dict], html: str = "") -> list[dict]:
         # Calculate confidence (with fragment detection + trust weighting)
         confidence = calculate_confidence(issue, html=html)
 
+        # ── Attach trust metadata (Phase 9 requirement) ─────────────
+        trust_entry = get_rule_trust_entry(rule_id)
+        issue["rule_trust_score"] = trust_entry.get("trust_score", 0.50)
+        issue["rule_trust_verdict"] = trust_entry.get("verdict", "uncalibrated")
+
+        # Multi-signal production boost (source agreement, recurrence, trust/structural strength).
+        confidence = _apply_production_confidence_boost(
+            issue,
+            confidence,
+            rule_occurrences=rule_occurrence_counts.get(rule_id, 1),
+        )
+
         # Rule: heuristic-only → needs-review
         if unique_sources == {"heuristic"}:
             issue["issue_type"] = "needs-review"
@@ -290,11 +364,6 @@ def apply_confidence_rules(issues: list[dict], html: str = "") -> list[dict]:
         issue["confidence"] = confidence
         issue["confidence_tier"] = _confidence_tier(confidence)
         issue["rule_type"] = RULE_TYPE_MAP.get(rule_id, "hard")
-
-        # ── Attach trust metadata (Phase 9 requirement) ─────────────
-        trust_entry = get_rule_trust_entry(rule_id)
-        issue["rule_trust_score"] = trust_entry.get("trust_score", 0.50)
-        issue["rule_trust_verdict"] = trust_entry.get("verdict", "uncalibrated")
 
         # Rule: confidence < 0.4 → downgrade severity
         if confidence < 0.4:
@@ -316,6 +385,11 @@ def apply_confidence_rules(issues: list[dict], html: str = "") -> list[dict]:
         # General: confidence < 0.6 → needs manual review
         if confidence < 0.6:
             issue["needs_manual_review"] = True
+
+        # Keep needs-review findings visible, but with slightly reduced confidence.
+        if bool(issue.get("needs_manual_review", False)):
+            issue["confidence"] = round(max(0.10, float(issue.get("confidence", 0.0)) * 0.95), 4)
+            issue["confidence_tier"] = _confidence_tier(issue["confidence"])
 
         # Generate Confidence Explanation (Reasoning)
         unique_sources_list = list(unique_sources)

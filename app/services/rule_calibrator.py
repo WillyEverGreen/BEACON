@@ -22,6 +22,24 @@ _REGISTRY_CACHE_MTIME: float = 0.0
 # Unknown rules get a moderate default so they are reported but
 # subject to the multi-signal confidence formula.
 _DEFAULT_TRUST_SCORE = 0.50
+_MIN_CASES_FOR_VERDICT_FLIP = 5
+
+
+def _ema(previous: float, current: float, alpha: float) -> float:
+    """Exponential moving average for trust stability across benchmark passes."""
+    a = min(0.95, max(0.05, float(alpha)))
+    return (a * float(current)) + ((1.0 - a) * float(previous))
+
+
+def _alpha_for_support(case_count: int) -> float:
+    """Use lower alpha for sparse evidence and higher alpha for stable evidence."""
+    if case_count >= 20:
+        return 0.65
+    if case_count >= 10:
+        return 0.50
+    if case_count >= 5:
+        return 0.35
+    return 0.20
 
 
 def load_trust_registry() -> dict[str, dict]:
@@ -201,40 +219,69 @@ def recalibrate_from_act_results(act_results: dict) -> dict[str, dict]:
         tp = int(metrics.get("tp", 0) or 0)
         fp = int(metrics.get("fp", 0) or 0)
         fn = int(metrics.get("fn", 0) or 0)
+        evidence_cases = tp + fp + fn
+        alpha = _alpha_for_support(evidence_cases)
+
+        prev_precision = float(previous.get("precision_score", _DEFAULT_TRUST_SCORE))
+        prev_recall = float(previous.get("recall_score", _DEFAULT_TRUST_SCORE))
+        prev_trust = float(previous.get("trust_score", _DEFAULT_TRUST_SCORE))
+        prev_verdict = str(previous.get("verdict", "uncalibrated")).lower()
+        prev_required_engines = int(previous.get("required_engines", 1) or 1)
+
+        candidate_verdict: str
 
         if tp == 0 and fp == 0 and fn > 0:
             # Under-detected rule: we observed misses but no positive predictions.
             # Precision is unknown in this slice, so avoid collapsing trust to zero.
             # Also avoid trust oscillation: previously noisy/suppressed rules should
             # not bounce back to moderate trust after a single missed run.
-            prev_precision = float(previous.get("precision_score", _DEFAULT_TRUST_SCORE))
-            prev_trust = float(previous.get("trust_score", _DEFAULT_TRUST_SCORE))
-            prev_verdict = str(previous.get("verdict", "uncalibrated")).lower()
-            recall = 0.0
+            precision_raw = max(0.0, prev_precision)
+            recall_raw = 0.0
 
             if prev_precision < 0.40 or prev_verdict in {"suppress", "noisy"}:
                 # Keep low-trust behavior for historically noisy rules.
-                precision = max(0.0, prev_precision)
-                trust_score = round(max(0.05, prev_trust * 0.85), 4)
-                verdict = _determine_verdict(trust_score)
-                required_engines = 1 if trust_score >= 0.60 else 2
+                trust_raw = max(0.05, prev_trust * 0.85)
+                candidate_verdict = _determine_verdict(trust_raw)
             else:
                 # Preserve underdetected signal for rules with historically decent precision.
-                precision = max(0.45, prev_precision)
-                trust_score = round(max(0.30, prev_trust * 0.90), 4)
-                verdict = "underdetected"
-                required_engines = 1 if trust_score >= 0.40 else 2
+                precision_raw = max(0.45, prev_precision)
+                trust_raw = max(0.30, prev_trust * 0.90)
+                candidate_verdict = "underdetected"
         else:
-            precision = tp / (tp + fp) if (tp + fp) > 0 else 0
-            recall = tp / (tp + fn) if (tp + fn) > 0 else 0
-            trust_score = _compute_trust_score(precision, recall)
-            verdict = _determine_verdict(trust_score)
-            required_engines = 1 if trust_score >= 0.60 else 2
+            precision_raw = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+            recall_raw = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+            trust_raw = _compute_trust_score(precision_raw, recall_raw)
+            candidate_verdict = _determine_verdict(trust_raw)
+
+        # EMA smoothing reduces pass-to-pass oscillation on sparse ACT slices.
+        precision = _ema(prev_precision, precision_raw, alpha)
+        recall = _ema(prev_recall, recall_raw, alpha)
+        trust_score = _ema(prev_trust, trust_raw, alpha)
+
+        # Compute post-smoothing candidate behavior.
+        if candidate_verdict == "underdetected":
+            smoothed_verdict = "underdetected"
+            smoothed_required_engines = 1 if trust_score >= 0.40 else 2
+        else:
+            smoothed_verdict = _determine_verdict(trust_score)
+            smoothed_required_engines = 1 if trust_score >= 0.60 else 2
+
+        # Minimum evidence guard: prevent verdict flips on tiny sample sizes.
+        if (
+            evidence_cases < _MIN_CASES_FOR_VERDICT_FLIP
+            and prev_verdict not in {"", "uncalibrated"}
+            and smoothed_verdict != prev_verdict
+        ):
+            verdict = prev_verdict
+            required_engines = prev_required_engines
+        else:
+            verdict = smoothed_verdict
+            required_engines = smoothed_required_engines
 
         registry[rule_id] = {
             "precision_score": round(precision, 4),
             "recall_score": round(recall, 4),
-            "trust_score": trust_score,
+            "trust_score": round(trust_score, 4),
             "last_calibrated": today,
             "calibration_source": "ACT-auto-calibration",
             "verdict": verdict,

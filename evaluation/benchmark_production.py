@@ -41,6 +41,25 @@ BENCHMARK_SITES = [
     {"name": "Awwwards",        "url": "https://www.awwwards.com",       "category": "design",      "expected": "low"},
 ]
 
+_TIER_ORDER = {"low": 0, "medium": 1, "high": 2}
+
+
+def _score_to_expected_tier(score: float) -> str:
+    if score >= 85.0:
+        return "high"
+    if score >= 70.0:
+        return "medium"
+    return "low"
+
+
+def _expected_alignment(expected: str, predicted: str) -> tuple[bool, int]:
+    exp = str(expected).strip().lower()
+    pred = str(predicted).strip().lower()
+    if exp not in _TIER_ORDER or pred not in _TIER_ORDER:
+        return False, 2
+    distance = abs(_TIER_ORDER[pred] - _TIER_ORDER[exp])
+    return distance == 0, distance
+
 
 async def audit_site(site: dict, scan_mode: str) -> dict:
     """Audit a single site and capture comprehensive telemetry."""
@@ -87,14 +106,20 @@ async def audit_site(site: dict, scan_mode: str) -> dict:
 
         # Precision telemetry
         pt = result.get("precision_profile_telemetry", {})
+        score_value = float(result.get("score", 0) or 0)
+        predicted_tier = _score_to_expected_tier(score_value)
+        aligned, alignment_distance = _expected_alignment(site.get("expected", ""), predicted_tier)
 
         return {
             "name": site["name"],
             "url": site["url"],
             "category": site["category"],
             "expected_tier": site["expected"],
+            "predicted_tier": predicted_tier,
+            "expected_alignment": aligned,
+            "expected_alignment_distance": alignment_distance,
             "scan_mode": scan_mode,
-            "score": result.get("score", 0),
+            "score": score_value,
             "total_issues": len(issues),
             "structural_fp": structural_fp,
             "severity": dict(severity_counts),
@@ -125,6 +150,9 @@ async def audit_site(site: dict, scan_mode: str) -> dict:
             "url": site["url"],
             "category": site["category"],
             "expected_tier": site["expected"],
+            "predicted_tier": "unknown",
+            "expected_alignment": False,
+            "expected_alignment_distance": 2,
             "scan_mode": scan_mode,
             "score": 0,
             "total_issues": 0,
@@ -223,7 +251,10 @@ async def main():
             print(f"  {r['name']} ({r['url']})")
             print(f"  {'━' * 50}")
             print(f"  Score: {r['score']:.1f}/100 | Issues: {r['total_issues']} | Time: {r['scan_time_s']:.2f}s")
-            print(f"  Expected: {r['expected_tier']} | Category: {r['category']}")
+            print(
+                f"  Expected: {r['expected_tier']} | Predicted: {r.get('predicted_tier', 'unknown')} "
+                f"| Alignment: {'yes' if r.get('expected_alignment') else 'no'} | Category: {r['category']}"
+            )
             print(f"  Engines: {', '.join(r['engines_used'])}")
 
             if r["severity"]:
@@ -263,6 +294,10 @@ async def main():
         issues = [r["total_issues"] for r in results]
         warnings = sum(1 for r in results if r.get("telemetry", {}).get("suppression_warning"))
         guards = sum(1 for r in results if r.get("telemetry", {}).get("low_issue_guard_active"))
+        aligned = sum(1 for r in results if bool(r.get("expected_alignment", False)))
+        avg_alignment_distance = (
+            sum(float(r.get("expected_alignment_distance", 2) or 0) for r in results) / len(results)
+        )
 
         print(f"\n  {mode.upper()} MODE ({len(results)}/{len(BENCHMARK_SITES)} sites successful)")
         print(f"  ├─ Avg Score:        {sum(scores)/len(scores):.1f}")
@@ -272,6 +307,8 @@ async def main():
         print(f"  ├─ P95 Scan Time:    {sorted(times)[int(len(times)*0.95)]:.2f}s")
         print(f"  ├─ Safeguard Warns:  {warnings}/{len(results)}")
         print(f"  ├─ Guard Activations:{guards}/{len(results)}")
+        print(f"  ├─ Alignment Rate:   {aligned}/{len(results)} ({(aligned/len(results)):.0%})")
+        print(f"  ├─ Avg Align Delta:  {avg_alignment_distance:.2f} tiers")
 
         # Category breakdown
         cat_scores = defaultdict(list)
@@ -328,6 +365,14 @@ async def main():
         checks.append(("Avg confidence > 0.70", avg_conf > 0.70,
                         f"{avg_conf:.2f}"))
 
+    # Check 8: expectation alignment
+    combined_results = fast_results + deep_results
+    if combined_results:
+        aligned = sum(1 for r in combined_results if bool(r.get("expected_alignment", False)))
+        alignment_rate = aligned / len(combined_results)
+        checks.append(("Expectation alignment >= 65%", alignment_rate >= 0.65,
+                        f"{alignment_rate:.0%}"))
+
     all_pass = True
     for name, passed, detail in checks:
         icon = "✅" if passed else "❌"
@@ -341,11 +386,63 @@ async def main():
     else:
         print("  ⚠️  Some checks failed — review before promoting to default.")
 
+    summary_payload = {"fast": {}, "deep": {}, "overall": {}}
+    for mode in ["fast", "deep"]:
+        results = [r for r in all_results[mode] if r["success"]]
+        if not results:
+            summary_payload[mode] = {
+                "successful_sites": 0,
+                "avg_score": 0.0,
+                "avg_scan_time_s": 0.0,
+                "expectation_alignment_rate": 0.0,
+                "avg_alignment_distance": 0.0,
+                "suppression_warnings": 0,
+            }
+            continue
+
+        aligned = sum(1 for r in results if bool(r.get("expected_alignment", False)))
+        summary_payload[mode] = {
+            "successful_sites": len(results),
+            "avg_score": round(sum(float(r.get("score", 0) or 0) for r in results) / len(results), 3),
+            "avg_scan_time_s": round(sum(float(r.get("scan_time_s", 0) or 0) for r in results) / len(results), 3),
+            "expectation_alignment_rate": round(aligned / len(results), 4),
+            "avg_alignment_distance": round(
+                sum(float(r.get("expected_alignment_distance", 2) or 0) for r in results) / len(results),
+                4,
+            ),
+            "suppression_warnings": sum(
+                1 for r in results if bool((r.get("telemetry") or {}).get("suppression_warning", False))
+            ),
+        }
+
+    combined_results = [r for mode in ["fast", "deep"] for r in all_results[mode] if r["success"]]
+    if combined_results:
+        combined_aligned = sum(1 for r in combined_results if bool(r.get("expected_alignment", False)))
+        summary_payload["overall"] = {
+            "successful_audits": len(combined_results),
+            "expectation_alignment_rate": round(combined_aligned / len(combined_results), 4),
+            "avg_alignment_distance": round(
+                sum(float(r.get("expected_alignment_distance", 2) or 0) for r in combined_results) / len(combined_results),
+                4,
+            ),
+        }
+    else:
+        summary_payload["overall"] = {
+            "successful_audits": 0,
+            "expectation_alignment_rate": 0.0,
+            "avg_alignment_distance": 0.0,
+        }
+
     # ── Save full results ───────────────────────────────────────
     out_path = Path("evaluation/production_benchmark_results.json")
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    output_payload = {
+        "fast": all_results["fast"],
+        "deep": all_results["deep"],
+        "summary": summary_payload,
+    }
     with out_path.open("w", encoding="utf-8") as f:
-        json.dump(all_results, f, indent=2, default=str)
+        json.dump(output_payload, f, indent=2, default=str)
     print(f"\n  Full results saved: {out_path}")
 
 

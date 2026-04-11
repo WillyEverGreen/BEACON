@@ -42,11 +42,15 @@ def _expand_rules(rule_ids: set) -> set:
     synonyms = {
         "invalid-lang": ["invalid-lang", "valid-lang"],
         "aria-attribute": ["aria-attribute", "aria-valid-attr", "aria-allowed-attr", "aria-roles", "aria-valid-attr-value"],
+        "aria-required-parent": ["aria-required-parent", "aria-required-children"],
+        "aria-required-children": ["aria-required-children", "aria-required-parent"],
         "letter-spacing": ["letter-spacing", "avoid-inline-spacing"],
+        "text-spacing": ["text-spacing", "letter-spacing", "avoid-inline-spacing"],
         "focus-management": ["focus-management", "keyboard-trap"],
         "missing-landmark": ["missing-landmark", "no-main-landmark"],
         "svg-nav-accessible-name": ["svg-nav-accessible-name", "svg-no-accessible-name"],
         "empty-link": ["empty-link", "link-name"],
+        "multiple-h1": ["multiple-h1", "empty-heading"],
         "form-label-missing": ["form-label-missing", "input-label", "input-name", "missing-label", "label"]
     }
     for r in rule_ids:

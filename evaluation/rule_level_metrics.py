@@ -100,6 +100,7 @@ def analyze_rule_metrics(benchmark_results: dict, count_unknown_as_fp: bool = Tr
         "overall_recall": round(total_tp / (total_tp + total_fn), 4) if (total_tp + total_fn) > 0 else None,
         "top_fp_contributors": top_fp_rules,
         "top_fn_contributors": top_fn_rules,
+        "rules": per_rule,
         "per_rule_metrics": per_rule,
         "single_rule_fp_dominance_warning": any(
             r.get("fp_share", 0) > 0.30 for r in top_fp_rules
