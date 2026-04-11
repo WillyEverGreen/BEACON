@@ -41,6 +41,63 @@ _KNOWN_ROLES = {
     "treeitem"
 }
 
+# Lightweight ARIA attribute allowlist for deterministic validation.
+_KNOWN_ARIA_ATTRIBUTES = {
+    "aria-activedescendant",
+    "aria-atomic",
+    "aria-autocomplete",
+    "aria-braillelabel",
+    "aria-brailleroledescription",
+    "aria-busy",
+    "aria-checked",
+    "aria-colcount",
+    "aria-colindex",
+    "aria-colindextext",
+    "aria-colspan",
+    "aria-controls",
+    "aria-current",
+    "aria-describedby",
+    "aria-description",
+    "aria-details",
+    "aria-disabled",
+    "aria-dropeffect",
+    "aria-errormessage",
+    "aria-expanded",
+    "aria-flowto",
+    "aria-grabbed",
+    "aria-haspopup",
+    "aria-hidden",
+    "aria-invalid",
+    "aria-keyshortcuts",
+    "aria-label",
+    "aria-labelledby",
+    "aria-level",
+    "aria-live",
+    "aria-modal",
+    "aria-multiline",
+    "aria-multiselectable",
+    "aria-orientation",
+    "aria-owns",
+    "aria-placeholder",
+    "aria-posinset",
+    "aria-pressed",
+    "aria-readonly",
+    "aria-relevant",
+    "aria-required",
+    "aria-roledescription",
+    "aria-rowcount",
+    "aria-rowindex",
+    "aria-rowindextext",
+    "aria-rowspan",
+    "aria-selected",
+    "aria-setsize",
+    "aria-sort",
+    "aria-valuemax",
+    "aria-valuemin",
+    "aria-valuenow",
+    "aria-valuetext",
+}
+
 
 def _make_issue_id(url: str, selector: str, rule_id: str) -> str:
     """Generate a unique issue ID via SHA256."""
@@ -391,6 +448,16 @@ class StaticChecker:
                 for n in self.soup.find_all(attrs={"role": re.compile(r"(^|\s)main(\s|$)", re.I)})
                 if self._is_visible_for_static(n)
             ]
+            + [
+                n
+                for n in self.soup.find_all(attrs={"id": re.compile(r"(^|[-_\s])main($|[-_\s])", re.I)})
+                if self._is_visible_for_static(n)
+            ]
+            + [
+                n
+                for n in self.soup.find_all(class_=re.compile(r"(^|\s)main(\s|$)", re.I))
+                if self._is_visible_for_static(n)
+            ]
         )
         visible_nav_landmarks = _dedupe_nodes(
             [n for n in self.soup.find_all("nav") if self._is_visible_for_static(n)]
@@ -411,23 +478,28 @@ class StaticChecker:
             [n for n in self.soup.find_all("footer") if self._is_visible_for_static(n)]
             or [n for n in self.soup.find_all(attrs={"role": "contentinfo"}) if self._is_visible_for_static(n)]
         )
+        high_signal_missing_main = (not has_main) and has_nav
+        no_main_samples: list[str] = []
+        missing_landmark_samples: list[str] = []
 
         if not has_main:
             issues.append(_issue(
-                self.url, "no-main-landmark", "violation", "moderate",
+                self.url, "no-main-landmark", "violation", "critical" if high_signal_missing_main else "moderate",
                 "<body>", "<body>",
                 "Page has no <main> landmark. Screen reader users rely on landmarks to navigate.",
                 "1.3.1", "A", "html",
                 "Wrap main content in a <main> element."
             ))
+            no_main_samples.append("missing visible main landmark")
             if has_nav:
                 issues.append(_issue(
-                    self.url, "missing-landmark", "violation", "moderate",
+                    self.url, "missing-landmark", "violation", "critical",
                     "<body>", "<body>",
                     "Navigation landmark is present but the page has no main landmark.",
                     "1.3.1", "A", "html",
                     "Add a single visible <main> landmark so assistive technology users can jump to primary content."
                 ))
+                missing_landmark_samples.append("navigation present without main landmark")
         if not has_nav:
             issues.append(_issue(
                 self.url, "no-nav-landmark", "best-practice", "minor",
@@ -528,6 +600,23 @@ class StaticChecker:
 
         if landmark_roles_medium_logs > 0:
             logger.debug("Group2 landmark-roles medium signals: %s", ", ".join(landmark_samples_medium[:3]))
+
+        self._track_rule_activity(
+            "no-main-landmark",
+            elements_checked=1,
+            violations_found=1 if not has_main else 0,
+            confidence_bucket="high" if not has_main else None,
+            sample_elements_checked=[f"main_landmarks={len(visible_main_landmarks)}"],
+            sample_violations=no_main_samples,
+        )
+        self._track_rule_activity(
+            "missing-landmark",
+            elements_checked=1 if has_nav else 0,
+            violations_found=1 if (not has_main and has_nav) else 0,
+            confidence_bucket="high" if (not has_main and has_nav) else None,
+            sample_elements_checked=[f"navigation_landmarks={len(visible_nav_landmarks)}"] if has_nav else [],
+            sample_violations=missing_landmark_samples,
+        )
 
         return issues
 
@@ -2210,9 +2299,19 @@ class StaticChecker:
         """Detect deterministic ARIA/attribute misuse patterns that map to ACT aria-attribute family rules."""
         issues = []
         checked = 0
-        violations = 0
+        rule_hits = {
+            "aria-attribute": 0,
+            "aria-allowed-attr": 0,
+            "aria-valid-attr": 0,
+            "aria-valid-attr-value": 0,
+        }
         sample_elements_checked: list[str] = []
-        sample_violations: list[str] = []
+        sample_violations: dict[str, list[str]] = {
+            "aria-attribute": [],
+            "aria-allowed-attr": [],
+            "aria-valid-attr": [],
+            "aria-valid-attr-value": [],
+        }
 
         for inp in self.soup.find_all("input"):
             inp_type = str(inp.get("type") or "text").strip().lower()
@@ -2225,25 +2324,52 @@ class StaticChecker:
                 sample_elements_checked.append(f'{selector} type="{inp_type}"')
 
             if inp.has_attr("readonly"):
-                issues.append(_issue(
-                    self.url, "aria-attribute", "violation", "serious",
-                    selector, _snippet(inp),
-                    f'Input type="{inp_type}" uses readonly, which is not a valid state for this control type.',
-                    "4.1.2", "A", "aria",
-                    f'Remove readonly from this {inp_type} control and rely on disabled or checked semantics as appropriate.'
-                ))
-                violations += 1
-                if len(sample_violations) < 5:
-                    sample_violations.append(_snippet(inp, 200))
+                emitted = {
+                    "aria-attribute": (
+                        f'Input type="{inp_type}" uses readonly, which is not a valid state for this control type.',
+                        f'Remove readonly from this {inp_type} control and rely on disabled or checked semantics as appropriate.'
+                    ),
+                    "aria-allowed-attr": (
+                        f'Input type="{inp_type}" exposes a disallowed readonly state for this control semantics.',
+                        f'Remove readonly from this {inp_type}; use checked/disabled semantics supported by the control.'
+                    ),
+                    "aria-valid-attr": (
+                        f'Input type="{inp_type}" is using an attribute pattern incompatible with allowed accessibility states.',
+                        "Use only state/attribute combinations valid for the control role and input type."
+                    ),
+                    "aria-valid-attr-value": (
+                        f'Input type="{inp_type}" combines readonly with non-text semantics, creating an invalid state/value combination.',
+                        "Drop readonly on checkbox/radio and keep only supported state values."
+                    ),
+                }
 
-        self._track_rule_activity(
-            "aria-attribute",
-            elements_checked=checked,
-            violations_found=violations,
-            confidence_bucket="high",
-            sample_elements_checked=sample_elements_checked,
-            sample_violations=sample_violations,
-        )
+                for rule_id, (description, suggested_fix) in emitted.items():
+                    issues.append(_issue(
+                        self.url,
+                        rule_id,
+                        "violation",
+                        "serious",
+                        selector,
+                        _snippet(inp),
+                        description,
+                        "4.1.2",
+                        "A",
+                        "aria",
+                        suggested_fix,
+                    ))
+                    rule_hits[rule_id] += 1
+                    if len(sample_violations[rule_id]) < 5:
+                        sample_violations[rule_id].append(_snippet(inp, 200))
+
+        for rule_id, violations in rule_hits.items():
+            self._track_rule_activity(
+                rule_id,
+                elements_checked=checked,
+                violations_found=violations,
+                confidence_bucket="high" if violations > 0 else None,
+                sample_elements_checked=sample_elements_checked,
+                sample_violations=sample_violations[rule_id],
+            )
 
         return issues
 
@@ -2649,21 +2775,32 @@ class StaticChecker:
     def _check_semantic_html_signals(self) -> list[dict]:
         """Detect common semantic misuse patterns with low ambiguity."""
         issues = []
+        checked = 0
+        violations = 0
+        sample_checked: list[str] = []
+        sample_violations: list[str] = []
 
         html_elem = self.soup.find("html")
         if isinstance(html_elem, Tag):
+            checked += 1
             lang = str(html_elem.get("lang") or "").strip().lower()
+            if lang and len(sample_checked) < 5:
+                sample_checked.append(f"html[lang='{lang}']")
             if lang and re.fullmatch(r"[a-z]{3}", lang):
                 issues.append(_issue(
-                    self.url, "semantic-html", "violation", "moderate",
+                    self.url, "semantic-html", "violation", "serious",
                     "html", _snippet(html_elem, 200),
                     f'Root lang value "{lang}" is potentially non-standard for common language declarations.',
                     "3.1.1", "A", "html",
                     "Use a standard BCP 47 primary language code such as en, fr, es, or en-US."
                 ))
+                violations += 1
+                if len(sample_violations) < 5:
+                    sample_violations.append(_snippet(html_elem, 200))
 
         # Clickable non-interactive elements without role/tabindex.
         for el in self.soup.find_all(["div", "span"]):
+            checked += 1
             has_click = bool(el.get("onclick") or el.get("onmousedown") or el.get("onmouseup"))
             has_role = bool(el.get("role"))
             has_tabindex = el.get("tabindex") is not None
@@ -2675,9 +2812,13 @@ class StaticChecker:
                     "1.3.1", "A", "html",
                     "Use a native <button>/<a> or add role=\"button\", tabindex=\"0\", and keyboard handlers."
                 ))
+                violations += 1
+                if len(sample_violations) < 5:
+                    sample_violations.append(_snippet(el, 200))
 
         # Visual heading pattern without heading semantics.
         for el in self.soup.find_all(["div", "span", "p"]):
+            checked += 1
             style = (el.get("style") or "").lower()
             if "font-size" not in style:
                 continue
@@ -2704,6 +2845,39 @@ class StaticChecker:
                 "1.3.1", "A", "html",
                 "Use semantic heading tags (h1-h6) or role=\"heading\" with aria-level."
             ))
+
+        non_semantic_count = len(self.soup.find_all(["div", "span"]))
+        landmark_count = len(self.soup.find_all(["main", "nav", "header", "footer", "article", "section", "aside"]))
+        body_text_len = len(self.soup.get_text(" ", strip=True))
+        checked += 1
+        if len(sample_checked) < 5:
+            sample_checked.append(f"div_span_count={non_semantic_count}, landmarks={landmark_count}")
+        if non_semantic_count >= 8 and landmark_count == 0 and body_text_len >= 80:
+            issues.append(_issue(
+                self.url,
+                "semantic-html",
+                "violation",
+                "moderate",
+                "<body>",
+                "<body>",
+                "Page structure appears dominated by generic containers without semantic landmarks.",
+                "1.3.1",
+                "A",
+                "html",
+                "Use semantic regions such as <main>, <section>, <article>, and <nav> for structural clarity.",
+            ))
+            violations += 1
+            if len(sample_violations) < 5:
+                sample_violations.append(f"div_span={non_semantic_count}, landmarks={landmark_count}")
+
+        self._track_rule_activity(
+            "semantic-html",
+            elements_checked=checked,
+            violations_found=violations,
+            confidence_bucket="high" if violations > 0 else None,
+            sample_elements_checked=sample_checked,
+            sample_violations=sample_violations,
+        )
 
         return issues
 
@@ -2932,10 +3106,27 @@ class StaticChecker:
     def _check_aria_valid_attr_values(self) -> list[dict]:
         """Validate role and selected ARIA attribute values with deterministic checks."""
         issues = []
+        checked = 0
+        rule_hits = {
+            "aria-valid-attr-value": 0,
+            "aria-roles": 0,
+            "aria-valid-attr": 0,
+            "aria-allowed-attr": 0,
+        }
+        sample_checked: list[str] = []
+        sample_violations: dict[str, list[str]] = {
+            "aria-valid-attr-value": [],
+            "aria-roles": [],
+            "aria-valid-attr": [],
+            "aria-allowed-attr": [],
+        }
 
         for el in self.soup.find_all(attrs={"role": True}):
+            checked += 1
             role_raw = (el.get("role") or "").strip().lower()
             role_tokens = [tok for tok in role_raw.split() if tok]
+            if len(sample_checked) < 5:
+                sample_checked.append(f"{_css_selector(el)} role='{role_raw}'")
             # ARIA permits multiple role tokens as fallback. Treat as valid if any token is known.
             if role_tokens and not any(tok in _KNOWN_ROLES for tok in role_tokens):
                 issues.append(_issue(
@@ -2945,10 +3136,76 @@ class StaticChecker:
                     "4.1.2", "A", "aria",
                     "Use a valid ARIA role value from the WAI-ARIA specification."
                 ))
+                rule_hits["aria-valid-attr-value"] += 1
+                if len(sample_violations["aria-valid-attr-value"]) < 5:
+                    sample_violations["aria-valid-attr-value"].append(_snippet(el, 200))
+
+                issues.append(_issue(
+                    self.url,
+                    "aria-roles",
+                    "violation",
+                    "serious",
+                    _css_selector(el),
+                    _snippet(el),
+                    f'Element uses unsupported role token "{role_raw}".',
+                    "4.1.2",
+                    "A",
+                    "aria",
+                    "Replace the role attribute with a valid WAI-ARIA role or use a native semantic element.",
+                ))
+                rule_hits["aria-roles"] += 1
+                if len(sample_violations["aria-roles"]) < 5:
+                    sample_violations["aria-roles"].append(_snippet(el, 200))
+
+        for el in self.soup.find_all(True):
+            if not isinstance(el, Tag):
+                continue
+            aria_attrs = [str(attr).strip().lower() for attr in el.attrs.keys() if str(attr).lower().startswith("aria-")]
+            for attr_name in aria_attrs:
+                checked += 1
+                if len(sample_checked) < 5:
+                    sample_checked.append(f"{_css_selector(el)}[{attr_name}]")
+                if attr_name in _KNOWN_ARIA_ATTRIBUTES:
+                    continue
+
+                issues.append(_issue(
+                    self.url,
+                    "aria-valid-attr",
+                    "violation",
+                    "serious",
+                    _css_selector(el),
+                    _snippet(el),
+                    f'Unknown ARIA attribute "{attr_name}" was found.',
+                    "4.1.2",
+                    "A",
+                    "aria",
+                    "Use only valid ARIA attributes defined by the WAI-ARIA specification.",
+                ))
+                rule_hits["aria-valid-attr"] += 1
+                if len(sample_violations["aria-valid-attr"]) < 5:
+                    sample_violations["aria-valid-attr"].append(_snippet(el, 200))
+
+                issues.append(_issue(
+                    self.url,
+                    "aria-allowed-attr",
+                    "violation",
+                    "serious",
+                    _css_selector(el),
+                    _snippet(el),
+                    f'Attribute "{attr_name}" is not allowed for ARIA processing.',
+                    "4.1.2",
+                    "A",
+                    "aria",
+                    "Remove unsupported ARIA attributes and keep only spec-compliant attributes.",
+                ))
+                rule_hits["aria-allowed-attr"] += 1
+                if len(sample_violations["aria-allowed-attr"]) < 5:
+                    sample_violations["aria-allowed-attr"].append(_snippet(el, 200))
 
         for el in self.soup.find_all(attrs={"aria-hidden": True}):
+            checked += 1
             val = (el.get("aria-hidden") or "").strip().lower()
-            if val and val not in _VALID_ARIA_BOOL:
+            if val not in _VALID_ARIA_BOOL:
                 issues.append(_issue(
                     self.url, "aria-valid-attr-value", "violation", "serious",
                     _css_selector(el), _snippet(el),
@@ -2956,11 +3213,31 @@ class StaticChecker:
                     "4.1.2", "A", "aria",
                     'Set aria-hidden to "true" or "false".'
                 ))
+                rule_hits["aria-valid-attr-value"] += 1
+                if len(sample_violations["aria-valid-attr-value"]) < 5:
+                    sample_violations["aria-valid-attr-value"].append(_snippet(el, 200))
 
         for el in self.soup.find_all(attrs={"aria-checked": True}):
+            checked += 1
             val = (el.get("aria-checked") or "").strip().lower()
             role = (el.get("role") or "").strip().lower()
             if role not in {"checkbox", "menuitemcheckbox", "radio", "menuitemradio", "switch", "option", "treeitem"}:
+                issues.append(_issue(
+                    self.url,
+                    "aria-allowed-attr",
+                    "violation",
+                    "serious",
+                    _css_selector(el),
+                    _snippet(el),
+                    f'aria-checked is not allowed on role "{role or "(none)"}".',
+                    "4.1.2",
+                    "A",
+                    "aria",
+                    "Use aria-checked only with roles that support checked state semantics.",
+                ))
+                rule_hits["aria-allowed-attr"] += 1
+                if len(sample_violations["aria-allowed-attr"]) < 5:
+                    sample_violations["aria-allowed-attr"].append(_snippet(el, 200))
                 continue
             if val not in _VALID_ARIA_TRISTATE:
                 issues.append(_issue(
@@ -2970,8 +3247,12 @@ class StaticChecker:
                     "4.1.2", "A", "aria",
                     'Set aria-checked to "true", "false", or "mixed" when supported.'
                 ))
+                rule_hits["aria-valid-attr-value"] += 1
+                if len(sample_violations["aria-valid-attr-value"]) < 5:
+                    sample_violations["aria-valid-attr-value"].append(_snippet(el, 200))
 
         for el in self.soup.find_all(attrs={"aria-current": True}):
+            checked += 1
             val = (el.get("aria-current") or "").strip().lower()
             if val not in _VALID_ARIA_CURRENT:
                 issues.append(_issue(
@@ -2981,8 +3262,12 @@ class StaticChecker:
                     "4.1.2", "A", "aria",
                     'Use aria-current values like "page", "step", "location", "date", "time", "true", or "false".'
                 ))
+                rule_hits["aria-valid-attr-value"] += 1
+                if len(sample_violations["aria-valid-attr-value"]) < 5:
+                    sample_violations["aria-valid-attr-value"].append(_snippet(el, 200))
 
         for el in self.soup.find_all(attrs={"aria-sort": True}):
+            checked += 1
             val = (el.get("aria-sort") or "").strip().lower()
             if val not in _VALID_ARIA_SORT:
                 issues.append(_issue(
@@ -2992,6 +3277,19 @@ class StaticChecker:
                     "4.1.2", "A", "aria",
                     'Use aria-sort values "ascending", "descending", "none", or "other".'
                 ))
+                rule_hits["aria-valid-attr-value"] += 1
+                if len(sample_violations["aria-valid-attr-value"]) < 5:
+                    sample_violations["aria-valid-attr-value"].append(_snippet(el, 200))
+
+        for rule_id, violations in rule_hits.items():
+            self._track_rule_activity(
+                rule_id,
+                elements_checked=checked,
+                violations_found=violations,
+                confidence_bucket="high" if violations > 0 else None,
+                sample_elements_checked=sample_checked,
+                sample_violations=sample_violations[rule_id],
+            )
 
         return issues
 

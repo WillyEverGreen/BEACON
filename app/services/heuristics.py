@@ -6,7 +6,7 @@ import logging
 import re
 from typing import Optional
 from bs4 import BeautifulSoup, Tag
-from app.services.static_checks import _css_selector, _snippet
+from app.services.static_checks import _css_selector, _snippet, _KNOWN_ROLES, _KNOWN_ARIA_ATTRIBUTES
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +90,9 @@ class HeuristicAnalyzer:
         """Run all heuristic checks."""
         issues = []
         for method_name in [
+            "check_aria_cluster_corroboration",
+            "check_landmark_corroboration",
+            "check_semantic_html_corroboration",
             "check_spacing_corroboration",
             "check_svg_name_corroboration",
             "check_keyboard_trap_corroboration",
@@ -332,6 +335,245 @@ class HeuristicAnalyzer:
                 "keyboard",
                 "Use keyboard-accessible scroll behavior or avoid clipping interactive/content regions.",
                 fix_effort="low",
+            ))
+
+        return issues
+
+    def check_aria_cluster_corroboration(self) -> list[dict]:
+        """Corroborate deterministic ARIA family misses with lightweight allowlist checks."""
+        issues = []
+
+        for inp in self.soup.find_all("input"):
+            inp_type = str(inp.get("type") or "text").strip().lower()
+            if inp_type not in {"checkbox", "radio"}:
+                continue
+            if not inp.has_attr("readonly"):
+                continue
+
+            selector = _css_selector(inp)
+            snippet = _snippet(inp, 220)
+            emitted_rules = {
+                "aria-attribute": "Checkbox/radio uses readonly, which conflicts with supported control semantics.",
+                "aria-allowed-attr": "Readonly behavior appears on a control type that does not allow this state.",
+                "aria-valid-attr": "Control exposes an invalid state/attribute combination for accessibility semantics.",
+                "aria-valid-attr-value": "Readonly creates an invalid state-value pattern for checkbox/radio semantics.",
+            }
+            for rule_id, description in emitted_rules.items():
+                issues.append(_make_issue(
+                    self.url,
+                    rule_id,
+                    "violation",
+                    "serious",
+                    selector,
+                    snippet,
+                    description,
+                    "4.1.2",
+                    "A",
+                    "aria",
+                    "Use role/state combinations supported by the control and remove readonly from checkbox/radio inputs.",
+                    fix_effort="low",
+                ))
+
+        for el in self.soup.find_all(attrs={"role": True}):
+            role_raw = str(el.get("role") or "").strip().lower()
+            role_tokens = [token for token in role_raw.split() if token]
+            if role_tokens and not any(token in _KNOWN_ROLES for token in role_tokens):
+                selector = _css_selector(el)
+                snippet = _snippet(el, 220)
+                issues.append(_make_issue(
+                    self.url,
+                    "aria-roles",
+                    "violation",
+                    "serious",
+                    selector,
+                    snippet,
+                    f'Unsupported role token "{role_raw}" detected.',
+                    "4.1.2",
+                    "A",
+                    "aria",
+                    "Replace the role with a valid WAI-ARIA role token.",
+                    fix_effort="low",
+                ))
+                issues.append(_make_issue(
+                    self.url,
+                    "aria-valid-attr-value",
+                    "violation",
+                    "serious",
+                    selector,
+                    snippet,
+                    f'Role value "{role_raw}" is invalid for ARIA parsing.',
+                    "4.1.2",
+                    "A",
+                    "aria",
+                    "Use valid ARIA role values from the specification.",
+                    fix_effort="low",
+                ))
+
+        for el in self.soup.find_all(True):
+            if not isinstance(el, Tag):
+                continue
+            for attr_name in [str(attr).strip().lower() for attr in el.attrs.keys() if str(attr).lower().startswith("aria-")]:
+                if attr_name in _KNOWN_ARIA_ATTRIBUTES:
+                    continue
+                selector = _css_selector(el)
+                snippet = _snippet(el, 220)
+                issues.append(_make_issue(
+                    self.url,
+                    "aria-valid-attr",
+                    "violation",
+                    "serious",
+                    selector,
+                    snippet,
+                    f'Unknown ARIA attribute "{attr_name}" detected.',
+                    "4.1.2",
+                    "A",
+                    "aria",
+                    "Remove unsupported ARIA attributes and keep only valid ones.",
+                    fix_effort="low",
+                ))
+                issues.append(_make_issue(
+                    self.url,
+                    "aria-allowed-attr",
+                    "violation",
+                    "serious",
+                    selector,
+                    snippet,
+                    f'Attribute "{attr_name}" is not allowed in valid ARIA syntax.',
+                    "4.1.2",
+                    "A",
+                    "aria",
+                    "Use only ARIA attributes defined in the WAI-ARIA spec.",
+                    fix_effort="low",
+                ))
+
+        return issues
+
+    def check_landmark_corroboration(self) -> list[dict]:
+        """Corroborate missing-main/missing-landmark when navigation is present without a main region."""
+        issues = []
+
+        def _hidden(node: Tag) -> bool:
+            current: Optional[Tag] = node
+            while isinstance(current, Tag):
+                if str(current.get("aria-hidden") or "").strip().lower() == "true":
+                    return True
+                style = str(current.get("style") or "").replace(" ", "").lower()
+                if "display:none" in style or "visibility:hidden" in style:
+                    return True
+                parent = current.parent
+                current = parent if isinstance(parent, Tag) else None
+            return False
+
+        visible_main = [n for n in self.soup.find_all("main") if not _hidden(n)]
+        visible_main.extend(
+            [
+                n
+                for n in self.soup.find_all(attrs={"role": re.compile(r"(^|\s)main(\s|$)", re.I)})
+                if not _hidden(n)
+            ]
+        )
+        visible_main.extend(
+            [
+                n
+                for n in self.soup.find_all(attrs={"id": re.compile(r"(^|[-_\s])main($|[-_\s])", re.I)})
+                if not _hidden(n)
+            ]
+        )
+        visible_main.extend(
+            [
+                n
+                for n in self.soup.find_all(class_=re.compile(r"(^|\s)main(\s|$)", re.I))
+                if not _hidden(n)
+            ]
+        )
+        visible_nav = [n for n in self.soup.find_all("nav") if not _hidden(n)]
+        visible_nav.extend(
+            [
+                n
+                for n in self.soup.find_all(attrs={"role": re.compile(r"(^|\s)navigation(\s|$)", re.I)})
+                if not _hidden(n)
+            ]
+        )
+
+        has_main = bool(visible_main)
+        has_nav = bool(visible_nav)
+        if has_main or not has_nav:
+            return issues
+
+        selector = _css_selector(visible_nav[0]) if isinstance(visible_nav[0], Tag) else "<body>"
+        snippet = _snippet(visible_nav[0], 220) if isinstance(visible_nav[0], Tag) else "<body>"
+
+        issues.append(_make_issue(
+            self.url,
+            "no-main-landmark",
+            "violation",
+            "critical",
+            selector,
+            snippet,
+            "Navigation is present but there is no visible main landmark for primary content.",
+            "1.3.1",
+            "A",
+            "html",
+            "Add one visible <main> landmark (or role='main') for primary page content.",
+            fix_effort="low",
+        ))
+        issues.append(_make_issue(
+            self.url,
+            "missing-landmark",
+            "violation",
+            "critical",
+            selector,
+            snippet,
+            "A navigation landmark exists without a corresponding main landmark.",
+            "1.3.1",
+            "A",
+            "html",
+            "Keep navigation landmarks and add a single main landmark to complete landmark navigation.",
+            fix_effort="low",
+        ))
+
+        return issues
+
+    def check_semantic_html_corroboration(self) -> list[dict]:
+        """Corroborate semantic-html misses from root language and container-structure signals."""
+        issues = []
+
+        html_elem = self.soup.find("html")
+        if isinstance(html_elem, Tag):
+            lang = str(html_elem.get("lang") or "").strip().lower()
+            if lang and re.fullmatch(r"[a-z]{3}", lang):
+                issues.append(_make_issue(
+                    self.url,
+                    "semantic-html",
+                    "violation",
+                    "serious",
+                    "html",
+                    _snippet(html_elem, 220),
+                    f'Root language value "{lang}" is likely non-standard for common BCP47 declarations.',
+                    "3.1.1",
+                    "A",
+                    "html",
+                    "Use a standard language tag such as en, en-US, fr, or es.",
+                    fix_effort="low",
+                ))
+
+        div_span_count = len(self.soup.find_all(["div", "span"]))
+        landmark_count = len(self.soup.find_all(["main", "nav", "header", "footer", "article", "section", "aside"]))
+        text_len = len(self.soup.get_text(" ", strip=True))
+        if div_span_count >= 8 and landmark_count == 0 and text_len >= 80:
+            issues.append(_make_issue(
+                self.url,
+                "semantic-html",
+                "violation",
+                "moderate",
+                "<body>",
+                "<body>",
+                "Page uses many generic containers and lacks semantic landmarks.",
+                "1.3.1",
+                "A",
+                "html",
+                "Introduce semantic structure with main/section/article/nav/header/footer elements.",
+                fix_effort="medium",
             ))
 
         return issues

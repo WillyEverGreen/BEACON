@@ -299,7 +299,9 @@ export default function ProjectDetailPage() {
       : latestScan?.degraded_mode
         ? "partial"
         : "full";
-  const trustIntegrityCaps: any[] = Array.isArray(trust.score_integrity?.caps_applied)
+  const trustIntegrityCaps: any[] = Array.isArray(
+    trust.score_integrity?.caps_applied,
+  )
     ? trust.score_integrity.caps_applied
     : [];
 
