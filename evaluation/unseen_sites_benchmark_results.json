@@ -1,0 +1,1228 @@
+{
+  "sites": [
+    {
+      "name": "Sugar Labs",
+      "url": "https://www.sugarlabs.org",
+      "category": "nonprofit",
+      "expected": "medium"
+    },
+    {
+      "name": "Lichess",
+      "url": "https://lichess.org",
+      "category": "web-app",
+      "expected": "medium"
+    },
+    {
+      "name": "Wikipedia",
+      "url": "https://www.wikipedia.org",
+      "category": "knowledge",
+      "expected": "high"
+    },
+    {
+      "name": "NASA",
+      "url": "https://www.nasa.gov",
+      "category": "government",
+      "expected": "medium"
+    },
+    {
+      "name": "GNU",
+      "url": "https://www.gnu.org",
+      "category": "opensource",
+      "expected": "medium"
+    },
+    {
+      "name": "Khan Academy",
+      "url": "https://www.khanacademy.org",
+      "category": "education",
+      "expected": "medium"
+    },
+    {
+      "name": "OpenStreetMap",
+      "url": "https://www.openstreetmap.org",
+      "category": "maps",
+      "expected": "medium"
+    },
+    {
+      "name": "DuckDuckGo",
+      "url": "https://duckduckgo.com",
+      "category": "search",
+      "expected": "medium"
+    },
+    {
+      "name": "Reddit",
+      "url": "https://www.reddit.com",
+      "category": "social",
+      "expected": "low"
+    },
+    {
+      "name": "Coursera",
+      "url": "https://www.coursera.org",
+      "category": "education",
+      "expected": "medium"
+    }
+  ],
+  "fast": [
+    {
+      "name": "Sugar Labs",
+      "url": "https://www.sugarlabs.org",
+      "category": "nonprofit",
+      "scan_mode": "fast",
+      "success": true,
+      "score": 98.1,
+      "total_issues": 6,
+      "avg_confidence": 0.7,
+      "scan_time_s": 2.94,
+      "degraded_mode": false,
+      "degraded_reason": null,
+      "access_limited": false,
+      "expected_tier": "medium",
+      "predicted_tier": "high",
+      "expected_alignment": false,
+      "expected_alignment_distance": 1,
+      "alignment_applicable": true,
+      "top_rules": [
+        {
+          "rule": "no-headings",
+          "count": 1
+        },
+        {
+          "rule": "no-main-landmark",
+          "count": 1
+        },
+        {
+          "rule": "landmark-roles",
+          "count": 1
+        },
+        {
+          "rule": "no-nav-landmark",
+          "count": 1
+        },
+        {
+          "rule": "no-header-landmark",
+          "count": 1
+        }
+      ],
+      "severity": {
+        "serious": 2,
+        "moderate": 1,
+        "minor": 3
+      },
+      "telemetry": {
+        "input_issues": 6,
+        "reported_issues": 6,
+        "dropped_structural": 6,
+        "dropped_low_confidence": 0,
+        "suppression_rate": 0.0,
+        "suppression_warning": false,
+        "low_issue_guard_active": false
+      },
+      "error": null
+    },
+    {
+      "name": "Lichess",
+      "url": "https://lichess.org",
+      "category": "web-app",
+      "scan_mode": "fast",
+      "success": true,
+      "score": 70.0,
+      "total_issues": 10,
+      "avg_confidence": 0.796,
+      "scan_time_s": 0.85,
+      "degraded_mode": false,
+      "degraded_reason": null,
+      "access_limited": false,
+      "expected_tier": "medium",
+      "predicted_tier": "medium",
+      "expected_alignment": true,
+      "expected_alignment_distance": 0,
+      "alignment_applicable": true,
+      "top_rules": [
+        {
+          "rule": "empty-link",
+          "count": 4
+        },
+        {
+          "rule": "button-name",
+          "count": 2
+        },
+        {
+          "rule": "missing-skip-link",
+          "count": 1
+        },
+        {
+          "rule": "svg-no-accessible-name",
+          "count": 1
+        },
+        {
+          "rule": "div-itis-missing-semantics",
+          "count": 1
+        }
+      ],
+      "severity": {
+        "serious": 6,
+        "critical": 2,
+        "moderate": 1,
+        "minor": 1
+      },
+      "telemetry": {
+        "input_issues": 21,
+        "reported_issues": 10,
+        "dropped_structural": 2,
+        "dropped_low_confidence": 7,
+        "suppression_rate": 0.524,
+        "suppression_warning": false,
+        "low_issue_guard_active": false
+      },
+      "error": null
+    },
+    {
+      "name": "Wikipedia",
+      "url": "https://www.wikipedia.org",
+      "category": "knowledge",
+      "scan_mode": "fast",
+      "success": true,
+      "score": 85.0,
+      "total_issues": 10,
+      "avg_confidence": 0.7,
+      "scan_time_s": 0.99,
+      "degraded_mode": false,
+      "degraded_reason": null,
+      "access_limited": false,
+      "expected_tier": "high",
+      "predicted_tier": "high",
+      "expected_alignment": true,
+      "expected_alignment_distance": 0,
+      "alignment_applicable": true,
+      "top_rules": [
+        {
+          "rule": "invalid-lang",
+          "count": 1
+        },
+        {
+          "rule": "link-purpose",
+          "count": 1
+        },
+        {
+          "rule": "missing-skip-link",
+          "count": 1
+        },
+        {
+          "rule": "unsafe-external-link",
+          "count": 1
+        },
+        {
+          "rule": "missing-label",
+          "count": 1
+        }
+      ],
+      "severity": {
+        "serious": 4,
+        "moderate": 3,
+        "critical": 2,
+        "minor": 1
+      },
+      "telemetry": {
+        "input_issues": 12,
+        "reported_issues": 10,
+        "dropped_structural": 1,
+        "dropped_low_confidence": 7,
+        "suppression_rate": 0.167,
+        "suppression_warning": false,
+        "low_issue_guard_active": false
+      },
+      "error": null
+    },
+    {
+      "name": "NASA",
+      "url": "https://www.nasa.gov",
+      "category": "government",
+      "scan_mode": "fast",
+      "success": true,
+      "score": 70.0,
+      "total_issues": 16,
+      "avg_confidence": 0.806,
+      "scan_time_s": 1.17,
+      "degraded_mode": false,
+      "degraded_reason": null,
+      "access_limited": false,
+      "expected_tier": "medium",
+      "predicted_tier": "medium",
+      "expected_alignment": true,
+      "expected_alignment_distance": 0,
+      "alignment_applicable": true,
+      "top_rules": [
+        {
+          "rule": "svg-no-accessible-name",
+          "count": 8
+        },
+        {
+          "rule": "div-itis-missing-semantics",
+          "count": 4
+        },
+        {
+          "rule": "link-purpose",
+          "count": 2
+        },
+        {
+          "rule": "button-name",
+          "count": 1
+        },
+        {
+          "rule": "missing-skip-link",
+          "count": 1
+        }
+      ],
+      "severity": {
+        "moderate": 3,
+        "critical": 1,
+        "serious": 8,
+        "minor": 4
+      },
+      "telemetry": {
+        "input_issues": 29,
+        "reported_issues": 16,
+        "dropped_structural": 1,
+        "dropped_low_confidence": 11,
+        "suppression_rate": 0.448,
+        "suppression_warning": false,
+        "low_issue_guard_active": false
+      },
+      "error": null
+    },
+    {
+      "name": "GNU",
+      "url": "https://www.gnu.org",
+      "category": "opensource",
+      "scan_mode": "fast",
+      "success": true,
+      "score": 85.0,
+      "total_issues": 6,
+      "avg_confidence": 0.7,
+      "scan_time_s": 2.69,
+      "degraded_mode": false,
+      "degraded_reason": null,
+      "access_limited": false,
+      "expected_tier": "medium",
+      "predicted_tier": "high",
+      "expected_alignment": false,
+      "expected_alignment_distance": 1,
+      "alignment_applicable": true,
+      "top_rules": [
+        {
+          "rule": "div-itis-missing-semantics",
+          "count": 2
+        },
+        {
+          "rule": "empty-link",
+          "count": 1
+        },
+        {
+          "rule": "semantic-html",
+          "count": 1
+        },
+        {
+          "rule": "missing-h1",
+          "count": 1
+        },
+        {
+          "rule": "short-link-text",
+          "count": 1
+        }
+      ],
+      "severity": {
+        "serious": 2,
+        "moderate": 1,
+        "minor": 3
+      },
+      "telemetry": {
+        "input_issues": 6,
+        "reported_issues": 6,
+        "dropped_structural": 0,
+        "dropped_low_confidence": 1,
+        "suppression_rate": 0.0,
+        "suppression_warning": false,
+        "low_issue_guard_active": false
+      },
+      "error": null
+    },
+    {
+      "name": "Khan Academy",
+      "url": "https://www.khanacademy.org",
+      "category": "education",
+      "scan_mode": "fast",
+      "success": true,
+      "score": 98.1,
+      "total_issues": 6,
+      "avg_confidence": 0.7,
+      "scan_time_s": 0.6,
+      "degraded_mode": false,
+      "degraded_reason": null,
+      "access_limited": false,
+      "expected_tier": "medium",
+      "predicted_tier": "high",
+      "expected_alignment": false,
+      "expected_alignment_distance": 1,
+      "alignment_applicable": true,
+      "top_rules": [
+        {
+          "rule": "no-headings",
+          "count": 1
+        },
+        {
+          "rule": "no-main-landmark",
+          "count": 1
+        },
+        {
+          "rule": "landmark-roles",
+          "count": 1
+        },
+        {
+          "rule": "no-nav-landmark",
+          "count": 1
+        },
+        {
+          "rule": "no-header-landmark",
+          "count": 1
+        }
+      ],
+      "severity": {
+        "serious": 2,
+        "moderate": 1,
+        "minor": 3
+      },
+      "telemetry": {
+        "input_issues": 6,
+        "reported_issues": 6,
+        "dropped_structural": 6,
+        "dropped_low_confidence": 0,
+        "suppression_rate": 0.0,
+        "suppression_warning": false,
+        "low_issue_guard_active": false
+      },
+      "error": null
+    },
+    {
+      "name": "OpenStreetMap",
+      "url": "https://www.openstreetmap.org",
+      "category": "maps",
+      "scan_mode": "fast",
+      "success": true,
+      "score": 70.0,
+      "total_issues": 13,
+      "avg_confidence": 0.827,
+      "scan_time_s": 0.89,
+      "degraded_mode": false,
+      "degraded_reason": null,
+      "access_limited": false,
+      "expected_tier": "medium",
+      "predicted_tier": "medium",
+      "expected_alignment": true,
+      "expected_alignment_distance": 0,
+      "alignment_applicable": true,
+      "top_rules": [
+        {
+          "rule": "svg-no-accessible-name",
+          "count": 3
+        },
+        {
+          "rule": "no-main-landmark",
+          "count": 2
+        },
+        {
+          "rule": "missing-landmark",
+          "count": 2
+        },
+        {
+          "rule": "button-name",
+          "count": 2
+        },
+        {
+          "rule": "empty-link",
+          "count": 1
+        }
+      ],
+      "severity": {
+        "critical": 5,
+        "serious": 5,
+        "moderate": 3
+      },
+      "telemetry": {
+        "input_issues": 44,
+        "reported_issues": 13,
+        "dropped_structural": 2,
+        "dropped_low_confidence": 15,
+        "suppression_rate": 0.705,
+        "suppression_warning": false,
+        "low_issue_guard_active": false
+      },
+      "error": null
+    },
+    {
+      "name": "DuckDuckGo",
+      "url": "https://duckduckgo.com",
+      "category": "search",
+      "scan_mode": "fast",
+      "success": true,
+      "score": 90.3,
+      "total_issues": 10,
+      "avg_confidence": 0.7,
+      "scan_time_s": 0.46,
+      "degraded_mode": false,
+      "degraded_reason": null,
+      "access_limited": false,
+      "expected_tier": "medium",
+      "predicted_tier": "high",
+      "expected_alignment": false,
+      "expected_alignment_distance": 1,
+      "alignment_applicable": true,
+      "top_rules": [
+        {
+          "rule": "duplicate-id",
+          "count": 4
+        },
+        {
+          "rule": "meta-refresh",
+          "count": 1
+        },
+        {
+          "rule": "svg-no-accessible-name",
+          "count": 1
+        },
+        {
+          "rule": "missing-h1",
+          "count": 1
+        },
+        {
+          "rule": "image-alt",
+          "count": 1
+        }
+      ],
+      "severity": {
+        "serious": 7,
+        "critical": 1,
+        "moderate": 1,
+        "minor": 1
+      },
+      "telemetry": {
+        "input_issues": 13,
+        "reported_issues": 10,
+        "dropped_structural": 1,
+        "dropped_low_confidence": 5,
+        "suppression_rate": 0.231,
+        "suppression_warning": false,
+        "low_issue_guard_active": false
+      },
+      "error": null
+    },
+    {
+      "name": "Reddit",
+      "url": "https://www.reddit.com",
+      "category": "social",
+      "scan_mode": "fast",
+      "success": true,
+      "score": 96.2,
+      "total_issues": 5,
+      "avg_confidence": 0.7,
+      "scan_time_s": 0.21,
+      "degraded_mode": false,
+      "degraded_reason": null,
+      "access_limited": false,
+      "expected_tier": "low",
+      "predicted_tier": "high",
+      "expected_alignment": false,
+      "expected_alignment_distance": 2,
+      "alignment_applicable": true,
+      "top_rules": [
+        {
+          "rule": "svg-no-accessible-name",
+          "count": 1
+        },
+        {
+          "rule": "no-headings",
+          "count": 1
+        },
+        {
+          "rule": "no-nav-landmark",
+          "count": 1
+        },
+        {
+          "rule": "no-header-landmark",
+          "count": 1
+        },
+        {
+          "rule": "no-footer-landmark",
+          "count": 1
+        }
+      ],
+      "severity": {
+        "serious": 2,
+        "minor": 3
+      },
+      "telemetry": {
+        "input_issues": 5,
+        "reported_issues": 5,
+        "dropped_structural": 4,
+        "dropped_low_confidence": 0,
+        "suppression_rate": 0.0,
+        "suppression_warning": false,
+        "low_issue_guard_active": false
+      },
+      "error": null
+    },
+    {
+      "name": "Coursera",
+      "url": "https://www.coursera.org",
+      "category": "education",
+      "scan_mode": "fast",
+      "success": true,
+      "score": 98.1,
+      "total_issues": 6,
+      "avg_confidence": 0.7,
+      "scan_time_s": 1.18,
+      "degraded_mode": false,
+      "degraded_reason": null,
+      "access_limited": false,
+      "expected_tier": "medium",
+      "predicted_tier": "high",
+      "expected_alignment": false,
+      "expected_alignment_distance": 1,
+      "alignment_applicable": true,
+      "top_rules": [
+        {
+          "rule": "no-headings",
+          "count": 1
+        },
+        {
+          "rule": "no-main-landmark",
+          "count": 1
+        },
+        {
+          "rule": "landmark-roles",
+          "count": 1
+        },
+        {
+          "rule": "no-nav-landmark",
+          "count": 1
+        },
+        {
+          "rule": "no-header-landmark",
+          "count": 1
+        }
+      ],
+      "severity": {
+        "serious": 2,
+        "moderate": 1,
+        "minor": 3
+      },
+      "telemetry": {
+        "input_issues": 6,
+        "reported_issues": 6,
+        "dropped_structural": 6,
+        "dropped_low_confidence": 0,
+        "suppression_rate": 0.0,
+        "suppression_warning": false,
+        "low_issue_guard_active": false
+      },
+      "error": null
+    }
+  ],
+  "deep": [
+    {
+      "name": "Sugar Labs",
+      "url": "https://www.sugarlabs.org",
+      "category": "nonprofit",
+      "scan_mode": "deep",
+      "success": true,
+      "score": 86.0,
+      "total_issues": 33,
+      "avg_confidence": 0.741,
+      "scan_time_s": 20.85,
+      "degraded_mode": false,
+      "degraded_reason": null,
+      "access_limited": false,
+      "expected_tier": "medium",
+      "predicted_tier": "high",
+      "expected_alignment": false,
+      "expected_alignment_distance": 1,
+      "alignment_applicable": true,
+      "top_rules": [
+        {
+          "rule": "redundant-alt",
+          "count": 11
+        },
+        {
+          "rule": "div-itis-missing-semantics",
+          "count": 8
+        },
+        {
+          "rule": "heading-order",
+          "count": 6
+        },
+        {
+          "rule": "svg-no-accessible-name",
+          "count": 3
+        },
+        {
+          "rule": "no-focus-style",
+          "count": 2
+        }
+      ],
+      "severity": {
+        "moderate": 9,
+        "minor": 19,
+        "serious": 5
+      },
+      "telemetry": {
+        "input_issues": 54,
+        "reported_issues": 33,
+        "dropped_structural": 2,
+        "dropped_low_confidence": 11,
+        "suppression_rate": 0.389,
+        "suppression_warning": false,
+        "low_issue_guard_active": false
+      },
+      "error": null
+    },
+    {
+      "name": "Lichess",
+      "url": "https://lichess.org",
+      "category": "web-app",
+      "scan_mode": "deep",
+      "success": true,
+      "score": 70.0,
+      "total_issues": 11,
+      "avg_confidence": 0.754,
+      "scan_time_s": 15.0,
+      "degraded_mode": false,
+      "degraded_reason": null,
+      "access_limited": false,
+      "expected_tier": "medium",
+      "predicted_tier": "medium",
+      "expected_alignment": true,
+      "expected_alignment_distance": 0,
+      "alignment_applicable": true,
+      "top_rules": [
+        {
+          "rule": "empty-link",
+          "count": 3
+        },
+        {
+          "rule": "no-focus-style",
+          "count": 3
+        },
+        {
+          "rule": "button-name",
+          "count": 2
+        },
+        {
+          "rule": "missing-skip-link",
+          "count": 1
+        },
+        {
+          "rule": "svg-no-accessible-name",
+          "count": 1
+        }
+      ],
+      "severity": {
+        "serious": 7,
+        "critical": 2,
+        "moderate": 1,
+        "minor": 1
+      },
+      "telemetry": {
+        "input_issues": 29,
+        "reported_issues": 11,
+        "dropped_structural": 2,
+        "dropped_low_confidence": 9,
+        "suppression_rate": 0.621,
+        "suppression_warning": false,
+        "low_issue_guard_active": false
+      },
+      "error": null
+    },
+    {
+      "name": "Wikipedia",
+      "url": "https://www.wikipedia.org",
+      "category": "knowledge",
+      "scan_mode": "deep",
+      "success": true,
+      "score": 85.0,
+      "total_issues": 9,
+      "avg_confidence": 0.7,
+      "scan_time_s": 12.95,
+      "degraded_mode": false,
+      "degraded_reason": null,
+      "access_limited": false,
+      "expected_tier": "high",
+      "predicted_tier": "high",
+      "expected_alignment": true,
+      "expected_alignment_distance": 0,
+      "alignment_applicable": true,
+      "top_rules": [
+        {
+          "rule": "invalid-lang",
+          "count": 1
+        },
+        {
+          "rule": "link-purpose",
+          "count": 1
+        },
+        {
+          "rule": "missing-skip-link",
+          "count": 1
+        },
+        {
+          "rule": "keyboard-unreachable",
+          "count": 1
+        },
+        {
+          "rule": "unsafe-external-link",
+          "count": 1
+        }
+      ],
+      "severity": {
+        "serious": 2,
+        "moderate": 3,
+        "minor": 4
+      },
+      "telemetry": {
+        "input_issues": 9,
+        "reported_issues": 9,
+        "dropped_structural": 1,
+        "dropped_low_confidence": 3,
+        "suppression_rate": 0.0,
+        "suppression_warning": false,
+        "low_issue_guard_active": false
+      },
+      "error": null
+    },
+    {
+      "name": "NASA",
+      "url": "https://www.nasa.gov",
+      "category": "government",
+      "scan_mode": "deep",
+      "success": true,
+      "score": 70.0,
+      "total_issues": 22,
+      "avg_confidence": 0.781,
+      "scan_time_s": 14.68,
+      "degraded_mode": false,
+      "degraded_reason": null,
+      "access_limited": false,
+      "expected_tier": "medium",
+      "predicted_tier": "medium",
+      "expected_alignment": true,
+      "expected_alignment_distance": 0,
+      "alignment_applicable": true,
+      "top_rules": [
+        {
+          "rule": "svg-no-accessible-name",
+          "count": 8
+        },
+        {
+          "rule": "div-itis-missing-semantics",
+          "count": 4
+        },
+        {
+          "rule": "no-focus-style",
+          "count": 4
+        },
+        {
+          "rule": "link-purpose",
+          "count": 2
+        },
+        {
+          "rule": "empty-link",
+          "count": 1
+        }
+      ],
+      "severity": {
+        "moderate": 3,
+        "serious": 14,
+        "critical": 1,
+        "minor": 4
+      },
+      "telemetry": {
+        "input_issues": 41,
+        "reported_issues": 22,
+        "dropped_structural": 0,
+        "dropped_low_confidence": 16,
+        "suppression_rate": 0.463,
+        "suppression_warning": false,
+        "low_issue_guard_active": false
+      },
+      "error": null
+    },
+    {
+      "name": "GNU",
+      "url": "https://www.gnu.org",
+      "category": "opensource",
+      "scan_mode": "deep",
+      "success": true,
+      "score": 85.0,
+      "total_issues": 10,
+      "avg_confidence": 0.7,
+      "scan_time_s": 13.63,
+      "degraded_mode": false,
+      "degraded_reason": null,
+      "access_limited": false,
+      "expected_tier": "medium",
+      "predicted_tier": "high",
+      "expected_alignment": false,
+      "expected_alignment_distance": 1,
+      "alignment_applicable": true,
+      "top_rules": [
+        {
+          "rule": "div-itis-missing-semantics",
+          "count": 2
+        },
+        {
+          "rule": "empty-link",
+          "count": 1
+        },
+        {
+          "rule": "semantic-html",
+          "count": 1
+        },
+        {
+          "rule": "no-lang",
+          "count": 1
+        },
+        {
+          "rule": "keyboard-unreachable",
+          "count": 1
+        }
+      ],
+      "severity": {
+        "serious": 6,
+        "moderate": 2,
+        "minor": 2
+      },
+      "telemetry": {
+        "input_issues": 13,
+        "reported_issues": 10,
+        "dropped_structural": 0,
+        "dropped_low_confidence": 6,
+        "suppression_rate": 0.231,
+        "suppression_warning": false,
+        "low_issue_guard_active": false
+      },
+      "error": null
+    },
+    {
+      "name": "Khan Academy",
+      "url": "https://www.khanacademy.org",
+      "category": "education",
+      "scan_mode": "deep",
+      "success": true,
+      "score": 99.0,
+      "total_issues": 10,
+      "avg_confidence": 0.7,
+      "scan_time_s": 16.54,
+      "degraded_mode": false,
+      "degraded_reason": null,
+      "access_limited": false,
+      "expected_tier": "medium",
+      "predicted_tier": "high",
+      "expected_alignment": false,
+      "expected_alignment_distance": 1,
+      "alignment_applicable": true,
+      "top_rules": [
+        {
+          "rule": "div-itis-missing-semantics",
+          "count": 6
+        },
+        {
+          "rule": "text-spacing",
+          "count": 1
+        },
+        {
+          "rule": "keyboard-unreachable",
+          "count": 1
+        },
+        {
+          "rule": "no-focus-style",
+          "count": 1
+        },
+        {
+          "rule": "target-size-minimum",
+          "count": 1
+        }
+      ],
+      "severity": {
+        "minor": 6,
+        "moderate": 2,
+        "serious": 2
+      },
+      "telemetry": {
+        "input_issues": 23,
+        "reported_issues": 10,
+        "dropped_structural": 1,
+        "dropped_low_confidence": 13,
+        "suppression_rate": 0.565,
+        "suppression_warning": false,
+        "low_issue_guard_active": false
+      },
+      "error": null
+    },
+    {
+      "name": "OpenStreetMap",
+      "url": "https://www.openstreetmap.org",
+      "category": "maps",
+      "scan_mode": "deep",
+      "success": true,
+      "score": 64.0,
+      "total_issues": 22,
+      "avg_confidence": 0.748,
+      "scan_time_s": 12.37,
+      "degraded_mode": false,
+      "degraded_reason": null,
+      "access_limited": false,
+      "expected_tier": "medium",
+      "predicted_tier": "low",
+      "expected_alignment": false,
+      "expected_alignment_distance": 1,
+      "alignment_applicable": true,
+      "top_rules": [
+        {
+          "rule": "no-focus-style",
+          "count": 7
+        },
+        {
+          "rule": "svg-no-accessible-name",
+          "count": 3
+        },
+        {
+          "rule": "no-main-landmark",
+          "count": 2
+        },
+        {
+          "rule": "missing-landmark",
+          "count": 2
+        },
+        {
+          "rule": "button-name",
+          "count": 2
+        }
+      ],
+      "severity": {
+        "critical": 5,
+        "serious": 12,
+        "moderate": 5
+      },
+      "telemetry": {
+        "input_issues": 58,
+        "reported_issues": 22,
+        "dropped_structural": 2,
+        "dropped_low_confidence": 19,
+        "suppression_rate": 0.621,
+        "suppression_warning": false,
+        "low_issue_guard_active": false
+      },
+      "error": null
+    },
+    {
+      "name": "DuckDuckGo",
+      "url": "https://duckduckgo.com",
+      "category": "search",
+      "scan_mode": "deep",
+      "success": true,
+      "score": 70.0,
+      "total_issues": 23,
+      "avg_confidence": 0.74,
+      "scan_time_s": 12.52,
+      "degraded_mode": false,
+      "degraded_reason": null,
+      "access_limited": false,
+      "expected_tier": "medium",
+      "predicted_tier": "medium",
+      "expected_alignment": true,
+      "expected_alignment_distance": 0,
+      "alignment_applicable": true,
+      "top_rules": [
+        {
+          "rule": "apg-tab-broken-controls",
+          "count": 5
+        },
+        {
+          "rule": "heading-order",
+          "count": 3
+        },
+        {
+          "rule": "div-itis-missing-semantics",
+          "count": 3
+        },
+        {
+          "rule": "no-focus-style",
+          "count": 3
+        },
+        {
+          "rule": "svg-no-accessible-name",
+          "count": 2
+        }
+      ],
+      "severity": {
+        "moderate": 8,
+        "serious": 12,
+        "minor": 3
+      },
+      "telemetry": {
+        "input_issues": 43,
+        "reported_issues": 23,
+        "dropped_structural": 1,
+        "dropped_low_confidence": 12,
+        "suppression_rate": 0.465,
+        "suppression_warning": false,
+        "low_issue_guard_active": false
+      },
+      "error": null
+    },
+    {
+      "name": "Reddit",
+      "url": "https://www.reddit.com",
+      "category": "social",
+      "scan_mode": "deep",
+      "success": true,
+      "score": 82.2,
+      "total_issues": 14,
+      "avg_confidence": 0.735,
+      "scan_time_s": 20.39,
+      "degraded_mode": false,
+      "degraded_reason": null,
+      "access_limited": false,
+      "expected_tier": "low",
+      "predicted_tier": "medium",
+      "expected_alignment": false,
+      "expected_alignment_distance": 1,
+      "alignment_applicable": true,
+      "top_rules": [
+        {
+          "rule": "svg-no-accessible-name",
+          "count": 4
+        },
+        {
+          "rule": "div-itis-missing-semantics",
+          "count": 3
+        },
+        {
+          "rule": "no-focus-style",
+          "count": 2
+        },
+        {
+          "rule": "focus-obscured",
+          "count": 2
+        },
+        {
+          "rule": "excessive-motion",
+          "count": 2
+        }
+      ],
+      "severity": {
+        "serious": 8,
+        "moderate": 3,
+        "minor": 3
+      },
+      "telemetry": {
+        "input_issues": 34,
+        "reported_issues": 14,
+        "dropped_structural": 1,
+        "dropped_low_confidence": 14,
+        "suppression_rate": 0.588,
+        "suppression_warning": false,
+        "low_issue_guard_active": false
+      },
+      "error": null
+    },
+    {
+      "name": "Coursera",
+      "url": "https://www.coursera.org",
+      "category": "education",
+      "scan_mode": "deep",
+      "success": true,
+      "score": 86.0,
+      "total_issues": 15,
+      "avg_confidence": 0.712,
+      "scan_time_s": 28.97,
+      "degraded_mode": false,
+      "degraded_reason": null,
+      "access_limited": false,
+      "expected_tier": "medium",
+      "predicted_tier": "high",
+      "expected_alignment": false,
+      "expected_alignment_distance": 1,
+      "alignment_applicable": true,
+      "top_rules": [
+        {
+          "rule": "aria-hidden-focusable",
+          "count": 3
+        },
+        {
+          "rule": "no-focus-style",
+          "count": 3
+        },
+        {
+          "rule": "svg-no-accessible-name",
+          "count": 2
+        },
+        {
+          "rule": "div-itis-missing-semantics",
+          "count": 2
+        },
+        {
+          "rule": "missing-skip-link",
+          "count": 1
+        }
+      ],
+      "severity": {
+        "critical": 3,
+        "moderate": 5,
+        "serious": 5,
+        "minor": 2
+      },
+      "telemetry": {
+        "input_issues": 52,
+        "reported_issues": 15,
+        "dropped_structural": 1,
+        "dropped_low_confidence": 33,
+        "suppression_rate": 0.712,
+        "suppression_warning": false,
+        "low_issue_guard_active": false
+      },
+      "error": null
+    }
+  ],
+  "summary": {
+    "fast": {
+      "successful_sites": 10,
+      "avg_score": 86.08,
+      "avg_scan_time_s": 1.198,
+      "p95_scan_time_s": 2.94,
+      "avg_confidence": 0.733,
+      "avg_issues": 8.8,
+      "suppression_warnings": 0,
+      "access_limited_sites": 0,
+      "alignment_applicable_sites": 10,
+      "alignment_rate": 0.4
+    },
+    "deep": {
+      "successful_sites": 10,
+      "avg_score": 79.72,
+      "avg_scan_time_s": 16.79,
+      "p95_scan_time_s": 28.97,
+      "avg_confidence": 0.731,
+      "avg_issues": 16.9,
+      "suppression_warnings": 0,
+      "access_limited_sites": 0,
+      "alignment_applicable_sites": 10,
+      "alignment_rate": 0.4
+    },
+    "overall": {
+      "runtime_success_rate": 1.0,
+      "successful_audits": 20,
+      "expected_audits": 20,
+      "total_access_limited_audits": 0,
+      "total_suppression_warnings": 0,
+      "combined_alignment_rate": 0.4
+    }
+  }
+}
