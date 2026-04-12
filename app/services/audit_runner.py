@@ -725,7 +725,12 @@ def _merge_profile_with_policy(profile_name: str, profile: dict[str, Any]) -> di
     return merged
 
 
-async def _fetch_html(url: str, timeout: float = 15.0) -> tuple[Optional[str], str, dict[str, Any]]:
+async def _fetch_html(
+    url: str,
+    timeout: float = 15.0,
+    max_attempts: int = 3,
+    allow_lightweight_fallback: bool = True,
+) -> tuple[Optional[str], str, dict[str, Any]]:
     """Fetch page HTML with selective retry and lightweight fallback.
 
     Returns tuple: (html_or_none, failure_reason_if_any, fetch_metadata)
@@ -833,7 +838,7 @@ async def _fetch_html(url: str, timeout: float = 15.0) -> tuple[Optional[str], s
             retryable = bool(reason != "blocked_request" and _is_retryable_exception_text(error_text))
             return None, None, reason, retryable
 
-    effective_timeout = max(4.0, float(timeout))
+    effective_timeout = max(2.0, float(timeout))
     retry_timeout = max(3.0, min(effective_timeout * 0.6, effective_timeout - 1.0))
     lightweight_timeout = max(2.5, min(4.5, effective_timeout * 0.4))
 
@@ -848,7 +853,8 @@ async def _fetch_html(url: str, timeout: float = 15.0) -> tuple[Optional[str], s
 
     semaphore = await _domain_semaphore(url)
     async with semaphore:
-        attempt_budgets = [effective_timeout, retry_timeout, retry_timeout]
+        bounded_attempts = max(1, min(int(max_attempts or 1), 3))
+        attempt_budgets = [effective_timeout, retry_timeout, retry_timeout][:bounded_attempts]
         for idx, budget in enumerate(attempt_budgets):
             body, status_code, reason, retryable_exc = await _attempt(
                 attempt_timeout=budget,
@@ -865,8 +871,6 @@ async def _fetch_html(url: str, timeout: float = 15.0) -> tuple[Optional[str], s
 
             blocked_status = _is_blocked_status(status_code)
             if blocked_status:
-                if idx < len(attempt_budgets) - 1:
-                    continue
                 break
 
             should_retry = retryable_exc or _is_retryable_http_status(status_code)
@@ -874,23 +878,28 @@ async def _fetch_html(url: str, timeout: float = 15.0) -> tuple[Optional[str], s
                 continue
             break
 
+        if _is_blocked_status(status_code):
+            reason = reason or "blocked_request"
+            return None, reason, meta
+
         # Lightweight fallback can still salvage content from unstable or CSP-heavy pages.
-        for partial_idx in range(2):
-            partial_body, partial_status, partial_reason, _ = await _attempt(
-                attempt_timeout=lightweight_timeout,
-                lightweight=True,
-                attempt_index=len(attempt_budgets) + partial_idx,
-            )
-            if partial_status is not None:
-                status_code = partial_status
-                meta["status_code"] = partial_status
-            if partial_body:
-                meta["partial_fallback_used"] = True
-                meta["attempts_used"] = max(meta.get("attempts_used", 0), len(attempt_budgets) + partial_idx + 1)
-                meta["user_agent_rotated"] = True
-                return partial_body, "", meta
-            if partial_reason:
-                reason = partial_reason
+        if allow_lightweight_fallback:
+            for partial_idx in range(2):
+                partial_body, partial_status, partial_reason, _ = await _attempt(
+                    attempt_timeout=lightweight_timeout,
+                    lightweight=True,
+                    attempt_index=len(attempt_budgets) + partial_idx,
+                )
+                if partial_status is not None:
+                    status_code = partial_status
+                    meta["status_code"] = partial_status
+                if partial_body:
+                    meta["partial_fallback_used"] = True
+                    meta["attempts_used"] = max(meta.get("attempts_used", 0), len(attempt_budgets) + partial_idx + 1)
+                    meta["user_agent_rotated"] = True
+                    return partial_body, "", meta
+                if partial_reason:
+                    reason = partial_reason
 
     if not reason:
         if _is_blocked_status(status_code):
@@ -1102,9 +1111,19 @@ async def run_audit(
 
         # Fallback: fetch with httpx if no rendered HTML yet
         if not html:
+            fetch_timeout_budget = min(fetch_timeout, float(max_runtime))
+            fetch_attempts = 3
+            use_lightweight_fallback = True
+            if scan_mode in {"minimal", "fast"}:
+                fetch_timeout_budget = min(fetch_timeout_budget, 4.0)
+                fetch_attempts = 1
+                use_lightweight_fallback = False
+
             html, fetch_reason, fetch_reliability_meta = await _fetch_html(
                 url,
-                timeout=min(fetch_timeout, float(max_runtime)),
+                timeout=fetch_timeout_budget,
+                max_attempts=fetch_attempts,
+                allow_lightweight_fallback=use_lightweight_fallback,
             )
             if not html and fetch_reason:
                 _mark_degraded(fetch_reason, _degradation_reason_message(fetch_reason, "content_fetch"))
@@ -1205,7 +1224,12 @@ async def run_audit(
         # ── Step 2: Run check engines (Parallel) ──────────────────────
         def run_static():
             try:
-                checker = StaticChecker(html, url)
+                checker = StaticChecker(
+                    html,
+                    url,
+                    fetch_status=fetch_status if isinstance(fetch_status, int) else None,
+                    degraded_reason=degraded_reason,
+                )
                 return checker.run_all(checks), "static", {
                     "executed": True,
                     "rule_activity": checker.get_rule_activity(),
@@ -1225,6 +1249,8 @@ async def run_audit(
         async def run_axe():
             if scan_mode not in {"deep", "max"}:
                 return [], "axe-core", {"executed": False}
+            if degraded_reason == "blocked_request":
+                return [], "axe-core", {"executed": False, "skipped_reason": "blocked_request"}
             try:
                 from app.services.browser_probes import _PLAYWRIGHT_AVAILABLE
                 if not _PLAYWRIGHT_AVAILABLE:
@@ -1367,9 +1393,10 @@ async def run_audit(
             audit_url=url,
         )
 
-        # Output stability: blocked/partial audits must surface at least one actionable finding.
-        if degraded_mode and degraded_reason == "blocked_request" and not scored_issues:
-            scored_issues = [{
+        # Output stability: blocked/partial audits should report availability status,
+        # not structural/content findings from anti-bot or auth walls.
+        if degraded_mode and degraded_reason == "blocked_request":
+            blocked_issue = {
                 "issue_id": hashlib.sha256(f"{url}|blocked-request-partial".encode()).hexdigest()[:16],
                 "rule_id": "blocked-request-partial",
                 "issue_type": "needs-review",
@@ -1394,9 +1421,14 @@ async def run_audit(
                     "fetch_status_code": fetch_status,
                 },
                 "reproducibility": "",
-            }]
+            }
+            dropped_for_blocked = len(scored_issues)
+            scored_issues = [blocked_issue]
             profile_telemetry = dict(profile_telemetry or {})
             profile_telemetry["blocked_access_issue_injected"] = True
+            profile_telemetry["blocked_access_rules_dropped"] = dropped_for_blocked
+            profile_telemetry["suppression_warning"] = False
+            profile_telemetry["suppression_warning_ignored_for_blocked"] = True
 
         # ── Step 4.25: Aggregate identical rules ─────────────────────
         # Production profile must preserve full finding density for truthful

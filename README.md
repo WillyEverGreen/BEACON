@@ -17,6 +17,25 @@ BEACON is a FastAPI-based accessibility auditing platform with multi-engine scan
   - non-empty site score safeguards
 - Added targeted regression tests for critical bug prevention.
 
+## Latest Updates (April 12, 2026)
+
+- Hardened detector behavior for modern app shells and dynamic sites.
+- Added shell-aware landmark suppression to avoid pre-hydration false positives on React and Next.js pages.
+- Expanded ARIA role validation to catch mixed valid/invalid role token lists and duplicate role tokens.
+- Normalized blocked or partial fetch outcomes into explicit availability findings (access-limited classification).
+- Added deterministic site-archetype validation script and baseline output:
+  - `evaluation/validate_site_archetypes.py`
+  - `evaluation/site_archetype_validation_results.json` (10/10 passing)
+- Revalidated ACT regression benchmark with perfect detector metrics:
+  - 23 cases evaluated, TP=38, FP=0, FN=0
+  - Micro and adjudicated precision/recall/F1 = 1.00
+- Re-ran real-world 10-site production benchmark (fast + deep):
+  - Runtime success: 20/20 audits
+  - Suppression warnings: 0
+  - Fast P95: 2.56s (gate <= 3.5s)
+  - Deep P95: 27.86s (gate < 60s)
+  - Expectation alignment remains advisory on applicable audits; access-limited pages are excluded from strict alignment scoring.
+
 ## Architecture
 
 ```mermaid
@@ -209,6 +228,14 @@ python -m pytest \
   tests/unit/services/test_audit_runner_critical_bug.py \
   tests/unit/services/test_browser_prober_max_exploration.py \
   tests/unit/audit/test_site_aggregator.py -q
+```
+
+Additional detector validation commands:
+
+```bash
+python evaluation/validate_site_archetypes.py
+python evaluation/benchmark_act.py
+python evaluation/benchmark_production.py
 ```
 
 ## Important Notes

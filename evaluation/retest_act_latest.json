@@ -32,7 +32,7 @@
         "predicted_in_adjudicated_space": 1,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 serious | Score: 98.1/100 | Engines: static, heuristic | Time: 0.1s",
+      "scan_summary": "Found 1 accessibility issues | 1 serious | Score: 98.1/100 | Engines: static, heuristic | Time: 0.4s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 8,
@@ -45,7 +45,7 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.3365,
+        "avg_confidence_before_filtering": 0.3373,
         "avg_confidence_after_filtering": 0.84,
         "dropped_low_confidence": 2,
         "dropped_needs_review": 0,
@@ -665,7 +665,7 @@
         "predicted_in_adjudicated_space": 2,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 serious | Score: 99.4/100 | Engines: static, heuristic | Time: 0.1s",
+      "scan_summary": "Found 1 accessibility issues | 1 serious | Score: 99.4/100 | Engines: static, heuristic | Time: 0.4s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 9,
@@ -678,8 +678,8 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.3421,
-        "avg_confidence_after_filtering": 0.7254,
+        "avg_confidence_before_filtering": 0.3445,
+        "avg_confidence_after_filtering": 0.7318,
         "dropped_low_confidence": 2,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
@@ -1315,7 +1315,7 @@
         "predicted_in_adjudicated_space": 5,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 4 accessibility issues | 4 serious | Score: 92.8/100 | Engines: static, heuristic | Time: 0.1s",
+      "scan_summary": "Found 4 accessibility issues | 4 serious | Score: 92.8/100 | Engines: static, heuristic | Time: 0.4s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 17,
@@ -1328,7 +1328,7 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.4729,
+        "avg_confidence_before_filtering": 0.4738,
         "avg_confidence_after_filtering": 0.85,
         "dropped_low_confidence": 7,
         "dropped_needs_review": 0,
@@ -1997,7 +1997,7 @@
         "predicted_in_adjudicated_space": 2,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 2 accessibility issues | 2 serious | Score: 96.3/100 | Engines: static, heuristic | Time: 0.1s",
+      "scan_summary": "Found 2 accessibility issues | 2 serious | Score: 96.3/100 | Engines: static, heuristic | Time: 0.4s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 12,
@@ -2010,8 +2010,8 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.4594,
-        "avg_confidence_after_filtering": 0.7671,
+        "avg_confidence_before_filtering": 0.462,
+        "avg_confidence_after_filtering": 0.7745,
         "dropped_low_confidence": 4,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
@@ -2630,7 +2630,7 @@
         "predicted_in_adjudicated_space": 1,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 serious | Score: 85.0/100 | Engines: static, heuristic | Time: 0.1s",
+      "scan_summary": "Found 1 accessibility issues | 1 serious | Score: 85.0/100 | Engines: static, heuristic | Time: 0.4s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 9,
@@ -2643,8 +2643,8 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.4422,
-        "avg_confidence_after_filtering": 0.7298,
+        "avg_confidence_before_filtering": 0.4446,
+        "avg_confidence_after_filtering": 0.735,
         "dropped_low_confidence": 2,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
@@ -3260,7 +3260,7 @@
         "predicted_in_adjudicated_space": 1,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 moderate | Score: 98.2/100 | Engines: static, heuristic | Time: 0.0s",
+      "scan_summary": "Found 1 accessibility issues | 1 moderate | Score: 98.2/100 | Engines: static, heuristic | Time: 0.4s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 5,
@@ -3273,8 +3273,8 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.4938,
-        "avg_confidence_after_filtering": 0.7085,
+        "avg_confidence_before_filtering": 0.495,
+        "avg_confidence_after_filtering": 0.7144,
         "dropped_low_confidence": 1,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
@@ -3885,7 +3885,7 @@
         "predicted_in_adjudicated_space": 2,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 serious | Score: 98.3/100 | Engines: static, heuristic | Time: 0.0s",
+      "scan_summary": "Found 1 accessibility issues | 1 serious | Score: 98.3/100 | Engines: static, heuristic | Time: 0.4s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 9,
@@ -3898,8 +3898,8 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.4896,
-        "avg_confidence_after_filtering": 0.7204,
+        "avg_confidence_before_filtering": 0.4918,
+        "avg_confidence_after_filtering": 0.7246,
         "dropped_low_confidence": 2,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
@@ -4515,7 +4515,7 @@
         "predicted_in_adjudicated_space": 1,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 2 accessibility issues | 2 serious | Score: 96.3/100 | Engines: static, heuristic | Time: 0.1s",
+      "scan_summary": "Found 2 accessibility issues | 2 serious | Score: 96.3/100 | Engines: static, heuristic | Time: 0.4s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 10,
@@ -4528,8 +4528,8 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.4125,
-        "avg_confidence_after_filtering": 0.886,
+        "avg_confidence_before_filtering": 0.4192,
+        "avg_confidence_after_filtering": 0.9115,
         "dropped_low_confidence": 2,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
@@ -5154,7 +5154,7 @@
         "predicted_in_adjudicated_space": 1,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 moderate | Score: 98.2/100 | Engines: static, heuristic | Time: 0.0s",
+      "scan_summary": "Found 1 accessibility issues | 1 moderate | Score: 98.2/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 8,
@@ -5167,8 +5167,8 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.4442,
-        "avg_confidence_after_filtering": 0.7085,
+        "avg_confidence_before_filtering": 0.4469,
+        "avg_confidence_after_filtering": 0.7144,
         "dropped_low_confidence": 1,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
@@ -5785,7 +5785,7 @@
         "predicted_in_adjudicated_space": 1,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 serious | Score: 98.2/100 | Engines: static, heuristic | Time: 0.0s",
+      "scan_summary": "Found 1 accessibility issues | 1 serious | Score: 98.2/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 8,
@@ -5798,7 +5798,7 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.509,
+        "avg_confidence_before_filtering": 0.5109,
         "avg_confidence_after_filtering": 0.85,
         "dropped_low_confidence": 1,
         "dropped_needs_review": 0,
@@ -6413,7 +6413,7 @@
         "predicted_in_adjudicated_space": 1,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 moderate | Score: 85.0/100 | Engines: static, heuristic | Time: 0.0s",
+      "scan_summary": "Found 1 accessibility issues | 1 moderate | Score: 85.0/100 | Engines: static, heuristic | Time: 0.4s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 8,
@@ -6426,8 +6426,8 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.4571,
-        "avg_confidence_after_filtering": 0.8117,
+        "avg_confidence_before_filtering": 0.4597,
+        "avg_confidence_after_filtering": 0.8165,
         "dropped_low_confidence": 1,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
@@ -7050,7 +7050,7 @@
         "predicted_in_adjudicated_space": 1,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 serious | Score: 98.1/100 | Engines: static, heuristic | Time: 0.1s",
+      "scan_summary": "Found 1 accessibility issues | 1 serious | Score: 98.1/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 9,
@@ -7063,8 +7063,8 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.361,
-        "avg_confidence_after_filtering": 0.8951,
+        "avg_confidence_before_filtering": 0.3655,
+        "avg_confidence_after_filtering": 0.9206,
         "dropped_low_confidence": 2,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
@@ -7694,7 +7694,7 @@
         "predicted_in_adjudicated_space": 1,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 moderate | Score: 98.1/100 | Engines: static, heuristic | Time: 0.0s",
+      "scan_summary": "Found 1 accessibility issues | 1 moderate | Score: 98.1/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 9,
@@ -7707,8 +7707,8 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.3602,
-        "avg_confidence_after_filtering": 0.8885,
+        "avg_confidence_before_filtering": 0.3647,
+        "avg_confidence_after_filtering": 0.914,
         "dropped_low_confidence": 2,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
@@ -8340,7 +8340,7 @@
         "predicted_in_adjudicated_space": 2,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 2 accessibility issues | 2 moderate | Score: 96.4/100 | Engines: static, heuristic | Time: 0.1s",
+      "scan_summary": "Found 2 accessibility issues | 2 moderate | Score: 96.4/100 | Engines: static, heuristic | Time: 0.4s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 11,
@@ -8353,7 +8353,7 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.4057,
+        "avg_confidence_before_filtering": 0.4071,
         "avg_confidence_after_filtering": 0.85,
         "dropped_low_confidence": 3,
         "dropped_needs_review": 0,
@@ -8988,7 +8988,7 @@
         "predicted_in_adjudicated_space": 2,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 moderate | Score: 85.0/100 | Engines: static, heuristic | Time: 0.0s",
+      "scan_summary": "Found 1 accessibility issues | 1 moderate | Score: 85.0/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 8,
@@ -9001,8 +9001,8 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.3614,
-        "avg_confidence_after_filtering": 0.8168,
+        "avg_confidence_before_filtering": 0.3633,
+        "avg_confidence_after_filtering": 0.8237,
         "dropped_low_confidence": 2,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
@@ -9623,7 +9623,7 @@
         "predicted_in_adjudicated_space": 1,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 moderate | Score: 85.0/100 | Engines: static, heuristic | Time: 0.1s",
+      "scan_summary": "Found 1 accessibility issues | 1 moderate | Score: 85.0/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 8,
@@ -9636,8 +9636,8 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.4571,
-        "avg_confidence_after_filtering": 0.8117,
+        "avg_confidence_before_filtering": 0.4597,
+        "avg_confidence_after_filtering": 0.8165,
         "dropped_low_confidence": 1,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
@@ -10263,7 +10263,7 @@
         "predicted_in_adjudicated_space": 1,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 serious | Score: 98.2/100 | Engines: static, heuristic | Time: 0.0s",
+      "scan_summary": "Found 1 accessibility issues | 1 serious | Score: 98.2/100 | Engines: static, heuristic | Time: 0.4s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 9,
@@ -10276,8 +10276,8 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.3923,
-        "avg_confidence_after_filtering": 0.7158,
+        "avg_confidence_before_filtering": 0.3947,
+        "avg_confidence_after_filtering": 0.7217,
         "dropped_low_confidence": 2,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
@@ -10887,7 +10887,7 @@
         "predicted_in_adjudicated_space": 1,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 serious | Score: 98.1/100 | Engines: static, heuristic | Time: 0.1s",
+      "scan_summary": "Found 1 accessibility issues | 1 serious | Score: 98.1/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 9,
@@ -10900,8 +10900,8 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.361,
-        "avg_confidence_after_filtering": 0.8951,
+        "avg_confidence_before_filtering": 0.3655,
+        "avg_confidence_after_filtering": 0.9206,
         "dropped_low_confidence": 2,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
@@ -11517,7 +11517,7 @@
         "predicted_in_adjudicated_space": 1,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 moderate | Score: 99.4/100 | Engines: static, heuristic | Time: 0.1s",
+      "scan_summary": "Found 1 accessibility issues | 1 moderate | Score: 99.4/100 | Engines: static, heuristic | Time: 0.4s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 9,
@@ -11530,7 +11530,7 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.3457,
+        "avg_confidence_before_filtering": 0.3464,
         "avg_confidence_after_filtering": 0.85,
         "dropped_low_confidence": 3,
         "dropped_needs_review": 0,
@@ -12164,7 +12164,7 @@
         "predicted_in_adjudicated_space": 3,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 moderate | Score: 98.2/100 | Engines: static, heuristic | Time: 0.0s",
+      "scan_summary": "Found 1 accessibility issues | 1 moderate | Score: 98.2/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 11,
@@ -12177,7 +12177,7 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.3555,
+        "avg_confidence_before_filtering": 0.3569,
         "avg_confidence_after_filtering": 0.85,
         "dropped_low_confidence": 4,
         "dropped_needs_review": 0,
@@ -12806,7 +12806,7 @@
         "predicted_in_adjudicated_space": 3,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 1 accessibility issues | 1 moderate | Score: 98.2/100 | Engines: static, heuristic | Time: 0.0s",
+      "scan_summary": "Found 1 accessibility issues | 1 moderate | Score: 98.2/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 11,
@@ -12819,7 +12819,7 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.3555,
+        "avg_confidence_before_filtering": 0.3569,
         "avg_confidence_after_filtering": 0.85,
         "dropped_low_confidence": 4,
         "dropped_needs_review": 0,
@@ -13469,7 +13469,7 @@
         "predicted_in_adjudicated_space": 2,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 2 accessibility issues | 2 serious | Score: 96.3/100 | Engines: static, heuristic | Time: 0.0s",
+      "scan_summary": "Found 2 accessibility issues | 2 serious | Score: 96.3/100 | Engines: static, heuristic | Time: 0.3s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 10,
@@ -13482,8 +13482,8 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.4762,
-        "avg_confidence_after_filtering": 0.7671,
+        "avg_confidence_before_filtering": 0.4793,
+        "avg_confidence_after_filtering": 0.7745,
         "dropped_low_confidence": 2,
         "dropped_needs_review": 0,
         "dropped_contextual_single_source": 0,
@@ -14100,7 +14100,7 @@
         "predicted_in_adjudicated_space": 2,
         "unknown_predicted_rule_count": 0
       },
-      "scan_summary": "Found 3 accessibility issues | 2 critical | 1 serious | Score: 94.4/100 | Engines: static, heuristic | Time: 0.0s",
+      "scan_summary": "Found 3 accessibility issues | 2 critical | 1 serious | Score: 94.4/100 | Engines: static, heuristic | Time: 0.4s",
       "precision_profile_telemetry": {
         "profile": "production",
         "input_issues": 10,
@@ -14113,7 +14113,7 @@
           "visual": 0.75,
           "contextual": 0.8
         },
-        "avg_confidence_before_filtering": 0.5251,
+        "avg_confidence_before_filtering": 0.5259,
         "avg_confidence_after_filtering": 0.8075,
         "dropped_low_confidence": 2,
         "dropped_needs_review": 0,
@@ -14734,63 +14734,7 @@
     }
   },
   "per_rule_metrics": {
-    "text-spacing": {
-      "tp": 2,
-      "fp": 0,
-      "fn": 0,
-      "precision": 1.0,
-      "recall": 1.0
-    },
-    "aria-required-children": {
-      "tp": 1,
-      "fp": 0,
-      "fn": 0,
-      "precision": 1.0,
-      "recall": 1.0
-    },
-    "aria-attribute": {
-      "tp": 1,
-      "fp": 0,
-      "fn": 0,
-      "precision": 1.0,
-      "recall": 1.0
-    },
-    "meta-refresh": {
-      "tp": 1,
-      "fp": 0,
-      "fn": 0,
-      "precision": 1.0,
-      "recall": 1.0
-    },
     "aria-valid-attr": {
-      "tp": 1,
-      "fp": 0,
-      "fn": 0,
-      "precision": 1.0,
-      "recall": 1.0
-    },
-    "no-main-landmark": {
-      "tp": 1,
-      "fp": 0,
-      "fn": 0,
-      "precision": 1.0,
-      "recall": 1.0
-    },
-    "invalid-lang": {
-      "tp": 1,
-      "fp": 0,
-      "fn": 0,
-      "precision": 1.0,
-      "recall": 1.0
-    },
-    "aria-allowed-attr": {
-      "tp": 1,
-      "fp": 0,
-      "fn": 0,
-      "precision": 1.0,
-      "recall": 1.0
-    },
-    "aria-roles": {
       "tp": 1,
       "fp": 0,
       "fn": 0,
@@ -14811,22 +14755,50 @@
       "precision": 1.0,
       "recall": 1.0
     },
-    "aria-required-parent": {
+    "valid-lang": {
       "tp": 1,
       "fp": 0,
       "fn": 0,
       "precision": 1.0,
       "recall": 1.0
     },
-    "svg-no-accessible-name": {
-      "tp": 3,
+    "empty-link": {
+      "tp": 1,
       "fp": 0,
       "fn": 0,
       "precision": 1.0,
       "recall": 1.0
     },
-    "missing-landmark": {
+    "aria-roles": {
       "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "invalid-lang": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "aria-valid-attr-value": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "no-headings": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "media-alternative": {
+      "tp": 2,
       "fp": 0,
       "fn": 0,
       "precision": 1.0,
@@ -14846,14 +14818,7 @@
       "precision": 1.0,
       "recall": 1.0
     },
-    "link-purpose": {
-      "tp": 2,
-      "fp": 0,
-      "fn": 0,
-      "precision": 1.0,
-      "recall": 1.0
-    },
-    "media-alternative": {
+    "empty-heading": {
       "tp": 2,
       "fp": 0,
       "fn": 0,
@@ -14867,28 +14832,14 @@
       "precision": 1.0,
       "recall": 1.0
     },
-    "empty-heading": {
-      "tp": 2,
-      "fp": 0,
-      "fn": 0,
-      "precision": 1.0,
-      "recall": 1.0
-    },
-    "valid-lang": {
+    "meta-refresh": {
       "tp": 1,
       "fp": 0,
       "fn": 0,
       "precision": 1.0,
       "recall": 1.0
     },
-    "link-name": {
-      "tp": 1,
-      "fp": 0,
-      "fn": 0,
-      "precision": 1.0,
-      "recall": 1.0
-    },
-    "aria-valid-attr-value": {
+    "aria-required-parent": {
       "tp": 1,
       "fp": 0,
       "fn": 0,
@@ -14902,15 +14853,64 @@
       "precision": 1.0,
       "recall": 1.0
     },
-    "no-headings": {
+    "aria-required-children": {
       "tp": 1,
       "fp": 0,
       "fn": 0,
       "precision": 1.0,
       "recall": 1.0
     },
-    "empty-link": {
+    "aria-allowed-attr": {
       "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "aria-attribute": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "link-name": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "svg-no-accessible-name": {
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "no-main-landmark": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "text-spacing": {
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "missing-landmark": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "link-purpose": {
+      "tp": 2,
       "fp": 0,
       "fn": 0,
       "precision": 1.0,

@@ -173,10 +173,68 @@ def _issue(url: str, rule_id: str, issue_type: str, severity: str,
 class StaticChecker:
     """Runs comprehensive static HTML checks against WCAG 2.2."""
 
-    def __init__(self, html: str, url: str):
+    def __init__(self, html: str, url: str, fetch_status: Optional[int] = None, degraded_reason: str = ""):
         self.soup = BeautifulSoup(html, "lxml")
         self.url = url
+        self.fetch_status = int(fetch_status) if isinstance(fetch_status, int) else None
+        self.degraded_reason = str(degraded_reason or "").strip().lower()
         self.rule_activity: dict[str, dict[str, Any]] = {}
+
+    def _is_blocked_partial_page(self) -> bool:
+        """Heuristic guard for access-blocked or anti-bot pages with unreliable structure."""
+        if self.fetch_status in {401, 403, 407, 429}:
+            return True
+        if self.degraded_reason == "blocked_request":
+            return True
+
+        text = (self.soup.get_text(" ", strip=True) or "").lower()
+        if not text:
+            return False
+
+        blocked_tokens = (
+            "access denied",
+            "forbidden",
+            "request blocked",
+            "blocked request",
+            "temporarily unavailable",
+            "robot",
+            "captcha",
+            "bot detection",
+            "security check",
+            "service unavailable",
+            "rate limit",
+            "too many requests",
+        )
+        if any(token in text for token in blocked_tokens) and len(text) <= 1200:
+            return True
+        return False
+
+    def _is_probable_app_shell_page(self) -> bool:
+        """Detect SPA/bootstrap shell pages where structural findings are often unreliable pre-hydration."""
+        text = (self.soup.get_text(" ", strip=True) or "").strip()
+        text_len = len(text)
+        script_count = len(self.soup.find_all("script"))
+
+        root_id_patterns = re.compile(r"^(?:__next|root|app|app-root|__nuxt|gatsby-focus-wrapper)$", re.I)
+        root_class_patterns = re.compile(r"(?:\bapp\b|\broot\b|\bshell\b)", re.I)
+        has_root_id = bool(self.soup.find(attrs={"id": root_id_patterns}))
+        has_root_class = bool(self.soup.find(class_=root_class_patterns))
+        has_react_marker = bool(self.soup.find(attrs={"data-reactroot": True}))
+
+        visible_semantic = bool(
+            self.soup.find("main")
+            or self.soup.find("article")
+            or self.soup.find("section")
+            or self.soup.find("nav")
+        )
+
+        # Keep this strict so we only bypass structural rules for obvious shell pages.
+        return (
+            script_count >= 4
+            and text_len <= 140
+            and (has_root_id or has_root_class or has_react_marker)
+            and not visible_semantic
+        )
 
     def _track_rule_activity(
         self,
@@ -313,7 +371,16 @@ class StaticChecker:
             "accessible_auth", "redundant_entry", "aria_apg_patterns", "semantic_depth"
         ]
         issues = []
+        blocked_partial = self._is_blocked_partial_page()
+        blocked_sensitive_checks = {
+            "landmarks",
+            "headings",
+            "semantic_depth",
+            "advanced_detect",
+        }
         for check_name in all_checks:
+            if blocked_partial and check_name in blocked_sensitive_checks:
+                continue
             method = getattr(self, f"check_{check_name}", None)
             if method:
                 try:
@@ -429,6 +496,7 @@ class StaticChecker:
 
     def check_landmarks(self) -> list[dict]:
         issues = []
+        shell_like_page = self._is_probable_app_shell_page()
 
         def _dedupe_nodes(nodes: list[Tag]) -> list[Tag]:
             seen: set[int] = set()
@@ -479,10 +547,11 @@ class StaticChecker:
             or [n for n in self.soup.find_all(attrs={"role": "contentinfo"}) if self._is_visible_for_static(n)]
         )
         high_signal_missing_main = (not has_main) and has_nav
+        shell_skip_primary_landmarks = shell_like_page and not has_nav and not has_main
         no_main_samples: list[str] = []
         missing_landmark_samples: list[str] = []
 
-        if not has_main:
+        if not has_main and not shell_skip_primary_landmarks:
             issues.append(_issue(
                 self.url, "no-main-landmark", "violation", "critical" if high_signal_missing_main else "moderate",
                 "<body>", "<body>",
@@ -500,7 +569,7 @@ class StaticChecker:
                     "Add a single visible <main> landmark so assistive technology users can jump to primary content."
                 ))
                 missing_landmark_samples.append("navigation present without main landmark")
-        if not has_nav:
+        if not has_nav and not shell_skip_primary_landmarks:
             issues.append(_issue(
                 self.url, "no-nav-landmark", "best-practice", "minor",
                 "<body>", "<body>",
@@ -508,7 +577,7 @@ class StaticChecker:
                 "1.3.1", "A", "html",
                 "Wrap navigation links in a <nav> element."
             ))
-        if not has_header:
+        if not has_header and not shell_skip_primary_landmarks:
             issues.append(_issue(
                 self.url, "no-header-landmark", "best-practice", "minor",
                 "<body>", "<body>",
@@ -516,7 +585,7 @@ class StaticChecker:
                 "1.3.1", "A", "html",
                 "Add a <header> element for the site banner area."
             ))
-        if not has_footer:
+        if not has_footer and not shell_skip_primary_landmarks:
             issues.append(_issue(
                 self.url, "no-footer-landmark", "best-practice", "minor",
                 "<body>", "<body>",
@@ -533,7 +602,7 @@ class StaticChecker:
         landmark_samples_high: list[str] = []
         landmark_samples_medium: list[str] = []
 
-        if len(visible_main_landmarks) == 0:
+        if len(visible_main_landmarks) == 0 and not shell_skip_primary_landmarks:
             issues.append(_issue(
                 self.url, "landmark-roles", "violation", "serious",
                 "<body>", "<body>",
@@ -557,7 +626,7 @@ class StaticChecker:
             if len(landmark_samples_high) < 5:
                 landmark_samples_high.append(_snippet(first_main, 200))
 
-        if len(visible_nav_landmarks) == 0:
+        if len(visible_nav_landmarks) == 0 and not shell_skip_primary_landmarks:
             landmark_roles_medium_logs += 1
             if len(landmark_samples_medium) < 5:
                 landmark_samples_medium.append("missing visible nav landmark")
@@ -3127,6 +3196,45 @@ class StaticChecker:
             role_tokens = [tok for tok in role_raw.split() if tok]
             if len(sample_checked) < 5:
                 sample_checked.append(f"{_css_selector(el)} role='{role_raw}'")
+
+            if role_tokens and len(set(role_tokens)) != len(role_tokens):
+                issues.append(_issue(
+                    self.url,
+                    "aria-roles",
+                    "violation",
+                    "serious",
+                    _css_selector(el),
+                    _snippet(el),
+                    f'Role attribute contains duplicate tokens: "{role_raw}".',
+                    "4.1.2",
+                    "A",
+                    "aria",
+                    "Keep a single valid role token (or valid fallback sequence without duplicates).",
+                ))
+                rule_hits["aria-roles"] += 1
+                if len(sample_violations["aria-roles"]) < 5:
+                    sample_violations["aria-roles"].append(_snippet(el, 200))
+
+            invalid_tokens = [tok for tok in role_tokens if tok not in _KNOWN_ROLES]
+            known_tokens = [tok for tok in role_tokens if tok in _KNOWN_ROLES]
+            if invalid_tokens and known_tokens:
+                issues.append(_issue(
+                    self.url,
+                    "aria-roles",
+                    "violation",
+                    "moderate",
+                    _css_selector(el),
+                    _snippet(el),
+                    f'Role attribute mixes valid and invalid tokens: "{role_raw}".',
+                    "4.1.2",
+                    "A",
+                    "aria",
+                    "Remove invalid role tokens and keep only valid ARIA role names.",
+                ))
+                rule_hits["aria-roles"] += 1
+                if len(sample_violations["aria-roles"]) < 5:
+                    sample_violations["aria-roles"].append(_snippet(el, 200))
+
             # ARIA permits multiple role tokens as fallback. Treat as valid if any token is known.
             if role_tokens and not any(tok in _KNOWN_ROLES for tok in role_tokens):
                 issues.append(_issue(

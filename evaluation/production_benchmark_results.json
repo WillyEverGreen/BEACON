@@ -8,6 +8,8 @@
       "predicted_tier": "high",
       "expected_alignment": true,
       "expected_alignment_distance": 0,
+      "alignment_applicable": true,
+      "access_limited": false,
       "scan_mode": "fast",
       "score": 94.3,
       "total_issues": 8,
@@ -46,8 +48,8 @@
         "keyboard": 2
       },
       "avg_confidence": 0.7,
-      "low_confidence_count": 3,
-      "scan_time_s": 0.92,
+      "low_confidence_count": 4,
+      "scan_time_s": 0.87,
       "degraded_mode": false,
       "engines_used": [
         "static",
@@ -71,9 +73,11 @@
       "url": "https://www.irctc.co.in",
       "category": "government",
       "expected_tier": "medium",
-      "predicted_tier": "medium",
-      "expected_alignment": true,
+      "predicted_tier": "access-limited",
+      "expected_alignment": false,
       "expected_alignment_distance": 0,
+      "alignment_applicable": false,
+      "access_limited": true,
       "scan_mode": "fast",
       "score": 83.5,
       "total_issues": 1,
@@ -92,7 +96,7 @@
       },
       "avg_confidence": 0.9,
       "low_confidence_count": 0,
-      "scan_time_s": 16.46,
+      "scan_time_s": 4.21,
       "degraded_mode": true,
       "engines_used": [],
       "telemetry": {
@@ -116,14 +120,17 @@
       "predicted_tier": "medium",
       "expected_alignment": false,
       "expected_alignment_distance": 1,
+      "alignment_applicable": true,
+      "access_limited": false,
       "scan_mode": "fast",
       "score": 70.0,
       "total_issues": 10,
       "structural_fp": 0,
       "severity": {
-        "critical": 1,
         "moderate": 2,
-        "serious": 7
+        "serious": 5,
+        "minor": 2,
+        "critical": 1
       },
       "top_rules": [
         {
@@ -139,34 +146,35 @@
           "count": 2
         },
         {
-          "rule": "duplicate-id",
+          "rule": "div-itis-missing-semantics",
           "count": 2
         },
         {
-          "rule": "image-alt",
+          "rule": "missing-label",
           "count": 1
         }
       ],
       "categories": {
-        "images": 4,
         "navigation": 4,
-        "html": 2
+        "images": 3,
+        "structure": 2,
+        "forms": 1
       },
-      "avg_confidence": 0.754,
+      "avg_confidence": 0.814,
       "low_confidence_count": 3,
-      "scan_time_s": 0.67,
+      "scan_time_s": 0.8,
       "degraded_mode": false,
       "engines_used": [
         "static",
         "heuristic"
       ],
       "telemetry": {
-        "input_issues": 22,
+        "input_issues": 21,
         "reported_issues": 10,
-        "dropped_structural": 1,
-        "dropped_low_confidence": 8,
+        "dropped_structural": 2,
+        "dropped_low_confidence": 9,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.545,
+        "suppression_rate": 0.524,
         "suppression_warning": false,
         "low_issue_guard_active": false
       },
@@ -178,64 +186,44 @@
       "url": "https://www.ndtv.com",
       "category": "news",
       "expected_tier": "medium",
-      "predicted_tier": "medium",
-      "expected_alignment": true,
+      "predicted_tier": "access-limited",
+      "expected_alignment": false,
       "expected_alignment_distance": 0,
+      "alignment_applicable": false,
+      "access_limited": true,
       "scan_mode": "fast",
       "score": 82.0,
-      "total_issues": 6,
-      "structural_fp": 5,
+      "total_issues": 1,
+      "structural_fp": 0,
       "severity": {
-        "serious": 2,
-        "moderate": 1,
-        "minor": 3
+        "serious": 1
       },
       "top_rules": [
         {
-          "rule": "no-lang",
-          "count": 1
-        },
-        {
-          "rule": "no-main-landmark",
-          "count": 1
-        },
-        {
-          "rule": "landmark-roles",
-          "count": 1
-        },
-        {
-          "rule": "no-nav-landmark",
-          "count": 1
-        },
-        {
-          "rule": "no-header-landmark",
-          "count": 1
-        },
-        {
-          "rule": "no-footer-landmark",
+          "rule": "blocked-request-partial",
           "count": 1
         }
       ],
       "categories": {
-        "html": 6
+        "availability": 1
       },
-      "avg_confidence": 0.7,
-      "low_confidence_count": 3,
-      "scan_time_s": 0.29,
+      "avg_confidence": 0.9,
+      "low_confidence_count": 0,
+      "scan_time_s": 0.32,
       "degraded_mode": true,
       "engines_used": [
         "static",
         "heuristic"
       ],
       "telemetry": {
-        "input_issues": 6,
-        "reported_issues": 6,
-        "dropped_structural": 5,
-        "dropped_low_confidence": 0,
+        "input_issues": 1,
+        "reported_issues": 0,
+        "dropped_structural": 0,
+        "dropped_low_confidence": 1,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.0,
+        "suppression_rate": 1.0,
         "suppression_warning": false,
-        "low_issue_guard_active": false
+        "low_issue_guard_active": true
       },
       "success": true,
       "error": null
@@ -245,64 +233,44 @@
       "url": "https://www.etsy.com",
       "category": "ecommerce",
       "expected_tier": "medium",
-      "predicted_tier": "medium",
-      "expected_alignment": true,
+      "predicted_tier": "access-limited",
+      "expected_alignment": false,
       "expected_alignment_distance": 0,
+      "alignment_applicable": false,
+      "access_limited": true,
       "scan_mode": "fast",
       "score": 82.0,
-      "total_issues": 6,
-      "structural_fp": 5,
+      "total_issues": 1,
+      "structural_fp": 0,
       "severity": {
-        "serious": 2,
-        "moderate": 1,
-        "minor": 3
+        "serious": 1
       },
       "top_rules": [
         {
-          "rule": "no-headings",
-          "count": 1
-        },
-        {
-          "rule": "no-main-landmark",
-          "count": 1
-        },
-        {
-          "rule": "landmark-roles",
-          "count": 1
-        },
-        {
-          "rule": "no-nav-landmark",
-          "count": 1
-        },
-        {
-          "rule": "no-header-landmark",
-          "count": 1
-        },
-        {
-          "rule": "no-footer-landmark",
+          "rule": "blocked-request-partial",
           "count": 1
         }
       ],
       "categories": {
-        "html": 6
+        "availability": 1
       },
-      "avg_confidence": 0.7,
-      "low_confidence_count": 3,
-      "scan_time_s": 0.19,
+      "avg_confidence": 0.9,
+      "low_confidence_count": 0,
+      "scan_time_s": 0.22,
       "degraded_mode": true,
       "engines_used": [
         "static",
         "heuristic"
       ],
       "telemetry": {
-        "input_issues": 6,
-        "reported_issues": 6,
-        "dropped_structural": 6,
+        "input_issues": 0,
+        "reported_issues": 0,
+        "dropped_structural": 0,
         "dropped_low_confidence": 0,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.0,
+        "suppression_rate": 1.0,
         "suppression_warning": false,
-        "low_issue_guard_active": false
+        "low_issue_guard_active": true
       },
       "success": true,
       "error": null
@@ -312,49 +280,29 @@
       "url": "https://www.meesho.com",
       "category": "ecommerce",
       "expected_tier": "low",
-      "predicted_tier": "medium",
+      "predicted_tier": "access-limited",
       "expected_alignment": false,
-      "expected_alignment_distance": 1,
+      "expected_alignment_distance": 0,
+      "alignment_applicable": false,
+      "access_limited": true,
       "scan_mode": "fast",
       "score": 82.0,
-      "total_issues": 6,
-      "structural_fp": 5,
+      "total_issues": 1,
+      "structural_fp": 0,
       "severity": {
-        "serious": 2,
-        "moderate": 1,
-        "minor": 3
+        "serious": 1
       },
       "top_rules": [
         {
-          "rule": "no-lang",
-          "count": 1
-        },
-        {
-          "rule": "no-main-landmark",
-          "count": 1
-        },
-        {
-          "rule": "landmark-roles",
-          "count": 1
-        },
-        {
-          "rule": "no-nav-landmark",
-          "count": 1
-        },
-        {
-          "rule": "no-header-landmark",
-          "count": 1
-        },
-        {
-          "rule": "no-footer-landmark",
+          "rule": "blocked-request-partial",
           "count": 1
         }
       ],
       "categories": {
-        "html": 6
+        "availability": 1
       },
-      "avg_confidence": 0.7,
-      "low_confidence_count": 3,
+      "avg_confidence": 0.9,
+      "low_confidence_count": 0,
       "scan_time_s": 0.2,
       "degraded_mode": true,
       "engines_used": [
@@ -362,14 +310,14 @@
         "heuristic"
       ],
       "telemetry": {
-        "input_issues": 6,
-        "reported_issues": 6,
-        "dropped_structural": 5,
-        "dropped_low_confidence": 0,
+        "input_issues": 1,
+        "reported_issues": 0,
+        "dropped_structural": 0,
+        "dropped_low_confidence": 1,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.0,
+        "suppression_rate": 1.0,
         "suppression_warning": false,
-        "low_issue_guard_active": false
+        "low_issue_guard_active": true
       },
       "success": true,
       "error": null
@@ -382,20 +330,29 @@
       "predicted_tier": "medium",
       "expected_alignment": false,
       "expected_alignment_distance": 1,
+      "alignment_applicable": true,
+      "access_limited": false,
       "scan_mode": "fast",
       "score": 70.0,
-      "total_issues": 10,
-      "structural_fp": 1,
+      "total_issues": 11,
+      "structural_fp": 2,
       "severity": {
-        "serious": 3,
-        "critical": 1,
-        "minor": 3,
-        "moderate": 3
+        "critical": 4,
+        "serious": 4,
+        "minor": 3
       },
       "top_rules": [
         {
           "rule": "div-itis-missing-semantics",
           "count": 3
+        },
+        {
+          "rule": "no-main-landmark",
+          "count": 2
+        },
+        {
+          "rule": "missing-landmark",
+          "count": 2
         },
         {
           "rule": "empty-link",
@@ -408,42 +365,30 @@
         {
           "rule": "svg-no-accessible-name",
           "count": 1
-        },
-        {
-          "rule": "missing-landmark",
-          "count": 1
-        },
-        {
-          "rule": "unsafe-external-link",
-          "count": 1
-        },
-        {
-          "rule": "no-main-landmark",
-          "count": 1
         }
       ],
       "categories": {
-        "navigation": 3,
+        "html": 4,
+        "navigation": 2,
         "forms": 1,
         "images": 1,
-        "structure": 3,
-        "html": 2
+        "structure": 3
       },
-      "avg_confidence": 0.7,
-      "low_confidence_count": 6,
-      "scan_time_s": 0.95,
+      "avg_confidence": 0.755,
+      "low_confidence_count": 3,
+      "scan_time_s": 0.96,
       "degraded_mode": false,
       "engines_used": [
         "static",
         "heuristic"
       ],
       "telemetry": {
-        "input_issues": 12,
-        "reported_issues": 10,
-        "dropped_structural": 2,
-        "dropped_low_confidence": 2,
+        "input_issues": 14,
+        "reported_issues": 11,
+        "dropped_structural": 1,
+        "dropped_low_confidence": 1,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.167,
+        "suppression_rate": 0.214,
         "suppression_warning": false,
         "low_issue_guard_active": false
       },
@@ -458,15 +403,22 @@
       "predicted_tier": "medium",
       "expected_alignment": true,
       "expected_alignment_distance": 0,
+      "alignment_applicable": true,
+      "access_limited": false,
       "scan_mode": "fast",
       "score": 70.0,
-      "total_issues": 11,
+      "total_issues": 15,
       "structural_fp": 0,
       "severity": {
         "moderate": 5,
-        "serious": 6
+        "serious": 5,
+        "minor": 5
       },
       "top_rules": [
+        {
+          "rule": "div-itis-missing-semantics",
+          "count": 5
+        },
         {
           "rule": "heading-order",
           "count": 3
@@ -476,12 +428,12 @@
           "count": 3
         },
         {
-          "rule": "empty-link",
+          "rule": "link-purpose",
           "count": 2
         },
         {
-          "rule": "link-purpose",
-          "count": 2
+          "rule": "empty-link",
+          "count": 1
         },
         {
           "rule": "svg-no-accessible-name",
@@ -490,25 +442,26 @@
       ],
       "categories": {
         "html": 3,
-        "navigation": 4,
+        "navigation": 3,
         "aria": 3,
-        "images": 1
+        "images": 1,
+        "structure": 5
       },
-      "avg_confidence": 0.725,
-      "low_confidence_count": 7,
-      "scan_time_s": 1.95,
+      "avg_confidence": 0.708,
+      "low_confidence_count": 8,
+      "scan_time_s": 1.94,
       "degraded_mode": false,
       "engines_used": [
         "static",
         "heuristic"
       ],
       "telemetry": {
-        "input_issues": 26,
-        "reported_issues": 11,
+        "input_issues": 25,
+        "reported_issues": 15,
         "dropped_structural": 0,
         "dropped_low_confidence": 4,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.577,
+        "suppression_rate": 0.4,
         "suppression_warning": false,
         "low_issue_guard_active": false
       },
@@ -523,14 +476,16 @@
       "predicted_tier": "medium",
       "expected_alignment": false,
       "expected_alignment_distance": 1,
+      "alignment_applicable": true,
+      "access_limited": false,
       "scan_mode": "fast",
       "score": 70.0,
-      "total_issues": 10,
+      "total_issues": 11,
       "structural_fp": 0,
       "severity": {
         "serious": 5,
         "moderate": 3,
-        "minor": 2
+        "minor": 3
       },
       "top_rules": [
         {
@@ -550,19 +505,19 @@
           "count": 1
         },
         {
-          "rule": "missing-skip-link",
-          "count": 1
-        },
-        {
-          "rule": "video-transcript",
-          "count": 1
-        },
-        {
           "rule": "media-alternative",
           "count": 1
         },
         {
-          "rule": "line-height",
+          "rule": "missing-skip-link",
+          "count": 1
+        },
+        {
+          "rule": "avoid-inline-spacing",
+          "count": 1
+        },
+        {
+          "rule": "video-transcript",
           "count": 1
         }
       ],
@@ -570,24 +525,25 @@
         "html": 1,
         "navigation": 4,
         "media": 2,
+        "content": 1,
         "images": 2,
-        "content": 1
+        "structure": 1
       },
-      "avg_confidence": 0.718,
-      "low_confidence_count": 6,
-      "scan_time_s": 2.36,
+      "avg_confidence": 0.721,
+      "low_confidence_count": 4,
+      "scan_time_s": 2.56,
       "degraded_mode": false,
       "engines_used": [
         "static",
         "heuristic"
       ],
       "telemetry": {
-        "input_issues": 38,
-        "reported_issues": 10,
-        "dropped_structural": 2,
-        "dropped_low_confidence": 18,
+        "input_issues": 40,
+        "reported_issues": 11,
+        "dropped_structural": 3,
+        "dropped_low_confidence": 17,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.737,
+        "suppression_rate": 0.725,
         "suppression_warning": false,
         "low_issue_guard_active": false
       },
@@ -602,12 +558,15 @@
       "predicted_tier": "medium",
       "expected_alignment": false,
       "expected_alignment_distance": 1,
+      "alignment_applicable": true,
+      "access_limited": false,
       "scan_mode": "fast",
       "score": 70.0,
-      "total_issues": 10,
-      "structural_fp": 0,
+      "total_issues": 14,
+      "structural_fp": 2,
       "severity": {
-        "serious": 9,
+        "critical": 3,
+        "serious": 10,
         "moderate": 1
       },
       "top_rules": [
@@ -620,29 +579,38 @@
           "count": 3
         },
         {
+          "rule": "no-main-landmark",
+          "count": 2
+        },
+        {
+          "rule": "missing-landmark",
+          "count": 2
+        },
+        {
           "rule": "missing-skip-link",
           "count": 1
         }
       ],
       "categories": {
+        "html": 4,
         "navigation": 4,
         "images": 6
       },
-      "avg_confidence": 0.774,
+      "avg_confidence": 0.89,
       "low_confidence_count": 1,
-      "scan_time_s": 1.28,
+      "scan_time_s": 1.23,
       "degraded_mode": false,
       "engines_used": [
         "static",
         "heuristic"
       ],
       "telemetry": {
-        "input_issues": 22,
-        "reported_issues": 10,
-        "dropped_structural": 3,
-        "dropped_low_confidence": 6,
+        "input_issues": 24,
+        "reported_issues": 14,
+        "dropped_structural": 2,
+        "dropped_low_confidence": 5,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.545,
+        "suppression_rate": 0.417,
         "suppression_warning": false,
         "low_issue_guard_active": false
       },
@@ -659,6 +627,8 @@
       "predicted_tier": "high",
       "expected_alignment": true,
       "expected_alignment_distance": 0,
+      "alignment_applicable": true,
+      "access_limited": false,
       "scan_mode": "deep",
       "score": 86.0,
       "total_issues": 10,
@@ -690,9 +660,9 @@
         "keyboard": 5,
         "general": 2
       },
-      "avg_confidence": 0.739,
+      "avg_confidence": 0.744,
       "low_confidence_count": 7,
-      "scan_time_s": 19.91,
+      "scan_time_s": 15.17,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -721,8 +691,10 @@
       "predicted_tier": "high",
       "expected_alignment": false,
       "expected_alignment_distance": 1,
+      "alignment_applicable": true,
+      "access_limited": false,
       "scan_mode": "deep",
-      "score": 96.3,
+      "score": 98.1,
       "total_issues": 8,
       "structural_fp": 5,
       "severity": {
@@ -769,7 +741,7 @@
       },
       "avg_confidence": 0.7,
       "low_confidence_count": 4,
-      "scan_time_s": 3.1,
+      "scan_time_s": 3.13,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -780,7 +752,7 @@
         "input_issues": 8,
         "reported_issues": 8,
         "dropped_structural": 6,
-        "dropped_low_confidence": 1,
+        "dropped_low_confidence": 2,
         "dropped_excluded_rules": 0,
         "suppression_rate": 0.0,
         "suppression_warning": false,
@@ -797,14 +769,16 @@
       "predicted_tier": "medium",
       "expected_alignment": false,
       "expected_alignment_distance": 1,
+      "alignment_applicable": true,
+      "access_limited": false,
       "scan_mode": "deep",
       "score": 70.0,
-      "total_issues": 10,
+      "total_issues": 11,
       "structural_fp": 0,
       "severity": {
-        "critical": 1,
         "moderate": 5,
-        "serious": 4
+        "serious": 4,
+        "minor": 2
       },
       "top_rules": [
         {
@@ -816,8 +790,8 @@
           "count": 3
         },
         {
-          "rule": "image-alt",
-          "count": 1
+          "rule": "div-itis-missing-semantics",
+          "count": 2
         },
         {
           "rule": "empty-link",
@@ -825,12 +799,13 @@
         }
       ],
       "categories": {
-        "images": 4,
-        "navigation": 6
+        "navigation": 6,
+        "images": 3,
+        "structure": 2
       },
-      "avg_confidence": 0.764,
-      "low_confidence_count": 1,
-      "scan_time_s": 20.67,
+      "avg_confidence": 0.856,
+      "low_confidence_count": 2,
+      "scan_time_s": 16.47,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -839,12 +814,12 @@
         "axe-core"
       ],
       "telemetry": {
-        "input_issues": 27,
-        "reported_issues": 10,
-        "dropped_structural": 0,
-        "dropped_low_confidence": 10,
+        "input_issues": 26,
+        "reported_issues": 11,
+        "dropped_structural": 1,
+        "dropped_low_confidence": 11,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.63,
+        "suppression_rate": 0.577,
         "suppression_warning": false,
         "low_issue_guard_active": false
       },
@@ -859,55 +834,27 @@
       "predicted_tier": "high",
       "expected_alignment": false,
       "expected_alignment_distance": 1,
+      "alignment_applicable": true,
+      "access_limited": false,
       "scan_mode": "deep",
-      "score": 94.5,
-      "total_issues": 9,
-      "structural_fp": 6,
+      "score": 90.0,
+      "total_issues": 2,
+      "structural_fp": 0,
       "severity": {
-        "serious": 3,
-        "moderate": 3,
-        "minor": 3
+        "serious": 2
       },
       "top_rules": [
         {
           "rule": "no-lang",
           "count": 2
-        },
-        {
-          "rule": "region",
-          "count": 1
-        },
-        {
-          "rule": "no-main-landmark",
-          "count": 1
-        },
-        {
-          "rule": "landmark-roles",
-          "count": 1
-        },
-        {
-          "rule": "landmark-one-main",
-          "count": 1
-        },
-        {
-          "rule": "no-nav-landmark",
-          "count": 1
-        },
-        {
-          "rule": "no-header-landmark",
-          "count": 1
-        },
-        {
-          "rule": "no-footer-landmark",
-          "count": 1
         }
       ],
       "categories": {
-        "html": 9
+        "html": 2
       },
-      "avg_confidence": 0.7,
-      "low_confidence_count": 4,
-      "scan_time_s": 4.26,
+      "avg_confidence": 0.829,
+      "low_confidence_count": 0,
+      "scan_time_s": 4.22,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -916,14 +863,14 @@
         "axe-core"
       ],
       "telemetry": {
-        "input_issues": 9,
-        "reported_issues": 9,
-        "dropped_structural": 6,
+        "input_issues": 4,
+        "reported_issues": 2,
+        "dropped_structural": 1,
         "dropped_low_confidence": 1,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.0,
+        "suppression_rate": 0.5,
         "suppression_warning": false,
-        "low_issue_guard_active": false
+        "low_issue_guard_active": true
       },
       "success": true,
       "error": null
@@ -936,6 +883,8 @@
       "predicted_tier": "high",
       "expected_alignment": false,
       "expected_alignment_distance": 1,
+      "alignment_applicable": true,
+      "access_limited": false,
       "scan_mode": "deep",
       "score": 98.1,
       "total_issues": 8,
@@ -985,7 +934,7 @@
       },
       "avg_confidence": 0.7,
       "low_confidence_count": 4,
-      "scan_time_s": 5.03,
+      "scan_time_s": 4.78,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -1014,55 +963,27 @@
       "predicted_tier": "high",
       "expected_alignment": false,
       "expected_alignment_distance": 2,
+      "alignment_applicable": true,
+      "access_limited": false,
       "scan_mode": "deep",
-      "score": 94.5,
-      "total_issues": 9,
-      "structural_fp": 6,
+      "score": 90.0,
+      "total_issues": 2,
+      "structural_fp": 0,
       "severity": {
-        "serious": 3,
-        "moderate": 3,
-        "minor": 3
+        "serious": 2
       },
       "top_rules": [
         {
           "rule": "no-lang",
           "count": 2
-        },
-        {
-          "rule": "region",
-          "count": 1
-        },
-        {
-          "rule": "no-main-landmark",
-          "count": 1
-        },
-        {
-          "rule": "landmark-roles",
-          "count": 1
-        },
-        {
-          "rule": "landmark-one-main",
-          "count": 1
-        },
-        {
-          "rule": "no-nav-landmark",
-          "count": 1
-        },
-        {
-          "rule": "no-header-landmark",
-          "count": 1
-        },
-        {
-          "rule": "no-footer-landmark",
-          "count": 1
         }
       ],
       "categories": {
-        "html": 9
+        "html": 2
       },
-      "avg_confidence": 0.7,
-      "low_confidence_count": 4,
-      "scan_time_s": 4.23,
+      "avg_confidence": 0.829,
+      "low_confidence_count": 0,
+      "scan_time_s": 4.05,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -1071,14 +992,14 @@
         "axe-core"
       ],
       "telemetry": {
-        "input_issues": 9,
-        "reported_issues": 9,
-        "dropped_structural": 6,
+        "input_issues": 4,
+        "reported_issues": 2,
+        "dropped_structural": 1,
         "dropped_low_confidence": 1,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.0,
+        "suppression_rate": 0.5,
         "suppression_warning": false,
-        "low_issue_guard_active": false
+        "low_issue_guard_active": true
       },
       "success": true,
       "error": null
@@ -1091,19 +1012,29 @@
       "predicted_tier": "high",
       "expected_alignment": true,
       "expected_alignment_distance": 0,
+      "alignment_applicable": true,
+      "access_limited": false,
       "scan_mode": "deep",
-      "score": 94.5,
+      "score": 87.0,
       "total_issues": 10,
-      "structural_fp": 1,
+      "structural_fp": 2,
       "severity": {
-        "serious": 5,
-        "minor": 3,
-        "moderate": 2
+        "critical": 3,
+        "serious": 4,
+        "minor": 3
       },
       "top_rules": [
         {
           "rule": "div-itis-missing-semantics",
           "count": 3
+        },
+        {
+          "rule": "no-main-landmark",
+          "count": 2
+        },
+        {
+          "rule": "missing-landmark",
+          "count": 2
         },
         {
           "rule": "no-focus-style",
@@ -1112,34 +1043,17 @@
         {
           "rule": "svg-no-accessible-name",
           "count": 1
-        },
-        {
-          "rule": "keyboard-unreachable",
-          "count": 1
-        },
-        {
-          "rule": "responsive-reflow",
-          "count": 1
-        },
-        {
-          "rule": "missing-landmark",
-          "count": 1
-        },
-        {
-          "rule": "no-main-landmark",
-          "count": 1
         }
       ],
       "categories": {
+        "html": 4,
         "images": 1,
-        "keyboard": 3,
         "structure": 3,
-        "content": 1,
-        "html": 2
+        "keyboard": 2
       },
-      "avg_confidence": 0.7,
-      "low_confidence_count": 7,
-      "scan_time_s": 13.92,
+      "avg_confidence": 0.762,
+      "low_confidence_count": 5,
+      "scan_time_s": 12.91,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -1148,12 +1062,12 @@
         "axe-core"
       ],
       "telemetry": {
-        "input_issues": 13,
+        "input_issues": 15,
         "reported_issues": 10,
-        "dropped_structural": 2,
-        "dropped_low_confidence": 3,
+        "dropped_structural": 1,
+        "dropped_low_confidence": 2,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.231,
+        "suppression_rate": 0.333,
         "suppression_warning": false,
         "low_issue_guard_active": false
       },
@@ -1168,6 +1082,8 @@
       "predicted_tier": "high",
       "expected_alignment": false,
       "expected_alignment_distance": 1,
+      "alignment_applicable": true,
+      "access_limited": false,
       "scan_mode": "deep",
       "score": 96.3,
       "total_issues": 5,
@@ -1205,7 +1121,7 @@
       },
       "avg_confidence": 0.7,
       "low_confidence_count": 2,
-      "scan_time_s": 10.91,
+      "scan_time_s": 10.46,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -1234,23 +1150,25 @@
       "predicted_tier": "low",
       "expected_alignment": true,
       "expected_alignment_distance": 0,
+      "alignment_applicable": true,
+      "access_limited": false,
       "scan_mode": "deep",
       "score": 64.0,
-      "total_issues": 111,
+      "total_issues": 120,
       "structural_fp": 0,
       "severity": {
-        "serious": 18,
-        "critical": 46,
-        "moderate": 2,
-        "minor": 45
+        "serious": 20,
+        "moderate": 3,
+        "critical": 49,
+        "minor": 48
       },
       "top_rules": [
         {
-          "rule": "redundant-alt",
-          "count": 45
+          "rule": "button-name",
+          "count": 46
         },
         {
-          "rule": "button-name",
+          "rule": "redundant-alt",
           "count": 45
         },
         {
@@ -1258,39 +1176,40 @@
           "count": 4
         },
         {
-          "rule": "color-contrast",
-          "count": 4
+          "rule": "missing-captions",
+          "count": 3
+        },
+        {
+          "rule": "media-alternative",
+          "count": 3
+        },
+        {
+          "rule": "video-transcript",
+          "count": 3
         },
         {
           "rule": "svg-no-accessible-name",
           "count": 3
         },
         {
-          "rule": "no-focus-style",
+          "rule": "div-itis-missing-semantics",
           "count": 3
-        },
-        {
-          "rule": "video-transcript",
-          "count": 2
-        },
-        {
-          "rule": "empty-heading",
-          "count": 1
         }
       ],
       "categories": {
         "html": 1,
-        "images": 8,
         "navigation": 7,
-        "media": 2,
-        "keyboard": 3,
-        "forms": 45,
-        "color": 4,
+        "media": 9,
+        "content": 1,
+        "images": 7,
+        "structure": 3,
+        "keyboard": 5,
+        "forms": 46,
         "general": 41
       },
-      "avg_confidence": 0.861,
-      "low_confidence_count": 7,
-      "scan_time_s": 31.8,
+      "avg_confidence": 0.866,
+      "low_confidence_count": 10,
+      "scan_time_s": 27.86,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -1299,12 +1218,12 @@
         "axe-core"
       ],
       "telemetry": {
-        "input_issues": 153,
-        "reported_issues": 111,
-        "dropped_structural": 2,
-        "dropped_low_confidence": 22,
+        "input_issues": 157,
+        "reported_issues": 120,
+        "dropped_structural": 3,
+        "dropped_low_confidence": 20,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.275,
+        "suppression_rate": 0.236,
         "suppression_warning": false,
         "low_issue_guard_active": false
       },
@@ -1319,14 +1238,16 @@
       "predicted_tier": "low",
       "expected_alignment": true,
       "expected_alignment_distance": 0,
+      "alignment_applicable": true,
+      "access_limited": false,
       "scan_mode": "deep",
-      "score": 64.0,
-      "total_issues": 15,
+      "score": 68.0,
+      "total_issues": 14,
       "structural_fp": 0,
       "severity": {
-        "serious": 12,
+        "serious": 10,
         "moderate": 2,
-        "minor": 1
+        "minor": 2
       },
       "top_rules": [
         {
@@ -1335,7 +1256,7 @@
         },
         {
           "rule": "empty-link",
-          "count": 5
+          "count": 4
         },
         {
           "rule": "link-purpose",
@@ -1346,7 +1267,7 @@
           "count": 1
         },
         {
-          "rule": "focus-obscured",
+          "rule": "div-itis-missing-semantics",
           "count": 1
         },
         {
@@ -1355,14 +1276,14 @@
         }
       ],
       "categories": {
-        "navigation": 7,
+        "navigation": 6,
         "images": 6,
-        "keyboard": 1,
+        "structure": 1,
         "general": 1
       },
-      "avg_confidence": 0.763,
-      "low_confidence_count": 4,
-      "scan_time_s": 19.91,
+      "avg_confidence": 0.862,
+      "low_confidence_count": 3,
+      "scan_time_s": 19.39,
       "degraded_mode": false,
       "engines_used": [
         "browser-probe",
@@ -1371,12 +1292,12 @@
         "axe-core"
       ],
       "telemetry": {
-        "input_issues": 42,
-        "reported_issues": 15,
-        "dropped_structural": 3,
-        "dropped_low_confidence": 16,
+        "input_issues": 37,
+        "reported_issues": 14,
+        "dropped_structural": 1,
+        "dropped_low_confidence": 15,
         "dropped_excluded_rules": 0,
-        "suppression_rate": 0.643,
+        "suppression_rate": 0.622,
         "suppression_warning": false,
         "low_issue_guard_active": false
       },
@@ -1388,23 +1309,29 @@
     "fast": {
       "successful_sites": 10,
       "avg_score": 77.38,
-      "avg_scan_time_s": 2.527,
-      "expectation_alignment_rate": 0.5,
-      "avg_alignment_distance": 0.5,
+      "avg_scan_time_s": 1.331,
+      "expectation_alignment_rate": 0.3333,
+      "avg_alignment_distance": 0.6667,
+      "alignment_applicable_sites": 6,
+      "access_limited_sites": 4,
       "suppression_warnings": 0
     },
     "deep": {
       "successful_sites": 10,
-      "avg_score": 85.82,
-      "avg_scan_time_s": 13.374,
+      "avg_score": 84.75,
+      "avg_scan_time_s": 11.844,
       "expectation_alignment_rate": 0.4,
       "avg_alignment_distance": 0.7,
+      "alignment_applicable_sites": 10,
+      "access_limited_sites": 0,
       "suppression_warnings": 0
     },
     "overall": {
       "successful_audits": 20,
-      "expectation_alignment_rate": 0.45,
-      "avg_alignment_distance": 0.6
+      "alignment_applicable_audits": 16,
+      "access_limited_audits": 4,
+      "expectation_alignment_rate": 0.375,
+      "avg_alignment_distance": 0.6875
     }
   }
 }
