@@ -13,6 +13,22 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/rag", tags=["RAG"])
 
 
+def _explanation_to_text(raw: object) -> str:
+    if isinstance(raw, str):
+        return raw
+
+    if isinstance(raw, dict):
+        ordered_keys = ("what_is_broken", "impact", "wcag_sc", "intent", "verification")
+        parts: list[str] = []
+        for key in ordered_keys:
+            value = str(raw.get(key, "") or "").strip()
+            if value:
+                parts.append(value)
+        return "\n\n".join(parts)
+
+    return str(raw or "")
+
+
 @router.post("", response_model=RAGResponse)
 async def query_rag(request: RAGRequest):
     """
@@ -38,13 +54,20 @@ async def query_rag(request: RAGRequest):
             context_chunks=chunks,
         )
 
+        explanation_text = _explanation_to_text(llm_response.get("explanation", ""))
+        code_fix = str(llm_response.get("code_fix", "") or "")
+        if not code_fix:
+            fixes = llm_response.get("fixes")
+            if isinstance(fixes, dict):
+                code_fix = str(fixes.get("vanilla", "") or "")
+
         # 3. Build response
         return RAGResponse(
-            explanation=llm_response.get("explanation", ""),
+            explanation=explanation_text,
             wcag_references=[
                 WCAGReference(**ref) for ref in llm_response.get("wcag_references", [])
             ],
-            code_fix=llm_response.get("code_fix", ""),
+            code_fix=code_fix,
             practical_assets=[
                 PracticalAsset(**asset) for asset in llm_response.get("practical_assets", [])
             ],

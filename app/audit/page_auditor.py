@@ -505,7 +505,11 @@ async def _default_state_provider(url: str, state: str, page_context: PageContex
         snapshot = await _snapshot_current_dom()
         return _partial_payload(reason, snapshot)
     finally:
-        await page.close()
+        # Playwright may already have closed this page during browser teardown.
+        try:
+            await page.close()
+        except Exception:
+            pass
 
 
 async def audit_page(url: str, scan_mode: str, page_context: PageContext) -> PageAuditResult:

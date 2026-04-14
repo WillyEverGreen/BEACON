@@ -3,6 +3,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { BeaconConfigProvider } from "@/lib/beaconConfig";
 
 /* ── Icons ────────────────────────────────────────────────────────── */
 function GridIcon({ className }: { className?: string }) {
@@ -26,7 +27,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-      <div className="min-h-screen flex font-['Satoshi','Segoe_UI',sans-serif] bg-[var(--beacon-bg)] text-[var(--beacon-text)] transition-colors duration-200">
+      <BeaconConfigProvider>
+        <div className="min-h-screen flex font-['Satoshi','Segoe_UI',sans-serif] bg-[var(--beacon-bg)] text-[var(--beacon-text)] transition-colors duration-200">
         {/* ── Sidebar ───────────────────────────────────────────── */}
         <aside className="w-[15rem] bg-[var(--beacon-sidebar-bg)] border-r border-[#2A2A2E] flex flex-col fixed h-full z-20">
           {/* Logo */}
@@ -86,7 +88,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {children}
           </div>
         </main>
-      </div>
+        </div>
+      </BeaconConfigProvider>
     </ThemeProvider>
   );
 }

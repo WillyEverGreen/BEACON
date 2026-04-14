@@ -1,8 +1,8 @@
-# BEACON Mastery Architecture v2.2
+# BEACON Mastery Architecture v2.3
 ## Production-Grade Accessibility Intelligence Engine
 
 > **Status**: Production-ready core. Experimental extensions clearly labelled.
-> **Last Updated**: 2026-04-12 — Detector robustness hardening, archetype validation, and rollout-gate calibration.
+> **Last Updated**: 2026-04-14 — Production scan profiles centralized, global safety caps enforced, dashboard scan budgets standardized.
 
 ---
 
@@ -23,9 +23,9 @@ Developer / CI Tool
 │                                                                    │
 │  ┌────────────────────────────────────────────────────────────┐  │
 │  │         SCAN MODE ROUTER                                    │  │
-│  │  fast    ──► Static + Heuristics        (~5-15s, no AI)    │  │
-│  │  deep    ──► All engines + RAG + LLM    (~30-120s, full)   │  │
-│  │  max     ──► Deep + interaction/scroll  (~60-300s, broad)  │  │
+│  │  fast    ──► Static + Heuristics        (~5-10s, 1 page)    │  │
+│  │  deep    ──► Browser + Axe + Aggregation (~60-120s, ~12p)   │  │
+│  │  max     ──► Deep + interaction/scroll  (~120-240s, ~25p)   │  │
 │  └────────────────────────────────────────────────────────────┘  │
 │                       │                                            │
 │          ┌────────────┼──────────────────────┐                   │
@@ -46,7 +46,7 @@ Developer / CI Tool
 │                          │                                        │
 │                          ▼                                        │
 │   ┌─────────────────────────────────────────────────┐            │
-│   │     Cognitive Engine [deep/max, experimental]    │            │
+│   │     Cognitive Engine [max, experimental]         │            │
 │   │   Readability + Jargon + Form UX + COGA checks   │            │
 │   │   cognitive_mode = "experimental"                │            │
 │   └─────────────────────────────────────────────────┘            │
@@ -166,6 +166,9 @@ Developer / CI Tool
 | **RAG context limit** | `MAX_CONTEXT_CHUNKS = 5` hard cap | ✅ NEW |
 | **BM25 index cache** | Built once at startup, never rebuilt | ✅ |
 | **Playwright circuit breaker** | Semaphore(3) + 25s timeout | ✅ |
+| **Centralized mode profiles** | `SCAN_MODE_CONFIG` in `app/config.py` | ✅ NEW |
+| **Global scan safety caps** | `MAX_SCAN_GLOBAL_CAP=80`, `MAX_CONCURRENT_SITE_AUDITS=3` | ✅ NEW |
+| **Dashboard mode budgets** | deep=12 pages, max=25 pages | ✅ NEW |
 | **App-shell structural guardrails** | Suppresses premature landmark noise on React/Next bootstrap shells | ✅ NEW |
 | **Access-limited normalization** | Converts blocked/partial fetch states into explicit availability findings | ✅ NEW |
 
@@ -186,6 +189,33 @@ Developer / CI Tool
 - **ARIA role-token enforcement**: mixed valid/invalid role token lists now fail deterministically.
 - **Duplicate role-token enforcement**: duplicate role tokens are flagged as `aria-roles` violations.
 - **Blocked-page handling**: access-limited pages are normalized into availability findings, not inflated structural findings.
+
+## ✅ 3.3 Production Scan Profiles and Caps (2026-04-14)
+
+All site-scan limits are centralized and consumed by the runner and dashboard paths.
+
+| Mode | max_pages | crawl_cap | bfs_depth | bfs_pages | dom_pages | stage1_timeout_s | stage2_timeout_s | global_sla_s | concurrency |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| fast | 1 | 10 | 1 | 10 | 0 | 12 | 4 | 35 | 5 |
+| deep | 12 | 30 | 3 | 30 | 0 | 25 | 12 | 120 | 3 |
+| max  | 25 | 70 | 4 | 60 | 15 | 40 | 18 | 240 | 2 |
+
+Global hard caps:
+
+- `MAX_SCAN_GLOBAL_CAP = 80`
+- `MAX_CONCURRENT_SITE_AUDITS = 3`
+
+Dashboard hard budgets:
+
+- `DASHBOARD_DEEP_SCAN_MAX_PAGES = 12`
+- `DASHBOARD_MAX_SCAN_MAX_PAGES = 25`
+
+Behavioral guarantees from these caps:
+
+- Fast mode remains responsive (single-page, low-latency feedback).
+- Deep mode stays in a predictable user-facing range.
+- Max mode scales breadth without unconstrained concurrency.
+- API response shape is unchanged; only operational limits are standardized.
 
 ---
 
@@ -239,7 +269,7 @@ Output: `priority_ranking` — top-5 rules to fix first, with:
 
 ## 🔎 6. Cognitive Engine (Experimental)
 
-> **Status**: Isolated to `deep` mode only. Does not contribute to core score without explicit flag.
+> **Status**: Isolated to `max` mode in site-scan orchestration. Single-page `/audit` deep runs may still include cognitive checks when explicitly enabled. Does not contribute to core score without explicit flag.
 > API response includes `cognitive_mode: "experimental"` to signal this to clients.
 
 Checks: Flesch-Kincaid readability, Gunning Fog, jargon density, CTA clarity,

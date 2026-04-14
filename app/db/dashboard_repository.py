@@ -1,0 +1,214 @@
+"""Repository helpers for dashboard projects and scans persistence."""
+
+from __future__ import annotations
+
+import datetime as dt
+from typing import Any
+
+from app.db.base import get_session
+from app.db.models import DashboardProjectRecord, DashboardScanRecord
+
+
+def _to_iso(value: dt.datetime | None) -> str | None:
+    if value is None:
+        return None
+    return value.isoformat()
+
+
+def _from_iso(value: Any) -> dt.datetime | None:
+    if value is None:
+        return None
+    if isinstance(value, dt.datetime):
+        return value
+    if not isinstance(value, str):
+        return None
+    try:
+        return dt.datetime.fromisoformat(value.replace("Z", "+00:00")).replace(tzinfo=None)
+    except Exception:
+        return None
+
+
+def _serialize_project(record: DashboardProjectRecord) -> dict[str, Any]:
+    return {
+        "id": record.id,
+        "name": record.name,
+        "url": record.url,
+        "description": record.description or "",
+        "created_at": _to_iso(record.created_at),
+        "last_scan_at": _to_iso(record.last_scan_at),
+        "latest_score": float(record.latest_score) if record.latest_score is not None else None,
+        "total_issues": int(record.total_issues or 0),
+    }
+
+
+def _serialize_scan(record: DashboardScanRecord) -> dict[str, Any]:
+    return {
+        "id": record.id,
+        "project_id": record.project_id,
+        "status": record.status,
+        "url": record.url,
+        "scan_mode": record.scan_mode,
+        "score": float(record.score) if record.score is not None else None,
+        "total_issues": int(record.total_issues or 0),
+        "issue_types_count": int(record.issue_types_count or 0),
+        "failing_elements_count": int(record.failing_elements_count or 0),
+        "critical_issues": int(record.critical_issues or 0),
+        "serious_issues": int(record.serious_issues or 0),
+        "moderate_issues": int(record.moderate_issues or 0),
+        "minor_issues": int(record.minor_issues or 0),
+        "summary": record.summary or "",
+        "ai_analysis": record.ai_analysis or "",
+        "issues": list(record.issues or []),
+        "groups": list(record.groups or []),
+        "priority_ranking": list(record.priority_ranking or []),
+        "trust": dict(record.trust or {}),
+        "engines_used": list(record.engines_used or []),
+        "scan_time_seconds": float(record.scan_time_seconds or 0.0),
+        "pages_scanned": int(record.pages_scanned or 1),
+        "pages_discovered": int(record.pages_discovered or 1),
+        "degraded_mode": bool(record.degraded_mode),
+        "degraded_reason": record.degraded_reason,
+        "skipped_components": list(record.skipped_components or []),
+        "degradation_reason": record.degradation_reason,
+        "enrichment_status": record.enrichment_status or "pending",
+        "cognitive_scores": record.cognitive_scores,
+        "markdown_report": record.markdown_report or "",
+        "created_at": _to_iso(record.created_at),
+        "completed_at": _to_iso(record.completed_at),
+    }
+
+
+def _apply_project_record(record: DashboardProjectRecord, payload: dict[str, Any]) -> None:
+    record.name = str(payload.get("name") or "")
+    record.url = str(payload.get("url") or "")
+    record.description = str(payload.get("description") or "")
+    record.created_at = _from_iso(payload.get("created_at")) or dt.datetime.utcnow()
+    record.last_scan_at = _from_iso(payload.get("last_scan_at"))
+
+    latest_score = payload.get("latest_score")
+    record.latest_score = float(latest_score) if latest_score is not None else None
+    record.total_issues = int(payload.get("total_issues") or 0)
+
+
+def _apply_scan_record(record: DashboardScanRecord, payload: dict[str, Any]) -> None:
+    record.project_id = str(payload.get("project_id") or "")
+    record.status = str(payload.get("status") or "scanning")
+    record.url = str(payload.get("url") or "")
+    record.scan_mode = str(payload.get("scan_mode") or "fast")
+
+    score = payload.get("score")
+    record.score = float(score) if score is not None else None
+
+    record.total_issues = int(payload.get("total_issues") or 0)
+    record.issue_types_count = int(payload.get("issue_types_count") or 0)
+    record.failing_elements_count = int(payload.get("failing_elements_count") or record.total_issues)
+    record.critical_issues = int(payload.get("critical_issues") or 0)
+    record.serious_issues = int(payload.get("serious_issues") or 0)
+    record.moderate_issues = int(payload.get("moderate_issues") or 0)
+    record.minor_issues = int(payload.get("minor_issues") or 0)
+    record.summary = str(payload.get("summary") or "")
+    record.ai_analysis = str(payload.get("ai_analysis") or "")
+    record.issues = list(payload.get("issues") or [])
+    record.groups = list(payload.get("groups") or [])
+    record.priority_ranking = list(payload.get("priority_ranking") or [])
+    record.trust = dict(payload.get("trust") or {})
+    record.engines_used = list(payload.get("engines_used") or [])
+    record.scan_time_seconds = float(payload.get("scan_time_seconds") or 0.0)
+    record.pages_scanned = int(payload.get("pages_scanned") or 1)
+    record.pages_discovered = int(payload.get("pages_discovered") or record.pages_scanned)
+    record.degraded_mode = bool(payload.get("degraded_mode", False))
+    record.degraded_reason = payload.get("degraded_reason")
+    record.skipped_components = list(payload.get("skipped_components") or [])
+    record.degradation_reason = payload.get("degradation_reason")
+    record.enrichment_status = str(payload.get("enrichment_status") or "pending")
+    record.cognitive_scores = payload.get("cognitive_scores")
+    record.markdown_report = str(payload.get("markdown_report") or "")
+    record.created_at = _from_iso(payload.get("created_at")) or dt.datetime.utcnow()
+    record.completed_at = _from_iso(payload.get("completed_at"))
+
+
+def list_projects() -> list[dict[str, Any]]:
+    with get_session() as session:
+        rows = (
+            session.query(DashboardProjectRecord)
+            .order_by(DashboardProjectRecord.created_at.desc())
+            .all()
+        )
+        return [_serialize_project(row) for row in rows]
+
+
+def get_project(project_id: str) -> dict[str, Any] | None:
+    with get_session() as session:
+        row = session.get(DashboardProjectRecord, project_id)
+        if row is None:
+            return None
+        return _serialize_project(row)
+
+
+def upsert_project(project: dict[str, Any]) -> dict[str, Any]:
+    project_id = str(project.get("id") or "").strip()
+    if not project_id:
+        raise ValueError("project id is required")
+
+    with get_session() as session:
+        row = session.get(DashboardProjectRecord, project_id)
+        if row is None:
+            row = DashboardProjectRecord(id=project_id)
+            session.add(row)
+
+        _apply_project_record(row, project)
+        session.flush()
+        return _serialize_project(row)
+
+
+def delete_project(project_id: str) -> bool:
+    with get_session() as session:
+        row = session.get(DashboardProjectRecord, project_id)
+        if row is None:
+            return False
+        session.delete(row)
+        return True
+
+
+def list_scans(project_id: str | None = None) -> list[dict[str, Any]]:
+    with get_session() as session:
+        query = session.query(DashboardScanRecord)
+        if project_id:
+            query = query.filter(DashboardScanRecord.project_id == project_id)
+
+        rows = query.order_by(DashboardScanRecord.created_at.desc()).all()
+        return [_serialize_scan(row) for row in rows]
+
+
+def get_scan(scan_id: str) -> dict[str, Any] | None:
+    with get_session() as session:
+        row = session.get(DashboardScanRecord, scan_id)
+        if row is None:
+            return None
+        return _serialize_scan(row)
+
+
+def upsert_scan(scan: dict[str, Any]) -> dict[str, Any]:
+    scan_id = str(scan.get("id") or "").strip()
+    if not scan_id:
+        raise ValueError("scan id is required")
+
+    with get_session() as session:
+        row = session.get(DashboardScanRecord, scan_id)
+        if row is None:
+            row = DashboardScanRecord(id=scan_id)
+            session.add(row)
+
+        _apply_scan_record(row, scan)
+        session.flush()
+        return _serialize_scan(row)
+
+
+def delete_scans_for_project(project_id: str) -> int:
+    with get_session() as session:
+        count = (
+            session.query(DashboardScanRecord)
+            .filter(DashboardScanRecord.project_id == project_id)
+            .delete(synchronize_session=False)
+        )
+        return int(count or 0)

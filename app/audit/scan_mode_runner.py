@@ -11,7 +11,10 @@ from app.audit.models import PageContext
 from app.audit.failure_taxonomy import normalize_reason
 from app.audit.parallel_runner import PageAuditor, SSEEmitter, run_site_audit
 from app.crawlers.orchestrator import CrawlerOrchestrator
-from app.config import AUDIT_PIPELINE_CONFIG, CRAWLER_CONFIG
+from app.config import AUDIT_PIPELINE_CONFIG, MAX_SCAN_GLOBAL_CAP, SCAN_MODE_CONFIG
+from app.services.heuristics import HeuristicAnalyzer
+from app.services.normalizer import normalize_all
+from app.services.static_checks import StaticChecker
 
 
 JourneySimulator = Callable[[list[str], str, PageContext], Awaitable[dict[str, Any]]]
@@ -40,12 +43,18 @@ class _ManagedPlaywrightBrowser:
         return await self._browser.new_page()
 
     async def close(self) -> None:
-        await self._browser.close()
+        try:
+            await self._browser.close()
+        except Exception:
+            pass
         stop_driver = getattr(self._driver, "stop", None)
         if callable(stop_driver):
-            stop_result = stop_driver()
-            if hasattr(stop_result, "__await__"):
-                await stop_result
+            try:
+                stop_result = stop_driver()
+                if hasattr(stop_result, "__await__"):
+                    await stop_result
+            except Exception:
+                pass
 
 
 def _normalize_scan_mode(scan_mode: str) -> str:
@@ -55,8 +64,13 @@ def _normalize_scan_mode(scan_mode: str) -> str:
     return mode
 
 
+def _mode_config(scan_mode: str) -> dict[str, Any]:
+    return SCAN_MODE_CONFIG.get(scan_mode, SCAN_MODE_CONFIG["fast"])
+
+
 def _mode_cap(scan_mode: str) -> int:
-    return int(CRAWLER_CONFIG["orchestrator"]["scan_modes"][scan_mode]["cap"])
+    mode_cfg = _mode_config(scan_mode)
+    return min(int(mode_cfg["crawl_cap"]), int(MAX_SCAN_GLOBAL_CAP))
 
 
 def _journey_config() -> dict[str, int]:
@@ -101,6 +115,38 @@ async def _fast_state_provider(url: str, state: str, page_context: PageContext) 
         return {"html": response.text, "hydration_status": "static"}
     except Exception:
         return {"html": "", "hydration_status": "static_failed"}
+
+
+def _default_static_engine(dom: str, page_url: str) -> list[dict[str, Any]]:
+    """Run static + heuristic checks for site-orchestrated page audits."""
+    if not isinstance(dom, str) or not dom.strip():
+        return []
+
+    static_issues: list[dict[str, Any]] = []
+    heuristic_issues: list[dict[str, Any]] = []
+
+    try:
+        checker = StaticChecker(dom, page_url)
+        static_issues = checker.run_all()
+    except Exception:
+        static_issues = []
+
+    try:
+        analyzer = HeuristicAnalyzer(dom, page_url)
+        heuristic_issues = analyzer.run_all()
+    except Exception:
+        heuristic_issues = []
+
+    try:
+        return normalize_all(
+            static_issues=static_issues,
+            heuristic_issues=heuristic_issues,
+            browser_issues=[],
+            axe_issues=[],
+            url=page_url,
+        )
+    except Exception:
+        return [*list(static_issues or []), *list(heuristic_issues or [])]
 
 
 async def _noop_async_engine(dom: str, page_url: str, page_context: PageContext) -> list[dict[str, Any]]:
@@ -220,6 +266,9 @@ def _mode_engine_policy(scan_mode: str) -> dict[str, bool]:
 
 
 def _apply_mode_policy(scan_mode: str, page_context: PageContext) -> None:
+    if page_context.static_engine is None:
+        page_context.static_engine = _default_static_engine
+
     if scan_mode == "fast":
         page_context.playwright_browser = None
         page_context.playwright_driver = None
@@ -262,8 +311,10 @@ async def run_scan_mode_audit(
 ) -> dict[str, Any]:
     """Execute full mode-specific site auditing from discovery through aggregation."""
     mode = _normalize_scan_mode(scan_mode)
+    mode_config = _mode_config(mode)
     cap = _mode_cap(mode)
     requested_pages = max(1, int(max_pages))
+    requested_pages = min(requested_pages, int(mode_config["max_pages"]), int(MAX_SCAN_GLOBAL_CAP))
     effective_max_pages = min(requested_pages, cap)
 
     async with _SITE_AUDIT_SEMAPHORE:
@@ -282,10 +333,14 @@ async def run_scan_mode_audit(
             result = await run_site_audit(
                 urls=urls_to_audit,
                 scan_mode=mode,
+                max_concurrent_pages=max(1, int(mode_config["concurrency"])),
                 page_context=context,
                 page_auditor=page_auditor,
                 static_only_auditor=static_only_auditor,
                 sse_emitter=sse_emitter,
+                page_timeout_stage1_seconds=float(mode_config["stage1_timeout"]),
+                page_timeout_stage2_seconds=float(mode_config["stage2_timeout"]),
+                global_sla_seconds=float(mode_config["global_sla"]),
             )
 
             result["seed_url"] = seed_url

@@ -39,17 +39,23 @@ class PageContext:
         if self.playwright_browser is not None and self.owns_browser:
             close_browser = getattr(self.playwright_browser, "close", None)
             if callable(close_browser):
-                close_result = close_browser()
-                if hasattr(close_result, "__await__"):
-                    await close_result
+                try:
+                    close_result = close_browser()
+                    if hasattr(close_result, "__await__"):
+                        await close_result
+                except Exception:
+                    pass
             self.playwright_browser = None
 
         if self.playwright_driver is not None and self.owns_browser:
             stop_driver = getattr(self.playwright_driver, "stop", None)
             if callable(stop_driver):
-                stop_result = stop_driver()
-                if hasattr(stop_result, "__await__"):
-                    await stop_result
+                try:
+                    stop_result = stop_driver()
+                    if hasattr(stop_result, "__await__"):
+                        await stop_result
+                except Exception:
+                    pass
             self.playwright_driver = None
 
 

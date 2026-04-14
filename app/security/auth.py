@@ -28,6 +28,7 @@ ROLE_ORDER = {
 _PUBLIC_PATH_PREFIXES = (
     "/",
     "/health",
+    "/v1/config",
     "/docs",
     "/redoc",
     "/openapi.json",

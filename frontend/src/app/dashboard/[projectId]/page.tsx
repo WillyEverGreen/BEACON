@@ -2,7 +2,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import api from "@/lib/api";
+import api, { toUserFacingError } from "@/lib/api";
+import { useBeaconConfig } from "@/lib/beaconConfig";
 import {
   PieChart,
   Pie,
@@ -116,9 +117,11 @@ const TOOLTIP_STYLE = {
 /* ── Main Component ────────────────────────────────────────────── */
 export default function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const { aiEnabled } = useBeaconConfig();
   const [project, setProject] = useState<any>(null);
   const [scans, setScans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState<{ message: string; retryable: boolean } | null>(null);
   const [tab, setTab] = useState<"overview" | "issues" | "priority">(
     "overview",
   );
@@ -163,6 +166,7 @@ export default function ProjectDetailPage() {
         ]);
         setProject(proj);
         setScans(scanList);
+        setApiError(null);
 
         if (scanOutcome) {
           setScanStatus(scanOutcome);
@@ -170,6 +174,7 @@ export default function ProjectDetailPage() {
         }
       } catch (e) {
         console.error(e);
+        setApiError(toUserFacingError(e));
       } finally {
         setLoading(false);
       }
@@ -201,6 +206,7 @@ export default function ProjectDetailPage() {
           }
         } catch (err) {
           console.error("Polling error:", err);
+          setApiError(toUserFacingError(err));
           // If we fail 10 times in a row, auto-stop to prevent hanging
           setPollErrorCount((prev) => {
             const next = prev + 1;
@@ -233,6 +239,7 @@ export default function ProjectDetailPage() {
       ]);
       setProject(proj);
       setScans(scanList);
+      setApiError(null);
 
       const hasActive = scanList.some((s: any) => s.status === "scanning");
       if (!hasActive) {
@@ -245,6 +252,7 @@ export default function ProjectDetailPage() {
       }
     } catch (e) {
       console.error(e);
+      setApiError(toUserFacingError(e));
       setScanning(false);
       setScanStatus("failed");
     }
@@ -252,6 +260,9 @@ export default function ProjectDetailPage() {
 
   const issues: any[] = latestScan?.issues || [];
   const score = latestScan?.score ?? null;
+  const issueTypesCount = Number(latestScan?.issue_types_count || issues.length || 0);
+  const failingElementsCount = Number(latestScan?.failing_elements_count || latestScan?.total_issues || 0);
+  const pagesScanned = Number(latestScan?.pages_scanned || 1);
   const severityCounts = {
     critical:
       latestScan?.critical_issues ||
@@ -351,7 +362,7 @@ export default function ProjectDetailPage() {
 
   const TABS = [
     { key: "overview" as const, label: "Overview" },
-    { key: "issues" as const, label: "Issues", count: issues.length },
+    { key: "issues" as const, label: "Issues", count: issueTypesCount },
     { key: "priority" as const, label: "Fix Priority" },
   ];
 
@@ -376,15 +387,23 @@ export default function ProjectDetailPage() {
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto">
-            <select
-              value={scanMode}
-              onChange={(e) => setScanMode(e.target.value)}
-              disabled={scanning}
-              className="beacon-input text-xs font-bold uppercase tracking-widest cursor-pointer disabled:opacity-50"
-            >
-              <option value="fast">Fast Scan</option>
-              <option value="deep">Deep Scan</option>
-            </select>
+            <div className="flex flex-col gap-1">
+              <select
+                value={scanMode}
+                onChange={(e) => setScanMode(e.target.value)}
+                disabled={scanning}
+                className="beacon-input text-xs font-bold uppercase tracking-widest cursor-pointer disabled:opacity-50"
+              >
+                <option value="fast">Fast Scan</option>
+                <option value="deep">Deep Scan</option>
+                <option value="max">Max Scan</option>
+              </select>
+              <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--beacon-text-muted)]">
+                {scanMode === "fast"
+                  ? "Fast: entry-page audit"
+                  : "Deep/Max: multi-page domain audit"}
+              </p>
+            </div>
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <button
                 onClick={startScan}
@@ -421,6 +440,19 @@ export default function ProjectDetailPage() {
           </div>
         </div>
       </div>
+
+      {apiError && (
+        <div className="glass-card p-4 mb-6 border-l-[6px] border-l-[var(--beacon-error)]">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <p className="text-sm font-semibold text-[var(--beacon-text)]">{apiError.message}</p>
+            {apiError.retryable && (
+              <button onClick={() => void loadData()} className="btn-secondary text-xs">
+                Retry
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Notifications ───────────────────────────────────── */}
       {scanStatus === "completed" && (
@@ -464,7 +496,7 @@ export default function ProjectDetailPage() {
 
       {/* ── Score Strip (Neo-brutalism layout) ────────────────── */}
       {latestScan && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
           {[
             {
               label: "Accessibility Score",
@@ -473,9 +505,21 @@ export default function ProjectDetailPage() {
               suffix: "/100",
             },
             {
-              label: "Total Issues",
-              value: latestScan.total_issues || 0,
+              label: "Failing Elements",
+              value: failingElementsCount,
               color: "var(--beacon-warning)",
+              suffix: "",
+            },
+            {
+              label: "Issue Types",
+              value: issueTypesCount,
+              color: "var(--beacon-text)",
+              suffix: "",
+            },
+            {
+              label: "Pages Scanned",
+              value: pagesScanned,
+              color: "var(--beacon-primary)",
               suffix: "",
             },
             {
@@ -923,10 +967,10 @@ export default function ProjectDetailPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-bold uppercase tracking-[0.15em] text-[var(--beacon-text-muted)]">
-              Discovered Vulnerabilities
+              Discovered Vulnerabilities by Type
             </h3>
             <span className="text-xs font-bold bg-[var(--beacon-surface)] border border-[var(--beacon-border)] px-3 py-1 rounded shadow-sm">
-              {issues.length} Items
+              {issueTypesCount} types • {failingElementsCount} elements
             </span>
           </div>
 
@@ -1022,7 +1066,7 @@ export default function ProjectDetailPage() {
 
                         <div className="space-y-6">
                           {/* Suggested Fix */}
-                          {issue.suggested_fix && (
+                          {aiEnabled && issue.suggested_fix && (
                             <div>
                               <h4 className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--beacon-primary)] mb-2 flex items-center gap-1.5">
                                 <IconSparkle className="w-3.5 h-3.5" />{" "}
@@ -1036,8 +1080,22 @@ export default function ProjectDetailPage() {
                             </div>
                           )}
 
+                          {aiEnabled && !issue.suggested_fix && (
+                            <div>
+                              <h4 className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--beacon-primary)] mb-2 flex items-center gap-1.5">
+                                <IconSparkle className="w-3.5 h-3.5" />{" "}
+                                Generative Fix Suggestion
+                              </h4>
+                              <div className="bg-[var(--beacon-primary)]/5 p-4 rounded-md border border-[var(--beacon-primary)]/20">
+                                <p className="text-sm text-[var(--beacon-text)] font-medium leading-relaxed">
+                                  Fix suggestion unavailable
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
                           {/* Code Fix */}
-                          {issue.code_fix && (
+                          {aiEnabled && issue.code_fix && (
                             <div>
                               <h4 className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--beacon-success)] mb-2 flex items-center gap-1.5">
                                 <IconCode className="w-3.5 h-3.5" /> Remediated

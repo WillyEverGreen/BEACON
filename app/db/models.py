@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -88,3 +88,69 @@ class CacheMetaRecord(Base):
     writes: Mapped[int] = mapped_column(Integer, default=0)
     last_reset: Mapped[dt.datetime] = mapped_column(DateTime, default=dt.datetime.utcnow)
     updated_at: Mapped[dt.datetime] = mapped_column(DateTime, default=dt.datetime.utcnow, onupdate=dt.datetime.utcnow)
+
+
+class DashboardProjectRecord(Base):
+    __tablename__ = "projects"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=dt.datetime.utcnow, index=True)
+    last_scan_at: Mapped[dt.datetime | None] = mapped_column(DateTime, nullable=True)
+    latest_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    total_issues: Mapped[int] = mapped_column(Integer, default=0)
+
+    scans: Mapped[list[DashboardScanRecord]] = relationship(
+        "DashboardScanRecord",
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
+
+
+class DashboardScanRecord(Base):
+    __tablename__ = "scans"
+    __table_args__ = (
+        Index("ix_scans_project_scan", "project_id", "id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        String(32),
+        ForeignKey("projects.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    status: Mapped[str] = mapped_column(String(32), default="scanning", index=True)
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    scan_mode: Mapped[str] = mapped_column(String(32), default="fast")
+    score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    total_issues: Mapped[int] = mapped_column(Integer, default=0)
+    issue_types_count: Mapped[int] = mapped_column(Integer, default=0)
+    failing_elements_count: Mapped[int] = mapped_column(Integer, default=0)
+    critical_issues: Mapped[int] = mapped_column(Integer, default=0)
+    serious_issues: Mapped[int] = mapped_column(Integer, default=0)
+    moderate_issues: Mapped[int] = mapped_column(Integer, default=0)
+    minor_issues: Mapped[int] = mapped_column(Integer, default=0)
+    summary: Mapped[str] = mapped_column(Text, default="")
+    ai_analysis: Mapped[str] = mapped_column(Text, default="")
+    issues: Mapped[list] = mapped_column(JSON, default=list)
+    groups: Mapped[list] = mapped_column(JSON, default=list)
+    priority_ranking: Mapped[list] = mapped_column(JSON, default=list)
+    trust: Mapped[dict] = mapped_column(JSON, default=dict)
+    engines_used: Mapped[list] = mapped_column(JSON, default=list)
+    scan_time_seconds: Mapped[float] = mapped_column(Float, default=0.0)
+    pages_scanned: Mapped[int] = mapped_column(Integer, default=1)
+    pages_discovered: Mapped[int] = mapped_column(Integer, default=1)
+    degraded_mode: Mapped[bool] = mapped_column(Boolean, default=False)
+    degraded_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    skipped_components: Mapped[list] = mapped_column(JSON, default=list)
+    degradation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    enrichment_status: Mapped[str] = mapped_column(String(32), default="pending")
+    cognitive_scores: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    markdown_report: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=dt.datetime.utcnow, index=True)
+    completed_at: Mapped[dt.datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+
+    project: Mapped[DashboardProjectRecord] = relationship("DashboardProjectRecord", back_populates="scans")

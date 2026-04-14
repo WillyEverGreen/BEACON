@@ -1,50 +1,286 @@
 """
-Dashboard API — projects & scans backed by the real BEACON engine.
-Data is persisted to local JSON files in app/data.
+Dashboard API - projects and scans backed by SQLAlchemy persistence.
 """
-import uuid
-import datetime
+
+from __future__ import annotations
+
 import asyncio
-import logging
+import datetime
 import json
+import logging
 import os
+import threading
+import time
+import uuid
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional
+
+from app.audit.scan_mode_runner import run_scan_mode_audit
+from app.config import (
+    DASHBOARD_DEEP_SCAN_MAX_PAGES,
+    DASHBOARD_MAX_SCAN_MAX_PAGES,
+    MAX_SCAN_GLOBAL_CAP,
+    SCAN_MODE_CONFIG,
+)
+from app.db.dashboard_repository import (
+    delete_project as delete_project_record,
+    get_project as get_project_record,
+    get_scan as get_scan_record,
+    list_projects as list_project_records,
+    list_scans as list_scan_records,
+    upsert_project as upsert_project_record,
+    upsert_scan as upsert_scan_record,
+)
+from app.services.grouper import group_issues
 from app.services.audit_runner import run_audit
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["Dashboard API"])
 
-# ── JSON Persistence ──────────────────────────────────────────────
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
-os.makedirs(DATA_DIR, exist_ok=True)
+SCAN_STALE_TIMEOUT_SECONDS = 15 * 60
 
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 PROJECTS_FILE = os.path.join(DATA_DIR, "projects.json")
 SCANS_FILE = os.path.join(DATA_DIR, "scans.json")
 
-def load_data(filepath: str) -> dict:
-    if os.path.exists(filepath):
-        try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as e:
-            logger.error(f"Error reading {filepath}: {e}")
+_legacy_bootstrap_done = False
+_legacy_bootstrap_lock = threading.Lock()
+
+
+def _resolve_site_scan_page_budget(scan_mode: str) -> int:
+    mode = (scan_mode or "deep").lower()
+    if mode not in {"deep", "max"}:
+        return 1
+
+    mode_cfg = SCAN_MODE_CONFIG.get(mode, SCAN_MODE_CONFIG["fast"])
+    dashboard_cap = DASHBOARD_MAX_SCAN_MAX_PAGES if mode == "max" else DASHBOARD_DEEP_SCAN_MAX_PAGES
+    mode_max_pages = int(mode_cfg["max_pages"])
+    crawl_cap = min(int(mode_cfg["crawl_cap"]), int(MAX_SCAN_GLOBAL_CAP))
+    requested = min(mode_max_pages, int(dashboard_cap))
+    return max(1, min(requested, crawl_cap))
+
+
+def _extract_page_issue_occurrences(site_payload: dict) -> list[dict]:
+    occurrences: list[dict] = []
+    for page_result in site_payload.get("results", []):
+        if not isinstance(page_result, dict):
+            continue
+        issues = page_result.get("issues", [])
+        if not isinstance(issues, list):
+            continue
+        for issue in issues:
+            if isinstance(issue, dict):
+                occurrences.append(issue)
+    return occurrences
+
+
+def _severity_counts(issues: list[dict]) -> dict[str, int]:
+    counts = {"critical": 0, "serious": 0, "moderate": 0, "minor": 0}
+    for issue in issues:
+        severity = str(issue.get("severity") or "").lower()
+        if severity in counts:
+            counts[severity] += 1
+    return counts
+
+
+def _normalize_site_scan_result(site_payload: dict, scan_mode: str, elapsed_seconds: float) -> dict:
+    site_result = site_payload.get("site_result", {}) if isinstance(site_payload.get("site_result"), dict) else {}
+
+    site_issues = [
+        issue for issue in site_result.get("issues", [])
+        if isinstance(issue, dict)
+    ]
+    page_issue_occurrences = _extract_page_issue_occurrences(site_payload)
+
+    pages_scanned = int(
+        site_result.get("pages_audited")
+        or site_payload.get("pages_completed")
+        or len(site_payload.get("results", []) or [])
+        or 1
+    )
+    pages_discovered = int(
+        site_result.get("pages_discovered")
+        or site_payload.get("pages_discovered")
+        or pages_scanned
+    )
+
+    issue_types_count = len(site_issues)
+    failing_elements_count = len(page_issue_occurrences)
+    if failing_elements_count <= 0 and issue_types_count > 0:
+        failing_elements_count = sum(max(1, int(issue.get("affected_pages") or 1)) for issue in site_issues)
+
+    severity_source = page_issue_occurrences if page_issue_occurrences else site_issues
+    severity_counts = _severity_counts(severity_source)
+
+    score = round(float(site_result.get("site_score") or 0.0), 1)
+
+    issue_by_rule: dict[str, dict] = {}
+    for issue in site_issues:
+        rule_id = str(issue.get("rule_id") or "")
+        if rule_id and rule_id not in issue_by_rule:
+            issue_by_rule[rule_id] = issue
+
+    priority_ranking: list[dict] = []
+    for item in site_result.get("priority_ranking", []) if isinstance(site_result.get("priority_ranking"), list) else []:
+        if not isinstance(item, dict):
+            continue
+        rule_id = str(item.get("rule_id") or "")
+        source_issue = issue_by_rule.get(rule_id, {})
+        affected_pages = int(item.get("affected_pages") or 0)
+        priority_ranking.append(
+            {
+                **item,
+                "rule_family": source_issue.get("rule_id") or rule_id,
+                "description": source_issue.get("description") or rule_id,
+                "severity": source_issue.get("severity"),
+                "frequency": affected_pages,
+            }
+        )
+
+    groups = group_issues(site_issues) if site_issues else []
+
+    engines_policy = site_payload.get("engines_policy", {}) if isinstance(site_payload.get("engines_policy"), dict) else {}
+    engines_used = ["site-orchestrator", "crawler-sitemap", "crawler-bfs", "static", "heuristic"]
+    if engines_policy.get("playwright"):
+        engines_used.append("browser-probe")
+    if engines_policy.get("axe"):
+        engines_used.append("axe-core")
+    if engines_policy.get("cognitive"):
+        engines_used.append("cognitive")
+
+    degraded_mode = bool(
+        site_payload.get("degraded_mode")
+        or site_result.get("degraded_mode")
+        or site_payload.get("sla_truncated")
+    )
+
+    degraded_reason = None
+    top_degraded = site_payload.get("top_degraded_causes", [])
+    if isinstance(top_degraded, list) and top_degraded and isinstance(top_degraded[0], dict):
+        degraded_reason = top_degraded[0].get("reason")
+
+    confidence_values = [float(issue.get("confidence") or 0.0) for issue in site_issues]
+    confidence_avg = (sum(confidence_values) / len(confidence_values)) if confidence_values else 0.0
+
+    trust_warnings = []
+    if degraded_mode:
+        trust_warnings.append("site_scan_degraded_or_truncated")
+    if pages_scanned <= 1:
+        trust_warnings.append("single_page_coverage")
+
+    trust_payload = {
+        "confidence_avg": round(confidence_avg, 4),
+        "suppression_rate": 0.0,
+        "data_quality": "medium" if degraded_mode else "high",
+        "engines_coverage": {
+            "static": True,
+            "heuristic": True,
+            "browser": bool(engines_policy.get("playwright")),
+            "axe": bool(engines_policy.get("axe")),
+        },
+        "calibration_warnings": trust_warnings,
+        "audit_completeness": "partial" if degraded_mode else "full",
+        "low_trust_rules_present": [],
+        "score_integrity": {},
+    }
+
+    summary = (
+        f"Site scan audited {pages_scanned} page(s), discovered {pages_discovered}, "
+        f"found {failing_elements_count} failing element(s) across {issue_types_count} issue type(s). "
+        f"Score: {score}/100"
+    )
+
+    return {
+        "url": site_payload.get("seed_url"),
+        "scan_mode": scan_mode,
+        "score": score,
+        "overall_score": score,
+        "total_issues": failing_elements_count,
+        "issue_types_count": issue_types_count,
+        "failing_elements_count": failing_elements_count,
+        "critical_issues": severity_counts["critical"],
+        "serious_issues": severity_counts["serious"],
+        "moderate_issues": severity_counts["moderate"],
+        "minor_issues": severity_counts["minor"],
+        "issues": site_issues,
+        "groups": groups,
+        "priority_ranking": priority_ranking,
+        "summary": summary,
+        "scan_time_seconds": round(float(elapsed_seconds), 2),
+        "engines_used": engines_used,
+        "degraded_mode": degraded_mode,
+        "degraded_reason": degraded_reason,
+        "skipped_components": [],
+        "degradation_reason": degraded_reason,
+        "enrichment_status": "complete",
+        "cognitive_scores": None,
+        "markdown_report": "",
+        "trust": trust_payload,
+        "pages_scanned": pages_scanned,
+        "pages_discovered": pages_discovered,
+    }
+
+
+def _load_legacy_json(path: str) -> dict:
+    if not os.path.exists(path):
+        return {}
+
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+            if isinstance(payload, dict):
+                return payload
+    except Exception as exc:
+        logger.warning("Unable to load legacy dashboard file %s: %s", path, exc)
+
     return {}
 
-def save_data(filepath: str, data: dict):
-    try:
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
-    except Exception as e:
-        logger.error(f"Error writing to {filepath}: {e}")
 
-# In-memory maps synchronized with disk
-DB_PROJECTS: dict[str, dict] = load_data(PROJECTS_FILE)
-DB_SCANS: dict[str, dict] = load_data(SCANS_FILE)
+def _ensure_legacy_bootstrap() -> None:
+    global _legacy_bootstrap_done
+    if _legacy_bootstrap_done:
+        return
 
-SCAN_STALE_TIMEOUT_SECONDS = 15 * 60
+    with _legacy_bootstrap_lock:
+        if _legacy_bootstrap_done:
+            return
+
+        try:
+            if list_project_records() or list_scan_records():
+                _legacy_bootstrap_done = True
+                return
+
+            projects = _load_legacy_json(PROJECTS_FILE)
+            scans = _load_legacy_json(SCANS_FILE)
+
+            imported_projects = 0
+            imported_scans = 0
+
+            for project in projects.values():
+                if not isinstance(project, dict) or not project.get("id"):
+                    continue
+                upsert_project_record(project)
+                imported_projects += 1
+
+            for scan in scans.values():
+                if not isinstance(scan, dict) or not scan.get("id"):
+                    continue
+                if not scan.get("project_id"):
+                    continue
+                upsert_scan_record(scan)
+                imported_scans += 1
+
+            if imported_projects or imported_scans:
+                logger.info(
+                    "Imported %s legacy project(s) and %s scan(s) from JSON into SQL storage",
+                    imported_projects,
+                    imported_scans,
+                )
+        finally:
+            _legacy_bootstrap_done = True
 
 
 def _utc_now_iso() -> str:
@@ -65,9 +301,8 @@ def _expire_stale_scans(project_id: Optional[str] = None) -> int:
     now = datetime.datetime.utcnow()
     changed = 0
 
-    for scan in DB_SCANS.values():
-        if project_id and scan.get("project_id") != project_id:
-            continue
+    scans = list_scan_records(project_id=project_id)
+    for scan in scans:
         if scan.get("status") != "scanning":
             continue
 
@@ -81,13 +316,17 @@ def _expire_stale_scans(project_id: Optional[str] = None) -> int:
 
         scan["status"] = "failed"
         scan["summary"] = "Scan timed out before completion. Please retry."
-        scan["ai_analysis"] = "⚠️ Scan timed out before completion. Please retry."
+        scan["ai_analysis"] = "Scan timed out before completion. Please retry."
         scan["completed_at"] = _utc_now_iso()
+        upsert_scan_record(scan)
         changed += 1
 
     if changed:
-        save_data(SCANS_FILE, DB_SCANS)
-        logger.warning(f"Expired {changed} stale scan(s){' for project ' + project_id if project_id else ''}")
+        logger.warning(
+            "Expired %s stale scan(s)%s",
+            changed,
+            f" for project {project_id}" if project_id else "",
+        )
 
     return changed
 
@@ -97,27 +336,26 @@ def _fail_active_scans_for_project(project_id: str, reason: str) -> int:
     changed = 0
     now_iso = _utc_now_iso()
 
-    for scan in DB_SCANS.values():
-        if scan.get("project_id") != project_id:
-            continue
+    scans = list_scan_records(project_id=project_id)
+    for scan in scans:
         if scan.get("status") != "scanning":
             continue
 
         scan["status"] = "failed"
         scan["summary"] = reason
-        scan["ai_analysis"] = f"⚠️ {reason}"
+        scan["ai_analysis"] = reason
         scan["completed_at"] = now_iso
+        upsert_scan_record(scan)
         changed += 1
 
     if changed:
-        save_data(SCANS_FILE, DB_SCANS)
-        logger.info(f"Marked {changed} active scan(s) as failed for project {project_id}")
+        logger.info("Marked %s active scan(s) as failed for project %s", changed, project_id)
 
     return changed
 
 
 def _detect_audit_failure(result: dict) -> tuple[bool, str]:
-    """Translate partial/fallback audit payloads into a clear failed state."""
+    """Translate partial or fallback audit payloads into a clear failed state."""
     summary = (result.get("summary") or "").strip()
     summary_lc = summary.lower()
     engines_used = result.get("engines_used") or []
@@ -127,7 +365,6 @@ def _detect_audit_failure(result: dict) -> tuple[bool, str]:
     if summary_lc.startswith("failed to fetch url"):
         return True, summary
 
-    # Defensive fallback: empty engine execution + zero metrics should not be considered success.
     if total_issues == 0 and (score == 0 or score == 0.0) and len(engines_used) == 0:
         return True, summary or "Scan failed before any audit engines produced results."
 
@@ -136,7 +373,7 @@ def _detect_audit_failure(result: dict) -> tuple[bool, str]:
 
 def _recompute_project_summary(project_id: str) -> bool:
     """Update project card stats from latest valid completed scan."""
-    project = DB_PROJECTS.get(project_id)
+    project = get_project_record(project_id)
     if not project:
         return False
 
@@ -147,12 +384,12 @@ def _recompute_project_summary(project_id: str) -> bool:
     )
 
     completed_scans = [
-        s for s in DB_SCANS.values()
-        if s.get("project_id") == project_id and s.get("status") == "completed"
+        scan for scan in list_scan_records(project_id=project_id)
+        if scan.get("status") == "completed"
     ]
     completed_scans = sorted(
         completed_scans,
-        key=lambda s: s.get("completed_at") or s.get("created_at") or "",
+        key=lambda scan: scan.get("completed_at") or scan.get("created_at") or "",
         reverse=True,
     )
 
@@ -171,7 +408,12 @@ def _recompute_project_summary(project_id: str) -> bool:
         project.get("total_issues"),
         project.get("last_scan_at"),
     )
-    return before != after
+
+    if before != after:
+        upsert_project_record(project)
+        return True
+
+    return False
 
 
 def _repair_invalid_completed_scans(project_id: Optional[str] = None) -> int:
@@ -179,9 +421,8 @@ def _repair_invalid_completed_scans(project_id: Optional[str] = None) -> int:
     changed = 0
     touched_projects: set[str] = set()
 
-    for scan in DB_SCANS.values():
-        if project_id and scan.get("project_id") != project_id:
-            continue
+    scans = list_scan_records(project_id=project_id)
+    for scan in scans:
         if scan.get("status") != "completed":
             continue
 
@@ -201,8 +442,9 @@ def _repair_invalid_completed_scans(project_id: Optional[str] = None) -> int:
         scan["score"] = None
         scan["enrichment_status"] = "failed"
         scan["summary"] = reason
-        scan["ai_analysis"] = f"⚠️ {reason}"
+        scan["ai_analysis"] = reason
         scan["completed_at"] = scan.get("completed_at") or _utc_now_iso()
+        upsert_scan_record(scan)
         touched_projects.add(scan.get("project_id", ""))
         changed += 1
 
@@ -210,14 +452,15 @@ def _repair_invalid_completed_scans(project_id: Optional[str] = None) -> int:
         for pid in touched_projects:
             if pid:
                 _recompute_project_summary(pid)
-        save_data(SCANS_FILE, DB_SCANS)
-        save_data(PROJECTS_FILE, DB_PROJECTS)
-        logger.info(f"Repaired {changed} invalid completed scan record(s){' for project ' + project_id if project_id else ''}")
+        logger.info(
+            "Repaired %s invalid completed scan record(s)%s",
+            changed,
+            f" for project {project_id}" if project_id else "",
+        )
 
     return changed
 
 
-# ── Request Models ────────────────────────────────────────────────
 class ProjectCreate(BaseModel):
     name: str
     url: str
@@ -229,74 +472,74 @@ class ScanStart(BaseModel):
     scan_mode: Optional[str] = "fast"
 
 
-# ── Project Endpoints ─────────────────────────────────────────────
 @router.post("/projects/")
 async def create_project(data: ProjectCreate):
+    _ensure_legacy_bootstrap()
+
     pid = str(uuid.uuid4())[:8]
     project = {
         "id": pid,
         "name": data.name,
         "url": data.url,
         "description": data.description or "",
-        "created_at": datetime.datetime.utcnow().isoformat(),
+        "created_at": _utc_now_iso(),
         "last_scan_at": None,
         "latest_score": None,
         "total_issues": 0,
     }
-    DB_PROJECTS[pid] = project
-    save_data(PROJECTS_FILE, DB_PROJECTS)
-    return project
+    return upsert_project_record(project)
+
 
 @router.get("/projects/")
 async def get_projects():
+    _ensure_legacy_bootstrap()
+
     _repair_invalid_completed_scans()
 
     changed = False
-    for pid in DB_PROJECTS.keys():
-        changed = _recompute_project_summary(pid) or changed
-    if changed:
-        save_data(PROJECTS_FILE, DB_PROJECTS)
+    projects = list_project_records()
+    for project in projects:
+        changed = _recompute_project_summary(project["id"]) or changed
 
-    # Sort projects by most recently created
-    projs = list(DB_PROJECTS.values())
-    return sorted(projs, key=lambda p: p.get("created_at", ""), reverse=True)
+    if changed:
+        projects = list_project_records()
+
+    return sorted(projects, key=lambda project: project.get("created_at", ""), reverse=True)
 
 
 @router.get("/projects/{pid}")
 async def get_project(pid: str):
-    if pid not in DB_PROJECTS:
+    _ensure_legacy_bootstrap()
+
+    project = get_project_record(pid)
+    if not project:
         raise HTTPException(404, "Project not found")
 
     if _recompute_project_summary(pid):
-        save_data(PROJECTS_FILE, DB_PROJECTS)
+        project = get_project_record(pid)
 
-    return DB_PROJECTS[pid]
+    return project
 
 
 @router.delete("/projects/{pid}")
 async def delete_project(pid: str):
-    if pid not in DB_PROJECTS:
+    _ensure_legacy_bootstrap()
+
+    deleted = delete_project_record(pid)
+    if not deleted:
         raise HTTPException(404, "Project not found")
-    del DB_PROJECTS[pid]
-    save_data(PROJECTS_FILE, DB_PROJECTS)
-    
-    # Remove associated scans
-    to_remove = [sid for sid, s in DB_SCANS.items() if s["project_id"] == pid]
-    for sid in to_remove:
-        del DB_SCANS[sid]
-    if to_remove:
-        save_data(SCANS_FILE, DB_SCANS)
-        
+
     return {"status": "deleted"}
 
 
-# ── Scan Endpoints ────────────────────────────────────────────────
 @router.post("/scans/")
 async def start_scan(data: ScanStart):
-    if data.project_id not in DB_PROJECTS:
+    _ensure_legacy_bootstrap()
+
+    project = get_project_record(data.project_id)
+    if not project:
         raise HTTPException(404, "Project not found")
 
-    # Cleanup stale scans and enforce one active scan per project.
     _repair_invalid_completed_scans(project_id=data.project_id)
     _expire_stale_scans(project_id=data.project_id)
     _fail_active_scans_for_project(
@@ -305,7 +548,6 @@ async def start_scan(data: ScanStart):
     )
 
     scan_id = str(uuid.uuid4())[:8]
-    project = DB_PROJECTS[data.project_id]
     scan_url = project["url"]
     scan_mode = data.scan_mode or "fast"
 
@@ -317,6 +559,8 @@ async def start_scan(data: ScanStart):
         "scan_mode": scan_mode,
         "score": None,
         "total_issues": 0,
+        "issue_types_count": 0,
+        "failing_elements_count": 0,
         "critical_issues": 0,
         "serious_issues": 0,
         "moderate_issues": 0,
@@ -329,58 +573,74 @@ async def start_scan(data: ScanStart):
         "trust": {},
         "engines_used": [],
         "scan_time_seconds": 0,
+        "pages_scanned": 1,
+        "pages_discovered": 1,
         "degraded_mode": False,
         "degraded_reason": None,
         "skipped_components": [],
         "degradation_reason": None,
         "enrichment_status": "pending",
         "cognitive_scores": None,
-        "created_at": datetime.datetime.utcnow().isoformat(),
+        "created_at": _utc_now_iso(),
         "completed_at": None,
+        "markdown_report": "",
     }
-    DB_SCANS[scan_id] = scan_record
-    save_data(SCANS_FILE, DB_SCANS)
+    upsert_scan_record(scan_record)
 
     async def run_bg_audit():
         try:
-            result = await run_audit(url=scan_url, scan_mode=scan_mode)
+            if scan_mode in {"deep", "max"}:
+                started = time.perf_counter()
+                site_payload = await run_scan_mode_audit(
+                    seed_url=scan_url,
+                    scan_mode=scan_mode,
+                    max_pages=_resolve_site_scan_page_budget(scan_mode),
+                )
+                elapsed = time.perf_counter() - started
+                result = _normalize_site_scan_result(site_payload, scan_mode, elapsed)
+            else:
+                result = await run_audit(url=scan_url, scan_mode=scan_mode)
 
             failed, failure_reason = _detect_audit_failure(result)
             if failed:
                 scan_record["status"] = "failed"
                 scan_record["summary"] = failure_reason
-                scan_record["ai_analysis"] = f"⚠️ {failure_reason}"
+                scan_record["ai_analysis"] = failure_reason
                 scan_record["engines_used"] = result.get("engines_used", [])
                 scan_record["scan_time_seconds"] = result.get("scan_time_seconds", 0)
+                scan_record["pages_scanned"] = int(result.get("pages_scanned") or 1)
+                scan_record["pages_discovered"] = int(result.get("pages_discovered") or scan_record["pages_scanned"])
                 scan_record["enrichment_status"] = "failed"
                 scan_record["trust"] = result.get("trust", {})
                 scan_record["completed_at"] = _utc_now_iso()
-                save_data(SCANS_FILE, DB_SCANS)
-                logger.warning(f"Scan {scan_id} failed early: {failure_reason}")
+                upsert_scan_record(scan_record)
+                logger.warning("Scan %s failed early: %s", scan_id, failure_reason)
                 return
 
-            # Count severities from issues
             issues = result.get("issues", [])
-            critical = sum(1 for i in issues if i.get("severity") == "critical")
-            serious = sum(1 for i in issues if i.get("severity") == "serious")
-            moderate = sum(1 for i in issues if i.get("severity") == "moderate")
-            minor = sum(1 for i in issues if i.get("severity") == "minor")
+            critical = sum(1 for item in issues if item.get("severity") == "critical")
+            serious = sum(1 for item in issues if item.get("severity") == "serious")
+            moderate = sum(1 for item in issues if item.get("severity") == "moderate")
+            minor = sum(1 for item in issues if item.get("severity") == "minor")
 
-            # Phase 1: Update basic metrics and MARK COMPLETED immediately
             scan_record["status"] = "completed"
             scan_record["score"] = result.get("score", 0)
             scan_record["total_issues"] = result.get("total_issues", 0)
-            scan_record["critical_issues"] = critical
-            scan_record["serious_issues"] = serious
-            scan_record["moderate_issues"] = moderate
-            scan_record["minor_issues"] = minor
+            scan_record["issue_types_count"] = int(result.get("issue_types_count") or len(issues))
+            scan_record["failing_elements_count"] = int(result.get("failing_elements_count") or result.get("total_issues", 0))
+            scan_record["critical_issues"] = int(result.get("critical_issues") or critical)
+            scan_record["serious_issues"] = int(result.get("serious_issues") or serious)
+            scan_record["moderate_issues"] = int(result.get("moderate_issues") or moderate)
+            scan_record["minor_issues"] = int(result.get("minor_issues") or minor)
             scan_record["summary"] = result.get("summary", "")
-            scan_record["ai_analysis"] = "💡 AI Engine is generating insights..."
+            scan_record["ai_analysis"] = "AI engine is generating insights..."
             scan_record["issues"] = issues
             scan_record["groups"] = result.get("groups", [])
             scan_record["priority_ranking"] = result.get("priority_ranking", [])
             scan_record["engines_used"] = result.get("engines_used", [])
             scan_record["scan_time_seconds"] = result.get("scan_time_seconds", 0)
+            scan_record["pages_scanned"] = int(result.get("pages_scanned") or 1)
+            scan_record["pages_discovered"] = int(result.get("pages_discovered") or scan_record["pages_scanned"])
             scan_record["trust"] = result.get("trust", {})
             scan_record["degraded_mode"] = result.get("degraded_mode", False)
             scan_record["degraded_reason"] = result.get("degraded_reason")
@@ -391,21 +651,21 @@ async def start_scan(data: ScanStart):
             scan_record["markdown_report"] = result.get("markdown_report", "")
             scan_record["completed_at"] = _utc_now_iso()
 
-            # Immediate save so UI stops polling/spinning
-            save_data(SCANS_FILE, DB_SCANS)
+            upsert_scan_record(scan_record)
 
-            # Update project summary
-            project["latest_score"] = scan_record["score"]
-            project["total_issues"] = scan_record["total_issues"]
-            project["last_scan_at"] = scan_record["completed_at"]
-            save_data(PROJECTS_FILE, DB_PROJECTS)
+            fresh_project = get_project_record(data.project_id)
+            if fresh_project:
+                fresh_project["latest_score"] = scan_record["score"]
+                fresh_project["total_issues"] = scan_record["failing_elements_count"]
+                fresh_project["last_scan_at"] = scan_record["completed_at"]
+                upsert_project_record(fresh_project)
 
-            logger.info(f"Scan {scan_id} marked COMPLETED. Phase 2 (AI) starting...")
+            logger.info("Scan %s marked completed. Phase 2 (AI) starting...", scan_id)
 
-            # Phase 2: Deferred AI Executive Summary
             try:
-                from app.services.llm import get_client
                 from app.config import settings
+                from app.services.llm import get_client
+
                 client = get_client()
                 degraded_prefix = ""
                 if scan_record.get("degraded_mode"):
@@ -414,9 +674,8 @@ async def start_scan(data: ScanStart):
                         or scan_record.get("degraded_reason")
                         or "Requested engines were unavailable during this run."
                     )
-                    degraded_prefix = f"⚠️ Limited-confidence scan: {reason}\n\n"
-                
-                # Check for empty issues (e.g. clean site)
+                    degraded_prefix = f"Limited-confidence scan: {reason}\n\n"
+
                 if not issues:
                     if scan_record.get("degraded_mode"):
                         ai_summary = (
@@ -425,53 +684,69 @@ async def start_scan(data: ScanStart):
                             + "Run deep scan again after browser engines recover."
                         )
                     else:
-                        ai_summary = "Excellent! No accessibility issues were found. Your site follows all primary accessibility standards."
+                        ai_summary = (
+                            "Excellent! No accessibility issues were found. "
+                            "Your site follows all primary accessibility standards."
+                        )
                 else:
-                    top_issues = [f"{i.get('rule_id')} ({i.get('severity')})" for i in issues[:3]]
-                    prompt = f"Write a concise, 2-sentence executive summary of this web accessibility audit. Score: {result.get('score', 0)}/100, Issues found: {result.get('total_issues', 0)}. Top problems: {', '.join(top_issues)}."
-                    
-                    resp = await client.chat.completions.create(
+                    top_issues = [f"{item.get('rule_id')} ({item.get('severity')})" for item in issues[:3]]
+                    prompt = (
+                        "Write a concise, 2-sentence executive summary of this web accessibility audit. "
+                        f"Score: {result.get('score', 0)}/100, "
+                        f"Issues found: {result.get('total_issues', 0)}. "
+                        f"Top problems: {', '.join(top_issues)}."
+                    )
+
+                    response = await client.chat.completions.create(
                         model=settings.featherless_model,
                         messages=[
                             {"role": "system", "content": "You are the BEACON AI engine."},
-                            {"role": "user", "content": prompt}
+                            {"role": "user", "content": prompt},
                         ],
                         max_tokens=150,
                         temperature=0.4,
-                        timeout=15.0
+                        timeout=15.0,
                     )
-                    ai_summary = degraded_prefix + resp.choices[0].message.content.strip()
-                
-                scan_record["ai_analysis"] = ai_summary
-                save_data(SCANS_FILE, DB_SCANS)
-                logger.debug(f"AI summary generated for scan {scan_id}")
+                    ai_summary = degraded_prefix + response.choices[0].message.content.strip()
 
-            except Exception as e:
-                logger.error(f"Failed to generate top-level AI summary for {scan_id}: {e}")
-                err_str = str(e).lower()
+                scan_record["ai_analysis"] = ai_summary
+                upsert_scan_record(scan_record)
+                logger.debug("AI summary generated for scan %s", scan_id)
+
+            except Exception as exc:
+                logger.error("Failed to generate top-level AI summary for %s: %s", scan_id, exc)
+                err_str = str(exc).lower()
                 if "429" in err_str or "insufficient_quota" in err_str or "limit" in err_str:
-                    ai_summary = f"⚠️ [AI ERROR]: API Credit Limit Reached. Please check your Featherless AI billing. Raw Error: {e}"
+                    ai_summary = (
+                        "[AI ERROR]: API credit limit reached. "
+                        f"Please check your Featherless AI billing. Raw error: {exc}"
+                    )
                 elif "401" in err_str:
-                    ai_summary = f"⚠️ [AI ERROR]: Authentication Failure. Your API key might be invalid. Raw Error: {e}"
+                    ai_summary = f"[AI ERROR]: Authentication failure. Raw error: {exc}"
                 elif "timeout" in err_str:
-                    ai_summary = f"🕒 [AI ERROR]: Request Timed Out. The AI service took too long to respond. Raw Error: {e}"
+                    ai_summary = f"[AI ERROR]: Request timed out. Raw error: {exc}"
                 else:
-                    ai_summary = f"❌ [AI ERROR]: System Failure. Technical details: {e}"
-                
+                    ai_summary = f"[AI ERROR]: System failure. Technical details: {exc}"
+
                 scan_record["ai_analysis"] = ai_summary
-                save_data(SCANS_FILE, DB_SCANS)
+                upsert_scan_record(scan_record)
 
-            logger.info(f"Scan {scan_id} completed: score={scan_record['score']}, issues={scan_record['total_issues']}")
+            logger.info(
+                "Scan %s completed: score=%s, issues=%s",
+                scan_id,
+                scan_record["score"],
+                scan_record["total_issues"],
+            )
 
-        except Exception as e:
+        except Exception as exc:
             scan_record["status"] = "failed"
-            scan_record["summary"] = f"Scan failed: {str(e)}"
-            scan_record["ai_analysis"] = f"❌ Scan failed: {str(e)}"
+            scan_record["summary"] = f"Scan failed: {exc}"
+            scan_record["ai_analysis"] = f"Scan failed: {exc}"
             scan_record["enrichment_status"] = "failed"
             scan_record["trust"] = scan_record.get("trust") or {}
             scan_record["completed_at"] = _utc_now_iso()
-            save_data(SCANS_FILE, DB_SCANS)
-            logger.error(f"Scan {scan_id} failed: {e}", exc_info=True)
+            upsert_scan_record(scan_record)
+            logger.error("Scan %s failed: %s", scan_id, exc, exc_info=True)
 
     asyncio.create_task(run_bg_audit())
     return {"scan_id": scan_id, "status": "scanning"}
@@ -479,32 +754,43 @@ async def start_scan(data: ScanStart):
 
 @router.get("/scans/{pid}")
 async def get_scans(pid: str):
+    _ensure_legacy_bootstrap()
+
     _repair_invalid_completed_scans(project_id=pid)
     _expire_stale_scans(project_id=pid)
 
     if _recompute_project_summary(pid):
-        save_data(PROJECTS_FILE, DB_PROJECTS)
+        logger.debug("Project %s summary recomputed from scan history", pid)
 
-    scans = [s for s in DB_SCANS.values() if s["project_id"] == pid]
-    return sorted(scans, key=lambda s: s.get("created_at", ""), reverse=True)
+    scans = list_scan_records(project_id=pid)
+    return sorted(scans, key=lambda scan: scan.get("created_at", ""), reverse=True)
 
 
 @router.get("/scans/{pid}/{sid}")
 async def get_scan(pid: str, sid: str):
+    _ensure_legacy_bootstrap()
+
     _repair_invalid_completed_scans(project_id=pid)
     _expire_stale_scans(project_id=pid)
-    if sid not in DB_SCANS:
+
+    scan = get_scan_record(sid)
+    if not scan:
         raise HTTPException(404, "Scan not found")
-    return DB_SCANS[sid]
+
+    return scan
 
 
 @router.get("/scans/{pid}/{sid}/progress")
 async def get_scan_progress(pid: str, sid: str):
+    _ensure_legacy_bootstrap()
+
     _repair_invalid_completed_scans(project_id=pid)
     _expire_stale_scans(project_id=pid)
-    if sid not in DB_SCANS:
+
+    scan = get_scan_record(sid)
+    if not scan:
         raise HTTPException(404, "Scan not found")
-    scan = DB_SCANS[sid]
+
     return {
         "status": scan["status"],
         "score": scan.get("score"),

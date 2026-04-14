@@ -74,12 +74,27 @@ if bool(getattr(settings, "auth_enabled", True)):
     app.add_middleware(APIKeyMiddleware)
 
 # Routers
+# Canonical versioned API surface.
+app.include_router(rag.router, prefix="/v1")
+app.include_router(audit.router, prefix="/v1")
+app.include_router(dashboard_api.router, prefix="/v1")
+
+# Backward-compatible legacy aliases.
 app.include_router(rag.router)
 app.include_router(audit.router)
 app.include_router(dashboard_api.router)
 
 
 # â”€â”€ Health & Utility Endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+@app.get("/v1/config")
+async def v1_config():
+    """Return safe frontend feature flags for API wiring."""
+    return {
+        "aiEnabled": bool(getattr(settings, "beacon_ai_enabled", False)),
+        "streamEnabled": False,
+        "apiVersion": "v1",
+    }
 
 @app.get("/health", response_model=HealthResponse)
 async def health_check():

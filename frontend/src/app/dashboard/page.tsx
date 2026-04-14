@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import api from "@/lib/api";
+import api, { toUserFacingError } from "@/lib/api";
 import Link from "next/link";
 
 function IconPlus({ className }: { className?: string }) {
@@ -19,6 +19,7 @@ function IconTrash({ className }: { className?: string }) {
 export default function AllProjectsPage() {
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState<{ message: string; retryable: boolean } | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
   const [newName, setNewName] = useState("");
   const [newUrl, setNewUrl] = useState("");
@@ -30,7 +31,11 @@ export default function AllProjectsPage() {
     try {
       const data = await api.getProjects();
       setProjects(data);
-    } catch (e) { console.error(e); }
+      setApiError(null);
+    } catch (e) {
+      console.error(e);
+      setApiError(toUserFacingError(e));
+    }
     finally { setLoading(false); }
   }
 
@@ -42,8 +47,12 @@ export default function AllProjectsPage() {
       setNewName("");
       setNewUrl("");
       setShowNewForm(false);
+      setApiError(null);
       await loadProjects();
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+      setApiError(toUserFacingError(e));
+    }
     finally { setCreating(false); }
   }
 
@@ -51,8 +60,12 @@ export default function AllProjectsPage() {
     if (!confirm("Are you absolutely sure you want to delete this project? All historic scans will be erased forever.")) return;
     try {
       await api.deleteProject(pid);
+      setApiError(null);
       await loadProjects();
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+      setApiError(toUserFacingError(e));
+    }
   }
 
   function scoreColor(score: number | null): string {
@@ -84,6 +97,19 @@ export default function AllProjectsPage() {
           <IconPlus className="w-4 h-4" /> New Project
         </button>
       </div>
+
+      {apiError && (
+        <div className="glass-card p-4 mb-6 border-l-[6px] border-l-[var(--beacon-error)]">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <p className="text-sm font-semibold text-[var(--beacon-text)]">{apiError.message}</p>
+            {apiError.retryable && (
+              <button onClick={loadProjects} className="btn-secondary text-xs">
+                Retry
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* New Project Form */}
       {showNewForm && (

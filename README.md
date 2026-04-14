@@ -4,6 +4,21 @@
 
 BEACON is a FastAPI-based accessibility auditing platform with multi-engine scanning, crawler-assisted discovery, RAG-backed remediation, observability, and API-key RBAC.
 
+## Latest Updates (April 14, 2026)
+
+- Standardized production scan profiles for site scans (fast/deep/max) with centralized limits in `app/config.py`.
+- Added hard safety caps for predictable runtime behavior:
+  - `MAX_SCAN_GLOBAL_CAP=80`
+  - `MAX_CONCURRENT_SITE_AUDITS=3`
+- Dashboard deep/max scan budgets now use centralized caps:
+  - deep: 12 pages
+  - max: 25 pages
+- Dashboard deep/max requests run through the multi-page site orchestrator, with stable normalized metrics:
+  - `issue_types_count`
+  - `failing_elements_count`
+  - `pages_scanned`
+  - `pages_discovered`
+
 ## Latest Updates (April 2026)
 
 - Restored and hardened multi-mode audit flow: minimal, fast, deep, and max.
@@ -65,8 +80,28 @@ flowchart LR
 | :------ | :------------------------------ | :----------------------------------------------- |
 | minimal | quickest deterministic baseline | static + heuristic only                          |
 | fast    | rapid production checks         | static + heuristic                               |
-| deep    | comprehensive page analysis     | static + heuristic + browser + axe + cognitive   |
-| max     | deepest interactive exploration | deep + interaction and scroll exploration layers |
+| deep    | comprehensive page analysis     | static + heuristic + browser + axe (+ cognitive on single-page `/audit`) |
+| max     | deepest interactive exploration | deep + interaction/scroll + cognitive layers     |
+
+## Production Scan Profiles (Site Scan Path)
+
+These limits are centralized in `app/config.py` and enforced by the scan-mode runner.
+
+| Mode | max_pages | crawl_cap | bfs_depth | bfs_pages | dom_pages | stage1_timeout_s | stage2_timeout_s | global_sla_s | concurrency |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| fast | 1 | 10 | 1 | 10 | 0 | 12 | 4 | 35 | 5 |
+| deep | 12 | 30 | 3 | 30 | 0 | 25 | 12 | 120 | 3 |
+| max  | 25 | 70 | 4 | 60 | 15 | 40 | 18 | 240 | 2 |
+
+Global caps:
+
+- `MAX_SCAN_GLOBAL_CAP=80`
+- `MAX_CONCURRENT_SITE_AUDITS=3`
+
+Dashboard caps:
+
+- `DASHBOARD_DEEP_SCAN_MAX_PAGES=12`
+- `DASHBOARD_MAX_SCAN_MAX_PAGES=25`
 
 In max mode, quality gate metadata includes execution proof fields such as:
 
@@ -127,6 +162,13 @@ Set at minimum:
 - BOOTSTRAP_VIEWER_API_KEY
 - BOOTSTRAP_AUDITOR_API_KEY
 - BOOTSTRAP_ADMIN_API_KEY
+
+Optional production scan tuning keys:
+
+- DASHBOARD_DEEP_SCAN_MAX_PAGES
+- DASHBOARD_MAX_SCAN_MAX_PAGES
+- MAX_SCAN_GLOBAL_CAP
+- MAX_CONCURRENT_SITE_AUDITS
 
 ### 3. Install Dependencies
 
@@ -237,6 +279,23 @@ python evaluation/validate_site_archetypes.py
 python evaluation/benchmark_act.py
 python evaluation/benchmark_production.py
 ```
+
+## Pre-Push Checklist
+
+Run before opening a PR or pushing to shared branches:
+
+```bash
+python -m py_compile app/config.py app/audit/scan_mode_runner.py app/routers/dashboard_api.py
+python -m pytest tests/unit/audit/test_site_aggregator.py -q
+alembic current
+git status --short
+```
+
+Push hygiene:
+
+- Verify no secrets are staged (`.env` stays local).
+- Keep `.env.example` updated when new env keys are introduced.
+- Ensure scan mode docs match current config values.
 
 ## Important Notes
 
