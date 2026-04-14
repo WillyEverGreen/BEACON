@@ -608,10 +608,23 @@ def build_scoring_summary(issues: list[dict[str, Any]], *, degraded_mode: bool =
     pre_adjusted_score = 100.0 - total_penalty
     score = pre_adjusted_score
 
-    if severity_counts["critical"] >= 2:
+    # Apply hard caps only when declared critical findings are present with solid confidence.
+    # This avoids forcing a 70 plateau from inferred critical buckets alone.
+    declared_critical_count = sum(
+        1
+        for issue in scorable_issues
+        if _lower_text(issue.get("severity")) == "critical"
+        and _safe_float(issue.get("confidence", 0.0), 0.0) >= 0.75
+    )
+    multiple_critical_cap_applied = False
+    critical_issue_cap_applied = False
+    if declared_critical_count >= 2:
         score = min(score, 70.0)
-    elif severity_counts["critical"] >= 1:
+        multiple_critical_cap_applied = True
+        critical_issue_cap_applied = True
+    elif declared_critical_count >= 1:
         score = min(score, 85.0)
+        critical_issue_cap_applied = True
 
     if degraded_mode:
         score = max(0.0, score * 0.85)
@@ -657,8 +670,10 @@ def build_scoring_summary(issues: list[dict[str, Any]], *, degraded_mode: bool =
         "minor_penalty": round(minor_penalty, 3),
         "total_penalty_applied": round(total_penalty, 3),
         "degraded_mode_penalty": round((100.0 - total_penalty) * 0.15, 3) if degraded_mode else 0.0,
-        "critical_issue_cap_applied": severity_counts["critical"] >= 1,
-        "multiple_critical_cap_applied": severity_counts["critical"] >= 2,
+        "critical_issue_cap_applied": critical_issue_cap_applied,
+        "multiple_critical_cap_applied": multiple_critical_cap_applied,
+        "declared_critical_count": declared_critical_count,
+        "inferred_critical_bucket_count": severity_counts["critical"],
         "quality_floor_applied": quality_floor_applied,
         "quality_bonus": round(quality_bonus, 3),
         "high_quality_signal": quality_signal,

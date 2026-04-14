@@ -7,7 +7,7 @@ from typing import Any, Awaitable, Callable, Optional
 
 import httpx
 
-from app.audit.models import PageContext
+from app.audit.models import PageAuditResult, PageContext
 from app.audit.failure_taxonomy import normalize_reason
 from app.audit.parallel_runner import PageAuditor, SSEEmitter, run_site_audit
 from app.crawlers.orchestrator import CrawlerOrchestrator
@@ -151,6 +151,38 @@ def _default_static_engine(dom: str, page_url: str) -> list[dict[str, Any]]:
 
 async def _noop_async_engine(dom: str, page_url: str, page_context: PageContext) -> list[dict[str, Any]]:
     return []
+
+
+async def _full_engine_page_auditor(url: str, scan_mode: str, page_context: PageContext) -> PageAuditResult:
+    """Run the full single-page audit pipeline for each discovered URL."""
+    from app.services.audit_runner import run_audit
+
+    result = await run_audit(
+        url=url,
+        scan_mode=scan_mode,
+        max_pages=1,
+        enable_enrichment=False,
+        use_cache=False,
+    )
+
+    scan_time_seconds = float(result.get("scan_time_seconds", 0.0) or 0.0)
+    engine_timings: dict[str, float] = {}
+    if scan_time_seconds > 0:
+        engine_timings["total_ms"] = round(scan_time_seconds * 1000.0, 2)
+
+    return PageAuditResult(
+        url=str(result.get("url") or url),
+        score=float(result.get("score", 0.0) or 0.0),
+        issues=list(result.get("issues") or []),
+        engine_timings=engine_timings,
+        degraded_mode=bool(result.get("degraded_mode", False)),
+        degraded_reason=str(result.get("degraded_reason") or ""),
+        skipped_engines=list(result.get("skipped_components") or []),
+        hydration_status=str(result.get("browser_probe_metadata", {}).get("hydration_status") or "unknown"),
+        enrichment_status=str(result.get("enrichment_status") or "pending"),
+        states_meta=[],
+        page_dom="",
+    )
 
 
 async def _playwright_browser_factory() -> Any:
@@ -330,12 +362,16 @@ async def run_scan_mode_audit(
         _apply_mode_policy(mode, context)
 
         try:
+            resolved_page_auditor = page_auditor
+            if resolved_page_auditor is None and mode in {"deep", "max"}:
+                resolved_page_auditor = _full_engine_page_auditor
+
             result = await run_site_audit(
                 urls=urls_to_audit,
                 scan_mode=mode,
                 max_concurrent_pages=max(1, int(mode_config["concurrency"])),
                 page_context=context,
-                page_auditor=page_auditor,
+                page_auditor=resolved_page_auditor,
                 static_only_auditor=static_only_auditor,
                 sse_emitter=sse_emitter,
                 page_timeout_stage1_seconds=float(mode_config["stage1_timeout"]),

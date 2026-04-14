@@ -915,7 +915,11 @@ async def _fetch_html(
 async def _run_axe_core_via_playwright(page) -> list[dict]:
     """Run axe-core in Playwright page and return violations."""
     try:
-        await page.add_script_tag(url="https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.9.1/axe.min.js")
+        axe_local_path = Path(__file__).resolve().parents[2] / "axe-core" / "axe.min.js"
+        if axe_local_path.exists():
+            await page.add_script_tag(path=str(axe_local_path))
+        else:
+            await page.add_script_tag(url="https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.9.1/axe.min.js")
         await page.wait_for_timeout(500)
         results = await page.evaluate("axe.run()")
         return results.get("violations", [])
@@ -1264,12 +1268,14 @@ async def run_audit(
                             from playwright.async_api import async_playwright
                             async with async_playwright() as p:
                                 browser = await p.chromium.launch(headless=True)
-                                page = await browser.new_page()
+                                context = await browser.new_context(bypass_csp=True)
+                                page = await context.new_page()
                                 try:
                                     await page.goto(url, timeout=page_goto_timeout, wait_until="domcontentloaded")
                                     v = await _run_axe_core_via_playwright(page)
                                     return v, "axe-core", {"executed": True}
                                 finally:
+                                    await context.close()
                                     await browser.close()
                 except TimeoutError:
                     logger.warning("axe-core timed out (blocked by semaphore or page load).")
@@ -1434,12 +1440,13 @@ async def run_audit(
         # Production profile must preserve full finding density for truthful
         # scoring and suppression diagnostics; rule-level collapsing can mask
         # real issue volume and produce inflated scores.
-        if precision_profile == "production":
+        if precision_profile == "production" or scan_mode == "max":
             compression_telemetry = {
                 "original_count": len(scored_issues),
                 "aggregated_count": len(scored_issues),
                 "compression_ratio": 0.0,
-                "disabled_for_profile": "production",
+                "disabled_for_profile": precision_profile if precision_profile == "production" else None,
+                "disabled_for_mode": "max" if scan_mode == "max" else None,
             }
         else:
             scored_issues, compression_telemetry = aggregate_issues(scored_issues)
@@ -2067,8 +2074,9 @@ def _apply_precision_profile(
             _record_drop(working_issue, "low_confidence")
             continue
 
-        # Tiered trust block: only near-zero trust gets hard suppression.
-        if severity != "critical" and not high_signal_no_headings:
+        # Tiered trust block: enforce on precision-first profiles only.
+        # Balanced mode should expose low-trust findings instead of hiding them.
+        if profile_name in _ADAPTIVE_PROFILES and severity != "critical" and not high_signal_no_headings:
             if trust_score < TRUST_TIERS["suppress"]:
                 if source_count < required_engines and conf < 0.92:
                     dropped_trust_block += 1

@@ -95,6 +95,19 @@ def _normalize_site_scan_result(site_payload: dict, scan_mode: str, elapsed_seco
     ]
     page_issue_occurrences = _extract_page_issue_occurrences(site_payload)
 
+    summed_element_occurrences = sum(
+        max(
+            1,
+            int(
+                issue.get("affected_count")
+                or issue.get("count")
+                or issue.get("affected_pages")
+                or 1
+            ),
+        )
+        for issue in site_issues
+    )
+
     pages_scanned = int(
         site_result.get("pages_audited")
         or site_payload.get("pages_completed")
@@ -108,9 +121,9 @@ def _normalize_site_scan_result(site_payload: dict, scan_mode: str, elapsed_seco
     )
 
     issue_types_count = len(site_issues)
-    failing_elements_count = len(page_issue_occurrences)
+    failing_elements_count = max(len(page_issue_occurrences), summed_element_occurrences)
     if failing_elements_count <= 0 and issue_types_count > 0:
-        failing_elements_count = sum(max(1, int(issue.get("affected_pages") or 1)) for issue in site_issues)
+        failing_elements_count = issue_types_count
 
     severity_source = page_issue_occurrences if page_issue_occurrences else site_issues
     severity_counts = _severity_counts(severity_source)
@@ -598,6 +611,31 @@ async def start_scan(data: ScanStart):
                 )
                 elapsed = time.perf_counter() - started
                 result = _normalize_site_scan_result(site_payload, scan_mode, elapsed)
+
+                # If crawl discovery yields only a single page, compare against the
+                # direct full-engine audit and keep the richer finding set.
+                site_issue_count = int(result.get("total_issues") or 0)
+                site_pages_scanned = int(result.get("pages_scanned") or 1)
+                if site_pages_scanned <= 1:
+                    try:
+                        direct_result = await run_audit(
+                            url=scan_url,
+                            scan_mode=scan_mode,
+                            max_pages=1,
+                            enable_enrichment=False,
+                            use_cache=False,
+                        )
+                        direct_issue_count = int(direct_result.get("total_issues") or 0)
+                        if direct_issue_count > site_issue_count:
+                            result = direct_result
+                            logger.info(
+                                "Using direct full-engine result for single-page scan %s (site=%s, direct=%s)",
+                                scan_id,
+                                site_issue_count,
+                                direct_issue_count,
+                            )
+                    except Exception as direct_exc:
+                        logger.warning("Direct single-page comparison failed for %s: %s", scan_id, direct_exc)
             else:
                 result = await run_audit(url=scan_url, scan_mode=scan_mode)
 

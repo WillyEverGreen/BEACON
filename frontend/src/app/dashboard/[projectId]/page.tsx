@@ -133,6 +133,7 @@ export default function ProjectDetailPage() {
     "idle" | "scanning" | "completed" | "failed"
   >("idle");
   const [scanMode, setScanMode] = useState("fast");
+  const [scanModeTouched, setScanModeTouched] = useState(false);
   const [expandedIssue, setExpandedIssue] = useState<string | null>(null);
   const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
@@ -188,6 +189,24 @@ export default function ProjectDetailPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Keep scan mode selector aligned with latest scan mode until user changes it.
+  useEffect(() => {
+    if (scanModeTouched) {
+      return;
+    }
+
+    const recentMode = uniqueScans.find(
+      (scan) =>
+        scan &&
+        typeof scan.scan_mode === "string" &&
+        ["fast", "deep", "max"].includes(scan.scan_mode),
+    )?.scan_mode;
+
+    if (recentMode && recentMode !== scanMode) {
+      setScanMode(recentMode);
+    }
+  }, [scanModeTouched, scanMode, uniqueScans]);
 
   // Polling for active scans
   useEffect(() => {
@@ -397,7 +416,10 @@ export default function ProjectDetailPage() {
             <div className="flex flex-col gap-1">
               <select
                 value={scanMode}
-                onChange={(e) => setScanMode(e.target.value)}
+                onChange={(e) => {
+                  setScanModeTouched(true);
+                  setScanMode(e.target.value);
+                }}
                 disabled={scanning}
                 className="beacon-input text-xs font-bold uppercase tracking-widest cursor-pointer disabled:opacity-50"
               >

@@ -174,37 +174,48 @@ def aggregate_site_results(page_results: list[PageAuditResult | dict[str, Any]],
                 1,
             )
 
-    issue_buckets: dict[tuple[str, str, str], dict[str, Any]] = {}
-    issue_urls: dict[tuple[str, str, str], set[str]] = defaultdict(set)
-
-    for page in pages:
-        for issue in page.issues:
-            key = _issue_key(issue)
-            existing = issue_buckets.get(key)
-            if existing is None:
-                existing = dict(issue)
-                issue_buckets[key] = existing
-
-            issue_urls[key].add(page.url)
-
-            if float(issue.get("confidence", 0.0)) > float(existing.get("confidence", 0.0)):
-                keep_urls = issue_urls[key]
-                replacement = dict(issue)
-                issue_buckets[key] = replacement
-                issue_urls[key] = keep_urls
-
     deduped_issues: list[dict[str, Any]] = []
 
-    for key, issue in issue_buckets.items():
-        urls = sorted(issue_urls[key])
-        affected_pages = len(urls)
-        frequency = affected_pages / total_pages if total_pages else 0.0
+    # Preserve full per-element density on single-page audits.
+    # Cross-page deduplication is only needed when aggregating multiple pages.
+    if total_pages == 1:
+        single_page = pages[0]
+        for issue in single_page.issues:
+            item = dict(issue)
+            item["affected_pages"] = 1
+            item["affected_urls"] = [single_page.url]
+            item["frequency"] = 1.0
+            deduped_issues.append(item)
+    else:
+        issue_buckets: dict[tuple[str, str, str], dict[str, Any]] = {}
+        issue_urls: dict[tuple[str, str, str], set[str]] = defaultdict(set)
 
-        item = dict(issue)
-        item["affected_pages"] = affected_pages
-        item["affected_urls"] = urls[:10]
-        item["frequency"] = round(frequency, 4)
-        deduped_issues.append(item)
+        for page in pages:
+            for issue in page.issues:
+                key = _issue_key(issue)
+                existing = issue_buckets.get(key)
+                if existing is None:
+                    existing = dict(issue)
+                    issue_buckets[key] = existing
+
+                issue_urls[key].add(page.url)
+
+                if float(issue.get("confidence", 0.0)) > float(existing.get("confidence", 0.0)):
+                    keep_urls = issue_urls[key]
+                    replacement = dict(issue)
+                    issue_buckets[key] = replacement
+                    issue_urls[key] = keep_urls
+
+        for key, issue in issue_buckets.items():
+            urls = sorted(issue_urls[key])
+            affected_pages = len(urls)
+            frequency = affected_pages / total_pages if total_pages else 0.0
+
+            item = dict(issue)
+            item["affected_pages"] = affected_pages
+            item["affected_urls"] = urls[:10]
+            item["frequency"] = round(frequency, 4)
+            deduped_issues.append(item)
 
     priority_ranking = _build_priority_ranking(deduped_issues, total_pages)
 
