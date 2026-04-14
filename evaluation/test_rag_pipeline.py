@@ -1,6 +1,6 @@
 # test_rag.py — Comprehensive RAG Reliability Test Suite
 import sys, os, time, json
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "rag-pipeline")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "rag")))
 
 from query import hybrid_retrieve, rerank, answer, expand_query
 

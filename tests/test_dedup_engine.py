@@ -8,7 +8,7 @@ import sys
 import os
 import pytest
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "rag-pipeline")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "rag")))
 
 from dedup import md5, trigrams, jaccard, dedup, JACCARD_THRESHOLD
 

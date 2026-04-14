@@ -14,7 +14,7 @@ playwright install chromium
 ```
 
 ```
-rag-pipeline/
+rag/
 ├── config.py        ← all constants, source manifest, keyword maps
 ├── crawl.py         ← Phase 1: fetch raw HTML
 ├── extract.py       ← Phase 2: clean content

@@ -90,7 +90,7 @@ You must cover all relevant layers below during execution planning.
 
 8. RAG ingestion/query pipeline
 
-- rag-pipeline/\*
+- rag/\*
 - run_ingestion.py
 
 9. Evaluation and test harnesses

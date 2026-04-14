@@ -2,7 +2,7 @@
 # Pipeline: Issue → RAG Retrieval → LLM Generation → Automated Validation
 import sys, os, json, time, glob, asyncio, re
 
-sys.path.insert(0, os.path.abspath("rag-pipeline"))
+sys.path.insert(0, os.path.abspath("rag"))
 # Also need app modules
 sys.path.insert(0, os.path.abspath("."))
 

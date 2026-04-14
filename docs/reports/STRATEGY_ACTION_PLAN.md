@@ -44,7 +44,7 @@ Normalize all targets to percentages and make them enforceable in CI:
 
 3. RAG dependency fragility:
 
-- rag-pipeline/query.py hard-depends on Chroma collection availability; on failure it returns empty retrieval, leading to enrichment failures/timeouts.
+- rag/query.py hard-depends on Chroma collection availability; on failure it returns empty retrieval, leading to enrichment failures/timeouts.
 
 4. Recall bottlenecks in rule detection:
 
@@ -171,7 +171,7 @@ Tasks:
 
 1. Retrieval failover chain:
 
-- Files: rag-pipeline/query.py, app/services/retrieval.py
+- Files: rag/query.py, app/services/retrieval.py
 - Action: on Chroma failure, fallback to local vector_store semantic search and return bounded context.
 
 2. Startup health checks and warmup:

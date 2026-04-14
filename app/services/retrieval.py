@@ -1,5 +1,5 @@
 """
-Retrieval service: bridge to rag-pipeline with Phase 4 guardrails.
+Retrieval service: bridge to rag with Phase 4 guardrails.
 
 Goals:
 - prioritize WCAG-aligned chunks
@@ -20,8 +20,8 @@ from typing import Any, Optional
 
 from app.config import CACHE_STATS, settings
 
-# Wire up the new rag-pipeline module
-_rag_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "rag-pipeline"))
+# Wire up the new rag module
+_rag_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "rag"))
 if _rag_path not in sys.path:
     sys.path.insert(0, _rag_path)
 

@@ -45,7 +45,7 @@ d:/HACKATHON/DJ HACK/
 
 ### Test Scripts
 
-- **test_deep_scan_playwright.py** - Executable test script used for this report
+- **scripts/debug/test_deep_scan_playwright.py** - Executable test script used for this report
 
 ---
 

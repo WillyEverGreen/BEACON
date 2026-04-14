@@ -1,6 +1,6 @@
 # test_depth.py
 import sys, os
-sys.path.insert(0, os.path.abspath("rag-pipeline"))
+sys.path.insert(0, os.path.abspath("rag"))
 import asyncio
 from query import hybrid_retrieve, rerank
 

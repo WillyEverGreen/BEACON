@@ -1,5 +1,5 @@
 import sys, os, time
-sys.path.insert(0, os.path.abspath('rag-pipeline'))
+sys.path.insert(0, os.path.abspath('rag'))
 from query import hybrid_retrieve, rerank
 
 queries = [

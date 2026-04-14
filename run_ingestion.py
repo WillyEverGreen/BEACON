@@ -14,8 +14,8 @@ import dotenv
 
 dotenv.load_dotenv = lambda *a, **k: True
 
-# Add rag-pipeline to path so imports work
-sys.path.insert(0, os.path.abspath("rag-pipeline"))
+# Add rag to path so imports work
+sys.path.insert(0, os.path.abspath("rag"))
 
 from axe_parser import parse_axe_rules
 from chunk import chunk_document

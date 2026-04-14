@@ -8,7 +8,7 @@ import sys
 import os
 import pytest
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "rag-pipeline")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "rag")))
 
 from tag import tag_chunk, WCAG_SC_RE, ISSUE_TYPES, USER_IMPACT, SEVERITY_MAP
 

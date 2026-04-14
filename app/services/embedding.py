@@ -1,7 +1,7 @@
 """
 Embedding service using sentence-transformers (local, no API key needed).
 
-Uses the shared model from rag-pipeline/model_registry.py to avoid
+Uses the shared model from rag/model_registry.py to avoid
 loading the same ~90MB model multiple times.
 """
 import logging
@@ -11,8 +11,8 @@ from typing import Optional
 
 from sentence_transformers import SentenceTransformer
 
-# Ensure rag-pipeline is importable
-_rag_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "rag-pipeline"))
+# Ensure rag is importable
+_rag_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "rag"))
 if _rag_path not in sys.path:
     sys.path.insert(0, _rag_path)
 

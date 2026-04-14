@@ -1,8 +1,8 @@
 """
-Clean ingestion service — wraps rag-pipeline modules for the FastAPI app.
+Clean ingestion service — wraps rag modules for the FastAPI app.
 
 Replaces the 22KB legacy ingestion_old.py with a thin delegation layer
-that properly calls the rag-pipeline's crawl → extract → chunk → tag → filter → dedup → embed → store pipeline.
+that properly calls the rag's crawl → extract → chunk → tag → filter → dedup → embed → store pipeline.
 """
 import logging
 import sys
@@ -13,8 +13,8 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# Ensure rag-pipeline is importable
-_rag_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "rag-pipeline"))
+# Ensure rag is importable
+_rag_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "rag"))
 if _rag_path not in sys.path:
     sys.path.insert(0, _rag_path)
 
@@ -120,7 +120,7 @@ def run_full_ingestion(expand_corpus: bool = False) -> list[dict]:
             from chunk import chunk_document
             from extract import extract_content
 
-            raw_dir = Path("rag-pipeline/data/raw")
+            raw_dir = Path("rag/data/raw")
             if raw_dir.exists():
                 for silo_dir in raw_dir.iterdir():
                     if not silo_dir.is_dir():
