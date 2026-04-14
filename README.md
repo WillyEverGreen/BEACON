@@ -76,22 +76,22 @@ flowchart LR
 
 ## Scan Modes
 
-| Mode    | Purpose                         | Typical Engines                                  |
-| :------ | :------------------------------ | :----------------------------------------------- |
-| minimal | quickest deterministic baseline | static + heuristic only                          |
-| fast    | rapid production checks         | static + heuristic                               |
+| Mode    | Purpose                         | Typical Engines                                                          |
+| :------ | :------------------------------ | :----------------------------------------------------------------------- |
+| minimal | quickest deterministic baseline | static + heuristic only                                                  |
+| fast    | rapid production checks         | static + heuristic                                                       |
 | deep    | comprehensive page analysis     | static + heuristic + browser + axe (+ cognitive on single-page `/audit`) |
-| max     | deepest interactive exploration | deep + interaction/scroll + cognitive layers     |
+| max     | deepest interactive exploration | deep + interaction/scroll + cognitive layers                             |
 
 ## Production Scan Profiles (Site Scan Path)
 
 These limits are centralized in `app/config.py` and enforced by the scan-mode runner.
 
 | Mode | max_pages | crawl_cap | bfs_depth | bfs_pages | dom_pages | stage1_timeout_s | stage2_timeout_s | global_sla_s | concurrency |
-| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| fast | 1 | 10 | 1 | 10 | 0 | 12 | 4 | 35 | 5 |
-| deep | 12 | 30 | 3 | 30 | 0 | 25 | 12 | 120 | 3 |
-| max  | 25 | 70 | 4 | 60 | 15 | 40 | 18 | 240 | 2 |
+| :--- | --------: | --------: | --------: | --------: | --------: | ---------------: | ---------------: | -----------: | ----------: |
+| fast |         1 |        10 |         1 |        10 |         0 |               12 |                4 |           35 |           5 |
+| deep |        12 |        30 |         3 |        30 |         0 |               25 |               12 |          120 |           3 |
+| max  |        25 |        70 |         4 |        60 |        15 |               40 |               18 |          240 |           2 |
 
 Global caps:
 

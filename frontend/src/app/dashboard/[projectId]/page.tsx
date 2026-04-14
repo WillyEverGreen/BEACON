@@ -121,7 +121,10 @@ export default function ProjectDetailPage() {
   const [project, setProject] = useState<any>(null);
   const [scans, setScans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [apiError, setApiError] = useState<{ message: string; retryable: boolean } | null>(null);
+  const [apiError, setApiError] = useState<{
+    message: string;
+    retryable: boolean;
+  } | null>(null);
   const [tab, setTab] = useState<"overview" | "issues" | "priority">(
     "overview",
   );
@@ -260,8 +263,12 @@ export default function ProjectDetailPage() {
 
   const issues: any[] = latestScan?.issues || [];
   const score = latestScan?.score ?? null;
-  const issueTypesCount = Number(latestScan?.issue_types_count || issues.length || 0);
-  const failingElementsCount = Number(latestScan?.failing_elements_count || latestScan?.total_issues || 0);
+  const issueTypesCount = Number(
+    latestScan?.issue_types_count || issues.length || 0,
+  );
+  const failingElementsCount = Number(
+    latestScan?.failing_elements_count || latestScan?.total_issues || 0,
+  );
   const pagesScanned = Number(latestScan?.pages_scanned || 1);
   const severityCounts = {
     critical:
@@ -444,9 +451,14 @@ export default function ProjectDetailPage() {
       {apiError && (
         <div className="glass-card p-4 mb-6 border-l-[6px] border-l-[var(--beacon-error)]">
           <div className="flex items-center justify-between gap-4 flex-wrap">
-            <p className="text-sm font-semibold text-[var(--beacon-text)]">{apiError.message}</p>
+            <p className="text-sm font-semibold text-[var(--beacon-text)]">
+              {apiError.message}
+            </p>
             {apiError.retryable && (
-              <button onClick={() => void loadData()} className="btn-secondary text-xs">
+              <button
+                onClick={() => void loadData()}
+                className="btn-secondary text-xs"
+              >
                 Retry
               </button>
             )}
