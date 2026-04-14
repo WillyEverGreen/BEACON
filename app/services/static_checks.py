@@ -236,6 +236,76 @@ class StaticChecker:
             and not visible_semantic
         )
 
+    def _detect_incomplete_html(self) -> tuple[bool, dict]:
+        """Detect incomplete/truncated HTML based on structural metrics.
+        
+        Returns (is_incomplete, evidence_dict).
+        HTML is considered incomplete if it lacks basic structure or content:
+        - Very sparse DOM (<=5 elements) with minimal text (<50 chars)
+        - No <head> tag with minimal structure
+        - No content at all
+        """
+        visible_text = self.soup.get_text(" ", strip=True)
+        visible_text_length = len(visible_text)
+        dom_element_count = len(self.soup.find_all(True))
+        has_head_tag = self.soup.find("head") is not None
+        has_body_tag = self.soup.find("body") is not None
+        has_html_tag = self.soup.find("html") is not None
+        
+        # Count interactive/content-bearing elements
+        interactive_elements = self.soup.find_all(["a", "button", "input", "select", "textarea", "form"])
+        semantic_elements = self.soup.find_all(["main", "article", "section", "nav", "aside"])
+        headings = self.soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6"])
+        
+        evidence = {
+            "visible_text_length": visible_text_length,
+            "dom_element_count": dom_element_count,
+            "has_head_tag": has_head_tag,
+            "has_body_tag": has_body_tag,
+            "has_html_tag": has_html_tag,
+            "interactive_element_count": len(interactive_elements),
+            "semantic_element_count": len(semantic_elements),
+            "heading_count": len(headings),
+        }
+        
+        # Heuristics for incomplete HTML:
+        # 1. Very sparse DOM (almost no elements) with minimal content
+        is_sparse_and_empty = (
+            visible_text_length == 0 
+            and dom_element_count <= 5
+        )
+        
+        # 2. Minimal content + minimal structure (suggests fragment/truncation)
+        is_minimal_content_and_structure = (
+            visible_text_length < 50
+            and visible_text_length > 0  # Some content but very little
+            and dom_element_count <= 5
+            and len(interactive_elements) == 0
+        )
+        
+        # 3. Missing critical structure tags
+        is_missing_critical_tags = (
+            not has_html_tag
+            or (not has_body_tag and dom_element_count < 10)
+        )
+        
+        # 4. No head tag with otherwise minimal structure
+        is_no_head_minimal = (
+            not has_head_tag
+            and dom_element_count <= 8
+            and visible_text_length < 100
+            and len(semantic_elements) == 0
+        )
+        
+        is_incomplete = (
+            is_sparse_and_empty
+            or is_minimal_content_and_structure
+            or is_missing_critical_tags
+            or is_no_head_minimal
+        )
+        
+        return is_incomplete, evidence
+
     def _track_rule_activity(
         self,
         rule_id: str,
@@ -371,6 +441,10 @@ class StaticChecker:
             "accessible_auth", "redundant_entry", "aria_apg_patterns", "semantic_depth"
         ]
         issues = []
+        
+        # Detect incomplete/truncated HTML early
+        is_incomplete_html, incomplete_evidence = self._detect_incomplete_html()
+        
         blocked_partial = self._is_blocked_partial_page()
         blocked_sensitive_checks = {
             "landmarks",
@@ -378,15 +452,45 @@ class StaticChecker:
             "semantic_depth",
             "advanced_detect",
         }
+        
+        # Checks affected by incomplete HTML - suppress or demote their findings
+        incomplete_html_affected_checks = {
+            "landmarks",
+            "headings",
+            "semantic_depth",
+            "empty_headings",
+            "aria_apg_patterns",
+            "title",  # Document title depends on complete HTML
+        }
+        
         for check_name in all_checks:
+            # Skip checks for blocked pages
             if blocked_partial and check_name in blocked_sensitive_checks:
                 continue
+            # Skip structural checks for incomplete HTML (suppress completely)
+            if is_incomplete_html and check_name in incomplete_html_affected_checks:
+                continue
+                
             method = getattr(self, f"check_{check_name}", None)
             if method:
                 try:
                     issues.extend(method())
                 except Exception as e:
                     logger.warning(f"Static check '{check_name}' failed: {e}")
+        
+        # Add warning issue if HTML is incomplete
+        if is_incomplete_html:
+            incomplete_issue = _issue(
+                self.url, "html-incomplete", "notice", "moderate",
+                "<html>", "<html>",
+                "The HTML appears incomplete or truncated. Structural findings (headings, landmarks) have been suppressed.",
+                "", "", "html",
+                "Ensure the crawled HTML is complete. Incomplete HTML may indicate: (1) page still loading, (2) anti-bot detection, (3) crawl interruption."
+            )
+            incomplete_issue["evidence"] = incomplete_evidence
+            incomplete_issue["confidence"] = 0.9
+            issues.insert(0, incomplete_issue)
+        
         return issues
 
     # ── HTML Semantics ─────────────────────────────────────────

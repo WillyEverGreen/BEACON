@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import api, { toUserFacingError } from "@/lib/api";
@@ -114,6 +114,98 @@ const TOOLTIP_STYLE = {
   boxShadow: "var(--beacon-card-shadow)",
 };
 
+type PresentationBucket = "verified" | "needs_review" | "low_confidence";
+type IssueViewFilter = "show_all" | "verified_only" | "hide_low_confidence";
+
+const ISSUE_PRESENTATION_META: Record<
+  PresentationBucket,
+  {
+    title: string;
+    shortLabel: string;
+    icon: string;
+    trustExplanation: string;
+    headerClass: string;
+    badgeClass: string;
+  }
+> = {
+  verified: {
+    title: "Verified Issues",
+    shortLabel: "Verified",
+    icon: "✔",
+    trustExplanation: "High confidence, likely real accessibility issue",
+    headerClass:
+      "bg-emerald-50 border-emerald-200 text-emerald-900 dark:bg-emerald-500/10 dark:border-emerald-500/30 dark:text-emerald-200",
+    badgeClass:
+      "bg-emerald-100 border-emerald-300 text-emerald-900 dark:bg-emerald-500/20 dark:border-emerald-500/40 dark:text-emerald-200",
+  },
+  needs_review: {
+    title: "Needs Review",
+    shortLabel: "Needs Review",
+    icon: "⚠",
+    trustExplanation: "May require manual validation",
+    headerClass:
+      "bg-amber-50 border-amber-200 text-amber-900 dark:bg-amber-500/10 dark:border-amber-500/30 dark:text-amber-200",
+    badgeClass:
+      "bg-amber-100 border-amber-300 text-amber-900 dark:bg-amber-500/20 dark:border-amber-500/40 dark:text-amber-200",
+  },
+  low_confidence: {
+    title: "Low Confidence",
+    shortLabel: "Low Confidence",
+    icon: "🔍",
+    trustExplanation: "Heuristic or uncertain detection",
+    headerClass:
+      "bg-slate-100 border-slate-300 text-slate-900 dark:bg-slate-500/10 dark:border-slate-500/30 dark:text-slate-200",
+    badgeClass:
+      "bg-slate-200 border-slate-400 text-slate-900 dark:bg-slate-500/20 dark:border-slate-500/40 dark:text-slate-200",
+  },
+};
+
+function resolveConfidenceTier(issue: any): "high" | "medium" | "low" {
+  const explicitTier = String(issue?.confidence_tier || "")
+    .trim()
+    .toLowerCase();
+
+  if (explicitTier === "high" || explicitTier === "medium" || explicitTier === "low") {
+    return explicitTier;
+  }
+
+  const confidence = Number(issue?.confidence || 0);
+  if (confidence >= 0.85) {
+    return "high";
+  }
+  if (confidence >= 0.6) {
+    return "medium";
+  }
+  return "low";
+}
+
+function classifyIssueBucket(issue: any): PresentationBucket {
+  const tier = resolveConfidenceTier(issue);
+  if (tier === "low") {
+    return "low_confidence";
+  }
+
+  const issueType = String(issue?.issue_type || "")
+    .trim()
+    .toLowerCase();
+  const needsManualReview = Boolean(issue?.needs_manual_review);
+  if (needsManualReview || issueType === "needs-review") {
+    return "needs_review";
+  }
+
+  return "verified";
+}
+
+function formatBucketPercentage(count: number, total: number): string {
+  if (total <= 0) {
+    return "0%";
+  }
+
+  const pct = (count / total) * 100;
+  const rounded = Math.round(pct * 10) / 10;
+  return Number.isInteger(rounded) ? `${rounded.toFixed(0)}%` : `${rounded.toFixed(1)}%`;
+}
+
 /* ── Main Component ────────────────────────────────────────────── */
 export default function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -134,10 +226,15 @@ export default function ProjectDetailPage() {
   >("idle");
   const [scanMode, setScanMode] = useState("fast");
   const [scanModeTouched, setScanModeTouched] = useState(false);
+  const [issueViewFilter, setIssueViewFilter] =
+    useState<IssueViewFilter>("verified_only");
   const [expandedIssue, setExpandedIssue] = useState<string | null>(null);
   const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
   const [pollErrorCount, setPollErrorCount] = useState(0);
+  const aiRefreshAttemptsRef = useRef(0);
+  const aiRefreshScanIdRef = useRef<string | null>(null);
+  const [aiRefreshExhausted, setAiRefreshExhausted] = useState(false);
 
   // Deduplicate scans: hide scans that are consecutive matches
   const uniqueScans = (scans || []).reduce((acc: any[], current: any) => {
@@ -159,6 +256,12 @@ export default function ProjectDetailPage() {
     uniqueScans.find((s: any) => s.status === "completed") || null;
   const latestFailedScan: any =
     uniqueScans.find((s: any) => s.status === "failed") || null;
+  const aiAnalysisText =
+    typeof latestScan?.ai_analysis === "string" ? latestScan.ai_analysis : "";
+  const aiAnalysisPending =
+    latestScan?.enrichment_status === "pending" ||
+    aiAnalysisText.toLowerCase().includes("generating insights");
+  const showAiRefreshing = aiAnalysisPending && !aiRefreshExhausted;
 
   // Load project + scans
   const loadData = useCallback(
@@ -280,6 +383,38 @@ export default function ProjectDetailPage() {
     }
   }
 
+  // Auto-refresh completed scans while AI enrichment is pending.
+  useEffect(() => {
+    const completedScanId = latestScan?.id ? String(latestScan.id) : null;
+
+    if (completedScanId !== aiRefreshScanIdRef.current) {
+      aiRefreshScanIdRef.current = completedScanId;
+      aiRefreshAttemptsRef.current = 0;
+      setAiRefreshExhausted(false);
+    }
+
+    if (!completedScanId || scanning || !aiAnalysisPending) {
+      if (!aiAnalysisPending) {
+        aiRefreshAttemptsRef.current = 0;
+        setAiRefreshExhausted(false);
+      }
+      return;
+    }
+
+    const interval = setInterval(() => {
+      if (aiRefreshAttemptsRef.current >= 10) {
+        setAiRefreshExhausted(true);
+        clearInterval(interval);
+        return;
+      }
+
+      aiRefreshAttemptsRef.current += 1;
+      void loadData();
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [latestScan?.id, aiAnalysisPending, scanning, loadData]);
+
   const issues: any[] = latestScan?.issues || [];
   const score = latestScan?.score ?? null;
   const issueTypesCount = Number(
@@ -303,6 +438,55 @@ export default function ProjectDetailPage() {
       latestScan?.minor_issues ||
       issues.filter((i: any) => i.severity === "minor").length,
   };
+
+  const presentationOrder: PresentationBucket[] = [
+    "verified",
+    "needs_review",
+    "low_confidence",
+  ];
+  const issuesByPresentation = useMemo(() => {
+    const grouped: Record<PresentationBucket, any[]> = {
+      verified: [],
+      needs_review: [],
+      low_confidence: [],
+    };
+
+    for (const issue of issues) {
+      grouped[classifyIssueBucket(issue)].push(issue);
+    }
+
+    return grouped;
+  }, [issues]);
+  const presentationCounts: Record<PresentationBucket, number> = {
+    verified: issuesByPresentation.verified.length,
+    needs_review: issuesByPresentation.needs_review.length,
+    low_confidence: issuesByPresentation.low_confidence.length,
+  };
+  const totalPresentationIssues = issues.length;
+  const presentationPercentages: Record<PresentationBucket, string> = {
+    verified: formatBucketPercentage(
+      presentationCounts.verified,
+      totalPresentationIssues,
+    ),
+    needs_review: formatBucketPercentage(
+      presentationCounts.needs_review,
+      totalPresentationIssues,
+    ),
+    low_confidence: formatBucketPercentage(
+      presentationCounts.low_confidence,
+      totalPresentationIssues,
+    ),
+  };
+  const visiblePresentationOrder: PresentationBucket[] =
+    issueViewFilter === "verified_only"
+      ? ["verified"]
+      : issueViewFilter === "hide_low_confidence"
+        ? ["verified", "needs_review"]
+        : presentationOrder;
+  const visiblePresentationIssueCount = visiblePresentationOrder.reduce(
+    (sum, bucket) => sum + issuesByPresentation[bucket].length,
+    0,
+  );
 
   const trust = latestScan?.trust || {};
   const trustWarnings: string[] = Array.isArray(trust.calibration_warnings)
@@ -391,6 +575,163 @@ export default function ProjectDetailPage() {
     { key: "issues" as const, label: "Issues", count: issueTypesCount },
     { key: "priority" as const, label: "Fix Priority" },
   ];
+
+  const renderIssueCard = (
+    issue: any,
+    idx: number,
+    bucket: PresentationBucket,
+  ) => {
+    const issueKey = issue.issue_id || `${bucket}-${idx}`;
+    const isExpanded = expandedIssue === issueKey;
+    const bucketMeta = ISSUE_PRESENTATION_META[bucket];
+
+    return (
+      <div
+        key={issueKey}
+        className={`glass-card overflow-hidden transition-all duration-300 ${isExpanded ? "ring-2 ring-[var(--beacon-primary)] ring-offset-2 ring-offset-[var(--beacon-bg)]" : ""}`}
+      >
+        <button
+          className="w-full p-5 sm:p-6 flex items-start sm:items-center gap-4 text-left hover:bg-[var(--beacon-surface)] transition-colors focus:outline-none"
+          onClick={() => setExpandedIssue(isExpanded ? null : issueKey)}
+        >
+          <span
+            className={`severity-badge severity-${issue.severity} shrink-0 w-24 justify-center py-1 mt-1 sm:mt-0 shadow-sm`}
+          >
+            {issue.severity}
+          </span>
+          <div className="flex-1 min-w-0 pr-4">
+            <p className="text-base font-bold text-[var(--beacon-text)] leading-snug">
+              {issue.description || issue.rule_id}
+            </p>
+
+            <div className="flex items-center gap-3 mt-2 flex-wrap">
+              <span
+                className={`text-[10px] font-extrabold uppercase tracking-[0.1em] px-2 py-0.5 rounded border ${bucketMeta.badgeClass}`}
+              >
+                {bucketMeta.icon} {bucketMeta.shortLabel}
+              </span>
+              {issue.wcag_criterion && (
+                <span className="text-[10px] text-[var(--beacon-primary)] uppercase font-extrabold tracking-[0.1em] bg-[var(--beacon-primary)]/10 px-2 py-0.5 rounded border border-[var(--beacon-primary)]/20">
+                  WCAG {issue.wcag_criterion}
+                </span>
+              )}
+              {issue.confidence != null && issue.confidence < 1 && (
+                <span className="text-[10px] font-bold text-[var(--beacon-text-muted)] uppercase tracking-wider">
+                  Confidence{" "}
+                  <span className="text-[var(--beacon-text)]">
+                    {Math.round(issue.confidence * 100)}%
+                  </span>
+                </span>
+              )}
+            </div>
+          </div>
+          <IconChevron
+            className={`w-5 h-5 text-[var(--beacon-text-muted)] shrink-0 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
+          />
+        </button>
+
+        {isExpanded && (
+          <div className="p-6 pt-0 bg-[var(--beacon-surface)] border-t border-[var(--beacon-border)]">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+              <div className="space-y-6">
+                {/* HTML Snippet */}
+                {issue.html_snippet && (
+                  <div>
+                    <h4 className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--beacon-text-muted)] mb-3 flex items-center gap-2">
+                      <IconCode className="w-3.5 h-3.5" /> Failing
+                      Element
+                    </h4>
+                    <div className="bg-[var(--beacon-bg)] p-4 rounded-md border border-[var(--beacon-border)] shadow-[inset_1px_1px_4px_rgba(0,0,0,0.1)]">
+                      <pre className="text-[11px] font-mono text-[var(--beacon-text)] whitespace-pre-wrap leading-relaxed overflow-x-auto">
+                        {issue.html_snippet}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+
+                {/* Impact */}
+                {issue.impact_summary && (
+                  <div>
+                    <h4 className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--beacon-text-muted)] mb-2">
+                      User Impact
+                    </h4>
+                    <p className="text-sm text-[var(--beacon-text-soft)] font-medium leading-relaxed">
+                      {issue.impact_summary}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-6">
+                {/* Suggested Fix */}
+                {aiEnabled && issue.suggested_fix && (
+                  <div>
+                    <h4 className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--beacon-primary)] mb-2 flex items-center gap-1.5">
+                      <IconSparkle className="w-3.5 h-3.5" />{" "}
+                      Generative Fix Suggestion
+                    </h4>
+                    <div className="bg-[var(--beacon-primary)]/5 p-4 rounded-md border border-[var(--beacon-primary)]/20">
+                      <p className="text-sm text-[var(--beacon-text)] font-medium leading-relaxed">
+                        {issue.suggested_fix}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {aiEnabled && !issue.suggested_fix && (
+                  <div>
+                    <h4 className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--beacon-primary)] mb-2 flex items-center gap-1.5">
+                      <IconSparkle className="w-3.5 h-3.5" />{" "}
+                      Generative Fix Suggestion
+                    </h4>
+                    <div className="bg-[var(--beacon-primary)]/5 p-4 rounded-md border border-[var(--beacon-primary)]/20">
+                      <p className="text-sm text-[var(--beacon-text)] font-medium leading-relaxed">
+                        Fix suggestion unavailable
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Code Fix */}
+                {aiEnabled && issue.code_fix && (
+                  <div>
+                    <h4 className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--beacon-success)] mb-2 flex items-center gap-1.5">
+                      <IconCode className="w-3.5 h-3.5" /> Remediated
+                      Code
+                    </h4>
+                    <div className="bg-[#171e19] dark:bg-[var(--beacon-bg)] p-4 rounded-md border border-[var(--beacon-success)]/30 shadow-[inset_1px_1px_4px_rgba(0,0,0,0.2)]">
+                      <pre className="text-[11px] font-mono text-[var(--beacon-success)] whitespace-pre-wrap leading-relaxed overflow-x-auto">
+                        {issue.code_fix}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Meta context block bottom */}
+            {issue.confidence_sources?.length > 0 && (
+              <div className="mt-8 pt-4 border-t border-[var(--beacon-border)] flex items-center gap-3">
+                <span className="text-[10px] font-bold text-[var(--beacon-text-muted)] uppercase tracking-[0.1em]">
+                  Trigger Engines:
+                </span>
+                <div className="flex gap-2">
+                  {issue.confidence_sources.map((src: string) => (
+                    <span
+                      key={src}
+                      className="text-[9px] bg-[var(--beacon-bg)] border border-[var(--beacon-border)] px-2 py-0.5 rounded shadow-[1px_1px_0px_#000] font-extrabold uppercase text-[var(--beacon-text)]"
+                    >
+                      {src}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="animate-fade-in w-full pb-20">
@@ -679,25 +1020,23 @@ export default function ProjectDetailPage() {
               {pieData.length > 0 ? (
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-10 flex-1">
                   <div className="w-[200px] h-[200px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={pieData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={65}
-                          outerRadius={95}
-                          paddingAngle={4}
-                          dataKey="value"
-                          stroke="var(--beacon-card-bg)"
-                          strokeWidth={2}
-                        >
-                          {pieData.map((entry, i) => (
-                            <Cell key={i} fill={entry.fill} />
-                          ))}
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
+                    <PieChart width={200} height={200}>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={65}
+                        outerRadius={95}
+                        paddingAngle={4}
+                        dataKey="value"
+                        stroke="var(--beacon-card-bg)"
+                        strokeWidth={2}
+                      >
+                        {pieData.map((entry, i) => (
+                          <Cell key={i} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                    </PieChart>
                   </div>
                   <div className="space-y-3.5">
                     {Object.entries(severityCounts).map(([sev, count]) => (
@@ -732,7 +1071,7 @@ export default function ProjectDetailPage() {
                 Score History
               </h3>
               {scoreHistory.length > 1 ? (
-                <div className="h-[200px] w-full flex-1">
+                <div className="h-[200px] min-h-[200px] w-full min-w-0 flex-1">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={scoreHistory}>
                       <CartesianGrid
@@ -824,6 +1163,12 @@ export default function ProjectDetailPage() {
                     </h3>
                   </div>
 
+                  {showAiRefreshing && (
+                    <span className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-[var(--beacon-primary)] bg-[var(--beacon-primary)]/10 border border-[var(--beacon-primary)]/30 px-2 py-1 rounded">
+                      Refreshing insights...
+                    </span>
+                  )}
+
                   {latestScan.ai_analysis?.includes("[AI ERROR]") && (
                     <button
                       onClick={() =>
@@ -847,6 +1192,12 @@ export default function ProjectDetailPage() {
                 >
                   {latestScan.ai_analysis || latestScan.summary}
                 </div>
+
+                {aiRefreshExhausted && (
+                  <p className="mt-3 text-xs font-bold uppercase tracking-[0.08em] text-[var(--beacon-warning)]">
+                    Insights are delayed. Showing latest available output.
+                  </p>
+                )}
 
                 {showTechnicalDetails &&
                   latestScan.ai_analysis?.includes("[AI ERROR]") && (
@@ -1001,7 +1352,7 @@ export default function ProjectDetailPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-bold uppercase tracking-[0.15em] text-[var(--beacon-text-muted)]">
-              Discovered Vulnerabilities by Type
+              Discovered Issues by Verification Status
             </h3>
             <span className="text-xs font-bold bg-[var(--beacon-surface)] border border-[var(--beacon-border)] px-3 py-1 rounded shadow-sm">
               {issueTypesCount} types • {failingElementsCount} elements
@@ -1019,155 +1370,82 @@ export default function ProjectDetailPage() {
               </p>
             </div>
           ) : (
-            issues.map((issue: any, idx: number) => {
-              const isExpanded =
-                expandedIssue === (issue.issue_id || idx.toString());
-              return (
-                <div
-                  key={issue.issue_id || idx}
-                  className={`glass-card overflow-hidden transition-all duration-300 ${isExpanded ? "ring-2 ring-[var(--beacon-primary)] ring-offset-2 ring-offset-[var(--beacon-bg)]" : ""}`}
-                >
-                  <button
-                    className="w-full p-5 sm:p-6 flex items-start sm:items-center gap-4 text-left hover:bg-[var(--beacon-surface)] transition-colors focus:outline-none"
-                    onClick={() =>
-                      setExpandedIssue(
-                        isExpanded ? null : issue.issue_id || idx.toString(),
-                      )
-                    }
-                  >
+            <div className="space-y-5">
+              <div className="flex flex-wrap items-center gap-2">
+                {presentationOrder.map((bucket) => {
+                  const bucketMeta = ISSUE_PRESENTATION_META[bucket];
+                  return (
                     <span
-                      className={`severity-badge severity-${issue.severity} shrink-0 w-24 justify-center py-1 mt-1 sm:mt-0 shadow-sm`}
+                      key={bucket}
+                      title={bucketMeta.trustExplanation}
+                      className={`text-[10px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded border ${bucketMeta.badgeClass}`}
                     >
-                      {issue.severity}
+                      {bucketMeta.icon} {bucketMeta.shortLabel} ({presentationCounts[bucket]} • {presentationPercentages[bucket]})
                     </span>
-                    <div className="flex-1 min-w-0 pr-4">
-                      <p className="text-base font-bold text-[var(--beacon-text)] leading-snug">
-                        {issue.description || issue.rule_id}
-                      </p>
+                  );
+                })}
+              </div>
 
-                      <div className="flex items-center gap-3 mt-2 flex-wrap">
-                        {issue.wcag_criterion && (
-                          <span className="text-[10px] text-[var(--beacon-primary)] uppercase font-extrabold tracking-[0.1em] bg-[var(--beacon-primary)]/10 px-2 py-0.5 rounded border border-[var(--beacon-primary)]/20">
-                            WCAG {issue.wcag_criterion}
-                          </span>
-                        )}
-                        {issue.confidence != null && issue.confidence < 1 && (
-                          <span className="text-[10px] font-bold text-[var(--beacon-text-muted)] uppercase tracking-wider">
-                            Confidence{" "}
-                            <span className="text-[var(--beacon-text)]">
-                              {Math.round(issue.confidence * 100)}%
-                            </span>
-                          </span>
-                        )}
-                      </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--beacon-text-muted)]">
+                  View:
+                </span>
+                <button
+                  onClick={() => setIssueViewFilter("show_all")}
+                  className={`text-[10px] font-extrabold uppercase tracking-[0.08em] px-3 py-1 rounded border transition-colors ${issueViewFilter === "show_all" ? "bg-[var(--beacon-primary)] text-black border-black" : "bg-[var(--beacon-surface)] border-[var(--beacon-border)] text-[var(--beacon-text)] hover:bg-[var(--beacon-surface)]"}`}
+                >
+                  Show All
+                </button>
+                <button
+                  onClick={() => setIssueViewFilter("verified_only")}
+                  className={`text-[10px] font-extrabold uppercase tracking-[0.08em] px-3 py-1 rounded border transition-colors ${issueViewFilter === "verified_only" ? "bg-[var(--beacon-primary)] text-black border-black" : "bg-[var(--beacon-surface)] border-[var(--beacon-border)] text-[var(--beacon-text)] hover:bg-[var(--beacon-surface)]"}`}
+                >
+                  Verified Only
+                </button>
+                <button
+                  onClick={() => setIssueViewFilter("hide_low_confidence")}
+                  className={`text-[10px] font-extrabold uppercase tracking-[0.08em] px-3 py-1 rounded border transition-colors ${issueViewFilter === "hide_low_confidence" ? "bg-[var(--beacon-primary)] text-black border-black" : "bg-[var(--beacon-surface)] border-[var(--beacon-border)] text-[var(--beacon-text)] hover:bg-[var(--beacon-surface)]"}`}
+                >
+                  Hide Low Confidence
+                </button>
+              </div>
+
+              {visiblePresentationOrder.map((bucket) => {
+                const bucketMeta = ISSUE_PRESENTATION_META[bucket];
+                const sectionIssues = issuesByPresentation[bucket];
+                if (sectionIssues.length === 0) {
+                  return null;
+                }
+
+                return (
+                  <div key={bucket} className="space-y-3">
+                    <div
+                      title={bucketMeta.trustExplanation}
+                      className={`flex items-center justify-between rounded-md border px-4 py-2 ${bucketMeta.headerClass}`}
+                    >
+                      <h4 className="text-xs font-extrabold uppercase tracking-[0.14em]">
+                        {bucketMeta.icon} {bucketMeta.title}
+                      </h4>
+                      <span className="text-[11px] font-extrabold uppercase tracking-[0.08em]">
+                        {sectionIssues.length} • {presentationPercentages[bucket]}
+                      </span>
                     </div>
-                    <IconChevron
-                      className={`w-5 h-5 text-[var(--beacon-text-muted)] shrink-0 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
-                    />
-                  </button>
 
-                  {isExpanded && (
-                    <div className="p-6 pt-0 bg-[var(--beacon-surface)] border-t border-[var(--beacon-border)]">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                        <div className="space-y-6">
-                          {/* HTML Snippet */}
-                          {issue.html_snippet && (
-                            <div>
-                              <h4 className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--beacon-text-muted)] mb-3 flex items-center gap-2">
-                                <IconCode className="w-3.5 h-3.5" /> Failing
-                                Element
-                              </h4>
-                              <div className="bg-[var(--beacon-bg)] p-4 rounded-md border border-[var(--beacon-border)] shadow-[inset_1px_1px_4px_rgba(0,0,0,0.1)]">
-                                <pre className="text-[11px] font-mono text-[var(--beacon-text)] whitespace-pre-wrap leading-relaxed overflow-x-auto">
-                                  {issue.html_snippet}
-                                </pre>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Impact */}
-                          {issue.impact_summary && (
-                            <div>
-                              <h4 className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--beacon-text-muted)] mb-2">
-                                User Impact
-                              </h4>
-                              <p className="text-sm text-[var(--beacon-text-soft)] font-medium leading-relaxed">
-                                {issue.impact_summary}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="space-y-6">
-                          {/* Suggested Fix */}
-                          {aiEnabled && issue.suggested_fix && (
-                            <div>
-                              <h4 className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--beacon-primary)] mb-2 flex items-center gap-1.5">
-                                <IconSparkle className="w-3.5 h-3.5" />{" "}
-                                Generative Fix Suggestion
-                              </h4>
-                              <div className="bg-[var(--beacon-primary)]/5 p-4 rounded-md border border-[var(--beacon-primary)]/20">
-                                <p className="text-sm text-[var(--beacon-text)] font-medium leading-relaxed">
-                                  {issue.suggested_fix}
-                                </p>
-                              </div>
-                            </div>
-                          )}
-
-                          {aiEnabled && !issue.suggested_fix && (
-                            <div>
-                              <h4 className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--beacon-primary)] mb-2 flex items-center gap-1.5">
-                                <IconSparkle className="w-3.5 h-3.5" />{" "}
-                                Generative Fix Suggestion
-                              </h4>
-                              <div className="bg-[var(--beacon-primary)]/5 p-4 rounded-md border border-[var(--beacon-primary)]/20">
-                                <p className="text-sm text-[var(--beacon-text)] font-medium leading-relaxed">
-                                  Fix suggestion unavailable
-                                </p>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Code Fix */}
-                          {aiEnabled && issue.code_fix && (
-                            <div>
-                              <h4 className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--beacon-success)] mb-2 flex items-center gap-1.5">
-                                <IconCode className="w-3.5 h-3.5" /> Remediated
-                                Code
-                              </h4>
-                              <div className="bg-[#171e19] dark:bg-[var(--beacon-bg)] p-4 rounded-md border border-[var(--beacon-success)]/30 shadow-[inset_1px_1px_4px_rgba(0,0,0,0.2)]">
-                                <pre className="text-[11px] font-mono text-[var(--beacon-success)] whitespace-pre-wrap leading-relaxed overflow-x-auto">
-                                  {issue.code_fix}
-                                </pre>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Meta context block bottom */}
-                      {issue.confidence_sources?.length > 0 && (
-                        <div className="mt-8 pt-4 border-t border-[var(--beacon-border)] flex items-center gap-3">
-                          <span className="text-[10px] font-bold text-[var(--beacon-text-muted)] uppercase tracking-[0.1em]">
-                            Trigger Engines:
-                          </span>
-                          <div className="flex gap-2">
-                            {issue.confidence_sources.map((src: string) => (
-                              <span
-                                key={src}
-                                className="text-[9px] bg-[var(--beacon-bg)] border border-[var(--beacon-border)] px-2 py-0.5 rounded shadow-[1px_1px_0px_#000] font-extrabold uppercase text-[var(--beacon-text)]"
-                              >
-                                {src}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
+                    <div className="space-y-3">
+                      {sectionIssues.map((issue: any, idx: number) =>
+                        renderIssueCard(issue, idx, bucket),
                       )}
                     </div>
-                  )}
+                  </div>
+                );
+              })}
+
+              {visiblePresentationIssueCount === 0 && (
+                <div className="glass-card p-6 text-sm font-medium text-[var(--beacon-text-muted)]">
+                  No issues match this filter. Switch to <span className="font-extrabold text-[var(--beacon-text)]">Show All</span> to review every detected item.
                 </div>
-              );
-            })
+              )}
+            </div>
           )}
         </div>
       )}

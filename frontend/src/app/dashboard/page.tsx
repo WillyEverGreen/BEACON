@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import api, { toUserFacingError } from "@/lib/api";
 import Link from "next/link";
 
@@ -85,10 +85,30 @@ export default function AllProjectsPage() {
   const [newName, setNewName] = useState("");
   const [newUrl, setNewUrl] = useState("");
   const [creating, setCreating] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const successTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     loadProjects();
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (successTimerRef.current) {
+        clearTimeout(successTimerRef.current);
+      }
+    };
+  }, []);
+
+  function showSuccessMessage(message: string) {
+    setSuccessMessage(message);
+    if (successTimerRef.current) {
+      clearTimeout(successTimerRef.current);
+    }
+    successTimerRef.current = setTimeout(() => {
+      setSuccessMessage(null);
+    }, 4000);
+  }
 
   async function loadProjects() {
     try {
@@ -105,14 +125,34 @@ export default function AllProjectsPage() {
 
   async function createProject() {
     if (!newName.trim() || !newUrl.trim()) return;
+    const name = newName.trim();
+    const url = newUrl.trim();
     setCreating(true);
     try {
-      await api.createProject({ name: newName.trim(), url: newUrl.trim() });
+      const created = await api.createProject({ name, url });
+      const optimisticProject = {
+        id: created?.id || `local-${Date.now()}`,
+        name: created?.name || name,
+        url: created?.url || url,
+        latest_score: created?.latest_score ?? null,
+        total_issues: created?.total_issues ?? 0,
+        last_scan_at: created?.last_scan_at ?? null,
+        ...created,
+      };
+
+      setProjects((prev) => {
+        const withoutDuplicate = prev.filter(
+          (project) => project.id !== optimisticProject.id,
+        );
+        return [optimisticProject, ...withoutDuplicate];
+      });
+
       setNewName("");
       setNewUrl("");
       setShowNewForm(false);
       setApiError(null);
-      await loadProjects();
+      showSuccessMessage(`Project \"${optimisticProject.name}\" created.`);
+      void loadProjects();
     } catch (e) {
       console.error(e);
       setApiError(toUserFacingError(e));
@@ -122,18 +162,26 @@ export default function AllProjectsPage() {
   }
 
   async function deleteProject(pid: string) {
+    const projectName =
+      projects.find((project) => project.id === pid)?.name || "Project";
     if (
       !confirm(
         "Are you absolutely sure you want to delete this project? All historic scans will be erased forever.",
       )
     )
       return;
+
+    const previousProjects = projects;
+    setProjects((prev) => prev.filter((project) => project.id !== pid));
+
     try {
       await api.deleteProject(pid);
       setApiError(null);
-      await loadProjects();
+      showSuccessMessage(`Deleted \"${projectName}\".`);
+      void loadProjects();
     } catch (e) {
       console.error(e);
+      setProjects(previousProjects);
       setApiError(toUserFacingError(e));
     }
   }
@@ -186,6 +234,26 @@ export default function AllProjectsPage() {
                 Retry
               </button>
             )}
+          </div>
+        </div>
+      )}
+
+      {successMessage && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="glass-card p-4 mb-6 border-l-[6px] border-l-[var(--beacon-success)]"
+        >
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <p className="text-sm font-semibold text-[var(--beacon-text)]">
+              {successMessage}
+            </p>
+            <button
+              onClick={() => setSuccessMessage(null)}
+              className="btn-secondary text-xs"
+            >
+              Dismiss
+            </button>
           </div>
         </div>
       )}

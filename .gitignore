@@ -182,3 +182,31 @@ next-env.d.ts
 
 # Secrets
 serviceAccountKey.json
+
+# ── BEACON Project-Specific ────────────────────────────────────────────────
+
+# Runtime / large scan artifacts
+logs/telemetry.jsonl
+tmp_*.db
+*.db-journal
+scripts/validation/scan_validation_results*.json
+scripts/validation/scan_validation_run.log
+scripts/validation/musicblocks_mode_comparison_direct.json
+scripts/lichess_scan_result*.json
+scripts/musicblocks_scan_result.json
+
+# Evaluation run outputs (generated, not source)
+evaluation/production_benchmark_results.json
+evaluation/unseen_sites_benchmark_results.json
+evaluation/site_archetype_validation_results.json
+evaluation/benchmark_ingestion_report*.json
+evaluation/sugarlabs_lighthouse_report.json
+
+# Tool caches
+.ruff_cache/
+.mypy_cache/
+
+# Frontend test artifacts
+frontend/test-results/
+frontend/.next/
+

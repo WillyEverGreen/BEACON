@@ -5,6 +5,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { TimelineSection } from "@/components/timeline-section";
 import { Features } from "@/components/blocks/features-8";
+import Link from "next/link";
 
 const brands = [
   "ACCESSIBILITY",
@@ -71,13 +72,20 @@ export default function Home() {
 </div>
           <ul className="hidden items-center gap-8 text-sm font-bold uppercase tracking-wide md:flex">
             <li>Features</li>
-            <li>Dashboard</li>
+            <li>
+              <Link href="/dashboard" className="hover:opacity-80 transition-opacity">
+                Dashboard
+              </Link>
+            </li>
             <li>Extensions</li>
             <li>Docs</li>
           </ul>
-          <button className="neo-btn bg-black px-5 py-3 text-sm font-bold uppercase tracking-wide text-white" onClick={() => window.location.href='/dashboard'}>
+          <Link
+            href="/dashboard"
+            className="neo-btn bg-black px-5 py-3 text-sm font-bold uppercase tracking-wide text-white"
+          >
             Start Audit
-          </button>
+          </Link>
         </nav>
       </header>
 
@@ -350,8 +358,18 @@ export default function Home() {
                   From project scorecards to route-level fixes, BEACON gives every developer a comprehensive path to inclusive experiences.
                 </p>
                 <div className="mt-10 flex flex-wrap gap-4" data-reveal>
-                  <button className="neo-btn bg-black px-8 py-4 font-bold uppercase tracking-wide text-white" onClick={() => window.location.href='/dashboard'}>Start Audit</button>
-                  <button className="neo-btn bg-white px-8 py-4 font-bold uppercase tracking-wide text-black" onClick={() => window.location.href='/dashboard'}>Install Extension</button>
+                  <Link
+                    href="/dashboard"
+                    className="neo-btn bg-black px-8 py-4 font-bold uppercase tracking-wide text-white"
+                  >
+                    Start Audit
+                  </Link>
+                  <Link
+                    href="/dashboard"
+                    className="neo-btn bg-white px-8 py-4 font-bold uppercase tracking-wide text-black"
+                  >
+                    Install Extension
+                  </Link>
                 </div>
               </div>
             </div>
