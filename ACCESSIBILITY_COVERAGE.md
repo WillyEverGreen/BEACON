@@ -12,17 +12,18 @@ This tool is NOT a full compliance solution.
 
 ## 📊 Coverage Overview
 
-| Category | Coverage |
-|----------|--------|
-| Full | 34.5% |
-| Partial | 20.7% |
-| Not Covered | 44.8% |
+| Category    | Coverage |
+| ----------- | -------- |
+| Full        | 34.5%    |
+| Partial     | 20.7%    |
+| Not Covered | 44.8%    |
 
 ## 1) Scope and Method
 
 This document is generated from implementation evidence in code, not from marketing claims or benchmark assumptions.
 
 Evidence sources analyzed:
+
 - app/services/static_checks.py
 - app/services/heuristics.py
 - app/services/browser_probes.py
@@ -33,6 +34,7 @@ Evidence sources analyzed:
 - app/routers/rag.py
 
 Method:
+
 - Step 1: Extract static rules and WCAG mappings from static checker issue builders.
 - Step 2: Extract heuristic rules and WCAG mappings.
 - Step 3: Extract browser probe rules and WCAG mappings.
@@ -41,6 +43,7 @@ Method:
 - Step 6: Classify WCAG 2.2 A/AA criteria as Full, Partial, or Not Covered using deterministic-vs-heuristic evidence.
 
 Important constraints:
+
 - Coverage here means implemented detection logic exists in code.
 - Coverage here does not mean guaranteed legal conformance for every page type.
 - Dynamic checks depend on deep/max mode and Playwright availability.
@@ -56,6 +59,7 @@ Pipeline sequencing is implemented in app/services/audit_runner.py.
 - Stage E: RAG enrichment is post-detection enrichment, not primary detection.
 
 Key evidence lines:
+
 - Scan mode behavior and engine gating: app/services/audit_runner.py:944
 - axe-core deep/max execution path: app/services/audit_runner.py:1249
 - Parallel engine execution: app/services/audit_runner.py:1286
@@ -63,25 +67,28 @@ Key evidence lines:
 
 ## 3) Engine Types and Trust Posture
 
-| Engine | Source | Base confidence | Default manual review | Detection type |
-|---|---|---:|---|---|
-| Static | app/services/static_checks.py:143 | 0.85 | False | Deterministic DOM checks |
-| Heuristic | app/services/heuristics.py:52 | 0.5 | True | Pattern/heuristic signals |
-| Browser probe | app/services/browser_probes.py:41 | 0.8 | False | Runtime interaction probes |
-| Cognitive | app/services/cognitive_checks.py:110 | 0.6 | True | UX/readability heuristics |
-| axe-core normalized | app/services/normalizer.py:24 | 0.9 | False | Deterministic axe-core violations |
+| Engine              | Source                               | Base confidence | Default manual review | Detection type                    |
+| ------------------- | ------------------------------------ | --------------: | --------------------- | --------------------------------- |
+| Static              | app/services/static_checks.py:143    |            0.85 | False                 | Deterministic DOM checks          |
+| Heuristic           | app/services/heuristics.py:52        |             0.5 | True                  | Pattern/heuristic signals         |
+| Browser probe       | app/services/browser_probes.py:41    |             0.8 | False                 | Runtime interaction probes        |
+| Cognitive           | app/services/cognitive_checks.py:110 |             0.6 | True                  | UX/readability heuristics         |
+| axe-core normalized | app/services/normalizer.py:24        |             0.9 | False                 | Deterministic axe-core violations |
 
 Additional confidence governance:
+
 - Heuristic-only findings are forced to needs-review in confidence logic.
 - Cross-engine corroboration can boost confidence for the same rule.
 
 Evidence lines:
+
 - Heuristic-only needs-review: app/services/confidence.py:419
 - Cross-engine boost: app/services/confidence.py:539
 
 ## 4) Rule Inventory (Code-Extracted)
 
 Code-extracted unique rule counts by engine:
+
 - Static: 81
 - Heuristic: 23
 - Browser probe: 19
@@ -91,6 +98,7 @@ Code-extracted unique rule counts by engine:
 Total unique mapped SC identifiers detected across all engines (including AAA and legacy 4.1.1): 38
 
 Notes:
+
 - Rule extraction is literal-call based with dynamic dict key capture.
 - Dynamic behavior can still emit additional runtime-specific variants.
 
@@ -118,11 +126,13 @@ area-alt, aria-hidden-focus, aria-required-attr, aria-required-children, aria-re
 WCAG SC mapping is explicitly attached in issue objects and/or normalizer mappings.
 
 Examples:
+
 - Static issue schema includes wcag_criterion and wcag_level fields.
 - Heuristic, browser, cognitive builders also emit wcag_criterion/wcag_level fields.
 - axe-core uses AXE_WCAG_MAP in normalizer.
 
 Evidence lines:
+
 - Static issue schema: app/services/static_checks.py:145
 - Heuristic issue schema: app/services/heuristics.py:53
 - Browser issue schema: app/services/browser_probes.py:41
@@ -134,10 +144,12 @@ Evidence lines:
 The implementation includes direct ARIA and APG-specific checks, not only generic WCAG labels.
 
 Examples:
+
 - ARIA role/attribute validation in static checks.
 - APG pattern checks in static checker modules.
 
 Evidence lines:
+
 - ARIA checks entry: app/services/static_checks.py:2320
 - APG pattern check: app/services/static_checks.py:2674
 
@@ -146,14 +158,17 @@ Evidence lines:
 Retrieval trust silos include wcag, aria, coga, axe, toolkit, local_wcag_kb.
 
 Evidence line:
+
 - app/services/retrieval.py:27
 
 ## 6) WCAG 2.2 A/AA Coverage Classification
 
 Denominator used in this report:
+
 - 58 WCAG 2.2 A/AA SC identifiers in internal baseline list used for this code analysis.
 
 Classification rule used:
+
 - Full: strong deterministic coverage signal (multiple deterministic engines or dense deterministic rules).
 - Partial: only single-engine or mostly heuristic coverage.
 - Not Covered: no implemented detector found for that SC.
@@ -173,6 +188,7 @@ Classification rule used:
 ## 7) Percentage Estimates (Honest)
 
 Using the 58-item A/AA baseline in this analysis:
+
 - Full: 20/58 = 34.5%
 - Partial: 12/58 = 20.7%
 - Not covered: 26/58 = 44.8%
@@ -186,26 +202,32 @@ Using the 58-item A/AA baseline in this analysis:
 - ARIA validation
 
 Additional non-A/AA criteria observed in code mapping:
+
 - AAA signals: 1.4.6, 2.3.3, 3.1.3, 3.1.5, 3.3.9
 - Legacy/obsolete in 2.2 context: 4.1.1 still appears in rule mapping path
 
 ## 8) Limitations and Non-Coverage Risks
 
 1. Dynamic engine dependency:
+
 - Browser and axe evidence requires deep/max path and Playwright runtime.
 
 2. Heuristic/cognitive reliability:
+
 - Heuristic and cognitive findings are intentionally low-confidence or needs-review by default.
 
 3. Mapping quality caveat:
+
 - A cognitive rule call appears to pass arguments in a mismatched order for form-no-progress, which can distort wcag/level fields.
 - Evidence: app/services/cognitive_checks.py:376
 
 4. Enrichment mutation caveat:
+
 - Enrichment can overwrite wcag_criterion from generated text, so compliance accounting should use pre-enrichment detector mapping when auditing raw detector coverage.
 - Evidence: app/services/llm.py:452
 
 5. Access and blocked-page degradation:
+
 - For blocked/auth-limited pages, pipeline can degrade and emit availability-focused findings rather than full structural coverage.
 
 ## 9) Detection vs RAG Enrichment Separation
@@ -213,14 +235,17 @@ Additional non-A/AA criteria observed in code mapping:
 This is critical:
 
 Detection engines:
+
 - Static, heuristic, browser-probe, axe-core, cognitive
 - These produce the actual issue detections.
 
 RAG enrichment:
+
 - Happens later and enhances remediation payloads (explanations, steps, code fix suggestions).
 - RAG does not create detector reach for missing SC categories.
 
 Evidence:
+
 - Enrichment stage in runner: app/services/audit_runner.py:1455
 - Enrichment function: app/services/llm.py:901
 - Standalone RAG endpoint for Q/A over knowledge base: app/routers/rag.py:13
@@ -232,6 +257,7 @@ Current implementation has strong depth in core structural/semantics/name-role-v
 However, a large set of timing, pointer, advanced media, and predictable-input criteria remains uncovered.
 
 Bottom line:
+
 - This is a capable multi-engine accessibility detector with meaningful WCAG breadth.
 - It is not full WCAG 2.2 A/AA coverage yet.
 - Current honest A/AA implemented coverage estimate is 55.2% (full+partial), with 34.5% in the stronger/full bucket under this report's evidence criteria.
