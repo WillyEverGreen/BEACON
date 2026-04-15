@@ -453,7 +453,9 @@ def _build_availability_fallback_issue(
     severity: str = "serious",
 ) -> dict[str, Any]:
     issue_seed = f"{url}|{rule_id}|{degraded_reason}|{fetch_status or ''}"
-    evidence: dict[str, Any] = {"degraded_reason": degraded_reason}
+    evidence: dict[str, Any] = {
+        "degraded_reason": normalize_failure(degraded_reason).value if degraded_reason else "",
+    }
     if isinstance(fetch_status, int):
         evidence["fetch_status_code"] = int(fetch_status)
 
@@ -613,12 +615,12 @@ async def _run_domain_preflight(url: str, *, run_id: str | None = None) -> Prefl
         run_id=cache_key,
         domain=domain,
         ok=True,
-        degraded_reason="ok",
+        degraded_reason=normalize_failure(None).value if False else "ok",
         message="preflight_ok",
     )
 
     try:
-        async with AsyncSession(impersonate="chrome", headers=headers, follow_redirects=True) as client:
+        async with AsyncSession(impersonate="chrome", headers=headers, allow_redirects=True) as client:
             response = await http_get_with_backoff(
                 url,
                 client=client,
@@ -630,19 +632,19 @@ async def _run_domain_preflight(url: str, *, run_id: str | None = None) -> Prefl
         if 200 <= status_code < 400:
             reason = "ok"
         else:
-            reason = normalize_failure(None, status_code=status_code, response_headers=header_map)
-            if reason == "ok":
+            reason = normalize_failure(None, http_status=status_code, headers=header_map).value
+            if reason == "engine_error":
                 reason = "network_error"
         preflight.status_code = status_code
         preflight.headers = header_map
-        preflight.degraded_reason = reason
+        preflight.degraded_reason = normalize_failure(reason).value if reason != "ok" else "ok"
         preflight.ok = reason == "ok"
         preflight.message = "preflight_ok" if preflight.ok else _degradation_reason_message(reason)
         preflight.fetch_meta = {"status_code": status_code}
     except Exception as exc:
-        reason = normalize_failure(exc)
+        reason = normalize_failure(exc).value
         preflight.ok = False
-        preflight.degraded_reason = reason
+        preflight.degraded_reason = normalize_failure(reason).value if reason != "ok" else "ok"
         preflight.message = _degradation_reason_message(reason, "preflight_exception")
         preflight.fetch_meta = {"error": str(exc)}
 
@@ -717,10 +719,10 @@ def _enforce_audit_invariants(result: dict[str, Any]) -> dict[str, Any]:
     result["pages_audited"] = pages_audited
     result["pages_scanned"] = pages_audited
     degraded_mode = bool(result.get("degraded_mode", False))
-    degraded_reason = normalize_failure(result.get("degraded_reason"))
+    degraded_reason = normalize_failure(result.get("degraded_reason")).value
 
     if degraded_mode and not degraded_reason:
-        fallback_reason = _classify_degraded_reason_from_error(result.get("degradation_reason"))
+        fallback_reason = normalize_failure(result.get("degradation_reason")).value
         result["degraded_reason"] = fallback_reason
         if not result.get("degradation_reason"):
             result["degradation_reason"] = _degradation_reason_message(fallback_reason)
@@ -838,7 +840,7 @@ def _upgrade_cached_deep_result(result: dict, requested_mode: str) -> dict:
         return result
 
     result["degraded_mode"] = True
-    result["degraded_reason"] = normalize_failure(result.get("degraded_reason")) or "extraction_failure"
+    result["degraded_reason"] = normalize_failure(result.get("degraded_reason")).value or "extraction_failure"
     result["degradation_reason"] = (
         result.get("degradation_reason")
         or "Deep scan requested, but browser engines did not execute. Results are based on static HTML analysis only."
@@ -1077,7 +1079,7 @@ async def _fetch_html(
             async with AsyncSession(
                 impersonate="chrome",
                 headers=request_headers,
-                follow_redirects=True,
+                allow_redirects=True,
             ) as client:
                 response = await http_get_with_backoff(
                     url,
@@ -1092,7 +1094,7 @@ async def _fetch_html(
             if lightweight and body:
                 body = _coerce_partial_html(body)
 
-            normalized_reason = normalize_failure(None, status_code=status_code, response_headers=header_map)
+            normalized_reason = normalize_failure(None, http_status=status_code, headers=header_map)
 
             if status_code >= 400:
                 logger.warning("Fetch returned status=%s for %s", status_code, url)
@@ -1192,7 +1194,7 @@ async def _fetch_html(
         elif _is_retryable_http_status(status_code):
             reason = "network_error"
         else:
-            reason = normalize_failure(None, status_code=status_code)
+            reason = normalize_failure(None, http_status=status_code)
             if reason == "ok":
                 reason = "network_error"
 
@@ -1300,7 +1302,7 @@ async def run_audit(
                 return _finalize_result(cached_res, status="cached", persist_db=False)
 
     degraded_mode = False
-    degraded_reason = None
+    degraded_reason = normalize_failure(None).value if False else None
     degradation_reason = None
     skipped_components = []
 
@@ -1309,7 +1311,7 @@ async def run_audit(
         normalized_reason = normalize_failure(reason_code)
         degraded_mode = True
         if not degraded_reason:
-            degraded_reason = normalized_reason
+            degraded_reason = normalize_failure(normalized_reason).value
         if not degradation_reason:
             degradation_reason = message or _degradation_reason_message(normalized_reason)
 
@@ -1469,7 +1471,7 @@ async def run_audit(
             fallback_issue = _build_availability_fallback_issue(
                 url=url,
                 rule_id="fetch-unavailable",
-                degraded_reason=str(degraded_reason or "network_error"),
+                degraded_reason=normalize_failure(degraded_reason or "network_error").value,
                 description="The target page could not be fetched by HTTP or browser fallback and requires manual validation.",
                 suggested_fix="Retry with a stable network path or allowlist scanner user agents.",
                 fetch_status=fetch_status if isinstance(fetch_status, int) else None,
@@ -1479,7 +1481,7 @@ async def run_audit(
 
             confidence_score, confidence_note = _compute_audit_confidence(
                 degraded_mode=True,
-                degraded_reason=str(degraded_reason or "network_error"),
+                degraded_reason=normalize_failure(degraded_reason or "network_error").value,
                 engines_used=engines_used,
                 issues=[fallback_issue],
                 fetch_reliability_meta=fetch_reliability_meta,
@@ -1517,7 +1519,7 @@ async def run_audit(
                 "pages_discovered": 1,
                 "pages_audited": 1,
                 "degraded_mode": True,
-                "degraded_reason": degraded_reason,
+                "degraded_reason": normalize_failure(degraded_reason).value if degraded_reason else None,
                 "skipped_components": sorted(set(skipped_components)),
                 "degradation_reason": degradation_reason,
                 "confidence_score": confidence_score,
@@ -1566,7 +1568,7 @@ async def run_audit(
                     html,
                     url,
                     fetch_status=fetch_status if isinstance(fetch_status, int) else None,
-                    degraded_reason=degraded_reason,
+                    degraded_reason=normalize_failure(degraded_reason).value if degraded_reason else "",
                 )
                 return checker.run_all(checks), "static", {
                     "executed": True,
@@ -1739,7 +1741,7 @@ async def run_audit(
             blocked_issue = _build_availability_fallback_issue(
                 url=url,
                 rule_id="blocked-request-partial",
-                degraded_reason=str(degraded_reason or "bot_wall"),
+                degraded_reason=normalize_failure(degraded_reason or "bot_wall").value,
                 description="Access to this page appears blocked (401/403/429). Results are a partial audit and require manual validation.",
                 suggested_fix="Retry from an allowlisted network or provide an authenticated/publicly accessible URL.",
                 fetch_status=fetch_status if isinstance(fetch_status, int) else None,
@@ -1926,7 +1928,7 @@ async def run_audit(
 
         confidence_score, confidence_note = _compute_audit_confidence(
             degraded_mode=degraded_mode,
-            degraded_reason=degraded_reason,
+            degraded_reason=normalize_failure(degraded_reason).value if degraded_reason else None,
             engines_used=engines_used,
             issues=scored_issues,
             fetch_reliability_meta=fetch_reliability_meta,
@@ -1986,7 +1988,7 @@ async def run_audit(
             quality_gates["domain_preflight"] = {
                 "domain": preflight_result.domain,
                 "ok": preflight_result.ok,
-                "degraded_reason": preflight_result.degraded_reason,
+                "degraded_reason": normalize_failure(preflight_result.degraded_reason).value if preflight_result.degraded_reason and preflight_result.degraded_reason != "ok" else preflight_result.degraded_reason,
                 "message": preflight_result.message,
                 "status_code": preflight_result.status_code,
                 "from_cache": preflight_result.from_cache,
@@ -2102,7 +2104,7 @@ async def run_audit(
             "expected_score_after_fix": round(expected_score_after_fix, 1) if isinstance(expected_score_after_fix, (int, float)) else None,
             "score_improvement": round(score_improvement, 1) if isinstance(score_improvement, (int, float)) else None,
             "degraded_mode": degraded_mode,
-            "degraded_reason": degraded_reason,
+            "degraded_reason": normalize_failure(degraded_reason).value if degraded_reason else None,
             "skipped_components": list(set(skipped_components)),
             "degradation_reason": degradation_reason,
             "confidence_score": confidence_score,
@@ -2164,7 +2166,7 @@ async def run_audit(
                     "requested_scan_mode": str(raw_scan_mode),
                     "run_id": effective_run_id,
                     "degraded_mode": degraded_mode,
-                    "degraded_reason": degraded_reason,
+                    "degraded_reason": normalize_failure(degraded_reason).value if degraded_reason else None,
                     "confidence_score": confidence_score,
                     "score": response_score,
                     "score_raw": score,
