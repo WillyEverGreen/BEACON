@@ -11,7 +11,7 @@ from typing import Any, Awaitable, Callable, Optional
 from app.audit.models import PageAuditResult, PageContext
 from app.audit.page_auditor import audit_page
 from app.audit.site_aggregator import aggregate_site_results
-from app.audit.failure_taxonomy import classify_failure_reason, normalize_reason
+from app.audit.failure_taxonomy import classify_failure_reason, normalize_failure, normalize_reason
 from app.config import AUDIT_PIPELINE_CONFIG
 
 
@@ -50,7 +50,7 @@ def _minimal_failed_result(url: str, reason: str) -> PageAuditResult:
         issues=[],
         engine_timings={},
         degraded_mode=True,
-        degraded_reason=reason,
+        degraded_reason=normalize_failure(reason).value,
         skipped_engines=["static", "interactive"],
         hydration_status="failed",
         enrichment_status="failed",
@@ -109,9 +109,9 @@ async def _audit_with_two_stage_fallback(
             )
             degraded.degraded_mode = True
             if not getattr(degraded, "degraded_reason", ""):
-                degraded.degraded_reason = stage1_reason
+                degraded.degraded_reason = normalize_failure(stage1_reason).value
             else:
-                degraded.degraded_reason = normalize_reason(degraded.degraded_reason) or stage1_reason
+                degraded.degraded_reason = normalize_failure(normalize_reason(degraded.degraded_reason) or stage1_reason).value
             skipped = set(degraded.skipped_engines)
             skipped.update(["interactive", "browser", "axe", "cognitive"])
             degraded.skipped_engines = sorted(skipped)
@@ -213,7 +213,7 @@ async def run_site_audit(
                 "score": result.score,
                 "issues_found": len(result.issues),
                 "degraded_mode": result.degraded_mode,
-                "degraded_reason": getattr(result, "degraded_reason", ""),
+                "degraded_reason": normalize_failure(getattr(result, "degraded_reason", "")).value if getattr(result, "degraded_reason", "") else "",
                 "pages_done": pages_completed,
                 "pages_total": pages_total,
             }

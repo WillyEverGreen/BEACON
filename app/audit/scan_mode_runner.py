@@ -177,7 +177,7 @@ async def _full_engine_page_auditor(url: str, scan_mode: str, page_context: Page
         issues=list(result.get("issues") or []),
         engine_timings=engine_timings,
         degraded_mode=bool(result.get("degraded_mode", False)),
-        degraded_reason=str(result.get("degraded_reason") or ""),
+        degraded_reason=normalize_failure(result.get("degraded_reason")).value if result.get("degraded_reason") else "",
         skipped_engines=list(result.get("skipped_components") or []),
         hydration_status=str(result.get("browser_probe_metadata", {}).get("hydration_status") or "unknown"),
         enrichment_status=str(result.get("enrichment_status") or "pending"),

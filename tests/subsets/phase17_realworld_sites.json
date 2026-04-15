@@ -1,0 +1,79 @@
+{
+  "sites": [
+    {
+      "name": "A11y Project",
+      "url": "https://www.a11yproject.com/",
+      "validation_category": "static",
+      "classification_reason": "Primarily content-driven pages with low client-side interactivity."
+    },
+    {
+      "name": "Microsoft",
+      "url": "https://www.microsoft.com/",
+      "validation_category": "spa/react-like",
+      "classification_reason": "Heavily client-rendered homepage with dynamic components and hydration behavior."
+    },
+    {
+      "name": "Amazon",
+      "url": "https://www.amazon.com/",
+      "validation_category": "ecommerce",
+      "classification_reason": "Large transactional catalog with personalization and anti-bot/rate-limit controls.",
+      "special_assertion": "rate_limited"
+    },
+    {
+      "name": "MDN Web Docs",
+      "url": "https://developer.mozilla.org/en-US/",
+      "validation_category": "strict-csp candidate",
+      "classification_reason": "Developer platform with strict security headers, frequently including CSP enforcement.",
+      "special_assertion": "csp"
+    },
+    {
+      "name": "Reddit",
+      "url": "https://www.reddit.com/",
+      "validation_category": "bot-protected candidate",
+      "classification_reason": "Public social platform with anti-automation controls and frequent bot-wall behavior.",
+      "special_assertion": "bot_wall"
+    },
+    {
+      "name": "NY Times",
+      "url": "https://www.nytimes.com/",
+      "validation_category": "slow/unstable candidate",
+      "classification_reason": "Ad/analytics-heavy news runtime with variable latency and conditional content loading."
+    },
+    {
+      "name": "Wikipedia",
+      "url": "https://www.wikipedia.org/",
+      "validation_category": "large-site candidate",
+      "classification_reason": "High-link-density large domain with broad page graph and many internal paths."
+    },
+    {
+      "name": "GitHub",
+      "url": "https://github.com/",
+      "validation_category": "spa/react-like",
+      "classification_reason": "Complex authenticated web application with dynamic client/server rendering mix."
+    },
+    {
+      "name": "GOV.UK",
+      "url": "https://www.gov.uk/",
+      "validation_category": "static",
+      "classification_reason": "Mostly server-rendered pages with stable semantic structure."
+    },
+    {
+      "name": "BBC",
+      "url": "https://www.bbc.com/",
+      "validation_category": "large-site candidate",
+      "classification_reason": "Global news site with many entry points and dynamic feed behavior."
+    },
+    {
+      "name": "Etsy",
+      "url": "https://www.etsy.com/",
+      "validation_category": "ecommerce",
+      "classification_reason": "Marketplace flow with search, listing and transaction-heavy UX patterns."
+    },
+    {
+      "name": "Stack Overflow",
+      "url": "https://stackoverflow.com/",
+      "validation_category": "large-site candidate",
+      "classification_reason": "Large community platform with high-volume user-generated content and deep link graph."
+    }
+  ]
+}

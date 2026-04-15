@@ -9,6 +9,8 @@ from typing import Any, Optional
 from urllib.parse import urlsplit, urlunsplit
 from bs4 import BeautifulSoup, Tag
 
+from app.audit.failure_taxonomy import normalize_failure
+
 logger = logging.getLogger(__name__)
 
 _WEAK_LINK_TEXT = {
@@ -177,14 +179,14 @@ class StaticChecker:
         self.soup = BeautifulSoup(html, "lxml")
         self.url = url
         self.fetch_status = int(fetch_status) if isinstance(fetch_status, int) else None
-        self.degraded_reason = str(degraded_reason or "").strip().lower()
+        self.degraded_reason = normalize_failure(degraded_reason).value if str(degraded_reason or "").strip() else ""
         self.rule_activity: dict[str, dict[str, Any]] = {}
 
     def _is_blocked_partial_page(self) -> bool:
         """Heuristic guard for access-blocked or anti-bot pages with unreliable structure."""
         if self.fetch_status in {401, 403, 407, 429}:
             return True
-        if self.degraded_reason == "blocked_request":
+        if self.degraded_reason in {"blocked_request", "bot_wall"}:
             return True
 
         text = (self.soup.get_text(" ", strip=True) or "").lower()

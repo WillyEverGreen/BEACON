@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime as dt
 from typing import Any
 
+from app.audit.failure_taxonomy import normalize_failure
 from app.db.base import get_session
 from app.db.models import DashboardProjectRecord, DashboardScanRecord
 
@@ -71,7 +72,7 @@ def _serialize_scan(record: DashboardScanRecord) -> dict[str, Any]:
         "pages_scanned": int(record.pages_scanned or 1),
         "pages_discovered": int(record.pages_discovered or 1),
         "degraded_mode": bool(record.degraded_mode),
-        "degraded_reason": record.degraded_reason,
+        "degraded_reason": normalize_failure(record.degraded_reason).value if record.degraded_reason else None,
         "skipped_components": list(record.skipped_components or []),
         "degradation_reason": record.degradation_reason,
         "enrichment_status": record.enrichment_status or "pending",
@@ -128,7 +129,7 @@ def _apply_scan_record(record: DashboardScanRecord, payload: dict[str, Any]) -> 
     record.pages_scanned = int(payload.get("pages_scanned") or 1)
     record.pages_discovered = int(payload.get("pages_discovered") or record.pages_scanned)
     record.degraded_mode = bool(payload.get("degraded_mode", False))
-    record.degraded_reason = payload.get("degraded_reason")
+    record.degraded_reason = normalize_failure(payload.get("degraded_reason")).value if payload.get("degraded_reason") else None
     record.skipped_components = list(payload.get("skipped_components") or [])
     record.degradation_reason = payload.get("degradation_reason")
     record.enrichment_status = str(payload.get("enrichment_status") or "pending")

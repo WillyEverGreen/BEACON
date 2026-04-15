@@ -12,7 +12,7 @@ from pathlib import Path
 from statistics import median
 from typing import Any
 
-from app.audit.failure_taxonomy import classify_failure_reason, normalize_reason
+from app.audit.failure_taxonomy import classify_failure_reason, normalize_failure, normalize_reason
 from app.config import CACHE_STATS, settings
 
 _WINDOW_LOCK = threading.RLock()
@@ -163,11 +163,11 @@ def _build_audit_event(audit_result: dict[str, Any], *, status: str) -> dict[str
             "issue_count": int(audit_result.get("total_issues") or 0),
         }
 
-    degraded_reason = normalize_reason(audit_result.get("degraded_reason"))
+    degraded_reason = normalize_failure(audit_result.get("degraded_reason")).value if audit_result.get("degraded_reason") else ""
     if not degraded_reason and bool(audit_result.get("degraded_mode")):
-        degraded_reason = classify_failure_reason(
-            audit_result.get("degradation_reason") or audit_result.get("summary")
-        )
+        degraded_reason = normalize_failure(
+            classify_failure_reason(audit_result.get("degradation_reason") or audit_result.get("summary"))
+        ).value
 
     timeout_flag = bool(
         not audit_result.get("quality_gates", {}).get("runtime_passed", True)
@@ -191,7 +191,7 @@ def _build_audit_event(audit_result: dict[str, Any], *, status: str) -> dict[str
         "overall_score": float(audit_result.get("overall_score") or audit_result.get("score") or 0.0),
         "total_issues": int(audit_result.get("total_issues") or 0),
         "critical_issues": severity_breakdown.get("critical", 0),
-        "degraded_reason": degraded_reason,
+        "degraded_reason": normalize_failure(degraded_reason).value if degraded_reason else "",
         "severity_counts": severity_breakdown,
         "score_distribution": score_distribution,
         "overall_score_distribution": score_distribution,

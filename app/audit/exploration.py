@@ -317,29 +317,51 @@ class SPAStrategyPack:
     async def run_exploration(self, page: Any, detected_framework: Optional[str] = None) -> dict[str, Any]:
         remaining_budget = max(0, int(self.interaction_budget))
 
+        # 1. Route Change Phase
         route_result = await self.trigger_route_change(
             page,
             detected_framework,
             max_actions=min(remaining_budget, self.max_route_clicks),
         )
-        remaining_budget = max(0, remaining_budget - int(route_result.get("actions_taken", 0)))
+        
+        stage_actions = int(route_result.get("actions_taken", 0))
+        stage_states = int(route_result.get("route_changes", 0))
+        actions_taken = stage_actions
+        new_states = stage_states
+        remaining_budget = max(0, remaining_budget - stage_actions)
+        
+        early_stopped = False
 
-        modal_result = await self.trigger_modals(page, max_actions=remaining_budget)
-        remaining_budget = max(0, remaining_budget - int(modal_result.get("actions_taken", 0)))
+        # If a stage took actions but got nothing, we early stop for diminishing returns
+        if stage_actions >= 2 and stage_states == 0:
+            early_stopped = True
 
-        lazy_result = await self.trigger_lazy_load(page, max_actions=remaining_budget)
+        # 2. Modal Exploration Phase
+        modal_result = {"actions_taken": 0, "modal_checks_run": 0, "focus_trap_missing": False, "focus_return_missing": False}
+        if remaining_budget > 0 and not early_stopped:
+            modal_result = await self.trigger_modals(page, max_actions=remaining_budget)
+            stage_actions = int(modal_result.get("actions_taken", 0))
+            stage_states = 1 if int(modal_result.get("modal_checks_run", 0)) > 0 else 0
+            actions_taken += stage_actions
+            new_states += stage_states
+            remaining_budget = max(0, remaining_budget - stage_actions)
+            
+            if stage_actions >= 2 and stage_states == 0:
+                early_stopped = True
 
-        actions_taken = int(route_result.get("actions_taken", 0))
-        actions_taken += int(modal_result.get("actions_taken", 0))
-        actions_taken += int(lazy_result.get("actions_taken", 0))
-
-        new_states = int(route_result.get("route_changes", 0))
-        if int(modal_result.get("modal_checks_run", 0)) > 0:
-            new_states += 1
-        new_states += int(lazy_result.get("growth_steps", 0))
+        # 3. Lazy Load / Infinite Scroll Phase
+        lazy_result = {"actions_taken": 0, "growth_steps": 0, "infinite_scroll_detected": False}
+        if remaining_budget > 0 and not early_stopped:
+            lazy_result = await self.trigger_lazy_load(page, max_actions=remaining_budget)
+            stage_actions = int(lazy_result.get("actions_taken", 0))
+            stage_states = int(lazy_result.get("growth_steps", 0))
+            actions_taken += stage_actions
+            new_states += stage_states
+            
+            if stage_actions >= 2 and stage_states == 0:
+                early_stopped = True
 
         dom_change_ratio = round(new_states / max(actions_taken, 1), 2)
-        early_stopped = actions_taken >= 2 and new_states == 0
 
         return {
             "exploration_quality": {

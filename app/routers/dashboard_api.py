@@ -17,6 +17,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from app.audit.failure_taxonomy import normalize_failure
 from app.audit.scan_mode_runner import run_scan_mode_audit
 from app.config import (
     DASHBOARD_DEEP_SCAN_MAX_PAGES,
@@ -177,10 +178,8 @@ def _normalize_site_scan_result(site_payload: dict, scan_mode: str, elapsed_seco
         or site_payload.get("sla_truncated")
     )
 
-    degraded_reason = None
     top_degraded = site_payload.get("top_degraded_causes", [])
-    if isinstance(top_degraded, list) and top_degraded and isinstance(top_degraded[0], dict):
-        degraded_reason = top_degraded[0].get("reason")
+    degraded_reason = normalize_failure(top_degraded[0].get("reason")).value if isinstance(top_degraded, list) and top_degraded and isinstance(top_degraded[0], dict) and top_degraded[0].get("reason") else None
 
     confidence_score = site_result.get("confidence_score")
     if not isinstance(confidence_score, (int, float)):
@@ -254,7 +253,7 @@ def _normalize_site_scan_result(site_payload: dict, scan_mode: str, elapsed_seco
         "scan_time_seconds": round(float(elapsed_seconds), 2),
         "engines_used": engines_used,
         "degraded_mode": degraded_mode,
-        "degraded_reason": degraded_reason,
+        "degraded_reason": normalize_failure(degraded_reason).value if degraded_reason else None,
         "skipped_components": [],
         "degradation_reason": degraded_reason,
         "confidence_score": confidence_score,
@@ -636,7 +635,7 @@ async def start_scan(data: ScanStart):
         "pages_scanned": 1,
         "pages_discovered": 1,
         "degraded_mode": False,
-        "degraded_reason": None,
+        "degraded_reason": normalize_failure(None).value if False else None,
         "skipped_components": [],
         "degradation_reason": None,
         "confidence_score": None,

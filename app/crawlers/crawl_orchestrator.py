@@ -837,15 +837,10 @@ def _classify_audit_result(audit_result: dict[str, Any]) -> tuple[str, str | Non
     if isinstance(fetch_reliability, dict):
         fetch_status = fetch_reliability.get("status_code")
 
-    if explicit_reason:
-        degraded_reason = normalize_failure(explicit_reason, http_status=fetch_status).value
-    elif degraded_mode or not runtime_passed:
-        degraded_reason = normalize_failure(audit_result.get("summary"), http_status=fetch_status).value
-    else:
-        degraded_reason = ""
+    degraded_reason = normalize_failure(explicit_reason, http_status=fetch_status).value if explicit_reason else normalize_failure(audit_result.get("summary"), http_status=fetch_status).value if (degraded_mode or not runtime_passed) else ""
 
     if not runtime_passed and not degraded_reason:
-        degraded_reason = DegradedReason.RENDER_TIMEOUT.value
+        degraded_reason = normalize_failure(DegradedReason.RENDER_TIMEOUT.value).value
 
     if not degraded_mode and not degraded_reason:
         return "success", None

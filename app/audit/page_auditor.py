@@ -21,7 +21,7 @@ from app.audit.dynamic_handling import (
     install_request_interception,
     resolve_adaptive_timeouts,
 )
-from app.audit.failure_taxonomy import classify_failure_reason, normalize_reason
+from app.audit.failure_taxonomy import classify_failure_reason, normalize_failure, normalize_reason
 from app.audit.exploration import SPAStrategyPack
 from app.audit.fingerprint import stable_selector_fingerprint
 from app.audit.models import PageAuditResult, PageContext, PageStateMeta, state_meta_to_dict
@@ -280,7 +280,7 @@ async def _default_state_provider(url: str, state: str, page_context: PageContex
             "anti_bot_delay_ms": anti_bot_delay,
             "anti_bot_headers": anti_bot_headers,
             "actions_taken": 0,
-            "degraded_reason": reason,
+            "degraded_reason": normalize_failure(reason).value,
             "partial_mode": True,
             "render_retry_used": render_retry_used,
         }
@@ -322,7 +322,11 @@ async def _default_state_provider(url: str, state: str, page_context: PageContex
                 reason = classify_failure_reason(exc)
                 logger.warning(
                     "State render navigation failure: %s",
-                    {"url": url, "failure_stage": "render_navigation", "degraded_reason": reason},
+                    {
+                        "url": url,
+                        "failure_stage": "render_navigation",
+                        "degraded_reason": normalize_failure(reason).value,
+                    },
                 )
                 if idx == 0 and reason in {"render_timeout", "extraction_failure"}:
                     continue
@@ -353,7 +357,11 @@ async def _default_state_provider(url: str, state: str, page_context: PageContex
             reason = classify_failure_reason(exc)
             logger.warning(
                 "State hydration failure: %s",
-                {"url": url, "failure_stage": "render_hydration", "degraded_reason": reason},
+                {
+                    "url": url,
+                    "failure_stage": "render_hydration",
+                    "degraded_reason": normalize_failure(reason).value,
+                },
             )
             snapshot = await _snapshot_current_dom()
             return _partial_payload(reason, snapshot)
@@ -427,7 +435,11 @@ async def _default_state_provider(url: str, state: str, page_context: PageContex
                 partial_reason = classify_failure_reason(exc)
                 logger.warning(
                     "State interaction route failure: %s",
-                    {"url": url, "failure_stage": "interaction_route", "degraded_reason": partial_reason},
+                    {
+                        "url": url,
+                        "failure_stage": "interaction_route",
+                        "degraded_reason": normalize_failure(partial_reason).value,
+                    },
                 )
                 route_result = {"actions_taken": 0, "route_changes": 0}
             actions_taken += int(route_result.get("actions_taken", 0))
@@ -440,7 +452,11 @@ async def _default_state_provider(url: str, state: str, page_context: PageContex
                     partial_reason = classify_failure_reason(exc)
                 logger.warning(
                     "State interaction modal failure: %s",
-                    {"url": url, "failure_stage": "interaction_modal", "degraded_reason": partial_reason},
+                    {
+                        "url": url,
+                        "failure_stage": "interaction_modal",
+                        "degraded_reason": normalize_failure(partial_reason).value,
+                    },
                 )
                 modal_checks = {"actions_taken": 0, "modal_checks_run": 0}
             actions_taken += int(modal_checks.get("actions_taken", 0))
@@ -462,7 +478,11 @@ async def _default_state_provider(url: str, state: str, page_context: PageContex
                 partial_reason = classify_failure_reason(exc)
                 logger.warning(
                     "State interaction scroll failure: %s",
-                    {"url": url, "failure_stage": "interaction_scroll", "degraded_reason": partial_reason},
+                    {
+                        "url": url,
+                        "failure_stage": "interaction_scroll",
+                        "degraded_reason": normalize_failure(partial_reason).value,
+                    },
                 )
                 lazy_result = {"actions_taken": 0, "growth_steps": 0, "infinite_scroll_detected": False}
             actions_taken += int(lazy_result.get("actions_taken", 0))
@@ -493,7 +513,7 @@ async def _default_state_provider(url: str, state: str, page_context: PageContex
             "actions_taken": actions_taken,
             "exploration_quality": exploration_quality,
             "modal_checks": modal_checks,
-            "degraded_reason": partial_reason,
+            "degraded_reason": normalize_failure(partial_reason).value if partial_reason else "",
             "partial_mode": bool(partial_reason),
             "render_retry_used": render_retry_used,
         }
@@ -501,7 +521,11 @@ async def _default_state_provider(url: str, state: str, page_context: PageContex
         reason = classify_failure_reason(exc)
         logger.warning(
             "State provider fallback triggered: %s",
-            {"url": url, "failure_stage": "state_provider", "degraded_reason": reason},
+            {
+                "url": url,
+                "failure_stage": "state_provider",
+                "degraded_reason": normalize_failure(reason).value,
+            },
         )
         snapshot = await _snapshot_current_dom()
         return _partial_payload(reason, snapshot)
@@ -569,13 +593,17 @@ async def audit_page(url: str, scan_mode: str, page_context: PageContext) -> Pag
             degraded_reasons.add(reason)
             logger.warning(
                 "State provider exception: %s",
-                {"url": url, "failure_stage": f"state_provider:{state}", "degraded_reason": reason},
+                {
+                    "url": url,
+                    "failure_stage": f"state_provider:{state}",
+                    "degraded_reason": normalize_failure(reason).value,
+                },
             )
             fallback_html = page_dom or str(page_context.cache.get("last_successful_dom", "") or "")
             payload = {
                 "html": fallback_html,
                 "hydration_status": "failed",
-                "degraded_reason": reason,
+                "degraded_reason": normalize_failure(reason).value,
                 "partial_mode": bool(fallback_html),
             }
 
@@ -625,7 +653,11 @@ async def audit_page(url: str, scan_mode: str, page_context: PageContext) -> Pag
             degraded_reasons.add(reason)
             logger.warning(
                 "Static engine failed: %s",
-                {"url": url, "failure_stage": f"static:{state}", "degraded_reason": reason},
+                {
+                    "url": url,
+                    "failure_stage": f"static:{state}",
+                    "degraded_reason": normalize_failure(reason).value,
+                },
             )
             if "static" not in skipped_engines:
                 skipped_engines.append("static")
@@ -650,7 +682,11 @@ async def audit_page(url: str, scan_mode: str, page_context: PageContext) -> Pag
                     degraded_reasons.add(reason)
                     logger.warning(
                         "Interactive engine failed: %s",
-                        {"url": url, "failure_stage": f"interactive:{state}", "degraded_reason": reason},
+                        {
+                            "url": url,
+                            "failure_stage": f"interactive:{state}",
+                            "degraded_reason": normalize_failure(reason).value,
+                        },
                     )
                     if "interactive" not in skipped_engines:
                         skipped_engines.append("interactive")
@@ -670,7 +706,11 @@ async def audit_page(url: str, scan_mode: str, page_context: PageContext) -> Pag
                     degraded_reasons.add(reason)
                     logger.warning(
                         "Axe engine failed: %s",
-                        {"url": url, "failure_stage": f"axe:{state}", "degraded_reason": reason},
+                        {
+                            "url": url,
+                            "failure_stage": f"axe:{state}",
+                            "degraded_reason": normalize_failure(reason).value,
+                        },
                     )
                     if "axe" not in skipped_engines:
                         skipped_engines.append("axe")
@@ -691,7 +731,11 @@ async def audit_page(url: str, scan_mode: str, page_context: PageContext) -> Pag
                         degraded_reasons.add(reason)
                         logger.warning(
                             "Cognitive engine failed: %s",
-                            {"url": url, "failure_stage": f"cognitive:{state}", "degraded_reason": reason},
+                            {
+                                "url": url,
+                                "failure_stage": f"cognitive:{state}",
+                                "degraded_reason": normalize_failure(reason).value,
+                            },
                         )
                         if "cognitive" not in skipped_engines:
                             skipped_engines.append("cognitive")
@@ -749,7 +793,7 @@ async def audit_page(url: str, scan_mode: str, page_context: PageContext) -> Pag
         issues=list(merged_issues.values()),
         engine_timings=engine_timings,
         degraded_mode=degraded_mode,
-        degraded_reason=_pick_degraded_reason(degraded_reasons),
+        degraded_reason=normalize_failure(_pick_degraded_reason(degraded_reasons)).value if degraded_reasons else "",
         skipped_engines=skipped_engines,
         hydration_status=hydration_status,
         enrichment_status="pending",

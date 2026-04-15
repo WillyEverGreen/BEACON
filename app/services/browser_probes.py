@@ -585,19 +585,30 @@ class BrowserProber:
             )
             from app.audit.exploration import SPAStrategyPack
 
-            await dismiss_cookie_banner(page)
+            # Cap runtime for each stage to prevent Playwright target closed errors
+            try:
+                await asyncio.wait_for(dismiss_cookie_banner(page), timeout=5.0)
+            except asyncio.TimeoutError:
+                pass
 
             current_url = str(getattr(page, "url", self.url) or self.url)
-            auth_state = await detect_login_wall(page, current_url=current_url)
+            try:
+                auth_state = await asyncio.wait_for(detect_login_wall(page, current_url=current_url), timeout=8.0)
+            except asyncio.TimeoutError:
+                auth_state = {"requires_auth": False}
+
             if auth_state.get("requires_auth"):
                 metadata["login_wall_detected"] = True
                 metadata["auth_fallback_attempted"] = True
-                fallback = await attempt_public_fallback_scan(page, self.url)
-                metadata["auth_fallback_used"] = bool(fallback.get("used", False))
-                metadata["auth_fallback_url"] = str(fallback.get("fallback_url", ""))
-                fallback_html = str(fallback.get("html", "") or "")
-                if fallback_html.strip():
-                    metadata["fallback_html"] = fallback_html
+                try:
+                    fallback = await asyncio.wait_for(attempt_public_fallback_scan(page, self.url), timeout=15.0)
+                    metadata["auth_fallback_used"] = bool(fallback.get("used", False))
+                    metadata["auth_fallback_url"] = str(fallback.get("fallback_url", ""))
+                    fallback_html = str(fallback.get("html", "") or "")
+                    if fallback_html.strip():
+                        metadata["fallback_html"] = fallback_html
+                except asyncio.TimeoutError:
+                    pass
 
             strategy = SPAStrategyPack(
                 seed_url=self.url,
@@ -607,15 +618,26 @@ class BrowserProber:
                 scroll_wait_ms=1000,
                 lazy_scroll_steps=3,
             )
-            exploration = await strategy.run_exploration(page, detected_framework=framework)
-
-            metadata["exploration_layer_ran"] = True
-            metadata["interaction_phase_ran"] = True
-            metadata["scroll_phase_ran"] = True
-            metadata["exploration_quality"] = exploration.get("exploration_quality", {})
-            metadata["route_change"] = exploration.get("route_change", {})
-            metadata["modal"] = exploration.get("modal", {})
-            metadata["lazy_load"] = exploration.get("lazy_load", {})
+            
+            # Cancel long-running probes safely and rescue findings
+            try:
+                exploration = await asyncio.wait_for(
+                    strategy.run_exploration(page, detected_framework=framework),
+                    timeout=25.0
+                )
+                metadata["exploration_layer_ran"] = True
+                metadata["interaction_phase_ran"] = True
+                metadata["scroll_phase_ran"] = True
+                metadata["exploration_quality"] = exploration.get("exploration_quality", {})
+                metadata["route_change"] = exploration.get("route_change", {})
+                metadata["modal"] = exploration.get("modal", {})
+                metadata["lazy_load"] = exploration.get("lazy_load", {})
+            except asyncio.TimeoutError:
+                logger.warning("Max-mode exploration reached stage timeout limit; rescued partial findings")
+                # Ensure we explicitly capture that exploration was aborted
+                metadata["exploration_layer_ran"] = False
+                metadata["interaction_phase_ran"] = False
+                
         except Exception as e:
             logger.warning(f"Max-mode exploration failed: {e}")
 

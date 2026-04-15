@@ -6,6 +6,7 @@ from collections import defaultdict
 import logging
 from typing import Any, Iterable
 
+from app.audit.failure_taxonomy import normalize_failure
 from app.audit.fingerprint import stable_selector_fingerprint
 from app.audit.models import PageAuditResult, SiteAuditResult
 
@@ -79,7 +80,7 @@ def _as_page_result(item: PageAuditResult | dict[str, Any]) -> PageAuditResult:
         issues=list(item.get("issues", [])),
         engine_timings=dict(item.get("engine_timings", {})),
         degraded_mode=bool(item.get("degraded_mode", False)),
-        degraded_reason=str(item.get("degraded_reason", "") or ""),
+        degraded_reason=normalize_failure(item.get("degraded_reason")).value if item.get("degraded_reason") else "",
         skipped_engines=list(item.get("skipped_engines", [])),
         hydration_status=str(item.get("hydration_status", "unknown")),
         enrichment_status=str(item.get("enrichment_status", "pending")),
