@@ -12,7 +12,8 @@ from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable, Optional
 
 import app.config as app_config
-from app.audit.failure_taxonomy import classify_failure_reason, normalize_reason
+from app.audit.failure_taxonomy import DegradedReason, normalize_failure, normalize_reason
+from app.crawlers.common import normalize_scan_mode
 from app.crawlers.crawler import CrawlQueueEntry, CrawlSession
 from app.crawlers.page_selector import LiveDOMLinkExtractor, SelectedLink, select_links_for_enqueue
 from app.crawlers.site_aggregator import aggregate_site_issues
@@ -20,6 +21,33 @@ from app.crawlers.site_scorer import compute_site_score
 from app.observability.telemetry import record_operational_event
 
 logger = logging.getLogger(__name__)
+
+
+FAILURE_ACTIONS: dict[str, str] = {
+    DegradedReason.RATE_LIMITED.value: "reduce_concurrency",
+    DegradedReason.BOT_WALL.value: "stop_crawl",
+    DegradedReason.CSP_BLOCKED.value: "disable_browser_engines",
+    DegradedReason.CSP_INJECTION_BLOCKED.value: "disable_browser_engines",
+    DegradedReason.CONNECTIVITY_BLOCKED.value: "stop_crawl",
+    DegradedReason.RENDER_TIMEOUT.value: "reduce_concurrency",
+    DegradedReason.BROWSER_NAV_FAILED.value: "count_failure",
+    DegradedReason.EXTRACTION_FAILED.value: "count_failure",
+    DegradedReason.ENGINE_ERROR.value: "count_failure",
+    DegradedReason.PARTIAL_CONTENT.value: "count_failure",
+}
+
+FAILURE_SEVERITY_WEIGHT: dict[str, float] = {
+    DegradedReason.BOT_WALL.value: 1.0,
+    DegradedReason.CONNECTIVITY_BLOCKED.value: 0.9,
+    DegradedReason.BROWSER_NAV_FAILED.value: 0.8,
+    DegradedReason.RATE_LIMITED.value: 0.6,
+    DegradedReason.CSP_BLOCKED.value: 0.5,
+    DegradedReason.CSP_INJECTION_BLOCKED.value: 0.5,
+    DegradedReason.RENDER_TIMEOUT.value: 0.4,
+    DegradedReason.EXTRACTION_FAILED.value: 0.3,
+    DegradedReason.PARTIAL_CONTENT.value: 0.3,
+    DegradedReason.ENGINE_ERROR.value: 0.2,
+}
 
 
 AuditCallable = Callable[..., Awaitable[dict[str, Any]]]
@@ -58,7 +86,7 @@ class CrawlConfig:
         )
 
     def normalized(self) -> "CrawlConfig":
-        scan_mode = _normalize_scan_mode(self.scan_mode)
+        scan_mode = normalize_scan_mode(self.scan_mode)
         _, timeout_max = _timeout_bounds_for_mode(scan_mode)
         timeout_per_page_s = int(self.timeout_per_page_s)
         if timeout_per_page_s <= 0:
@@ -124,6 +152,13 @@ class SiteCrawlOrchestrator:
         self._audit_callable = audit_callable or _default_audit_callable
         self._link_extractor = link_extractor
         self._event_recorder = event_recorder
+        strategy = dict(getattr(app_config, "CRAWL_ADAPTIVE_STRATEGY", {}) or {})
+        self._rate_limit_backoff_seconds = float(strategy.get("rate_limit_backoff_seconds", 5.0) or 5.0)
+        self._max_consecutive_failures = int(strategy.get("max_consecutive_failures", 3) or 3)
+        self._csp_static_fallback_enabled = bool(strategy.get("csp_static_fallback_enabled", True))
+        self._bot_wall_immediate_stop = bool(strategy.get("bot_wall_immediate_stop", True))
+        self._browser_engines_enabled = True
+        self._current_concurrency = 1
 
     async def crawl_site(self, seed_url: str, config: CrawlConfig) -> SiteCrawlResult:
         cfg = config.normalized()
@@ -142,6 +177,8 @@ class SiteCrawlOrchestrator:
         consecutive_failures = 0
         effective_max_pages = cfg.max_pages
         effective_concurrency = max(1, int(cfg.concurrency))
+        self._current_concurrency = effective_concurrency
+        self._browser_engines_enabled = True
         budget_reduction_events = 0
         early_stop_reason: str | None = None
 
@@ -190,6 +227,7 @@ class SiteCrawlOrchestrator:
 
                 if failure_rate > cfg.failure_rate_reduce_threshold and effective_concurrency > 1:
                     effective_concurrency = max(1, effective_concurrency - 1)
+                    self._current_concurrency = effective_concurrency
                     await self._emit_event(
                         "crawl_concurrency_adjusted",
                         {
@@ -200,7 +238,7 @@ class SiteCrawlOrchestrator:
                         },
                     )
 
-                if consecutive_failures >= 3:
+                if consecutive_failures >= self._max_consecutive_failures:
                     early_stop_reason = "failure_threshold"
                     break
 
@@ -241,11 +279,13 @@ class SiteCrawlOrchestrator:
                             scan_mode=cfg.scan_mode,
                             await_enrichment=cfg.await_enrichment,
                             link_extractor=link_extractor,
+                            browser_engines_enabled=self._browser_engines_enabled,
                         )
                         for entry in batch
                     ]
                 )
 
+                stop_requested = False
                 for processed in processed_batch:
                     entry = processed.entry
                     page_results.append(processed.page_result)
@@ -264,9 +304,29 @@ class SiteCrawlOrchestrator:
 
                     if audit_status == "success":
                         consecutive_failures = 0
+                        processed.page_result["failure_reason"] = None
+                        processed.page_result["adaptive_action"] = "continue"
                     else:
                         pages_failed += 1
-                        consecutive_failures += 1
+                        normalized_failure = normalize_failure(processed.page_result.get("failure_reason")).value
+                        processed.page_result["failure_reason"] = normalized_failure
+                        adaptive_action = await self._apply_failure_action(
+                            normalized_failure,
+                            consecutive_failures,
+                        )
+                        processed.page_result["adaptive_action"] = adaptive_action
+
+                        if adaptive_action == "stop":
+                            stop_requested = True
+                            if early_stop_reason is None:
+                                early_stop_reason = f"non_recoverable:{normalized_failure}"
+                        elif adaptive_action == "slow_down":
+                            effective_concurrency = self._current_concurrency
+                            await asyncio.sleep(self._rate_limit_backoff_seconds)
+                        elif adaptive_action == "static_only":
+                            self._browser_engines_enabled = False
+                        else:
+                            consecutive_failures += 1
 
                     failure_rate = _safe_ratio(pages_failed, pages_crawled)
                     avg_page_time = _safe_mean(page_durations)
@@ -396,6 +456,9 @@ class SiteCrawlOrchestrator:
                     if pages_crawled >= effective_max_pages:
                         break
 
+                    if stop_requested:
+                        break
+
                     if time.perf_counter() >= crawl_deadline:
                         early_stop_reason = "global_timeout"
                         break
@@ -404,6 +467,9 @@ class SiteCrawlOrchestrator:
                     if pages_crawled >= 2 and failure_rate >= cfg.failure_rate_stop_threshold:
                         early_stop_reason = "failure_threshold"
                         break
+
+                if stop_requested:
+                    break
 
                 if pages_crawled >= effective_max_pages:
                     if early_stop_reason is None:
@@ -414,7 +480,7 @@ class SiteCrawlOrchestrator:
                         )
                     break
 
-                if consecutive_failures >= 3:
+                if consecutive_failures >= self._max_consecutive_failures:
                     early_stop_reason = "failure_threshold"
                     break
 
@@ -456,6 +522,8 @@ class SiteCrawlOrchestrator:
                 queue_remaining=session.has_pending,
             )
 
+            site_failure_profile = _build_site_failure_profile(page_results)
+
             result: SiteCrawlResult = {
                 "site_url": seed_url,
                 "crawl_timestamp": crawl_timestamp,
@@ -480,6 +548,7 @@ class SiteCrawlOrchestrator:
                 "aggregated_issues": aggregation["aggregated_issues"],
                 "top_priorities": aggregation["top_priorities"],
                 "recommendations": aggregation["recommendations"],
+                "site_failure_profile": site_failure_profile,
                 "crawl_meta": {
                     "max_pages_config": cfg.max_pages,
                     "effective_max_pages": effective_max_pages,
@@ -498,6 +567,8 @@ class SiteCrawlOrchestrator:
                     "avg_page_time": round(avg_page_time, 6),
                     "crawl_duration_s": crawl_duration_s,
                     "early_stop_reason": early_stop_reason,
+                    "dominant_failure": site_failure_profile.get("dominant_failure"),
+                    "site_confidence_score": site_failure_profile.get("site_confidence_score"),
                 },
             }
 
@@ -511,12 +582,15 @@ class SiteCrawlOrchestrator:
                     "pages_skipped_dedup": session.pages_skipped_dedup,
                     "pages_skipped_due_to_failure": pages_skipped_due_to_failure,
                     "pages_skipped_low_value": pages_skipped_low_value,
+                    "budget_reduction_events": budget_reduction_events,
                     "dedup_efficiency": round(dedup_efficiency, 6),
                     "failure_rate": round(failure_rate, 6),
                     "avg_page_time": round(avg_page_time, 6),
                     "site_score": site_score,
                     "crawl_duration_s": crawl_duration_s,
                     "early_stop_reason": early_stop_reason,
+                    "dominant_failure": site_failure_profile.get("dominant_failure"),
+                    "site_confidence_score": site_failure_profile.get("site_confidence_score"),
                 },
             )
 
@@ -574,6 +648,7 @@ class SiteCrawlOrchestrator:
         scan_mode: str,
         await_enrichment: bool,
         link_extractor: LiveDOMLinkExtractor,
+        browser_engines_enabled: bool,
     ) -> _ProcessedPage:
         started = time.perf_counter()
 
@@ -582,13 +657,19 @@ class SiteCrawlOrchestrator:
         issues: list[dict[str, Any]] = []
         score: float | None = None
         spa_detected = False
+        audit_scan_mode = "fast"
 
         try:
-            audit_scan_mode = _scan_mode_for_page_type(entry.page_type, scan_mode)
+            audit_scan_mode = _scan_mode_for_page_type(
+                entry.page_type,
+                scan_mode,
+                browser_engines_enabled=browser_engines_enabled,
+            )
+            request_scan_mode = "fast" if audit_scan_mode == "deep_degraded" else audit_scan_mode
             audit_result = await asyncio.wait_for(
                 self._audit_callable(
                     url=entry.fetch_url,
-                    scan_mode=audit_scan_mode,
+                    scan_mode=request_scan_mode,
                     max_pages=1,
                     await_enrichment=await_enrichment,
                 ),
@@ -631,7 +712,7 @@ class SiteCrawlOrchestrator:
             "depth": entry.depth,
             "page_type": entry.page_type,
             "page_weight": entry.page_weight,
-            "audit_scan_mode": _scan_mode_for_page_type(entry.page_type, scan_mode),
+            "audit_scan_mode": audit_scan_mode,
             "audit_status": audit_status,
             "failure_reason": failure_reason,
             "issues": issues,
@@ -646,6 +727,62 @@ class SiteCrawlOrchestrator:
             selected_links=selected_links,
             skipped_links=skipped_links,
         )
+
+    async def _apply_failure_action(self, reason: str, consecutive_failures: int) -> str:
+        """Apply adaptive crawl action for a normalized degraded reason."""
+        action = FAILURE_ACTIONS.get(reason, "count_failure")
+
+        if action == "reduce_concurrency":
+            new_concurrency = max(1, self._current_concurrency // 2)
+            if new_concurrency != self._current_concurrency:
+                self._current_concurrency = new_concurrency
+            logger.info(
+                "Adaptive crawl decision: %s",
+                {
+                    "adaptive_action": "reduced_concurrency",
+                    "trigger": reason,
+                    "new_concurrency": self._current_concurrency,
+                    "consecutive_failures": consecutive_failures,
+                },
+            )
+            return "slow_down"
+
+        if action == "stop_crawl":
+            if reason == DegradedReason.BOT_WALL.value and not self._bot_wall_immediate_stop:
+                return "continue"
+            logger.warning(
+                "Adaptive crawl decision: %s",
+                {
+                    "adaptive_action": "stopped_crawl",
+                    "trigger": reason,
+                    "consecutive_failures": consecutive_failures,
+                    "recoverable": False,
+                },
+            )
+            return "stop"
+
+        if action == "disable_browser_engines":
+            if self._csp_static_fallback_enabled:
+                self._browser_engines_enabled = False
+            logger.info(
+                "Adaptive crawl decision: %s",
+                {
+                    "adaptive_action": "disabled_browser_engines",
+                    "trigger": reason,
+                    "remaining_engine": "static",
+                },
+            )
+            return "static_only"
+
+        logger.debug(
+            "Adaptive crawl decision: %s",
+            {
+                "adaptive_action": "counted_failure",
+                "trigger": reason,
+                "consecutive_failures": consecutive_failures + 1,
+            },
+        )
+        return "continue"
 
     async def _emit_event(self, event_type: str, payload: dict[str, Any]) -> None:
         try:
@@ -669,71 +806,66 @@ async def _default_audit_callable(**kwargs: Any) -> dict[str, Any]:
 
 
 def _classify_exception(exc: Exception) -> tuple[str, str]:
-    reason = normalize_reason(classify_failure_reason(exc)) or "network_error"
-    detail = str(exc or "").strip()
-    lowered = detail.lower()
+    reason = normalize_failure(exc).value
+    if reason == DegradedReason.RENDER_TIMEOUT.value:
+        return "timeout", reason
+    if reason == DegradedReason.BOT_WALL.value:
+        return "blocked", reason
+    return "error", reason
 
-    if reason == "render_timeout" or "timeout" in lowered:
-        return "timeout", "timeout_exceeded"
 
-    if reason == "blocked_request" or any(token in lowered for token in ("403", "401", "forbidden", "blocked", "csp", "auth wall")):
-        return "blocked", f"blocked:{reason}"
-
-    if any(token in lowered for token in ("navigation", "page.goto", "execution context", "target page")):
-        return "error", f"navigation_error:{detail[:120]}"
-
-    return "error", f"navigation_error:{reason}"
+def _extract_reason_fragment(raw_reason: Any) -> str:
+    text = str(raw_reason or "").strip()
+    if not text:
+        return ""
+    if ":" in text:
+        return text.split(":")[-1].strip()
+    return text
 
 
 def _classify_audit_result(audit_result: dict[str, Any]) -> tuple[str, str | None]:
     if not isinstance(audit_result, dict):
-        return "error", "navigation_error:invalid_audit_payload"
+        return "error", DegradedReason.ENGINE_ERROR.value
 
     degraded_mode = bool(audit_result.get("degraded_mode", False))
     runtime_passed = bool((audit_result.get("quality_gates") or {}).get("runtime_passed", True))
-    explicit_reason = audit_result.get("degraded_reason") or audit_result.get("degradation_reason")
+    explicit_reason = _extract_reason_fragment(
+        audit_result.get("degraded_reason") or audit_result.get("degradation_reason")
+    )
+    fetch_status = None
+    fetch_reliability = (audit_result.get("quality_gates") or {}).get("fetch_reliability", {})
+    if isinstance(fetch_reliability, dict):
+        fetch_status = fetch_reliability.get("status_code")
 
     if explicit_reason:
-        degraded_reason = normalize_reason(explicit_reason)
+        degraded_reason = normalize_failure(explicit_reason, http_status=fetch_status).value
     elif degraded_mode or not runtime_passed:
-        degraded_reason = normalize_reason(classify_failure_reason(audit_result.get("summary")))
+        degraded_reason = normalize_failure(audit_result.get("summary"), http_status=fetch_status).value
     else:
         degraded_reason = ""
 
     if not runtime_passed and not degraded_reason:
-        degraded_reason = "render_timeout"
+        degraded_reason = DegradedReason.RENDER_TIMEOUT.value
 
     if not degraded_mode and not degraded_reason:
         return "success", None
 
-    if degraded_reason in {"render_timeout"}:
-        return "timeout", "timeout_exceeded"
+    if degraded_reason == DegradedReason.RENDER_TIMEOUT.value:
+        return "timeout", degraded_reason
 
-    if degraded_reason in {"blocked_request"}:
-        return "blocked", f"blocked:{degraded_reason}"
+    if degraded_reason == DegradedReason.BOT_WALL.value:
+        return "blocked", degraded_reason
 
-    if degraded_reason in {"dns_failure", "network_error", "dom_parse_error", "extraction_failure"}:
-        return "error", f"navigation_error:{degraded_reason}"
-
-    return "error", f"navigation_error:{degraded_reason or 'unknown'}"
-
-
-def _normalize_scan_mode(scan_mode: str) -> str:
-    lowered = str(scan_mode or "deep").strip().lower()
-    if lowered in {"fast", "standard", "deep"}:
-        return lowered
-    if lowered in {"max", "minimal"}:
-        return "deep" if lowered == "max" else "fast"
-    return "deep"
+    return "error", degraded_reason or DegradedReason.ENGINE_ERROR.value
 
 
 def _timeout_bounds_for_mode(scan_mode: str) -> tuple[int, int]:
-    mode = _normalize_scan_mode(scan_mode)
+    mode = normalize_scan_mode(scan_mode)
     if mode == "fast":
         return 8, 10
-    if mode == "standard":
+    if mode == "deep":
         return 12, 15
-    return 15, 15
+    return 15, 20
 
 
 def _timeout_for_page_type(*, page_type: str, scan_mode: str, fallback_timeout_s: int) -> int:
@@ -742,12 +874,12 @@ def _timeout_for_page_type(*, page_type: str, scan_mode: str, fallback_timeout_s
     if lowered_page_type in {"homepage", "interaction"}:
         timeout_min, timeout_max = _timeout_bounds_for_mode("deep")
     elif lowered_page_type == "nav":
-        timeout_min, timeout_max = _timeout_bounds_for_mode("standard")
+        timeout_min, timeout_max = _timeout_bounds_for_mode("deep")
     else:
         timeout_min, timeout_max = _timeout_bounds_for_mode("fast")
 
-    if _normalize_scan_mode(scan_mode) == "fast" and lowered_page_type in {"homepage", "interaction", "nav"}:
-        timeout_min, timeout_max = _timeout_bounds_for_mode("standard")
+    if normalize_scan_mode(scan_mode) == "fast" and lowered_page_type in {"homepage", "interaction", "nav"}:
+        timeout_min, timeout_max = _timeout_bounds_for_mode("deep")
 
     raw_timeout = int(fallback_timeout_s or 0)
     if raw_timeout <= 0:
@@ -755,14 +887,24 @@ def _timeout_for_page_type(*, page_type: str, scan_mode: str, fallback_timeout_s
     return max(1, min(raw_timeout, timeout_max))
 
 
-def _scan_mode_for_page_type(page_type: str, crawl_scan_mode: str) -> str:
-    mode = _normalize_scan_mode(crawl_scan_mode)
+def _scan_mode_for_page_type(
+    page_type: str,
+    crawl_scan_mode: str,
+    *,
+    browser_engines_enabled: bool,
+) -> str:
+    mode = normalize_scan_mode(crawl_scan_mode)
     lowered_page_type = str(page_type or "").strip().lower()
 
     if mode == "fast":
         return "fast"
 
+    if not browser_engines_enabled:
+        return "deep_degraded"
+
     if lowered_page_type in {"homepage", "interaction"}:
+        return "deep"
+    if mode == "max" and lowered_page_type == "nav":
         return "deep"
     return "fast"
 
@@ -798,8 +940,81 @@ def _safe_mean(values: list[float]) -> float:
     return float(sum(values)) / float(len(values))
 
 
+def _weighted_dominant_failure(reasons: list[str]) -> str | None:
+    if not reasons:
+        return None
+    weighted: dict[str, float] = {}
+    for reason in reasons:
+        weight = float(FAILURE_SEVERITY_WEIGHT.get(reason, 0.3))
+        weighted[reason] = weighted.get(reason, 0.0) + weight
+    return max(weighted, key=lambda key: weighted[key])
+
+
+def _compute_site_confidence(page_results: list[dict[str, Any]]) -> float:
+    if not page_results:
+        return 0.0
+
+    scores: list[float] = []
+    for page in page_results:
+        value = page.get("confidence_score")
+        if isinstance(value, (int, float)):
+            scores.append(float(value))
+
+    avg_confidence = (sum(scores) / len(scores)) if scores else 0.0
+    degraded_count = 0
+    for page in page_results:
+        if str(page.get("audit_status") or "").lower() != "success":
+            degraded_count += 1
+    degraded_ratio = degraded_count / max(1, len(page_results))
+    site_confidence = avg_confidence * (1.0 - 0.4 * degraded_ratio)
+    return round(max(0.0, min(1.0, site_confidence)), 2)
+
+
+def _build_site_failure_profile(page_results: list[dict[str, Any]]) -> dict[str, Any]:
+    reasons: list[str] = []
+    for page in page_results:
+        status = str(page.get("audit_status") or "").lower()
+        if status == "success":
+            continue
+        reason = normalize_reason(page.get("failure_reason"))
+        if not reason:
+            reason = DegradedReason.ENGINE_ERROR.value
+        reasons.append(reason)
+
+    if not reasons:
+        return {
+            "dominant_failure": None,
+            "failure_distribution": {},
+            "degraded_page_count": 0,
+            "site_confidence_score": _compute_site_confidence(page_results),
+        }
+
+    counts: dict[str, int] = {}
+    for reason in reasons:
+        counts[reason] = counts.get(reason, 0) + 1
+
+    total = sum(counts.values())
+    distribution = {
+        reason: {
+            "count": count,
+            "pct": round((count / total) * 100.0, 1),
+            "severity_weight": float(FAILURE_SEVERITY_WEIGHT.get(reason, 0.3)),
+        }
+        for reason, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+    }
+
+    return {
+        "dominant_failure": _weighted_dominant_failure(reasons),
+        "failure_distribution": distribution,
+        "degraded_page_count": len(reasons),
+        "site_confidence_score": _compute_site_confidence(page_results),
+    }
+
+
 def _derive_crawl_status(*, early_stop_reason: str | None, pages_failed: int, queue_remaining: bool) -> str:
     if early_stop_reason in {"failure_threshold", "global_timeout"}:
+        return "aborted"
+    if str(early_stop_reason or "").startswith("non_recoverable:"):
         return "aborted"
 
     if early_stop_reason == "low_information_gain":

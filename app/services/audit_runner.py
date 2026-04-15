@@ -10,6 +10,7 @@ Pipeline:
 6. Generate report -> output
 """
 import asyncio
+from dataclasses import dataclass, field, replace
 import hashlib
 import json
 import logging
@@ -19,12 +20,20 @@ from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import urlparse
 
-import httpx
+from curl_cffi import AsyncSession
 
-from app.config import QUALITY_GATES, SEVERITY_WEIGHTS, SCORING_CONFIG, settings
+from app.config import (
+    AUDIT_CONCURRENCY_LIMIT,
+    LLM_FIRE_BUDGET_PER_AUDIT,
+    QUALITY_GATES,
+    SCORING_CONFIG,
+    SEVERITY_WEIGHTS,
+    settings,
+)
 from app.config import PRECISION_PROFILES
 from app.audit.dynamic_handling import resolve_adaptive_timeouts, stable_request_headers
-from app.audit.failure_taxonomy import classify_failure_reason, normalize_reason, reason_message
+from app.audit.failure_taxonomy import normalize_failure, reason_message
+from app.crawlers.common import http_get_with_backoff, normalize_scan_mode
 from app.services.static_checks import StaticChecker
 from app.services.heuristics import HeuristicAnalyzer
 from app.services.normalizer import normalize_all
@@ -51,12 +60,32 @@ _browser_semaphore = asyncio.Semaphore(3)
 _enrichment_tasks: dict[str, asyncio.Task] = {}
 _enriched_results: dict[str, dict] = {}
 _active_audits = 0
-_MAX_CONCURRENT_AUDITS = 20
+_MAX_CONCURRENT_AUDITS = max(1, int(AUDIT_CONCURRENCY_LIMIT or 20))
 
 _FETCH_DOMAIN_CONCURRENCY_LIMIT = 2
 _FETCH_DOMAIN_SEMAPHORES: dict[str, asyncio.Semaphore] = {}
 _FETCH_DOMAIN_LOCK = asyncio.Lock()
 _FETCH_PARTIAL_BODY_LIMIT = 200_000
+
+
+@dataclass(slots=True)
+class PreflightResult:
+    """Domain-level preflight status shared across pages in a single audit run."""
+
+    run_id: str
+    domain: str
+    ok: bool
+    degraded_reason: str
+    message: str
+    status_code: int | None = None
+    headers: dict[str, str] = field(default_factory=dict)
+    checked_at: float = field(default_factory=time.time)
+    from_cache: bool = False
+    fetch_meta: dict[str, Any] = field(default_factory=dict)
+
+
+_DOMAIN_PREFLIGHT_CACHE: dict[str, dict[str, PreflightResult]] = {}
+_DOMAIN_PREFLIGHT_LOCK = asyncio.Lock()
 
 _RULE_QUALITY_POLICY_CACHE: dict[str, Any] | None = None
 
@@ -389,11 +418,240 @@ def _build_trust_payload(
 
 
 def _classify_degraded_reason_from_error(exc: Exception | str | None) -> str:
-    return classify_failure_reason(exc)
+    return normalize_failure(exc)
 
 
 def _degradation_reason_message(reason_code: str, detail: str | None = None) -> str:
     return reason_message(reason_code, detail)
+
+
+def _domain_key_from_url(raw_url: str) -> str:
+    try:
+        return (urlparse(str(raw_url)).hostname or "").lower() or "unknown"
+    except Exception:
+        return "unknown"
+
+
+def clear_domain_preflight_cache(run_id: str | None = None) -> None:
+    """Clear domain preflight cache for one run or all runs."""
+    key = str(run_id or "").strip()
+    if key:
+        _DOMAIN_PREFLIGHT_CACHE.pop(key, None)
+        return
+    _DOMAIN_PREFLIGHT_CACHE.clear()
+
+
+def _build_availability_fallback_issue(
+    *,
+    url: str,
+    rule_id: str,
+    degraded_reason: str,
+    description: str,
+    suggested_fix: str,
+    fetch_status: int | None = None,
+    confidence: float = 0.9,
+    severity: str = "serious",
+) -> dict[str, Any]:
+    issue_seed = f"{url}|{rule_id}|{degraded_reason}|{fetch_status or ''}"
+    evidence: dict[str, Any] = {"degraded_reason": degraded_reason}
+    if isinstance(fetch_status, int):
+        evidence["fetch_status_code"] = int(fetch_status)
+
+    return {
+        "issue_id": hashlib.sha256(issue_seed.encode("utf-8", errors="ignore")).hexdigest()[:16],
+        "rule_id": rule_id,
+        "issue_type": "needs-review",
+        "element": "<document>",
+        "html_snippet": "",
+        "page_url": str(url),
+        "severity": severity,
+        "wcag_criterion": "",
+        "wcag_level": "",
+        "category": "availability",
+        "confidence": float(confidence),
+        "confidence_sources": ["fetch"],
+        "needs_manual_review": True,
+        "description": description,
+        "suggested_fix": suggested_fix,
+        "code_fix": "",
+        "fix_effort": "medium",
+        "group_id": "",
+        "domain": "availability",
+        "evidence": evidence,
+        "reproducibility": "",
+    }
+
+
+def _issue_identity_key(issue: dict[str, Any]) -> str:
+    issue_id = str(issue.get("issue_id") or "").strip()
+    if issue_id:
+        return issue_id
+    fallback = "|".join(
+        [
+            str(issue.get("rule_id") or "").strip(),
+            str(issue.get("page_url") or issue.get("url") or "").strip(),
+            str(issue.get("element") or "").strip(),
+            str(issue.get("description") or "").strip(),
+        ]
+    )
+    return hashlib.sha256(fallback.encode("utf-8", errors="ignore")).hexdigest()[:24]
+
+
+def _select_llm_enrichment_candidates(
+    issues: list[dict[str, Any]],
+    *,
+    budget: int,
+    max_enrich_issues: int,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    safe_budget = max(0, int(budget))
+    requested = max(0, int(max_enrich_issues))
+    allowed = min(requested, safe_budget) if requested > 0 else safe_budget
+
+    if allowed <= 0:
+        return [], {
+            "requested": requested,
+            "budget": safe_budget,
+            "allowed": 0,
+            "dropped_for_budget": len(issues),
+            "budget_exhausted": len(issues) > 0,
+        }
+
+    ranked = sorted(
+        list(issues or []),
+        key=lambda issue: (
+            float(SEVERITY_WEIGHTS.get(str(issue.get("severity") or "minor").lower(), 1.0)),
+            float(issue.get("confidence", 0.0) or 0.0),
+        ),
+        reverse=True,
+    )
+    selected = ranked[:allowed]
+    return selected, {
+        "requested": requested,
+        "budget": safe_budget,
+        "allowed": allowed,
+        "dropped_for_budget": max(0, len(ranked) - len(selected)),
+        "budget_exhausted": len(ranked) > len(selected),
+    }
+
+
+def _compute_audit_confidence(
+    *,
+    degraded_mode: bool,
+    degraded_reason: str | None,
+    engines_used: list[str],
+    issues: list[dict[str, Any]],
+    fetch_reliability_meta: dict[str, Any],
+    preflight_result: PreflightResult | None,
+) -> tuple[float, str]:
+    confidence = 0.9
+    reason = str(degraded_reason or "").strip().lower()
+
+    if degraded_mode:
+        confidence -= 0.28
+    if reason in {"bot_wall", "blocked_request", "connectivity_blocked", "network_error", "rate_limited"}:
+        confidence -= 0.25
+    if reason in {
+        "render_timeout",
+        "timeout",
+        "browser_navigation_failed",
+        "navigation_failure",
+        "extraction_failed",
+        "extraction_failure",
+    }:
+        confidence -= 0.15
+
+    attempts = int((fetch_reliability_meta or {}).get("attempts_used", 0) or 0)
+    if attempts >= 2:
+        confidence -= 0.06
+    if bool((fetch_reliability_meta or {}).get("partial_fallback_used", False)):
+        confidence -= 0.12
+
+    engines_count = len(set(str(e).strip().lower() for e in (engines_used or [])))
+    if engines_count >= 3:
+        confidence += 0.06
+    elif engines_count == 0:
+        confidence -= 0.10
+
+    issue_confidences = [
+        float(issue.get("confidence", 0.0) or 0.0)
+        for issue in (issues or [])
+        if isinstance(issue, dict)
+    ]
+    if issue_confidences:
+        confidence = (confidence * 0.6) + ((sum(issue_confidences) / len(issue_confidences)) * 0.4)
+
+    if preflight_result is not None:
+        if preflight_result.from_cache:
+            confidence -= 0.02
+        if not preflight_result.ok:
+            confidence -= 0.08
+
+    bounded = round(max(0.05, min(1.0, confidence)), 4)
+    if bounded < 0.30:
+        note = "Low confidence due to degraded/partial signals; score suppressed."
+    elif bounded < 0.55:
+        note = "Moderate-low confidence; interpret score with caution."
+    elif bounded < 0.75:
+        note = "Moderate confidence based on available engine coverage."
+    else:
+        note = "High confidence from stable fetch and multi-engine corroboration."
+    return bounded, note
+
+
+async def _run_domain_preflight(url: str, *, run_id: str | None = None) -> PreflightResult:
+    domain = _domain_key_from_url(url)
+    cache_key = str(run_id or "").strip()
+
+    if cache_key:
+        async with _DOMAIN_PREFLIGHT_LOCK:
+            cached = _DOMAIN_PREFLIGHT_CACHE.get(cache_key, {}).get(domain)
+        if cached is not None:
+            return replace(cached, from_cache=True)
+
+    headers = stable_request_headers(url, attempt_index=0)
+    preflight = PreflightResult(
+        run_id=cache_key,
+        domain=domain,
+        ok=True,
+        degraded_reason="ok",
+        message="preflight_ok",
+    )
+
+    try:
+        async with AsyncSession(impersonate="chrome", headers=headers, follow_redirects=True) as client:
+            response = await http_get_with_backoff(
+                url,
+                client=client,
+                max_retries=1,
+                timeout_seconds=5.0,
+            )
+        status_code = int(response.status_code)
+        header_map = {str(k).lower(): str(v) for k, v in dict(response.headers or {}).items()}
+        if 200 <= status_code < 400:
+            reason = "ok"
+        else:
+            reason = normalize_failure(None, status_code=status_code, response_headers=header_map)
+            if reason == "ok":
+                reason = "network_error"
+        preflight.status_code = status_code
+        preflight.headers = header_map
+        preflight.degraded_reason = reason
+        preflight.ok = reason == "ok"
+        preflight.message = "preflight_ok" if preflight.ok else _degradation_reason_message(reason)
+        preflight.fetch_meta = {"status_code": status_code}
+    except Exception as exc:
+        reason = normalize_failure(exc)
+        preflight.ok = False
+        preflight.degraded_reason = reason
+        preflight.message = _degradation_reason_message(reason, "preflight_exception")
+        preflight.fetch_meta = {"error": str(exc)}
+
+    if cache_key:
+        async with _DOMAIN_PREFLIGHT_LOCK:
+            run_cache = _DOMAIN_PREFLIGHT_CACHE.setdefault(cache_key, {})
+            run_cache[domain] = replace(preflight, from_cache=False)
+
+    return preflight
 
 
 def _single_page_site_result(*, score: float, total_issues: int, url: str) -> dict[str, Any]:
@@ -459,7 +717,7 @@ def _enforce_audit_invariants(result: dict[str, Any]) -> dict[str, Any]:
     result["pages_audited"] = pages_audited
     result["pages_scanned"] = pages_audited
     degraded_mode = bool(result.get("degraded_mode", False))
-    degraded_reason = normalize_reason(result.get("degraded_reason"))
+    degraded_reason = normalize_failure(result.get("degraded_reason"))
 
     if degraded_mode and not degraded_reason:
         fallback_reason = _classify_degraded_reason_from_error(result.get("degradation_reason"))
@@ -472,8 +730,12 @@ def _enforce_audit_invariants(result: dict[str, Any]) -> dict[str, Any]:
             result["degradation_reason"] = _degradation_reason_message(degraded_reason)
 
     if pages_audited > 0:
+        confidence_score = float(result.get("confidence_score", 1.0) or 0.0)
+        allow_null_score = confidence_score < 0.30 and result.get("score") is None
         score_value = result.get("score")
-        score_is_invalid = not isinstance(score_value, (int, float)) or float(score_value) <= 0.0
+        score_is_invalid = (not allow_null_score) and (
+            not isinstance(score_value, (int, float)) or float(score_value) <= 0.0
+        )
         if score_is_invalid:
             fallback_score = _safe_score_fallback(
                 pages_audited=pages_audited,
@@ -506,18 +768,25 @@ def _enforce_audit_invariants(result: dict[str, Any]) -> dict[str, Any]:
         site_result = result.get("site_result")
         if not isinstance(site_result, dict):
             result["site_result"] = _single_page_site_result(
-                score=float(result.get("score") or 0.0),
+                score=float(result.get("score_raw") or result.get("score") or 0.0),
                 total_issues=len(issues),
                 url=str(result.get("url") or ""),
             )
+            if allow_null_score and isinstance(result.get("site_result"), dict):
+                result["site_result"]["site_score"] = None
+                result["site_result"]["worst_page_score"] = None
+                if isinstance(result["site_result"].get("worst_page"), dict):
+                    result["site_result"]["worst_page"]["score"] = None
+                if isinstance(result["site_result"].get("best_page"), dict):
+                    result["site_result"]["best_page"]["score"] = None
         else:
             if int(site_result.get("pages_audited") or 0) <= 0:
                 logger.error("Invariant violation: site_result.pages_audited <= 0. Repairing value.")
                 site_result["pages_audited"] = pages_audited
             site_result["pages_scanned"] = int(site_result.get("pages_audited") or pages_audited)
-            if float(site_result.get("site_score") or 0.0) <= 0:
+            if not allow_null_score and float(site_result.get("site_score") or 0.0) <= 0:
                 logger.error("Invariant violation: site_result.site_score <= 0. Repairing value.")
-                site_result["site_score"] = float(result.get("score") or 1.0)
+                site_result["site_score"] = float(result.get("score") or result.get("score_raw") or 1.0)
             result["site_result"] = site_result
 
     trust_payload = result.get("trust")
@@ -569,7 +838,7 @@ def _upgrade_cached_deep_result(result: dict, requested_mode: str) -> dict:
         return result
 
     result["degraded_mode"] = True
-    result["degraded_reason"] = normalize_reason(result.get("degraded_reason")) or "extraction_failure"
+    result["degraded_reason"] = normalize_failure(result.get("degraded_reason")) or "extraction_failure"
     result["degradation_reason"] = (
         result.get("degradation_reason")
         or "Deep scan requested, but browser engines did not execute. Results are based on static HTML analysis only."
@@ -654,6 +923,20 @@ def get_enriched_results(audit_id: str) -> dict:
     return res
 
 
+def get_audit_runtime_health() -> dict[str, Any]:
+    """Operational health snapshot for audit runtime/backpressure monitoring."""
+    queued_enrichment = sum(1 for task in _enrichment_tasks.values() if not task.done())
+    cached_domains = sum(len(domains) for domains in _DOMAIN_PREFLIGHT_CACHE.values())
+    return {
+        "active_audits": int(_active_audits),
+        "max_concurrent_audits": int(_MAX_CONCURRENT_AUDITS),
+        "enrichment_tasks_pending": int(queued_enrichment),
+        "domain_preflight_cache_runs": int(len(_DOMAIN_PREFLIGHT_CACHE)),
+        "domain_preflight_cache_entries": int(cached_domains),
+        "llm_fire_budget_per_audit": int(LLM_FIRE_BUDGET_PER_AUDIT),
+    }
+
+
 def _finalize_result(result: dict[str, Any], *, status: str, persist_db: bool = True) -> dict[str, Any]:
     """Persist DB state and emit telemetry/alert side effects for an audit result."""
     result = _enforce_audit_invariants(result)
@@ -736,14 +1019,8 @@ async def _fetch_html(
     Returns tuple: (html_or_none, failure_reason_if_any, fetch_metadata)
     """
 
-    def _domain_key(raw_url: str) -> str:
-        try:
-            return (urlparse(raw_url).hostname or "").lower() or "unknown"
-        except Exception:
-            return "unknown"
-
     async def _domain_semaphore(raw_url: str) -> asyncio.Semaphore:
-        key = _domain_key(raw_url)
+        key = _domain_key_from_url(raw_url)
         async with _FETCH_DOMAIN_LOCK:
             semaphore = _FETCH_DOMAIN_SEMAPHORES.get(key)
             if semaphore is None:
@@ -791,42 +1068,39 @@ async def _fetch_html(
         attempt_index: int,
     ) -> tuple[Optional[str], Optional[int], str, bool]:
         headers = stable_request_headers(url, attempt_index=attempt_index)
-        timeout_cfg = httpx.Timeout(
-            connect=max(2.0, min(5.0, attempt_timeout * 0.45)),
-            read=max(2.0, attempt_timeout),
-            write=max(2.0, min(5.0, attempt_timeout * 0.35)),
-            pool=max(1.5, min(3.0, attempt_timeout * 0.25)),
-        )
 
         try:
-            async with httpx.AsyncClient(timeout=timeout_cfg, follow_redirects=True, headers=headers) as client:
-                if lightweight:
-                    stream_headers = dict(headers)
-                    stream_headers["Range"] = f"bytes=0-{_FETCH_PARTIAL_BODY_LIMIT - 1}"
-                    async with client.stream("GET", url, headers=stream_headers) as response:
-                        status_code = int(response.status_code)
-                        chunks: list[str] = []
-                        bytes_read = 0
-                        async for chunk in response.aiter_text():
-                            if not chunk:
-                                continue
-                            chunks.append(chunk)
-                            bytes_read += len(chunk.encode("utf-8", errors="ignore"))
-                            if bytes_read >= _FETCH_PARTIAL_BODY_LIMIT:
-                                break
-                        body = "".join(chunks)
-                else:
-                    response = await client.get(url)
-                    status_code = int(response.status_code)
-                    body = response.text or ""
+            request_headers = dict(headers)
+            if lightweight:
+                request_headers["Range"] = f"bytes=0-{_FETCH_PARTIAL_BODY_LIMIT - 1}"
+
+            async with AsyncSession(
+                impersonate="chrome",
+                headers=request_headers,
+                follow_redirects=True,
+            ) as client:
+                response = await http_get_with_backoff(
+                    url,
+                    client=client,
+                    max_retries=1,
+                    timeout_seconds=max(2.0, float(attempt_timeout)),
+                )
+
+            status_code = int(response.status_code)
+            header_map = {str(k).lower(): str(v) for k, v in dict(response.headers or {}).items()}
+            body = str(response.text or "")
+            if lightweight and body:
+                body = _coerce_partial_html(body)
+
+            normalized_reason = normalize_failure(None, status_code=status_code, response_headers=header_map)
 
             if status_code >= 400:
                 logger.warning("Fetch returned status=%s for %s", status_code, url)
-                if body.strip():
+                if body.strip() and normalized_reason not in {"blocked_request", "bot_wall", "rate_limited"}:
                     return _coerce_partial_html(body), status_code, "", False
-                if _is_blocked_status(status_code):
-                    return None, status_code, "blocked_request", False
-                return None, status_code, "network_error", False
+                if normalized_reason == "ok":
+                    normalized_reason = "network_error"
+                return None, status_code, normalized_reason, False
 
             if body.strip():
                 return _coerce_partial_html(body), status_code, "", False
@@ -834,8 +1108,17 @@ async def _fetch_html(
             return None, status_code, "extraction_failure", False
         except Exception as exc:
             error_text = str(exc).lower()
-            reason = classify_failure_reason(exc)
-            retryable = bool(reason != "blocked_request" and _is_retryable_exception_text(error_text))
+            reason = normalize_failure(exc)
+            retryable_reason = reason in {
+                "network_error",
+                "connectivity_failure",
+                "connectivity_blocked",
+                "render_timeout",
+                "timeout",
+                "browser_navigation_failed",
+                "navigation_failure",
+            }
+            retryable = bool(retryable_reason and _is_retryable_exception_text(error_text))
             return None, None, reason, retryable
 
     effective_timeout = max(2.0, float(timeout))
@@ -848,13 +1131,15 @@ async def _fetch_html(
         "attempts_used": 0,
         "user_agent_rotated": False,
         "status_code": None,
-        "domain": _domain_key(url),
+        "domain": _domain_key_from_url(url),
     }
 
     semaphore = await _domain_semaphore(url)
     async with semaphore:
         bounded_attempts = max(1, min(int(max_attempts or 1), 3))
         attempt_budgets = [effective_timeout, retry_timeout, retry_timeout][:bounded_attempts]
+        status_code: int | None = None
+        reason = ""
         for idx, budget in enumerate(attempt_budgets):
             body, status_code, reason, retryable_exc = await _attempt(
                 attempt_timeout=budget,
@@ -907,7 +1192,9 @@ async def _fetch_html(
         elif _is_retryable_http_status(status_code):
             reason = "network_error"
         else:
-            reason = "network_error"
+            reason = normalize_failure(None, status_code=status_code)
+            if reason == "ok":
+                reason = "network_error"
 
     return None, reason, meta
 
@@ -939,6 +1226,7 @@ async def run_audit(
     enable_cognitive: bool = True,
     await_enrichment: bool = False,
     use_cache: bool = True,
+    run_id: Optional[str] = None,
 ) -> dict:
     """
     Run the full accessibility audit pipeline.
@@ -956,6 +1244,13 @@ async def run_audit(
     """
     global _active_audits
     start_time = time.time()
+    raw_scan_mode = scan_mode
+    is_minimal_mode = str(raw_scan_mode or "").strip().lower() == "minimal"
+    try:
+        scan_mode = normalize_scan_mode(scan_mode)
+    except ValueError:
+        scan_mode = "fast"
+    effective_run_id = str(run_id or "").strip()
 
     try:
         url = validate_public_url(url)
@@ -1011,7 +1306,7 @@ async def run_audit(
 
     def _mark_degraded(reason_code: str, message: Optional[str] = None) -> None:
         nonlocal degraded_mode, degraded_reason, degradation_reason
-        normalized_reason = normalize_reason(reason_code) or classify_failure_reason(reason_code)
+        normalized_reason = normalize_failure(reason_code)
         degraded_mode = True
         if not degraded_reason:
             degraded_reason = normalized_reason
@@ -1021,7 +1316,7 @@ async def run_audit(
     # ── Step 0b: Global Backpressure Guard ─────────────────────
     _active_audits += 1
     if _active_audits > _MAX_CONCURRENT_AUDITS:
-        if scan_mode == "deep":
+        if scan_mode in {"deep", "max"}:
             logger.warning(f"⚠️ Backpressure active ({_active_audits} audits). Auto-degrading to fast mode.")
             scan_mode = "fast"
             _mark_degraded("extraction_failure", "System under heavy load. Auto-degraded to fast mode.")
@@ -1029,26 +1324,44 @@ async def run_audit(
 
     try:
         engines_used = []
+        preflight_result: PreflightResult | None = None
+
+        if effective_run_id:
+            try:
+                preflight_result = await _run_domain_preflight(url, run_id=effective_run_id)
+                if preflight_result and not preflight_result.ok:
+                    if preflight_result.degraded_reason in {
+                        "blocked_request",
+                        "bot_wall",
+                        "rate_limited",
+                        "csp_blocked",
+                        "csp_injection_blocked",
+                    }:
+                        _mark_degraded(preflight_result.degraded_reason, preflight_result.message)
+                        if preflight_result.degraded_reason in {"blocked_request", "bot_wall"}:
+                            skipped_components.extend(["browser_probes", "axe-core"])
+            except Exception as exc:
+                logger.debug("Domain preflight check failed for %s: %s", url, exc)
 
         # ── Minimal fast path: static + basic heuristics only ─────────
         # Use scan_mode="minimal" for maximum reliability under load.
         # Skips browser, axe-core, cognitive, and async enrichment entirely.
         # Easiest to debug; guaranteed to finish in <3s.
-        if scan_mode == "minimal":
+        if is_minimal_mode:
             enable_enrichment = False
             enable_cognitive  = False
 
         # Determine timeout based on mode
         max_runtime = (
             QUALITY_GATES["runtime"]["fast_max_seconds"]
-            if scan_mode in ("fast", "minimal")
+            if scan_mode == "fast"
             else QUALITY_GATES["runtime"]["deep_max_seconds"]
         )
 
         adaptive_timeout_policy = resolve_adaptive_timeouts(
             url,
-            "fast" if scan_mode in {"fast", "minimal"} else "deep",
-            page_timeout_seconds=15 if scan_mode in {"fast", "minimal"} else 30,
+            "fast" if scan_mode == "fast" else "deep",
+            page_timeout_seconds=15 if scan_mode == "fast" else 30,
             network_idle_timeout_ms=12000,
             ready_state_timeout_ms=5000,
         )
@@ -1118,17 +1431,27 @@ async def run_audit(
             fetch_timeout_budget = min(fetch_timeout, float(max_runtime))
             fetch_attempts = 3
             use_lightweight_fallback = True
-            if scan_mode in {"minimal", "fast"}:
+            if scan_mode == "fast" or is_minimal_mode:
                 fetch_timeout_budget = min(fetch_timeout_budget, 4.0)
                 fetch_attempts = 1
                 use_lightweight_fallback = False
 
-            html, fetch_reason, fetch_reliability_meta = await _fetch_html(
-                url,
-                timeout=fetch_timeout_budget,
-                max_attempts=fetch_attempts,
-                allow_lightweight_fallback=use_lightweight_fallback,
-            )
+            try:
+                html, fetch_reason, fetch_reliability_meta = await _fetch_html(
+                    url,
+                    timeout=fetch_timeout_budget,
+                    max_attempts=fetch_attempts,
+                    allow_lightweight_fallback=use_lightweight_fallback,
+                )
+            except TypeError as exc:
+                # Backward-compatible fallback for tests that monkeypatch _fetch_html
+                # with the legacy (url, timeout) signature.
+                if "unexpected keyword argument" not in str(exc):
+                    raise
+                html, fetch_reason, fetch_reliability_meta = await _fetch_html(
+                    url,
+                    timeout=fetch_timeout_budget,
+                )
             if not html and fetch_reason:
                 _mark_degraded(fetch_reason, _degradation_reason_message(fetch_reason, "content_fetch"))
 
@@ -1143,31 +1466,31 @@ async def run_audit(
             _mark_degraded(degraded_reason or "network_error", "Unable to fetch rendered HTML. Returned safe degraded result.")
             skipped_components.extend(["content_fetch"])
 
-            fallback_issue = {
-                "issue_id": hashlib.sha256(f"{url}|fetch-unavailable".encode()).hexdigest()[:16],
-                "rule_id": "fetch-unavailable",
-                "issue_type": "needs-review",
-                "element": "<document>",
-                "html_snippet": "",
-                "page_url": url,
-                "severity": "serious",
-                "wcag_criterion": "",
-                "wcag_level": "",
-                "category": "availability",
-                "confidence": 0.9,
-                "confidence_sources": ["fetch"],
-                "needs_manual_review": True,
-                "description": "The target page could not be fetched by HTTP or browser fallback and requires manual validation.",
-                "suggested_fix": "Retry with a stable network path or allowlist scanner user agents.",
-                "code_fix": "",
-                "fix_effort": "medium",
-                "group_id": "",
-                "domain": "availability",
-                "evidence": {},
-                "reproducibility": "",
-            }
+            fallback_issue = _build_availability_fallback_issue(
+                url=url,
+                rule_id="fetch-unavailable",
+                degraded_reason=str(degraded_reason or "network_error"),
+                description="The target page could not be fetched by HTTP or browser fallback and requires manual validation.",
+                suggested_fix="Retry with a stable network path or allowlist scanner user agents.",
+                fetch_status=fetch_status if isinstance(fetch_status, int) else None,
+            )
             fallback_score, fallback_score_explanation = _calculate_score([fallback_issue], degraded_mode=True)
             scan_time = round(time.time() - start_time, 2)
+
+            confidence_score, confidence_note = _compute_audit_confidence(
+                degraded_mode=True,
+                degraded_reason=str(degraded_reason or "network_error"),
+                engines_used=engines_used,
+                issues=[fallback_issue],
+                fetch_reliability_meta=fetch_reliability_meta,
+                preflight_result=preflight_result,
+            )
+
+            response_score: float | None = fallback_score
+            response_site_score: float | None = fallback_score
+            if confidence_score < 0.30:
+                response_score = None
+                response_site_score = None
 
             failure = {
                 "url": url,
@@ -1176,7 +1499,8 @@ async def run_audit(
                 "issues": [fallback_issue],
                 "priority_ranking": [],
                 "groups": [],
-                "score": fallback_score,
+                "score": response_score,
+                "score_raw": fallback_score,
                 "score_explanation": fallback_score_explanation,
                 "cognitive_scores": None,
                 "summary": f"Degraded audit: unable to fetch content for {url}. Returned safe baseline scoring.",
@@ -1196,6 +1520,8 @@ async def run_audit(
                 "degraded_reason": degraded_reason,
                 "skipped_components": sorted(set(skipped_components)),
                 "degradation_reason": degradation_reason,
+                "confidence_score": confidence_score,
+                "confidence_note": confidence_note,
                 "trust": _build_trust_payload(
                     issues=[fallback_issue],
                     engines_used=engines_used,
@@ -1210,6 +1536,14 @@ async def run_audit(
                 ),
                 "site_result": _single_page_site_result(score=fallback_score, total_issues=1, url=url),
             }
+            if response_site_score is None and isinstance(failure.get("site_result"), dict):
+                failure["site_result"]["site_score"] = None
+                failure["site_result"]["worst_page_score"] = None
+                if isinstance(failure["site_result"].get("worst_page"), dict):
+                    failure["site_result"]["worst_page"]["score"] = None
+                if isinstance(failure["site_result"].get("best_page"), dict):
+                    failure["site_result"]["best_page"]["score"] = None
+
             return _finalize_result(failure, status="completed")
 
         # ── Step 1.5: Check Structure / DOM Cache ─────────────────
@@ -1253,7 +1587,7 @@ async def run_audit(
         async def run_axe():
             if scan_mode not in {"deep", "max"}:
                 return [], "axe-core", {"executed": False}
-            if degraded_reason == "blocked_request":
+            if degraded_reason in {"blocked_request", "bot_wall", "rate_limited"}:
                 return [], "axe-core", {"executed": False, "skipped_reason": "blocked_request"}
             try:
                 from app.services.browser_probes import _PLAYWRIGHT_AVAILABLE
@@ -1401,33 +1735,15 @@ async def run_audit(
 
         # Output stability: blocked/partial audits should report availability status,
         # not structural/content findings from anti-bot or auth walls.
-        if degraded_mode and degraded_reason == "blocked_request":
-            blocked_issue = {
-                "issue_id": hashlib.sha256(f"{url}|blocked-request-partial".encode()).hexdigest()[:16],
-                "rule_id": "blocked-request-partial",
-                "issue_type": "needs-review",
-                "element": "<document>",
-                "html_snippet": "",
-                "page_url": url,
-                "severity": "serious",
-                "wcag_criterion": "",
-                "wcag_level": "",
-                "category": "availability",
-                "confidence": 0.9,
-                "confidence_sources": ["fetch"],
-                "needs_manual_review": True,
-                "description": "Access to this page appears blocked (401/403/429). Results are a partial audit and require manual validation.",
-                "suggested_fix": "Retry from an allowlisted network or provide an authenticated/publicly accessible URL.",
-                "code_fix": "",
-                "fix_effort": "medium",
-                "group_id": "",
-                "domain": "availability",
-                "evidence": {
-                    "degraded_reason": degraded_reason,
-                    "fetch_status_code": fetch_status,
-                },
-                "reproducibility": "",
-            }
+        if degraded_mode and degraded_reason in {"blocked_request", "bot_wall", "rate_limited"}:
+            blocked_issue = _build_availability_fallback_issue(
+                url=url,
+                rule_id="blocked-request-partial",
+                degraded_reason=str(degraded_reason or "bot_wall"),
+                description="Access to this page appears blocked (401/403/429). Results are a partial audit and require manual validation.",
+                suggested_fix="Retry from an allowlisted network or provide an authenticated/publicly accessible URL.",
+                fetch_status=fetch_status if isinstance(fetch_status, int) else None,
+            )
             dropped_for_blocked = len(scored_issues)
             scored_issues = [blocked_issue]
             profile_telemetry = dict(profile_telemetry or {})
@@ -1463,36 +1779,72 @@ async def run_audit(
         audit_id = str(uuid.uuid4())
         enrichment_status = "complete"
         enrichment_meta: dict[str, Any] = {}
+        llm_fire_budget = max(0, int(LLM_FIRE_BUDGET_PER_AUDIT or 0))
+        selected_for_enrichment, enrichment_budget_meta = _select_llm_enrichment_candidates(
+            scored_issues,
+            budget=llm_fire_budget,
+            max_enrich_issues=max_enrich_issues,
+        )
+        enrichment_meta["budget"] = enrichment_budget_meta
 
         if enable_enrichment:
-            enrichment_status = "pending"
+            if not selected_for_enrichment:
+                enrichment_status = "skipped"
+                enrichment_meta = {
+                    "reason": "llm_budget_exhausted",
+                    "budget": enrichment_budget_meta,
+                }
+            else:
+                enrichment_status = "pending"
             
-            async def run_enrichment_task(aid: str, iss: list[dict], max_num: int):
+            async def run_enrichment_task(
+                aid: str,
+                all_issues: list[dict],
+                enrich_issues_input: list[dict],
+                max_num: int,
+            ):
                 try:
                     # 60s absolute timeout for enrichment to prevent memory leaks
                     async with asyncio.timeout(60):
                         enriched, meta = await enrich_issues(
-                            iss,
+                            enrich_issues_input,
                             max_issues=max_num,
                             return_meta=True,
                         )
-                        _enriched_results[aid] = {"status": "complete", "issues": enriched, "meta": meta}
+                        enriched_map = {
+                            _issue_identity_key(item): item
+                            for item in (enriched or [])
+                            if isinstance(item, dict)
+                        }
+                        merged_issues: list[dict] = []
+                        for item in all_issues:
+                            if not isinstance(item, dict):
+                                continue
+                            merged_issues.append(enriched_map.get(_issue_identity_key(item), item))
+
+                        merged_meta = dict(meta or {})
+                        merged_meta["budget"] = enrichment_budget_meta
+                        _enriched_results[aid] = {
+                            "status": "complete",
+                            "issues": merged_issues,
+                            "meta": merged_meta,
+                        }
                         try:
-                            persist_enrichment_payload(aid, enriched, meta, status="complete")
+                            persist_enrichment_payload(aid, merged_issues, merged_meta, status="complete")
                         except Exception as exc:
                             logger.error("Failed to persist enrichment payload for %s: %s", aid, exc)
                 except TimeoutError:
                     logger.error(f"Enrichment task {aid} timed out.")
                     _enriched_results[aid] = {
                         "status": "failed",
-                        "issues": iss,
-                        "meta": {"reason": "timeout", "budget": {"budget_exhausted": False}},
+                        "issues": all_issues,
+                        "meta": {"reason": "timeout", "budget": enrichment_budget_meta},
                     }
                     notify_llm_failure("enrichment_timeout")
                     try:
                         persist_enrichment_payload(
                             aid,
-                            iss,
+                            all_issues,
                             _enriched_results[aid]["meta"],
                             status="failed",
                         )
@@ -1502,14 +1854,14 @@ async def run_audit(
                     logger.error(f"Enrichment task {aid} failed: {e}")
                     _enriched_results[aid] = {
                         "status": "failed",
-                        "issues": iss,
-                        "meta": {"reason": str(e), "budget": {"budget_exhausted": False}},
+                        "issues": all_issues,
+                        "meta": {"reason": str(e), "budget": enrichment_budget_meta},
                     }
                     notify_llm_failure(str(e))
                     try:
                         persist_enrichment_payload(
                             aid,
-                            iss,
+                            all_issues,
                             _enriched_results[aid]["meta"],
                             status="failed",
                         )
@@ -1518,27 +1870,42 @@ async def run_audit(
                 finally:
                     _enrichment_tasks.pop(aid, None)
 
-            if await_enrichment:
-                await run_enrichment_task(audit_id, scored_issues.copy(), max_enrich_issues)
-                enriched_payload = _enriched_results.get(audit_id, {})
-                final_status = str(enriched_payload.get("status", "pending")).lower()
-                payload_meta = enriched_payload.get("meta")
-                if isinstance(payload_meta, dict):
-                    enrichment_meta = payload_meta
+            if selected_for_enrichment:
+                if await_enrichment:
+                    await run_enrichment_task(
+                        audit_id,
+                        scored_issues.copy(),
+                        selected_for_enrichment.copy(),
+                        len(selected_for_enrichment),
+                    )
+                    enriched_payload = _enriched_results.get(audit_id, {})
+                    final_status = str(enriched_payload.get("status", "pending")).lower()
+                    payload_meta = enriched_payload.get("meta")
+                    if isinstance(payload_meta, dict):
+                        enrichment_meta = payload_meta
 
-                if final_status == "complete":
-                    enriched_issues = enriched_payload.get("issues")
-                    if isinstance(enriched_issues, list):
-                        scored_issues = enriched_issues
-                    enrichment_status = "complete"
-                elif final_status == "failed":
-                    enrichment_status = "failed"
+                    if final_status == "complete":
+                        enriched_issues = enriched_payload.get("issues")
+                        if isinstance(enriched_issues, list):
+                            scored_issues = enriched_issues
+                        enrichment_status = "complete"
+                    elif final_status == "failed":
+                        enrichment_status = "failed"
+                    else:
+                        enrichment_status = "pending"
                 else:
-                    enrichment_status = "pending"
-            else:
-                # Fire and forget for API mode.
-                task = asyncio.create_task(run_enrichment_task(audit_id, scored_issues.copy(), max_enrich_issues))
-                _enrichment_tasks[audit_id] = task
+                    # Fire and forget for API mode.
+                    task = asyncio.create_task(
+                        run_enrichment_task(
+                            audit_id,
+                            scored_issues.copy(),
+                            selected_for_enrichment.copy(),
+                            len(selected_for_enrichment),
+                        )
+                    )
+                    _enrichment_tasks[audit_id] = task
+        else:
+            enrichment_meta = {"budget": enrichment_budget_meta}
 
         # ── Step 7: Calculate score (deterministic summary) ──────────
         score = float(scoring_summary.get("overall_score", 100.0))
@@ -1556,6 +1923,22 @@ async def run_audit(
             score_explanation["score_integrity"] = score_integrity_meta
         else:
             score_explanation = {"score_integrity": score_integrity_meta}
+
+        confidence_score, confidence_note = _compute_audit_confidence(
+            degraded_mode=degraded_mode,
+            degraded_reason=degraded_reason,
+            engines_used=engines_used,
+            issues=scored_issues,
+            fetch_reliability_meta=fetch_reliability_meta,
+            preflight_result=preflight_result,
+        )
+        response_score: float | None = score
+        if confidence_score < 0.30:
+            response_score = None
+            score_explanation = dict(score_explanation or {})
+            score_explanation["score_suppressed"] = True
+            score_explanation["score_suppression_reason"] = "low_confidence"
+            score_explanation["score_raw"] = score
         
         # ── Step 8: Generate report ────────────────────────────────
         scan_time = time.time() - start_time
@@ -1592,10 +1975,22 @@ async def run_audit(
             "rule_activity": static_rule_activity,
             "ttfi_ms": ttfi_ms,
             "active_audits": _active_audits,
+            "confidence_score": confidence_score,
+            "confidence_note": confidence_note,
+            "score_suppressed_low_confidence": confidence_score < 0.30,
         }
 
         if fetch_reliability_meta:
             quality_gates["fetch_reliability"] = fetch_reliability_meta
+        if preflight_result is not None:
+            quality_gates["domain_preflight"] = {
+                "domain": preflight_result.domain,
+                "ok": preflight_result.ok,
+                "degraded_reason": preflight_result.degraded_reason,
+                "message": preflight_result.message,
+                "status_code": preflight_result.status_code,
+                "from_cache": preflight_result.from_cache,
+            }
 
         if enrichment_meta:
             llm_meta = enrichment_meta.get("llm") if isinstance(enrichment_meta, dict) else None
@@ -1646,8 +2041,14 @@ async def run_audit(
         # ── Step 7: Calculate Expected Score Improvement ───────────────
         top_rule_ids = {r["rule_id"] for r in priority_ranking}
         issues_after_fix = [i for i in scored_issues if i.get("rule_id") not in top_rule_ids]
-        expected_score_after_fix, _ = _calculate_score(issues_after_fix, degraded_mode=degraded_mode) if scored_issues else (100.0, {})
-        score_improvement = expected_score_after_fix - score
+        expected_score_after_fix_raw, _ = _calculate_score(issues_after_fix, degraded_mode=degraded_mode) if scored_issues else (100.0, {})
+        expected_score_after_fix: float | None = expected_score_after_fix_raw
+        score_improvement: float | None
+        if response_score is None:
+            expected_score_after_fix = None
+            score_improvement = None
+        else:
+            score_improvement = expected_score_after_fix_raw - float(response_score)
 
         # ── Build summary ──────────────────────────────────────────
         severity_counts = {}
@@ -1659,7 +2060,10 @@ async def run_audit(
         for sev in ["critical", "serious", "moderate", "minor"]:
             if severity_counts.get(sev, 0) > 0:
                 summary_parts.append(f"{severity_counts[sev]} {sev}")
-        summary_parts.append(f"Score: {score}/100")
+        if response_score is None:
+            summary_parts.append("Score: n/a (low confidence)")
+        else:
+            summary_parts.append(f"Score: {response_score}/100")
         if degraded_mode:
             summary_parts.append("⚠️ DEGRADED")
         summary_parts.append(f"Engines: {', '.join(engines_used)}")
@@ -1677,21 +2081,32 @@ async def run_audit(
             "prioritized_issues": scoring_summary.get("prioritized_issues", []),
             "recommendations": scoring_summary.get("recommendations", []),
             "groups": groups,
-            "score": score,
-            "overall_score": score,
+            "score": response_score,
+            "score_raw": score,
+            "overall_score": response_score,
             "severity_breakdown": scoring_summary.get("severity_breakdown", {}),
             "score_explanation": score_explanation,
             "score_distribution": scoring_summary.get("score_distribution", {}),
             "priority_score_distribution": scoring_summary.get("priority_score_distribution", {}),
             "top_issue_types": scoring_summary.get("top_issue_types", []),
             "issue_groupings": scoring_summary.get("issue_groupings", {}),
-            "score_display_context": f"No issues detected across {len(engines_used)} active engine(s). Note: This does not guarantee full WCAG AA conformance." if score == 100.0 else "",
-            "expected_score_after_fix": round(expected_score_after_fix, 1),
-            "score_improvement": round(score_improvement, 1),
+            "score_display_context": (
+                "Score suppressed due to low confidence signals from degraded or partial execution."
+                if response_score is None
+                else (
+                    f"No issues detected across {len(engines_used)} active engine(s). Note: This does not guarantee full WCAG AA conformance."
+                    if float(response_score) == 100.0
+                    else ""
+                )
+            ),
+            "expected_score_after_fix": round(expected_score_after_fix, 1) if isinstance(expected_score_after_fix, (int, float)) else None,
+            "score_improvement": round(score_improvement, 1) if isinstance(score_improvement, (int, float)) else None,
             "degraded_mode": degraded_mode,
             "degraded_reason": degraded_reason,
             "skipped_components": list(set(skipped_components)),
             "degradation_reason": degradation_reason,
+            "confidence_score": confidence_score,
+            "confidence_note": confidence_note,
             "cognitive_scores": cognitive_scores,
             "summary": summary,
             "markdown_report": markdown_report,
@@ -1722,14 +2137,45 @@ async def run_audit(
                 },
             ),
         }
+
+        if response_score is None and isinstance(res.get("site_result"), dict):
+            site_result = res["site_result"]
+            site_result["site_score"] = None
+            site_result["worst_page_score"] = None
+            if isinstance(site_result.get("worst_page"), dict):
+                site_result["worst_page"]["score"] = None
+            if isinstance(site_result.get("best_page"), dict):
+                site_result["best_page"]["score"] = None
         
         # ── Step 8: Cache Write Policy ─────────────────────────────────
         # Never cache partial pipelines/degraded results to prevent poisoning.
         # Only cache if confidence signals were fully aggregated.
-        if use_cache and not degraded_mode:
+        if use_cache and not degraded_mode and confidence_score >= 0.30:
             save_to_cache(url_hash, dom_hash, res)
         else:
             logger.info("Skipping cache write due to degraded execution or cache bypass.")
+
+        logger.info(
+            "audit_complete %s",
+            json.dumps(
+                {
+                    "url": url,
+                    "scan_mode": scan_mode,
+                    "requested_scan_mode": str(raw_scan_mode),
+                    "run_id": effective_run_id,
+                    "degraded_mode": degraded_mode,
+                    "degraded_reason": degraded_reason,
+                    "confidence_score": confidence_score,
+                    "score": response_score,
+                    "score_raw": score,
+                    "issues": len(scored_issues),
+                    "engines_used": engines_used,
+                    "runtime_seconds": round(scan_time, 2),
+                    "preflight_cached": bool(preflight_result.from_cache) if preflight_result is not None else False,
+                },
+                sort_keys=True,
+            ),
+        )
 
         return _finalize_result(res, status="completed")
 
@@ -1817,6 +2263,7 @@ def _apply_precision_profile(
     dropped_structural = 0
     dropped_trust_block = 0
     dropped_stability_trim = 0
+    recovered_non_empty = 0
     recovered_min_expected = 0
     recovered_min_meaningful = 0
     guardrail_recovered = 0
@@ -2125,6 +2572,13 @@ def _apply_precision_profile(
                     kept_after_cooccurrence.append(item)
             kept = kept_after_cooccurrence
 
+    if not kept and issues:
+        recovered_non_empty = _recover_top_dropped(
+            target_min=1,
+            recover_cap=1,
+            reason="guardrail_non_empty",
+        )
+
     # Recovery system: prevent near-empty or misleading outputs.
     if recovery_eligible and len(kept) < MIN_EXPECTED_ISSUES:
         recovered_min_expected = _recover_top_dropped(
@@ -2267,6 +2721,7 @@ def _apply_precision_profile(
         "structural_rules_suppressed": dict(suppressed_by_rule),
         "recovered_issues_min_expected": recovered_min_expected,
         "recovered_issues_min_output": recovered_min_meaningful,
+        "recovered_issues_non_empty": recovered_non_empty,
         "recovered_issues_guardrail_fallback": guardrail_recovered,
         "recovery_eligible": recovery_eligible,
         "fixture_like_input": fixture_like_input,

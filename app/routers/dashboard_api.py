@@ -34,7 +34,7 @@ from app.db.dashboard_repository import (
     upsert_scan as upsert_scan_record,
 )
 from app.services.grouper import group_issues
-from app.services.audit_runner import run_audit
+from app.services.audit_runner import get_audit_runtime_health, run_audit
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +88,12 @@ def _severity_counts(issues: list[dict]) -> dict[str, int]:
 
 def _normalize_site_scan_result(site_payload: dict, scan_mode: str, elapsed_seconds: float) -> dict:
     site_result = site_payload.get("site_result", {}) if isinstance(site_payload.get("site_result"), dict) else {}
+    site_failure_profile = (
+        site_payload.get("site_failure_profile", {})
+        if isinstance(site_payload.get("site_failure_profile"), dict)
+        else {}
+    )
+    crawl_meta = site_payload.get("crawl_meta", {}) if isinstance(site_payload.get("crawl_meta"), dict) else {}
 
     site_issues = [
         issue for issue in site_result.get("issues", [])
@@ -128,7 +134,8 @@ def _normalize_site_scan_result(site_payload: dict, scan_mode: str, elapsed_seco
     severity_source = page_issue_occurrences if page_issue_occurrences else site_issues
     severity_counts = _severity_counts(severity_source)
 
-    score = round(float(site_result.get("site_score") or 0.0), 1)
+    raw_score = site_result.get("site_score")
+    score = round(float(raw_score), 1) if isinstance(raw_score, (int, float)) else None
 
     issue_by_rule: dict[str, dict] = {}
     for issue in site_issues:
@@ -175,6 +182,27 @@ def _normalize_site_scan_result(site_payload: dict, scan_mode: str, elapsed_seco
     if isinstance(top_degraded, list) and top_degraded and isinstance(top_degraded[0], dict):
         degraded_reason = top_degraded[0].get("reason")
 
+    confidence_score = site_result.get("confidence_score")
+    if not isinstance(confidence_score, (int, float)):
+        confidence_score = crawl_meta.get("site_confidence_score")
+    if not isinstance(confidence_score, (int, float)):
+        confidence_score = site_failure_profile.get("site_confidence_score")
+    if not isinstance(confidence_score, (int, float)):
+        confidence_score = 0.85 if not degraded_mode else 0.55
+    confidence_score = round(max(0.0, min(1.0, float(confidence_score))), 4)
+
+    if confidence_score < 0.30:
+        score = None
+
+    if confidence_score < 0.30:
+        confidence_note = "Low confidence due to degraded or sparse page evidence; score suppressed."
+    elif confidence_score < 0.55:
+        confidence_note = "Moderate-low confidence; interpret score with caution."
+    elif confidence_score < 0.75:
+        confidence_note = "Moderate confidence based on sampled crawl evidence."
+    else:
+        confidence_note = "High confidence from multi-page crawl and consistent signals."
+
     confidence_values = [float(issue.get("confidence") or 0.0) for issue in site_issues]
     confidence_avg = (sum(confidence_values) / len(confidence_values)) if confidence_values else 0.0
 
@@ -203,13 +231,14 @@ def _normalize_site_scan_result(site_payload: dict, scan_mode: str, elapsed_seco
     summary = (
         f"Site scan audited {pages_scanned} page(s), discovered {pages_discovered}, "
         f"found {failing_elements_count} failing element(s) across {issue_types_count} issue type(s). "
-        f"Score: {score}/100"
+        f"Score: {'n/a' if score is None else f'{score}/100'}"
     )
 
     return {
         "url": site_payload.get("seed_url"),
         "scan_mode": scan_mode,
         "score": score,
+        "score_raw": raw_score,
         "overall_score": score,
         "total_issues": failing_elements_count,
         "issue_types_count": issue_types_count,
@@ -228,6 +257,9 @@ def _normalize_site_scan_result(site_payload: dict, scan_mode: str, elapsed_seco
         "degraded_reason": degraded_reason,
         "skipped_components": [],
         "degradation_reason": degraded_reason,
+        "confidence_score": confidence_score,
+        "confidence_note": confidence_note,
+        "site_failure_profile": site_failure_profile,
         "enrichment_status": "complete",
         "cognitive_scores": None,
         "markdown_report": "",
@@ -564,6 +596,21 @@ async def start_scan(data: ScanStart):
     scan_url = project["url"]
     scan_mode = data.scan_mode or "fast"
 
+    if scan_mode in {"deep", "max"}:
+        runtime = get_audit_runtime_health()
+        active = int(runtime.get("active_audits", 0) or 0)
+        maximum = max(1, int(runtime.get("max_concurrent_audits", 1) or 1))
+        if active >= maximum:
+            raise HTTPException(
+                status_code=429,
+                detail={
+                    "message": "Scanner is saturated. Retry shortly or run in fast mode.",
+                    "active_audits": active,
+                    "max_concurrent_audits": maximum,
+                    "recommended_scan_mode": "fast",
+                },
+            )
+
     scan_record: dict = {
         "id": scan_id,
         "project_id": data.project_id,
@@ -592,6 +639,9 @@ async def start_scan(data: ScanStart):
         "degraded_reason": None,
         "skipped_components": [],
         "degradation_reason": None,
+        "confidence_score": None,
+        "confidence_note": "",
+        "site_failure_profile": {},
         "enrichment_status": "pending",
         "cognitive_scores": None,
         "created_at": _utc_now_iso(),
@@ -648,8 +698,15 @@ async def start_scan(data: ScanStart):
                 scan_record["scan_time_seconds"] = result.get("scan_time_seconds", 0)
                 scan_record["pages_scanned"] = int(result.get("pages_scanned") or 1)
                 scan_record["pages_discovered"] = int(result.get("pages_discovered") or scan_record["pages_scanned"])
+                scan_record["confidence_score"] = result.get("confidence_score")
+                scan_record["confidence_note"] = result.get("confidence_note", "")
+                scan_record["site_failure_profile"] = result.get("site_failure_profile", {})
                 scan_record["enrichment_status"] = "failed"
-                scan_record["trust"] = result.get("trust", {})
+                trust_payload = dict(result.get("trust", {}) or {})
+                trust_payload["confidence_score"] = result.get("confidence_score")
+                trust_payload["confidence_note"] = result.get("confidence_note", "")
+                trust_payload["site_failure_profile"] = result.get("site_failure_profile", {})
+                scan_record["trust"] = trust_payload
                 scan_record["completed_at"] = _utc_now_iso()
                 upsert_scan_record(scan_record)
                 logger.warning("Scan %s failed early: %s", scan_id, failure_reason)
@@ -679,11 +736,18 @@ async def start_scan(data: ScanStart):
             scan_record["scan_time_seconds"] = result.get("scan_time_seconds", 0)
             scan_record["pages_scanned"] = int(result.get("pages_scanned") or 1)
             scan_record["pages_discovered"] = int(result.get("pages_discovered") or scan_record["pages_scanned"])
-            scan_record["trust"] = result.get("trust", {})
+            trust_payload = dict(result.get("trust", {}) or {})
+            trust_payload["confidence_score"] = result.get("confidence_score")
+            trust_payload["confidence_note"] = result.get("confidence_note", "")
+            trust_payload["site_failure_profile"] = result.get("site_failure_profile", {})
+            scan_record["trust"] = trust_payload
             scan_record["degraded_mode"] = result.get("degraded_mode", False)
             scan_record["degraded_reason"] = result.get("degraded_reason")
             scan_record["skipped_components"] = result.get("skipped_components", [])
             scan_record["degradation_reason"] = result.get("degradation_reason")
+            scan_record["confidence_score"] = result.get("confidence_score")
+            scan_record["confidence_note"] = result.get("confidence_note")
+            scan_record["site_failure_profile"] = result.get("site_failure_profile", {})
             scan_record["enrichment_status"] = result.get("enrichment_status", "complete")
             scan_record["cognitive_scores"] = result.get("cognitive_scores")
             scan_record["markdown_report"] = result.get("markdown_report", "")

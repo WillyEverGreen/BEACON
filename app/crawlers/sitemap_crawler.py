@@ -8,15 +8,18 @@ from typing import Optional
 from urllib.parse import urljoin
 
 from defusedxml import ElementTree as SafeET
-import httpx
+from curl_cffi import AsyncSession
 
-from app.config import CRAWLER_CONFIG
+from app.config import CRAWLER_CONFIG, SITEMAP_MAX_DEPTH
 from app.crawlers.common import (
     clamp,
     get_origin,
     has_binary_extension,
+    http_get_with_backoff,
+    is_disallowed,
     is_same_origin,
     normalize_url,
+    parse_robots_disallow,
     path_depth,
     priority_path_boost,
     safe_float,
@@ -33,7 +36,8 @@ class SitemapCrawler:
         self,
         *,
         timeout_seconds: Optional[float] = None,
-        http_client: Optional[httpx.AsyncClient] = None,
+        http_client: Optional[AsyncSession] = None,
+        max_depth: Optional[int] = None,
     ) -> None:
         cfg = CRAWLER_CONFIG["sitemap"]
         self.timeout_seconds = timeout_seconds or float(cfg["timeout_seconds"])
@@ -41,6 +45,7 @@ class SitemapCrawler:
         self.default_priority = float(cfg["default_priority"])
         self._fallback_paths = tuple(cfg["fallback_paths"])
         self._http_client = http_client
+        self.max_depth = max(1, int(max_depth if max_depth is not None else SITEMAP_MAX_DEPTH))
 
     async def discover(self, base_url: str, max_pages: Optional[int] = None) -> list[SitemapURL]:
         """Discover same-origin URLs via sitemap hierarchy."""
@@ -48,7 +53,7 @@ class SitemapCrawler:
         requested_cap = self.default_max_pages if max_pages is None else int(max_pages)
         page_cap = max(1, min(requested_cap, self.default_max_pages))
 
-        sitemap_locations = await self._discover_sitemap_locations(base_origin)
+        sitemap_locations, disallow_set = await self._discover_sitemap_locations(base_origin)
         if not sitemap_locations:
             return []
 
@@ -61,6 +66,8 @@ class SitemapCrawler:
                 base_origin=base_origin,
                 visited_sitemaps=visited_sitemaps,
                 discovered=discovered,
+                disallow_set=disallow_set,
+                depth=0,
             )
 
         ordered = sorted(
@@ -69,9 +76,10 @@ class SitemapCrawler:
         )
         return ordered[:page_cap]
 
-    async def _discover_sitemap_locations(self, base_origin: str) -> list[str]:
+    async def _discover_sitemap_locations(self, base_origin: str) -> tuple[list[str], frozenset[str]]:
         robots_url = urljoin(base_origin + "/", "robots.txt")
         robots_text = await self._fetch_text(robots_url)
+        disallow_set = parse_robots_disallow(robots_text or "")
 
         discovered: list[str] = []
         if robots_text:
@@ -89,7 +97,7 @@ class SitemapCrawler:
                 continue
             seen.add(normalized)
             deduped.append(url)
-        return deduped
+        return deduped, disallow_set
 
     @staticmethod
     def _extract_robots_sitemaps(robots_text: str, base_origin: str) -> list[str]:
@@ -114,7 +122,13 @@ class SitemapCrawler:
         base_origin: str,
         visited_sitemaps: set[str],
         discovered: dict[str, SitemapURL],
+        disallow_set: frozenset[str],
+        depth: int = 0,
     ) -> None:
+        if depth > self.max_depth:
+            logger.warning("Sitemap recursion depth exceeded at %s (depth=%s)", sitemap_url, depth)
+            return
+
         normalized_sitemap = normalize_url(sitemap_url)
         if normalized_sitemap in visited_sitemaps:
             return
@@ -138,6 +152,8 @@ class SitemapCrawler:
                     base_origin=base_origin,
                     visited_sitemaps=visited_sitemaps,
                     discovered=discovered,
+                    disallow_set=disallow_set,
+                    depth=depth + 1,
                 )
             return
 
@@ -150,6 +166,8 @@ class SitemapCrawler:
                     continue
 
                 normalized = normalize_url(absolute_url)
+                if is_disallowed(normalized, disallow_set):
+                    continue
                 base_priority = clamp(
                     safe_float(item.get("priority"), self.default_priority),
                     0.0,
@@ -218,12 +236,22 @@ class SitemapCrawler:
     async def _fetch_text(self, url: str) -> Optional[str]:
         try:
             if self._http_client is not None:
-                response = await self._http_client.get(url)
+                response = await http_get_with_backoff(
+                    url,
+                    client=self._http_client,
+                    max_retries=2,
+                    timeout_seconds=self.timeout_seconds,
+                )
             else:
-                async with httpx.AsyncClient(timeout=self.timeout_seconds, follow_redirects=True) as client:
-                    response = await client.get(url)
-            if response.status_code >= 400:
+                async with AsyncSession(impersonate="chrome") as client:
+                    response = await http_get_with_backoff(
+                        url,
+                        client=client,
+                        max_retries=2,
+                        timeout_seconds=self.timeout_seconds,
+                    )
+            if int(response.status_code) >= 400:
                 return None
-            return response.text
+            return str(response.text or "")
         except Exception:
             return None

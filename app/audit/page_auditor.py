@@ -10,7 +10,7 @@ from typing import Any, Optional
 
 from bs4 import BeautifulSoup
 
-from app.config import CRAWLER_CONFIG
+from app.config import CRAWLER_CONFIG, SEVERITY_WEIGHTS
 from app.audit.dynamic_handling import (
     apply_anti_bot_delay,
     apply_anti_bot_headers,
@@ -25,6 +25,7 @@ from app.audit.failure_taxonomy import classify_failure_reason, normalize_reason
 from app.audit.exploration import SPAStrategyPack
 from app.audit.fingerprint import stable_selector_fingerprint
 from app.audit.models import PageAuditResult, PageContext, PageStateMeta, state_meta_to_dict
+from app.crawlers.common import normalize_scan_mode
 
 
 _STATE_SEQUENCE = ("initial", "after_interaction", "after_scroll")
@@ -514,8 +515,9 @@ async def _default_state_provider(url: str, state: str, page_context: PageContex
 
 async def audit_page(url: str, scan_mode: str, page_context: PageContext) -> PageAuditResult:
     """Run multi-state page auditing and merge findings across discovered states."""
-    scan_mode_key = (scan_mode or "").lower()
-    if scan_mode_key not in {"fast", "deep", "max"}:
+    try:
+        scan_mode_key = normalize_scan_mode(scan_mode)
+    except ValueError:
         scan_mode_key = "fast"
 
     state_sequence = ("initial",) if scan_mode_key == "fast" else _STATE_SEQUENCE
@@ -734,7 +736,12 @@ async def audit_page(url: str, scan_mode: str, page_context: PageContext) -> Pag
         )
 
     total_issues = len(merged_issues)
-    score = round(max(0.0, 100.0 - min(95.0, float(total_issues) * 2.0)), 1)
+    penalty = sum(
+        float(SEVERITY_WEIGHTS.get(str(issue.get("severity") or "minor").lower(), 1.0))
+        for issue in merged_issues.values()
+        if bool(issue.get("scoring", True))
+    )
+    score = round(max(0.0, 100.0 - min(95.0, penalty)), 1)
 
     return PageAuditResult(
         url=url,

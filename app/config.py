@@ -167,6 +167,19 @@ CRAWLER_CONFIG = {
 }
 
 
+SITEMAP_MAX_DEPTH = 5
+
+CRAWL_ADAPTIVE_STRATEGY = {
+    "rate_limit_backoff_seconds": 5.0,
+    "max_consecutive_failures": 3,
+    "csp_static_fallback_enabled": True,
+    "bot_wall_immediate_stop": True,
+}
+
+LLM_FIRE_BUDGET_PER_AUDIT = 5
+AUDIT_CONCURRENCY_LIMIT = 4
+
+
 # ── Site Crawl Runtime Limits (Phase 6) ───────────────────────
 # These keys are read directly by the Phase 6 crawler orchestration layer.
 CRAWL_MAX_PAGES_PER_SITE = 15
@@ -810,6 +823,18 @@ class Settings(BaseSettings):
     max_llm_cost_per_audit: float = 2.5
     llm_prompt_cost_per_1k_tokens: float = 0.0
     llm_completion_cost_per_1k_tokens: float = 0.0
+    llm_fire_budget_per_audit: int = Field(
+        default=LLM_FIRE_BUDGET_PER_AUDIT,
+        validation_alias=AliasChoices("LLM_FIRE_BUDGET"),
+    )
+    audit_concurrency_limit: int = Field(
+        default=AUDIT_CONCURRENCY_LIMIT,
+        validation_alias=AliasChoices("AUDIT_CONCURRENCY"),
+    )
+    sitemap_max_depth: int = Field(
+        default=SITEMAP_MAX_DEPTH,
+        validation_alias=AliasChoices("SITEMAP_MAX_DEPTH"),
+    )
 
     @property
     def cors_origins(self) -> list[str]:
@@ -866,3 +891,6 @@ CRAWL_MAX_PAGES_PER_SITE = int(settings.crawl_max_pages_per_site or CRAWL_MAX_PA
 CRAWL_MAX_DEPTH = int(settings.crawl_max_depth or CRAWL_MAX_DEPTH)
 CRAWL_TIMEOUT_PER_PAGE_S = int(settings.crawl_timeout_per_page_s or CRAWL_TIMEOUT_PER_PAGE_S)
 CRAWL_CONCURRENCY = int(settings.crawl_concurrency or CRAWL_CONCURRENCY)
+SITEMAP_MAX_DEPTH = max(1, int(settings.sitemap_max_depth or SITEMAP_MAX_DEPTH))
+LLM_FIRE_BUDGET_PER_AUDIT = max(0, int(settings.llm_fire_budget_per_audit or LLM_FIRE_BUDGET_PER_AUDIT))
+AUDIT_CONCURRENCY_LIMIT = max(1, int(settings.audit_concurrency_limit or AUDIT_CONCURRENCY_LIMIT))

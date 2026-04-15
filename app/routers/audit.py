@@ -12,12 +12,32 @@ from app.models import (
     AuditRequest, AuditResponse, AuditIssue, IssueGroup,
     CognitiveScore, FeedbackRequest, FeedbackResponse,
 )
-from app.services.audit_runner import run_audit
+from app.services.audit_runner import get_audit_runtime_health, run_audit
 from app.services.feedback import record_feedback, get_feedback_stats
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/audit", tags=["Audit"])
+
+
+def _enforce_backpressure(scan_mode: str) -> None:
+    mode = str(scan_mode or "fast").strip().lower()
+    if mode not in {"deep", "max"}:
+        return
+
+    runtime = get_audit_runtime_health()
+    active = int(runtime.get("active_audits", 0) or 0)
+    maximum = max(1, int(runtime.get("max_concurrent_audits", 1) or 1))
+    if active >= maximum:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "message": "Audit service is under heavy load. Please retry shortly.",
+                "active_audits": active,
+                "max_concurrent_audits": maximum,
+                "recommended_scan_mode": "fast",
+            },
+        )
 
 
 def _build_explain_payload(result: dict) -> dict:
@@ -88,6 +108,7 @@ async def audit_url(
     Returns enriched issues with confidence scores, grouped by domain, and a markdown report.
     """
     try:
+        _enforce_backpressure(request.scan_mode.value)
         result = await run_audit(
             url=request.url,
             scan_mode=request.scan_mode.value,
@@ -187,6 +208,8 @@ async def audit_url(
             recommendations=result.get("recommendations", []),
             cognitive_mode=result.get("cognitive_mode", "off"),
             explain=_build_explain_payload(result) if explain else None,
+            confidence_score=float(result.get("confidence_score", 0.0) or 0.0),
+            confidence_note=str(result.get("confidence_note") or ""),
         )
 
     except Exception as e:
@@ -246,6 +269,7 @@ async def audit_stream(request: AuditRequest):
     """
     async def event_generator():
         try:
+            _enforce_backpressure(request.scan_mode.value)
             # Phase 1: Started
             yield f"data: {json.dumps({'event': 'started', 'scan_mode': request.scan_mode.value, 'progress': 5})}\n\n"
             await asyncio.sleep(0.05)

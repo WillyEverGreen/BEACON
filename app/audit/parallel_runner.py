@@ -299,10 +299,13 @@ async def run_site_audit(
             await asyncio.gather(producer_task, *worker_tasks, return_exceptions=True)
             raise
 
+    pipeline_task = asyncio.create_task(_run_pipeline())
     try:
-        await asyncio.wait_for(_run_pipeline(), timeout=global_sla)
+        await asyncio.wait_for(pipeline_task, timeout=global_sla)
     except asyncio.TimeoutError:
         sla_truncated = True
+        pipeline_task.cancel()
+        await asyncio.gather(pipeline_task, return_exceptions=True)
 
         partial_site = aggregate_site_results(completed_results, scan_mode)
         top_issue = ""
@@ -320,6 +323,10 @@ async def run_site_audit(
                 "sla_truncated": True,
             },
         )
+    except Exception:
+        pipeline_task.cancel()
+        await asyncio.gather(pipeline_task, return_exceptions=True)
+        raise
 
     site_result = aggregate_site_results(completed_results, scan_mode)
     degraded_pages = sum(1 for row in completed_results if row.degraded_mode)

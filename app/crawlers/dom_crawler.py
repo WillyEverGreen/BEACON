@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import suppress
 import hashlib
 import logging
 from typing import Any, Optional
@@ -31,6 +32,15 @@ except Exception:  # pragma: no cover - optional dependency
     async_playwright = None  # type: ignore[assignment]
 
 
+_CAMOUFOX_AVAILABLE = False
+try:
+    from camoufox.async_api import AsyncNewBrowser
+
+    _CAMOUFOX_AVAILABLE = True
+except Exception:  # pragma: no cover - optional dependency
+    AsyncNewBrowser = None  # type: ignore[assignment]
+
+
 _DOM_GLOBAL_SEMAPHORE = asyncio.Semaphore(int(CRAWLER_CONFIG["dom"]["concurrency"]))
 
 
@@ -44,6 +54,7 @@ class DOMCrawler:
         scroll_steps: Optional[int] = None,
         page_timeout_seconds: Optional[float] = None,
         max_click_candidates: Optional[int] = None,
+        shared_browser: Any | None = None,
     ) -> None:
         cfg = CRAWLER_CONFIG["dom"]
         self.default_max_pages = int(cfg["default_max_pages"])
@@ -65,6 +76,7 @@ class DOMCrawler:
         self.interaction_wait_ms = int(cfg["interaction_wait_ms"])
         self.scroll_wait_ms = int(cfg["scroll_wait_ms"])
         self.default_priority = float(cfg["default_priority"])
+        self._shared_browser = shared_browser
         self.last_exploration_quality: dict[str, Any] = {
             "actions_taken": 0,
             "new_states": 0,
@@ -96,8 +108,9 @@ class DOMCrawler:
                     await closer()
             return list(discovered.values())[:cap]
 
+        run_task = asyncio.create_task(_run())
         try:
-            results = await asyncio.wait_for(_run(), timeout=self.page_timeout_seconds)
+            results = await asyncio.wait_for(run_task, timeout=self.page_timeout_seconds)
             if exploration_quality["actions_taken"] > 0:
                 exploration_quality["dom_change_ratio"] = round(
                     exploration_quality["new_states"] / exploration_quality["actions_taken"],
@@ -109,10 +122,14 @@ class DOMCrawler:
             self.last_exploration_quality = dict(exploration_quality)
             return results
         except asyncio.TimeoutError:
+            run_task.cancel()
+            await asyncio.gather(run_task, return_exceptions=True)
             logger.warning("DOM crawl timed out for %s. Returning partial results.", seed_url)
             self.last_exploration_quality = dict(exploration_quality)
             return list(discovered.values())[:cap]
         except Exception as exc:
+            run_task.cancel()
+            await asyncio.gather(run_task, return_exceptions=True)
             logger.warning("DOM crawl failed for %s: %s", seed_url, exc)
             self.last_exploration_quality = dict(exploration_quality)
             return list(discovered.values())[:cap]
@@ -476,8 +493,31 @@ class DOMCrawler:
             pass
 
     async def _open_page(self):
+        if self._shared_browser is not None:
+            context = await self._shared_browser.new_context()
+            page = await context.new_page()
+
+            async def _close() -> None:
+                with suppress(Exception):
+                    await context.close()
+
+            return page, _close
+
+        if _CAMOUFOX_AVAILABLE and AsyncNewBrowser is not None:
+            browser = await AsyncNewBrowser(headless=True)
+            context = await browser.new_context()
+            page = await context.new_page()
+
+            async def _close() -> None:
+                with suppress(Exception):
+                    await context.close()
+                with suppress(Exception):
+                    await browser.close()
+
+            return page, _close
+
         if not _PLAYWRIGHT_AVAILABLE or async_playwright is None:
-            raise RuntimeError("Playwright is unavailable")
+            raise RuntimeError("No supported browser backend is available")
 
         playwright = await async_playwright().start()
         browser = await playwright.chromium.launch(headless=True)
@@ -485,9 +525,12 @@ class DOMCrawler:
         page = await context.new_page()
 
         async def _close() -> None:
-            await context.close()
-            await browser.close()
-            await playwright.stop()
+            with suppress(Exception):
+                await context.close()
+            with suppress(Exception):
+                await browser.close()
+            with suppress(Exception):
+                await playwright.stop()
 
         return page, _close
 

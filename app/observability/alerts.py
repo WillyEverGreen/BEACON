@@ -7,7 +7,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-import httpx
+from curl_cffi import AsyncSession
 
 from app.config import settings
 from app.observability.telemetry import (
@@ -29,9 +29,9 @@ async def _post_alert(payload: dict[str, Any]) -> bool:
         return False
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with AsyncSession(impersonate="chrome", timeout=10.0) as client:
             response = await client.post(webhook, json=payload)
-        return response.status_code < 400
+        return int(response.status_code) < 400
     except Exception as exc:
         logger.warning("Failed to send alert webhook: %s", exc)
         return False

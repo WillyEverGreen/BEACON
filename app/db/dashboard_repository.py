@@ -42,6 +42,7 @@ def _serialize_project(record: DashboardProjectRecord) -> dict[str, Any]:
 
 
 def _serialize_scan(record: DashboardScanRecord) -> dict[str, Any]:
+    trust_payload = dict(record.trust or {})
     return {
         "id": record.id,
         "project_id": record.project_id,
@@ -61,7 +62,10 @@ def _serialize_scan(record: DashboardScanRecord) -> dict[str, Any]:
         "issues": list(record.issues or []),
         "groups": list(record.groups or []),
         "priority_ranking": list(record.priority_ranking or []),
-        "trust": dict(record.trust or {}),
+        "trust": trust_payload,
+        "confidence_score": trust_payload.get("confidence_score"),
+        "confidence_note": trust_payload.get("confidence_note", ""),
+        "site_failure_profile": trust_payload.get("site_failure_profile", {}),
         "engines_used": list(record.engines_used or []),
         "scan_time_seconds": float(record.scan_time_seconds or 0.0),
         "pages_scanned": int(record.pages_scanned or 1),
@@ -111,7 +115,14 @@ def _apply_scan_record(record: DashboardScanRecord, payload: dict[str, Any]) -> 
     record.issues = list(payload.get("issues") or [])
     record.groups = list(payload.get("groups") or [])
     record.priority_ranking = list(payload.get("priority_ranking") or [])
-    record.trust = dict(payload.get("trust") or {})
+    trust_payload = dict(payload.get("trust") or {})
+    if "confidence_score" in payload:
+        trust_payload["confidence_score"] = payload.get("confidence_score")
+    if "confidence_note" in payload:
+        trust_payload["confidence_note"] = payload.get("confidence_note")
+    if "site_failure_profile" in payload:
+        trust_payload["site_failure_profile"] = payload.get("site_failure_profile") or {}
+    record.trust = trust_payload
     record.engines_used = list(payload.get("engines_used") or [])
     record.scan_time_seconds = float(payload.get("scan_time_seconds") or 0.0)
     record.pages_scanned = int(payload.get("pages_scanned") or 1)

@@ -8,13 +8,15 @@ import logging
 from typing import Optional
 from urllib.parse import urlparse
 
-import httpx
+from curl_cffi import AsyncSession
 
 from app.config import CRAWLER_CONFIG
 from app.crawlers.common import (
     extract_anchor_hrefs,
     get_origin,
     has_binary_extension,
+    http_get_with_backoff,
+    is_disallowed,
     is_same_origin,
     normalize_url,
     resolve_url,
@@ -53,11 +55,11 @@ class BFSCrawler:
 
         self.visited: set[str] = set()
         self.queue: asyncio.Queue[tuple[str, int, Optional[str]]] = asyncio.Queue()
-        self.semaphore = asyncio.Semaphore(self.concurrency)
 
-    async def crawl(self, seed_url: str) -> list[CrawledURL]:
+    async def crawl(self, seed_url: str, *, disallow_set: frozenset[str] = frozenset()) -> list[CrawledURL]:
         """Discover same-origin URLs from a seed page with bounded BFS traversal."""
         self.visited = set()
+        semaphore = asyncio.Semaphore(max(1, int(self.concurrency)))
 
         seed_fetch_url = seed_url.strip()
         normalized_seed = normalize_url(seed_fetch_url)
@@ -102,7 +104,7 @@ class BFSCrawler:
                 continue
 
             fetch_tasks = [
-                asyncio.create_task(self._fetch_links(parent_url, base_origin))
+                asyncio.create_task(self._fetch_links(parent_url, base_origin, semaphore=semaphore, disallow_set=disallow_set))
                 for parent_url, _, _ in fetch_targets
             ]
 
@@ -125,8 +127,15 @@ class BFSCrawler:
 
         return results[: self.max_pages]
 
-    async def _fetch_links(self, url: str, base_origin: str) -> list[str]:
-        async with self.semaphore:
+    async def _fetch_links(
+        self,
+        url: str,
+        base_origin: str,
+        *,
+        semaphore: asyncio.Semaphore,
+        disallow_set: frozenset[str],
+    ) -> list[str]:
+        async with semaphore:
             html = await self._fetch_html(url)
 
         if not html:
@@ -147,6 +156,8 @@ class BFSCrawler:
                 continue
             if not is_same_origin(normalized, base_origin):
                 continue
+            if is_disallowed(normalized, disallow_set):
+                continue
             if has_binary_extension(normalized):
                 continue
 
@@ -164,14 +175,19 @@ class BFSCrawler:
                 if html:
                     return html
             except Exception:
-                logger.debug("crawl4ai fetch failed for %s; falling back to httpx", url)
+                logger.debug("crawl4ai fetch failed for %s; falling back to curl_cffi", url)
 
         try:
-            async with httpx.AsyncClient(timeout=self.timeout_seconds, follow_redirects=True) as client:
-                response = await client.get(url)
-            if response.status_code >= 400:
+            async with AsyncSession(impersonate="chrome") as client:
+                response = await http_get_with_backoff(
+                    url,
+                    client=client,
+                    max_retries=2,
+                    timeout_seconds=self.timeout_seconds,
+                )
+            if int(response.status_code) >= 400:
                 return None
-            return response.text
+            return str(response.text or "")
         except Exception:
             return None
 

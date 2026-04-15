@@ -8,9 +8,10 @@ from dataclasses import dataclass
 from typing import Any
 from urllib.parse import parse_qs, urljoin, urlparse
 
-import httpx
 from bs4 import BeautifulSoup
+from curl_cffi import AsyncSession
 
+from app.crawlers.common import http_get_with_backoff
 from app.crawlers.crawler import normalize_url_for_dedup
 
 logger = logging.getLogger(__name__)
@@ -139,18 +140,31 @@ class LiveDOMLinkExtractor:
                 if isinstance(rows, list):
                     return _sort_raw_links(rows)
             except Exception as exc:
-                logger.debug("Playwright link extraction failed for %s: %s", fetch_url, exc)
+                logger.warning(
+                    "Live DOM extraction failed for %s; using static HTML fallback: %s",
+                    fetch_url,
+                    exc,
+                )
             finally:
                 await page.close()
+        else:
+            logger.warning("Live DOM browser unavailable for %s; using static HTML fallback", fetch_url)
 
         return await self._extract_links_static(fetch_url, timeout_s)
 
     async def _extract_links_static(self, fetch_url: str, timeout_s: int) -> list[dict[str, Any]]:
         timeout = max(3.0, float(timeout_s))
         try:
-            async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
-                response = await client.get(fetch_url)
-            html = response.text
+            async with AsyncSession(impersonate="chrome") as client:
+                response = await http_get_with_backoff(
+                    fetch_url,
+                    client=client,
+                    max_retries=2,
+                    timeout_seconds=timeout,
+                )
+            if int(response.status_code) >= 400:
+                return []
+            html = str(response.text or "")
         except Exception:
             return []
 

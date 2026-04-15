@@ -18,6 +18,7 @@ from app.security.auth import APIKeyMiddleware, bootstrap_auth_store
 from app.services.vector_store import get_chunks_count
 from app.services.ingestion import run_full_ingestion
 from app.services.vector_store import upsert_chunks, reset_collection
+from app.services.audit_runner import get_audit_runtime_health
 
 # Configure logging
 configure_logging()
@@ -105,6 +106,67 @@ async def health_check():
         chunks_count=get_chunks_count(),
         llm_model=settings.featherless_model,
     )
+
+
+@app.get("/health/live")
+async def health_live():
+    """Liveness probe: process is up and serving."""
+    return {"status": "live"}
+
+
+@app.get("/health/ready")
+async def health_ready():
+    """Readiness probe: DB + vector store path is available for serving audits."""
+    db_ready = True
+    db_error = ""
+    try:
+        # Lightweight DB touch via existing repository API.
+        _ = get_audit_history("https://example.com", limit=1)
+    except Exception as exc:
+        db_ready = False
+        db_error = str(exc)
+
+    chunks_count = 0
+    vector_ready = True
+    vector_error = ""
+    try:
+        chunks_count = int(get_chunks_count())
+    except Exception as exc:
+        vector_ready = False
+        vector_error = str(exc)
+
+    ready = db_ready and vector_ready
+    payload = {
+        "status": "ready" if ready else "not_ready",
+        "db_ready": db_ready,
+        "vector_ready": vector_ready,
+        "chunks_count": chunks_count,
+        "db_error": db_error,
+        "vector_error": vector_error,
+    }
+    if not ready:
+        raise HTTPException(status_code=503, detail=payload)
+    return payload
+
+
+@app.get("/health/audit")
+async def health_audit():
+    """Audit runtime probe: backpressure and runtime queue health."""
+    runtime = get_audit_runtime_health()
+    active = int(runtime.get("active_audits", 0) or 0)
+    maximum = max(1, int(runtime.get("max_concurrent_audits", 1) or 1))
+    saturation = round(active / maximum, 3)
+    status = "healthy"
+    if saturation >= 1.0:
+        status = "saturated"
+    elif saturation >= 0.8:
+        status = "high_load"
+
+    return {
+        "status": status,
+        "saturation": saturation,
+        **runtime,
+    }
 
 
 @app.get("/metrics", response_class=PlainTextResponse)

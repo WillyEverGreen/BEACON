@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import asyncio
+import uuid
 from typing import Any, Awaitable, Callable, Optional
 
-import httpx
+from camoufox import AsyncNewBrowser
+from curl_cffi import AsyncSession
 
 from app.audit.models import PageAuditResult, PageContext
-from app.audit.failure_taxonomy import normalize_reason
+from app.audit.failure_taxonomy import normalize_failure
 from app.audit.parallel_runner import PageAuditor, SSEEmitter, run_site_audit
+from app.crawlers.common import http_get_with_backoff, normalize_scan_mode
 from app.crawlers.orchestrator import CrawlerOrchestrator
 from app.config import AUDIT_PIPELINE_CONFIG, MAX_SCAN_GLOBAL_CAP, SCAN_MODE_CONFIG
 from app.services.heuristics import HeuristicAnalyzer
@@ -57,13 +60,6 @@ class _ManagedPlaywrightBrowser:
                 pass
 
 
-def _normalize_scan_mode(scan_mode: str) -> str:
-    mode = (scan_mode or "").lower()
-    if mode not in {"fast", "deep", "max"}:
-        raise ValueError(f"Unsupported scan_mode: {scan_mode}")
-    return mode
-
-
 def _mode_config(scan_mode: str) -> dict[str, Any]:
     return SCAN_MODE_CONFIG.get(scan_mode, SCAN_MODE_CONFIG["fast"])
 
@@ -108,11 +104,11 @@ async def _fast_state_provider(url: str, state: str, page_context: PageContext) 
         return {"html": "", "hydration_status": "static"}
 
     try:
-        async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
-            response = await client.get(url)
-        if response.status_code >= 400:
+        async with AsyncSession(impersonate="chrome") as client:
+            response = await http_get_with_backoff(url, client=client, max_retries=1, timeout_seconds=8.0)
+        if int(response.status_code) >= 400:
             return {"html": "", "hydration_status": "static_failed"}
-        return {"html": response.text, "hydration_status": "static"}
+        return {"html": str(response.text or ""), "hydration_status": "static"}
     except Exception:
         return {"html": "", "hydration_status": "static_failed"}
 
@@ -157,12 +153,17 @@ async def _full_engine_page_auditor(url: str, scan_mode: str, page_context: Page
     """Run the full single-page audit pipeline for each discovered URL."""
     from app.services.audit_runner import run_audit
 
+    run_id = ""
+    if isinstance(page_context.cache, dict):
+        run_id = str(page_context.cache.get("site_audit_run_id") or "")
+
     result = await run_audit(
         url=url,
         scan_mode=scan_mode,
         max_pages=1,
         enable_enrichment=False,
         use_cache=False,
+        run_id=run_id or None,
     )
 
     scan_time_seconds = float(result.get("scan_time_seconds", 0.0) or 0.0)
@@ -190,16 +191,13 @@ async def _playwright_browser_factory() -> Any:
         raise RuntimeError("Playwright is unavailable for deep/max mode")
 
     driver = await async_playwright().start()
-    browser = await driver.chromium.launch(
-        headless=True,
-        args=["--disable-blink-features=AutomationControlled", "--no-sandbox", "--disable-setuid-sandbox"],
-    )
+    browser = await AsyncNewBrowser(driver, headless=True)
     return _ManagedPlaywrightBrowser(browser, driver)
 
 
 async def _default_journey_simulator(urls: list[str], scan_mode: str, page_context: PageContext) -> dict[str, Any]:
     if scan_mode != "max":
-        return {"enabled": False, "journeys": []}
+        return {"enabled": False, "journeys": [], "simulation_type": "url_planning"}
 
     journey_cfg = _journey_config()
     deduped_urls = _dedupe_urls(urls)[: journey_cfg["max_candidate_urls"]]
@@ -210,6 +208,7 @@ async def _default_journey_simulator(urls: list[str], scan_mode: str, page_conte
             "bounded": True,
             "simulated_journeys": 0,
             "journeys": [],
+            "simulation_type": "url_planning",
             "max_journeys": journey_cfg["max_journeys"],
             "max_steps_per_journey": journey_cfg["max_steps_per_journey"],
             "early_exit": True,
@@ -253,6 +252,7 @@ async def _default_journey_simulator(urls: list[str], scan_mode: str, page_conte
                     "steps": [],
                     "completed": False,
                     "skipped": True,
+                    "simulation_type": "url_planning",
                     "early_exit_reason": "missing_candidate_steps",
                 }
             )
@@ -269,6 +269,7 @@ async def _default_journey_simulator(urls: list[str], scan_mode: str, page_conte
                 "steps": steps,
                 "completed": completed,
                 "skipped": False,
+                "simulation_type": "url_planning",
                 "bounded_steps": len(steps),
             }
         )
@@ -279,6 +280,7 @@ async def _default_journey_simulator(urls: list[str], scan_mode: str, page_conte
         "bounded": True,
         "simulated_journeys": simulated,
         "journeys": journeys,
+        "simulation_type": "url_planning",
         "max_journeys": journey_cfg["max_journeys"],
         "max_steps_per_journey": journey_cfg["max_steps_per_journey"],
         "candidate_urls_considered": len(deduped_urls),
@@ -342,7 +344,7 @@ async def run_scan_mode_audit(
     journey_simulator: Optional[JourneySimulator] = None,
 ) -> dict[str, Any]:
     """Execute full mode-specific site auditing from discovery through aggregation."""
-    mode = _normalize_scan_mode(scan_mode)
+    mode = normalize_scan_mode(scan_mode)
     mode_config = _mode_config(mode)
     cap = _mode_cap(mode)
     requested_pages = max(1, int(max_pages))
@@ -359,6 +361,18 @@ async def run_scan_mode_audit(
 
         context = page_context or PageContext()
         created_context = page_context is None
+        if not isinstance(context.cache, dict):
+            context.cache = {}
+        site_audit_run_id = str(uuid.uuid4())
+        context.cache["site_audit_run_id"] = site_audit_run_id
+
+        try:
+            from app.services.audit_runner import clear_domain_preflight_cache
+
+            clear_domain_preflight_cache(site_audit_run_id)
+        except Exception:
+            pass
+
         _apply_mode_policy(mode, context)
 
         try:
@@ -408,13 +422,14 @@ async def run_scan_mode_audit(
                         "simulated_journeys": 0,
                         "journeys": [],
                         "bounded": True,
+                        "simulation_type": "url_planning",
                     }
                     result["degraded_mode"] = True
-                    result["degraded_reason"] = normalize_reason(result.get("degraded_reason")) or "extraction_failure"
+                    result["degraded_reason"] = normalize_failure(result.get("degraded_reason")).value
                     if isinstance(result.get("site_result"), dict):
                         result["site_result"]["degraded_mode"] = True
                         result["site_result"]["degraded_reason"] = (
-                            normalize_reason(result["site_result"].get("degraded_reason")) or "extraction_failure"
+                            normalize_failure(result["site_result"].get("degraded_reason")).value
                         )
 
                 result["journey_simulation"] = journey_payload
@@ -427,9 +442,19 @@ async def run_scan_mode_audit(
                     sse_emitter,
                 )
             else:
-                result["journey_simulation"] = {"enabled": False, "journeys": []}
+                result["journey_simulation"] = {
+                    "enabled": False,
+                    "journeys": [],
+                    "simulation_type": "url_planning",
+                }
 
             return result
         finally:
+            try:
+                from app.services.audit_runner import clear_domain_preflight_cache
+
+                clear_domain_preflight_cache(site_audit_run_id)
+            except Exception:
+                pass
             if created_context:
                 await context.close()

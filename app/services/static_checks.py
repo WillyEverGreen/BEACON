@@ -489,6 +489,9 @@ class StaticChecker:
             )
             incomplete_issue["evidence"] = incomplete_evidence
             incomplete_issue["confidence"] = 0.9
+            if self.degraded_reason:
+                incomplete_issue["scoring"] = False
+                incomplete_issue["evidence"]["degraded_reason"] = self.degraded_reason
             issues.insert(0, incomplete_issue)
         
         return issues

@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Iterable, Optional
+import asyncio
+from typing import Iterable, Literal, Optional
 from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
 
 from bs4 import BeautifulSoup
+from curl_cffi import AsyncSession
+from curl_cffi.requests import Response
 
 from app.config import CRAWLER_CONFIG, CRAWLER_URL_RULES
 
@@ -15,6 +18,9 @@ _BINARY_EXTENSIONS = tuple(ext.lower() for ext in CRAWLER_URL_RULES["binary_exte
 _SKIP_PREFIXES = tuple(prefix.lower() for prefix in CRAWLER_URL_RULES["skip_href_prefixes"])
 _SKIP_FRAGMENTS = tuple(fragment.lower() for fragment in CRAWLER_URL_RULES["skip_path_fragments"])
 _PRIORITY_KEYWORDS = tuple(k.lower() for k in CRAWLER_URL_RULES["priority_path_keywords"])
+
+
+ScanMode = Literal["fast", "deep", "max"]
 
 
 def _normalized_netloc(parsed) -> str:
@@ -40,6 +46,18 @@ def _normalized_netloc(parsed) -> str:
 
 def clamp(value: float, minimum: float, maximum: float) -> float:
     return max(minimum, min(maximum, value))
+
+
+def normalize_scan_mode(raw: str | None) -> ScanMode:
+    """Single source of truth for scan mode normalization."""
+    mode = str(raw or "").strip().lower()
+    if mode in {"fast", "minimal", "light"}:
+        return "fast"
+    if mode in {"deep", "standard"}:
+        return "deep"
+    if mode in {"max", "full", "thorough"}:
+        return "max"
+    raise ValueError(f"Unrecognised scan_mode: {raw!r}. Expected fast | deep | max.")
 
 
 def safe_float(value: Optional[str], default: float) -> float:
@@ -146,3 +164,57 @@ def detect_critical_page_type(url: str) -> Optional[str]:
     if any(token in path for token in ("/product", "/item", "/listing", "/search", "/results", "/checkout", "/cart")):
         return "product"
     return None
+
+
+def parse_robots_disallow(robots_text: str) -> frozenset[str]:
+    """Return disallowed path prefixes from robots.txt for matching user-agent blocks."""
+    disallowed: set[str] = set()
+    capture = False
+    for raw in str(robots_text or "").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        lowered = line.lower()
+        if lowered.startswith("user-agent:"):
+            agent = line.split(":", 1)[1].strip().lower()
+            capture = agent in {"*", "beacon", "beaconbot"}
+            continue
+        if capture and lowered.startswith("disallow:"):
+            path = line.split(":", 1)[1].strip()
+            if path:
+                disallowed.add(path)
+    return frozenset(disallowed)
+
+
+def is_disallowed(url: str, disallow_set: frozenset[str]) -> bool:
+    if not disallow_set:
+        return False
+    path = urlparse(url).path or "/"
+    return any(path.startswith(prefix) for prefix in disallow_set)
+
+
+async def http_get_with_backoff(
+    url: str,
+    *,
+    client: AsyncSession,
+    max_retries: int = 2,
+    timeout_seconds: float | None = None,
+) -> Response:
+    """GET with Retry-After/exponential backoff handling for HTTP 429 responses."""
+    response: Response | None = None
+    for attempt in range(max_retries + 1):
+        response = await client.get(url, timeout=timeout_seconds)
+        if int(response.status_code) != 429:
+            return response
+
+        if attempt >= max_retries:
+            return response
+
+        retry_after_raw = str(response.headers.get("Retry-After", "") or "").strip()
+        try:
+            wait_seconds = float(retry_after_raw) if retry_after_raw else float(2 ** (attempt + 1))
+        except ValueError:
+            wait_seconds = float(2 ** (attempt + 1))
+        await asyncio.sleep(min(wait_seconds, 15.0))
+
+    return response if response is not None else await client.get(url, timeout=timeout_seconds)
