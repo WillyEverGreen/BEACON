@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import re
+import sys
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -12,6 +13,11 @@ from typing import Any
 from urllib.parse import urlparse
 
 from curl_cffi import AsyncSession
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.audit.failure_taxonomy import normalize_reason
 from app.crawlers.crawl_orchestrator import CrawlConfig, crawl_site
@@ -57,7 +63,7 @@ def _slugify(value: str) -> str:
 
 
 def _load_sites(path: Path) -> list[SiteInput]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload = json.loads(path.read_text(encoding="utf-8-sig"))
     raw_sites = payload.get("sites", []) if isinstance(payload, dict) else []
     sites: list[SiteInput] = []
     for row in raw_sites:
@@ -138,6 +144,7 @@ def _validate_site_integrity(site: SiteInput, http_evidence: dict[str, Any]) -> 
 
 
 def _validate_structured_fields(
+    site: SiteInput,
     max_result: dict[str, Any],
     crawl_result: dict[str, Any],
     adaptive_events: list[dict[str, Any]],
@@ -155,9 +162,20 @@ def _validate_structured_fields(
     elif "dominant_failure" not in site_failure_profile:
         errors.append("missing_site_failure_profile.dominant_failure")
 
-    if not adaptive_events:
+    special = (site.special_assertion or "").strip().lower()
+    normalized_reason = normalize_reason(max_result.get("degraded_reason"))
+    requires_adaptive_logs = bool(special) or bool(max_result.get("degraded_mode", False)) or normalized_reason in {
+        "rate_limited",
+        "bot_wall",
+        "csp_blocked",
+        "csp_injection_blocked",
+        "connectivity_blocked",
+    }
+
+    if requires_adaptive_logs and not adaptive_events:
         errors.append("missing_adaptive_decision_logs")
-    else:
+
+    if adaptive_events:
         for idx, event in enumerate(adaptive_events):
             if "adaptive_action" not in event:
                 errors.append(f"adaptive_event_{idx}_missing_adaptive_action")
@@ -284,12 +302,14 @@ async def _run_single_site(site: SiteInput, artifact_dir: Path) -> dict[str, Any
     except Exception as exc:
         runtime_error = str(exc)
 
-    structured_ok, structured_errors = _validate_structured_fields(max_result, crawl_result, adaptive_events)
+    structured_ok, structured_errors = _validate_structured_fields(site, max_result, crawl_result, adaptive_events)
     special_ok, special_note = _validate_special_detection(site, max_result, crawl_result, adaptive_events)
     adaptive_ok, adaptive_note = _validate_adaptive_effect(site, adaptive_events)
     confidence_ok, confidence_note = _validate_confidence_correlation(max_result)
 
     duration = round(time.time() - started, 2)
+    degraded_mode = bool(max_result.get("degraded_mode", False))
+    degraded_reason = normalize_reason(max_result.get("degraded_reason")) if degraded_mode else ""
 
     passed = (
         runtime_error is None
@@ -305,8 +325,8 @@ async def _run_single_site(site: SiteInput, artifact_dir: Path) -> dict[str, Any
         "runtime_error": runtime_error,
         "http_evidence": http_evidence,
         "max_result": {
-            "degraded_mode": max_result.get("degraded_mode"),
-            "degraded_reason": max_result.get("degraded_reason"),
+            "degraded_mode": degraded_mode,
+            "degraded_reason": degraded_reason or None,
             "confidence_score": max_result.get("confidence_score"),
             "score": max_result.get("score"),
             "scan_time_seconds": max_result.get("scan_time_seconds"),

@@ -1,1135 +1,8 @@
 {
-  "status": "failed",
-  "fatal_error": {
-    "site": "Amazon",
-    "url": "https://www.amazon.com/",
-    "mode": "fast",
-    "reason": "validation_failed",
-    "errors": [
-      "Confidence fail: Amazon fast non-degraded run has low confidence_score=0.67"
-    ]
-  },
-  "last_result": {
-    "url": "https://www.amazon.com/",
-    "scan_mode": "fast",
-    "cognitive_mode": "off",
-    "schema_version": "3.1",
-    "total_issues": 1,
-    "issues": [
-      {
-        "rule_id": "no-title",
-        "rule_type": "hard",
-        "severity": "moderate",
-        "domain": "structure",
-        "message": "",
-        "affected_count": 1,
-        "sample_nodes": [
-          {
-            "html": "<head>"
-          }
-        ],
-        "confidence": 0.335,
-        "confidence_reason": "Single engine detection (static) with partial evidence.",
-        "fix_effort": "low",
-        "impact_summary": "Screen readers announce nothing when the page loads. Users cannot identify which page they are on.",
-        "confidence_tier": "low",
-        "severity_score": 0.683,
-        "priority_score": 0.611,
-        "component": "structure",
-        "priority_severity": "major",
-        "frequency": 1.0,
-        "occurrence_count": 1,
-        "report_in_summary": false,
-        "group_id": "structure:no-title"
-      }
-    ],
-    "priority_ranking": [],
-    "prioritized_issues": [],
-    "recommendations": [
-      "Review the highest priority issues first"
-    ],
-    "groups": [
-      {
-        "group_id": "structure:no-title",
-        "domain": "structure",
-        "rule_family": "no-title",
-        "issues": [
-          {
-            "rule_id": "no-title",
-            "rule_type": "hard",
-            "severity": "moderate",
-            "domain": "structure",
-            "message": "",
-            "affected_count": 1,
-            "sample_nodes": [
-              {
-                "html": "<head>"
-              }
-            ],
-            "confidence": 0.335,
-            "confidence_reason": "Single engine detection (static) with partial evidence.",
-            "fix_effort": "low",
-            "impact_summary": "Screen readers announce nothing when the page loads. Users cannot identify which page they are on.",
-            "confidence_tier": "low",
-            "severity_score": 0.683,
-            "priority_score": 0.611,
-            "component": "structure",
-            "priority_severity": "major",
-            "frequency": 1.0,
-            "occurrence_count": 1,
-            "report_in_summary": false,
-            "group_id": "structure:no-title"
-          }
-        ],
-        "count": 1,
-        "worst_severity": "moderate"
-      }
-    ],
-    "score": 90.0,
-    "score_raw": 90.0,
-    "overall_score": 90.0,
-    "severity_breakdown": {
-      "critical": 0,
-      "major": 0,
-      "minor": 0
-    },
-    "score_explanation": {
-      "base_score": 100.0,
-      "critical_penalty": 0.0,
-      "major_penalty": 0.0,
-      "minor_penalty": 0.0,
-      "total_penalty_applied": 0.0,
-      "degraded_mode_penalty": 0.0,
-      "critical_issue_cap_applied": false,
-      "multiple_critical_cap_applied": false,
-      "declared_critical_count": 0,
-      "inferred_critical_bucket_count": 0,
-      "quality_floor_applied": false,
-      "quality_bonus": 0.0,
-      "high_quality_signal": 1.0,
-      "scorable_issue_count": 0,
-      "summary_issue_count": 0,
-      "low_confidence_excluded_count": 1,
-      "confidence_summary": {
-        "high": 0,
-        "medium": 0,
-        "low": 1
-      },
-      "severity_breakdown": {
-        "critical": 0,
-        "major": 0,
-        "minor": 0
-      },
-      "priority_score_distribution": {
-        "min": 0.0,
-        "p50": 0.0,
-        "p95": 0.0,
-        "max": 0.0,
-        "avg": 0.0
-      },
-      "penalty_breakdown": {
-        "critical": 0.0,
-        "major": 0.0,
-        "minor": 0.0
-      },
-      "penalty_uncapped": {
-        "critical": 0.0,
-        "major": 0.0,
-        "minor": 0.0
-      },
-      "top_issue_types": [],
-      "priority_ranking": [],
-      "overall_score": 100.0,
-      "base_score_before_adjustments": 100.0,
-      "score_integrity": {
-        "avg_confidence": 0.335,
-        "suppression_rate": 0.0,
-        "engines_used_count": 2,
-        "perfect_score_allowed": false,
-        "perfect_score_checks": {
-          "engines_used_count": true,
-          "suppression_rate": true,
-          "degraded_mode": true,
-          "avg_confidence": false
-        },
-        "caps_applied": [
-          {
-            "type": "perfect_score_guard",
-            "from": 100.0,
-            "to": 99.0,
-            "failed_checks": [
-              "avg_confidence"
-            ]
-          },
-          {
-            "type": "low_signal_cap",
-            "from": 99.0,
-            "to": 90.0
-          }
-        ],
-        "low_issue_guard_active": true
-      }
-    },
-    "score_distribution": {
-      "overall_score": 100.0,
-      "critical_penalty": 0.0,
-      "major_penalty": 0.0,
-      "minor_penalty": 0.0,
-      "issue_count": 0
-    },
-    "priority_score_distribution": {
-      "min": 0.0,
-      "p50": 0.0,
-      "p95": 0.0,
-      "max": 0.0,
-      "avg": 0.0
-    },
-    "top_issue_types": [],
-    "issue_groupings": {
-      "by_issue_type": [],
-      "by_component": [],
-      "by_pattern": []
-    },
-    "score_display_context": "",
-    "expected_score_after_fix": 100.0,
-    "score_improvement": 10.0,
-    "degraded_mode": false,
-    "degraded_reason": "engine_error",
-    "skipped_components": [],
-    "degradation_reason": "An internal scan engine error occurred.",
-    "confidence_score": 0.674,
-    "confidence_note": "Moderate confidence based on available engine coverage.",
-    "cognitive_scores": null,
-    "summary": "Found 1 accessibility issues | 1 moderate | Score: 90.0/100 | Engines: static, heuristic | Time: 0.1s",
-    "markdown_report": "# ♿ Accessibility Audit Report\n\n**URL:** https://www.amazon.com/\n**Scan Mode:** FAST\n**Date:** 2026-04-15 20:49 UTC\n**Scan Time:** 0.1s\n**Engines:** static, heuristic\n\n---\n\n## 📊 Executive Summary\n\n### Accessibility Score: 🟢 **90/100**\n\n| Score Detail | Value |\n|-------------|-------|\n| Critical penalty | 0.00 |\n| Major penalty | 0.00 |\n| Minor penalty | 0.00 |\n\n| Severity | Count |\n|----------|-------|\n| 🔴 Critical | 0 |\n| 🟠 Major | 0 |\n| 🟢 Minor | 0 |\n| **Total** | **1** |\n\n---\n\n## 🔍 Findings by Category\n\n### 🏗️ Structure — no-title \n*1 issue(s), worst: moderate*\n\n####  no-title (moderate)\n\n**Confidence:** 34% ()\n\n---\n\n## 📋 Recommendations\n\n- Review the highest priority issues first\n\n\n---\n*Report generated by Accessibility Intelligence Engine — 2026-04-15 20:49 UTC*",
-    "scan_time_seconds": 0.1,
-    "pages_discovered": 1,
-    "pages_audited": 1,
-    "requested_max_pages": null,
-    "engines_used": [
-      "static",
-      "heuristic"
-    ],
-    "quality_gates": {
-      "runtime_limit": 15,
-      "runtime_actual": 0.1,
-      "runtime_passed": true,
-      "adaptive_timeout_policy": {
-        "complexity": "moderate",
-        "page_timeout_seconds": 10,
-        "network_idle_timeout_ms": 12000,
-        "ready_state_timeout_ms": 5000
-      },
-      "engines_used": [
-        "static",
-        "heuristic"
-      ],
-      "total_before_dedup": 1,
-      "total_after_dedup": 1,
-      "precision_profile": "balanced",
-      "precision_profile_telemetry": {
-        "profile": "balanced",
-        "input_issues": 1,
-        "reported_issues": 1,
-        "issues_before_filtering": 1,
-        "issues_after_filtering": 1,
-        "min_confidence_threshold": 0.55,
-        "min_confidence_thresholds_by_rule_type": {
-          "hard": 0.55,
-          "visual": 0.55,
-          "contextual": 0.55
-        },
-        "avg_confidence_before_filtering": 0.3524,
-        "avg_confidence_after_filtering": 0.3348,
-        "dropped_low_confidence": 1,
-        "dropped_needs_review": 0,
-        "dropped_contextual_single_source": 0,
-        "dropped_excluded_rules": 0,
-        "dropped_cooccurrence_rules": 0,
-        "dropped_structural": 0,
-        "dropped_trust_block": 0,
-        "dropped_stability_trim": 0,
-        "filtered_breakdown": {
-          "low_confidence": 1,
-          "needs_review": 0,
-          "contextual_single_source": 0,
-          "excluded_rule": 0,
-          "cooccurrence_rule": 0,
-          "structural": 0,
-          "trust_block": 0,
-          "stability_trim": 0
-        },
-        "trust_blocked_rules": {},
-        "structural_rules_suppressed": {},
-        "recovered_issues_min_expected": 0,
-        "recovered_issues_min_output": 0,
-        "recovered_issues_non_empty": 1,
-        "recovered_issues_guardrail_fallback": 0,
-        "recovery_eligible": false,
-        "fixture_like_input": false,
-        "recovery_input_total": 1,
-        "recovery_input_non_shell": 0,
-        "recovery_input_shell": 1,
-        "recovery_input_thresholds": {
-          "min_total_input_issues": 5,
-          "fixture_recovery_block": true
-        },
-        "confidence_floor_adjustments": 0,
-        "suppression_rate": 0.0,
-        "suppression_warning": false,
-        "suppression_warning_rule": {
-          "threshold": 0.7,
-          "min_issues_after_filtering": 10
-        },
-        "guardrail_fallback_triggered": false,
-        "guardrail_failures": [],
-        "low_issue_guard_active": true,
-        "estimated_precision_floor": 0.85
-      },
-      "compression_telemetry": {
-        "original_count": 1,
-        "aggregated_count": 1,
-        "compression_ratio": 0.0
-      },
-      "hybrid_telemetry": {
-        "hybrid_required_rules": {
-          "focus-management": [
-            "static_check",
-            "behavioral_probe",
-            "dom_interaction"
-          ],
-          "semantic-html": [
-            "static_check",
-            "dom_structure_heuristic"
-          ]
-        },
-        "rule_coverage": {},
-        "warnings": []
-      },
-      "score_integrity": {
-        "avg_confidence": 0.335,
-        "suppression_rate": 0.0,
-        "engines_used_count": 2,
-        "perfect_score_allowed": false,
-        "perfect_score_checks": {
-          "engines_used_count": true,
-          "suppression_rate": true,
-          "degraded_mode": true,
-          "avg_confidence": false
-        },
-        "caps_applied": [
-          {
-            "type": "perfect_score_guard",
-            "from": 100.0,
-            "to": 99.0,
-            "failed_checks": [
-              "avg_confidence"
-            ]
-          },
-          {
-            "type": "low_signal_cap",
-            "from": 99.0,
-            "to": 90.0
-          }
-        ],
-        "low_issue_guard_active": true
-      },
-      "rule_activity": {
-        "missing-lang": {
-          "elements_checked": 1,
-          "violations_found": 0,
-          "firing_status": "NOT FIRING",
-          "confidence_bucket": {
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "sample_elements_checked": [
-            "<html>"
-          ],
-          "sample_violations": [],
-          "violations": []
-        },
-        "invalid-lang": {
-          "elements_checked": 1,
-          "violations_found": 0,
-          "firing_status": "NOT FIRING",
-          "confidence_bucket": {
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "sample_elements_checked": [
-            "html[lang=\"en\"]"
-          ],
-          "sample_violations": [],
-          "violations": []
-        },
-        "missing-alt": {
-          "elements_checked": 0,
-          "violations_found": 0,
-          "firing_status": "NOT FIRING",
-          "confidence_bucket": {
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "sample_elements_checked": [],
-          "sample_violations": [],
-          "violations": []
-        },
-        "link-purpose": {
-          "elements_checked": 0,
-          "violations_found": 0,
-          "firing_status": "NOT FIRING",
-          "confidence_bucket": {
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "sample_elements_checked": [],
-          "sample_violations": [],
-          "violations": []
-        },
-        "button-name": {
-          "elements_checked": 0,
-          "violations_found": 0,
-          "firing_status": "NOT FIRING",
-          "confidence_bucket": {
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "sample_elements_checked": [],
-          "sample_violations": [],
-          "violations": []
-        },
-        "clickable-no-role": {
-          "elements_checked": 0,
-          "violations_found": 0,
-          "firing_status": "NOT FIRING",
-          "confidence_bucket": {
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "sample_elements_checked": [],
-          "sample_violations": [],
-          "violations": []
-        },
-        "missing-label": {
-          "elements_checked": 0,
-          "violations_found": 0,
-          "firing_status": "NOT FIRING",
-          "confidence_bucket": {
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "sample_elements_checked": [],
-          "sample_violations": [],
-          "violations": []
-        },
-        "input-label": {
-          "elements_checked": 0,
-          "violations_found": 0,
-          "firing_status": "NOT FIRING",
-          "confidence_bucket": {
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "sample_elements_checked": [],
-          "sample_violations": [],
-          "violations": []
-        },
-        "form-label-missing": {
-          "elements_checked": 0,
-          "violations_found": 0,
-          "firing_status": "NOT FIRING",
-          "confidence_bucket": {
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "sample_elements_checked": [],
-          "sample_violations": [],
-          "violations": []
-        },
-        "label": {
-          "elements_checked": 0,
-          "violations_found": 0,
-          "firing_status": "NOT FIRING",
-          "confidence_bucket": {
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "sample_elements_checked": [],
-          "sample_violations": [],
-          "violations": []
-        },
-        "input-name": {
-          "elements_checked": 0,
-          "violations_found": 0,
-          "firing_status": "NOT FIRING",
-          "confidence_bucket": {
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "sample_elements_checked": [],
-          "sample_violations": [],
-          "violations": []
-        },
-        "autocomplete-missing": {
-          "elements_checked": 0,
-          "violations_found": 0,
-          "firing_status": "NOT FIRING",
-          "confidence_bucket": {
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "sample_elements_checked": [],
-          "sample_violations": [],
-          "violations": []
-        },
-        "duplicate-label": {
-          "elements_checked": 0,
-          "violations_found": 0,
-          "firing_status": "NOT FIRING",
-          "confidence_bucket": {
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "sample_elements_checked": [],
-          "sample_violations": [],
-          "violations": []
-        },
-        "aria-required-parent": {
-          "elements_checked": 0,
-          "violations_found": 0,
-          "firing_status": "NOT FIRING",
-          "confidence_bucket": {
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "sample_elements_checked": [],
-          "sample_violations": [],
-          "violations": []
-        },
-        "aria-required-children": {
-          "elements_checked": 0,
-          "violations_found": 0,
-          "firing_status": "NOT FIRING",
-          "confidence_bucket": {
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "sample_elements_checked": [],
-          "sample_violations": [],
-          "violations": []
-        },
-        "aria-allowed-role": {
-          "elements_checked": 0,
-          "violations_found": 0,
-          "firing_status": "NOT FIRING",
-          "confidence_bucket": {
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "sample_elements_checked": [],
-          "sample_violations": [],
-          "violations": []
-        },
-        "aria-attribute": {
-          "elements_checked": 0,
-          "violations_found": 0,
-          "firing_status": "NOT FIRING",
-          "confidence_bucket": {
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "sample_elements_checked": [],
-          "sample_violations": [],
-          "violations": []
-        },
-        "aria-allowed-attr": {
-          "elements_checked": 0,
-          "violations_found": 0,
-          "firing_status": "NOT FIRING",
-          "confidence_bucket": {
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "sample_elements_checked": [],
-          "sample_violations": [],
-          "violations": []
-        },
-        "aria-valid-attr": {
-          "elements_checked": 0,
-          "violations_found": 0,
-          "firing_status": "NOT FIRING",
-          "confidence_bucket": {
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "sample_elements_checked": [],
-          "sample_violations": [],
-          "violations": []
-        },
-        "aria-valid-attr-value": {
-          "elements_checked": 0,
-          "violations_found": 0,
-          "firing_status": "NOT FIRING",
-          "confidence_bucket": {
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "sample_elements_checked": [],
-          "sample_violations": [],
-          "violations": []
-        },
-        "media-alternative": {
-          "elements_checked": 0,
-          "violations_found": 0,
-          "firing_status": "NOT FIRING",
-          "confidence_bucket": {
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "sample_elements_checked": [],
-          "sample_violations": [],
-          "violations": []
-        },
-        "svg-no-accessible-name": {
-          "elements_checked": 0,
-          "violations_found": 0,
-          "firing_status": "NOT FIRING",
-          "confidence_bucket": {
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "sample_elements_checked": [],
-          "sample_violations": [],
-          "violations": []
-        }
-      },
-      "ttfi_ms": 95,
-      "active_audits": 1,
-      "confidence_score": 0.674,
-      "confidence_note": "Moderate confidence based on available engine coverage.",
-      "score_suppressed_low_confidence": false,
-      "fetch_reliability": {
-        "retry_used": false,
-        "partial_fallback_used": false,
-        "attempts_used": 1,
-        "user_agent_rotated": false,
-        "status_code": 202,
-        "domain": "www.amazon.com"
-      },
-      "domain_preflight": {
-        "domain": "www.amazon.com",
-        "ok": true,
-        "degraded_reason": "ok",
-        "message": "preflight_ok",
-        "status_code": 202,
-        "from_cache": false
-      },
-      "enrichment_observability": {
-        "llm_calls": 0,
-        "llm_retries": 0,
-        "token_budget_used": 0,
-        "cost_budget_used": 0.0,
-        "budget_exhausted": false,
-        "retrieval_debug_records": 0,
-        "avg_usefulness_score": 0.0,
-        "avg_correctness_score": 0.0,
-        "rag_effectiveness": 0.0,
-        "fix_acceptance_rate": 0.0
-      },
-      "duplicate_rate": 0.0,
-      "duplicate_rate_passed": true
-    },
-    "precision_profile": "balanced",
-    "precision_profile_telemetry": {
-      "profile": "balanced",
-      "input_issues": 1,
-      "reported_issues": 1,
-      "issues_before_filtering": 1,
-      "issues_after_filtering": 1,
-      "min_confidence_threshold": 0.55,
-      "min_confidence_thresholds_by_rule_type": {
-        "hard": 0.55,
-        "visual": 0.55,
-        "contextual": 0.55
-      },
-      "avg_confidence_before_filtering": 0.3524,
-      "avg_confidence_after_filtering": 0.3348,
-      "dropped_low_confidence": 1,
-      "dropped_needs_review": 0,
-      "dropped_contextual_single_source": 0,
-      "dropped_excluded_rules": 0,
-      "dropped_cooccurrence_rules": 0,
-      "dropped_structural": 0,
-      "dropped_trust_block": 0,
-      "dropped_stability_trim": 0,
-      "filtered_breakdown": {
-        "low_confidence": 1,
-        "needs_review": 0,
-        "contextual_single_source": 0,
-        "excluded_rule": 0,
-        "cooccurrence_rule": 0,
-        "structural": 0,
-        "trust_block": 0,
-        "stability_trim": 0
-      },
-      "trust_blocked_rules": {},
-      "structural_rules_suppressed": {},
-      "recovered_issues_min_expected": 0,
-      "recovered_issues_min_output": 0,
-      "recovered_issues_non_empty": 1,
-      "recovered_issues_guardrail_fallback": 0,
-      "recovery_eligible": false,
-      "fixture_like_input": false,
-      "recovery_input_total": 1,
-      "recovery_input_non_shell": 0,
-      "recovery_input_shell": 1,
-      "recovery_input_thresholds": {
-        "min_total_input_issues": 5,
-        "fixture_recovery_block": true
-      },
-      "confidence_floor_adjustments": 0,
-      "suppression_rate": 0.0,
-      "suppression_warning": false,
-      "suppression_warning_rule": {
-        "threshold": 0.7,
-        "min_issues_after_filtering": 10
-      },
-      "guardrail_fallback_triggered": false,
-      "guardrail_failures": [],
-      "low_issue_guard_active": true,
-      "estimated_precision_floor": 0.85
-    },
-    "rule_activity": {
-      "missing-lang": {
-        "elements_checked": 1,
-        "violations_found": 0,
-        "firing_status": "NOT FIRING",
-        "confidence_bucket": {
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "sample_elements_checked": [
-          "<html>"
-        ],
-        "sample_violations": [],
-        "violations": []
-      },
-      "invalid-lang": {
-        "elements_checked": 1,
-        "violations_found": 0,
-        "firing_status": "NOT FIRING",
-        "confidence_bucket": {
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "sample_elements_checked": [
-          "html[lang=\"en\"]"
-        ],
-        "sample_violations": [],
-        "violations": []
-      },
-      "missing-alt": {
-        "elements_checked": 0,
-        "violations_found": 0,
-        "firing_status": "NOT FIRING",
-        "confidence_bucket": {
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "sample_elements_checked": [],
-        "sample_violations": [],
-        "violations": []
-      },
-      "link-purpose": {
-        "elements_checked": 0,
-        "violations_found": 0,
-        "firing_status": "NOT FIRING",
-        "confidence_bucket": {
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "sample_elements_checked": [],
-        "sample_violations": [],
-        "violations": []
-      },
-      "button-name": {
-        "elements_checked": 0,
-        "violations_found": 0,
-        "firing_status": "NOT FIRING",
-        "confidence_bucket": {
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "sample_elements_checked": [],
-        "sample_violations": [],
-        "violations": []
-      },
-      "clickable-no-role": {
-        "elements_checked": 0,
-        "violations_found": 0,
-        "firing_status": "NOT FIRING",
-        "confidence_bucket": {
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "sample_elements_checked": [],
-        "sample_violations": [],
-        "violations": []
-      },
-      "missing-label": {
-        "elements_checked": 0,
-        "violations_found": 0,
-        "firing_status": "NOT FIRING",
-        "confidence_bucket": {
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "sample_elements_checked": [],
-        "sample_violations": [],
-        "violations": []
-      },
-      "input-label": {
-        "elements_checked": 0,
-        "violations_found": 0,
-        "firing_status": "NOT FIRING",
-        "confidence_bucket": {
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "sample_elements_checked": [],
-        "sample_violations": [],
-        "violations": []
-      },
-      "form-label-missing": {
-        "elements_checked": 0,
-        "violations_found": 0,
-        "firing_status": "NOT FIRING",
-        "confidence_bucket": {
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "sample_elements_checked": [],
-        "sample_violations": [],
-        "violations": []
-      },
-      "label": {
-        "elements_checked": 0,
-        "violations_found": 0,
-        "firing_status": "NOT FIRING",
-        "confidence_bucket": {
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "sample_elements_checked": [],
-        "sample_violations": [],
-        "violations": []
-      },
-      "input-name": {
-        "elements_checked": 0,
-        "violations_found": 0,
-        "firing_status": "NOT FIRING",
-        "confidence_bucket": {
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "sample_elements_checked": [],
-        "sample_violations": [],
-        "violations": []
-      },
-      "autocomplete-missing": {
-        "elements_checked": 0,
-        "violations_found": 0,
-        "firing_status": "NOT FIRING",
-        "confidence_bucket": {
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "sample_elements_checked": [],
-        "sample_violations": [],
-        "violations": []
-      },
-      "duplicate-label": {
-        "elements_checked": 0,
-        "violations_found": 0,
-        "firing_status": "NOT FIRING",
-        "confidence_bucket": {
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "sample_elements_checked": [],
-        "sample_violations": [],
-        "violations": []
-      },
-      "aria-required-parent": {
-        "elements_checked": 0,
-        "violations_found": 0,
-        "firing_status": "NOT FIRING",
-        "confidence_bucket": {
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "sample_elements_checked": [],
-        "sample_violations": [],
-        "violations": []
-      },
-      "aria-required-children": {
-        "elements_checked": 0,
-        "violations_found": 0,
-        "firing_status": "NOT FIRING",
-        "confidence_bucket": {
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "sample_elements_checked": [],
-        "sample_violations": [],
-        "violations": []
-      },
-      "aria-allowed-role": {
-        "elements_checked": 0,
-        "violations_found": 0,
-        "firing_status": "NOT FIRING",
-        "confidence_bucket": {
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "sample_elements_checked": [],
-        "sample_violations": [],
-        "violations": []
-      },
-      "aria-attribute": {
-        "elements_checked": 0,
-        "violations_found": 0,
-        "firing_status": "NOT FIRING",
-        "confidence_bucket": {
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "sample_elements_checked": [],
-        "sample_violations": [],
-        "violations": []
-      },
-      "aria-allowed-attr": {
-        "elements_checked": 0,
-        "violations_found": 0,
-        "firing_status": "NOT FIRING",
-        "confidence_bucket": {
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "sample_elements_checked": [],
-        "sample_violations": [],
-        "violations": []
-      },
-      "aria-valid-attr": {
-        "elements_checked": 0,
-        "violations_found": 0,
-        "firing_status": "NOT FIRING",
-        "confidence_bucket": {
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "sample_elements_checked": [],
-        "sample_violations": [],
-        "violations": []
-      },
-      "aria-valid-attr-value": {
-        "elements_checked": 0,
-        "violations_found": 0,
-        "firing_status": "NOT FIRING",
-        "confidence_bucket": {
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "sample_elements_checked": [],
-        "sample_violations": [],
-        "violations": []
-      },
-      "media-alternative": {
-        "elements_checked": 0,
-        "violations_found": 0,
-        "firing_status": "NOT FIRING",
-        "confidence_bucket": {
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "sample_elements_checked": [],
-        "sample_violations": [],
-        "violations": []
-      },
-      "svg-no-accessible-name": {
-        "elements_checked": 0,
-        "violations_found": 0,
-        "firing_status": "NOT FIRING",
-        "confidence_bucket": {
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "sample_elements_checked": [],
-        "sample_violations": [],
-        "violations": []
-      }
-    },
-    "enrichment_status": "complete",
-    "enrichment_meta": {
-      "budget": {
-        "requested": 0,
-        "budget": 5,
-        "allowed": 5,
-        "dropped_for_budget": 0,
-        "budget_exhausted": false
-      }
-    },
-    "audit_id": "06112ff2-9e29-4457-9627-cce55bd162da",
-    "trust": {
-      "confidence_avg": 0.335,
-      "suppression_rate": 0.0,
-      "data_quality": "low",
-      "engines_coverage": {
-        "static": true,
-        "browser": false,
-        "axe": false,
-        "heuristic": true
-      },
-      "calibration_warnings": [
-        "no-title has low trust (0.05, verdict=suppress)"
-      ],
-      "audit_completeness": "full",
-      "low_trust_rules_present": [
-        "no-title"
-      ],
-      "trust_blocked_count": 0,
-      "trust_blocked_rules": {},
-      "score_integrity": {
-        "avg_confidence": 0.335,
-        "suppression_rate": 0.0,
-        "engines_used_count": 2,
-        "perfect_score_allowed": false,
-        "perfect_score_checks": {
-          "engines_used_count": true,
-          "suppression_rate": true,
-          "degraded_mode": true,
-          "avg_confidence": false
-        },
-        "caps_applied": [
-          {
-            "type": "perfect_score_guard",
-            "from": 100.0,
-            "to": 99.0,
-            "failed_checks": [
-              "avg_confidence"
-            ]
-          },
-          {
-            "type": "low_signal_cap",
-            "from": 99.0,
-            "to": 90.0
-          }
-        ],
-        "low_issue_guard_active": true
-      },
-      "hybrid_required_rules": {
-        "focus-management": [
-          "static_check",
-          "behavioral_probe",
-          "dom_interaction"
-        ],
-        "semantic-html": [
-          "static_check",
-          "dom_structure_heuristic"
-        ]
-      },
-      "hybrid_rule_coverage": {}
-    },
-    "site_result": {
-      "scan_mode": "single_page",
-      "site_score": 90.0,
-      "worst_page_score": 90.0,
-      "worst_page": {
-        "url": "https://www.amazon.com/",
-        "score": 90.0
-      },
-      "best_page": {
-        "url": "https://www.amazon.com/",
-        "score": 90.0
-      },
-      "pages_audited": 1,
-      "pages_scanned": 1,
-      "pages_discovered": 1,
-      "issues": [],
-      "priority_ranking": [],
-      "executive_summary": {
-        "site_score": 90.0,
-        "worst_page": {
-          "url": "https://www.amazon.com/",
-          "score": 90.0
-        },
-        "best_page": {
-          "url": "https://www.amazon.com/",
-          "score": 90.0
-        },
-        "critical_issues": 0,
-        "pages_audited": 1,
-        "pages_scanned": 1,
-        "pages_discovered": 1,
-        "top_fix": "Fix top-ranked issues first"
-      }
-    },
-    "browser_probe_metadata": {},
-    "spa_framework": null,
-    "is_spa": false,
-    "spa_classification": {
-      "is_spa": false,
-      "confidence": "low",
-      "signals": []
-    },
-    "pages_scanned": 1
-  },
-  "partial_results": [
+  "status": "passed",
+  "generated_at": "2026-04-16T07:49:13Z",
+  "runtime_seconds": 774.93,
+  "sites": [
     {
       "site": "A11y Project",
       "url": "https://www.a11yproject.com/",
@@ -1144,8 +17,8 @@
         ],
         "skipped_components": [],
         "total_issues": 4,
-        "degradation_reason": "An internal scan engine error occurred.",
-        "scan_time_seconds": 0.79
+        "degradation_reason": null,
+        "scan_time_seconds": 0.78
       },
       "deep": {
         "degraded_mode": false,
@@ -1161,8 +34,8 @@
         ],
         "skipped_components": [],
         "total_issues": 8,
-        "degradation_reason": "An internal scan engine error occurred.",
-        "scan_time_seconds": 12.66
+        "degradation_reason": null,
+        "scan_time_seconds": 15.19
       },
       "max": {
         "degraded_mode": false,
@@ -1178,8 +51,8 @@
         ],
         "skipped_components": [],
         "total_issues": 15,
-        "degradation_reason": "An internal scan engine error occurred.",
-        "scan_time_seconds": 17.8
+        "degradation_reason": null,
+        "scan_time_seconds": 21.05
       }
     },
     {
@@ -1196,8 +69,8 @@
         ],
         "skipped_components": [],
         "total_issues": 7,
-        "degradation_reason": "An internal scan engine error occurred.",
-        "scan_time_seconds": 0.39
+        "degradation_reason": null,
+        "scan_time_seconds": 0.69
       },
       "deep": {
         "degraded_mode": false,
@@ -1213,8 +86,8 @@
         ],
         "skipped_components": [],
         "total_issues": 7,
-        "degradation_reason": "An internal scan engine error occurred.",
-        "scan_time_seconds": 11.76
+        "degradation_reason": null,
+        "scan_time_seconds": 14.78
       },
       "max": {
         "degraded_mode": false,
@@ -1229,9 +102,9 @@
           "cognitive"
         ],
         "skipped_components": [],
-        "total_issues": 11,
-        "degradation_reason": "An internal scan engine error occurred.",
-        "scan_time_seconds": 43.3
+        "total_issues": 10,
+        "degradation_reason": null,
+        "scan_time_seconds": 24.22
       }
     },
     {
@@ -1248,8 +121,8 @@
         ],
         "skipped_components": [],
         "total_issues": 7,
-        "degradation_reason": "An internal scan engine error occurred.",
-        "scan_time_seconds": 0.56
+        "degradation_reason": null,
+        "scan_time_seconds": 2.32
       },
       "deep": {
         "degraded_mode": false,
@@ -1265,8 +138,8 @@
         ],
         "skipped_components": [],
         "total_issues": 9,
-        "degradation_reason": "An internal scan engine error occurred.",
-        "scan_time_seconds": 13.77
+        "degradation_reason": null,
+        "scan_time_seconds": 16.22
       },
       "max": {
         "degraded_mode": false,
@@ -1282,8 +155,8 @@
         ],
         "skipped_components": [],
         "total_issues": 14,
-        "degradation_reason": "An internal scan engine error occurred.",
-        "scan_time_seconds": 34.58
+        "degradation_reason": null,
+        "scan_time_seconds": 23.11
       }
     },
     {
@@ -1300,14 +173,14 @@
         ],
         "skipped_components": [],
         "total_issues": 5,
-        "degradation_reason": "An internal scan engine error occurred.",
-        "scan_time_seconds": 0.14
+        "degradation_reason": null,
+        "scan_time_seconds": 0.26
       },
       "deep": {
         "degraded_mode": false,
         "degraded_reason": null,
-        "confidence_score": 0.8333,
-        "score": 89.7,
+        "confidence_score": 0.8248,
+        "score": 91.7,
         "engines_used": [
           "browser-probe",
           "static",
@@ -1317,13 +190,13 @@
         ],
         "skipped_components": [],
         "total_issues": 9,
-        "degradation_reason": "An internal scan engine error occurred.",
-        "scan_time_seconds": 21.21
+        "degradation_reason": null,
+        "scan_time_seconds": 28.87
       },
       "max": {
         "degraded_mode": false,
         "degraded_reason": null,
-        "confidence_score": 0.8677,
+        "confidence_score": 0.8618,
         "score": 86.0,
         "engines_used": [
           "browser-probe",
@@ -1333,9 +206,9 @@
           "cognitive"
         ],
         "skipped_components": [],
-        "total_issues": 15,
-        "degradation_reason": "An internal scan engine error occurred.",
-        "scan_time_seconds": 46.27
+        "total_issues": 16,
+        "degradation_reason": null,
+        "scan_time_seconds": 49.37
       }
     },
     {
@@ -1344,21 +217,21 @@
       "fast": {
         "degraded_mode": false,
         "degraded_reason": null,
-        "confidence_score": 0.8199,
-        "score": 94.6,
+        "confidence_score": 0.82,
+        "score": 92.9,
         "engines_used": [
           "static",
           "heuristic"
         ],
         "skipped_components": [],
-        "total_issues": 5,
-        "degradation_reason": "An internal scan engine error occurred.",
-        "scan_time_seconds": 1.01
+        "total_issues": 7,
+        "degradation_reason": null,
+        "scan_time_seconds": 2.28
       },
       "deep": {
         "degraded_mode": false,
         "degraded_reason": null,
-        "confidence_score": 0.8489,
+        "confidence_score": 0.8531,
         "score": 81.0,
         "engines_used": [
           "browser-probe",
@@ -1367,26 +240,25 @@
           "cognitive"
         ],
         "skipped_components": [],
-        "total_issues": 20,
-        "degradation_reason": "An internal scan engine error occurred.",
-        "scan_time_seconds": 35.22
+        "total_issues": 21,
+        "degradation_reason": null,
+        "scan_time_seconds": 34.55
       },
       "max": {
         "degraded_mode": false,
         "degraded_reason": null,
-        "confidence_score": 0.8688,
+        "confidence_score": 0.8657,
         "score": 63.4,
         "engines_used": [
           "browser-probe",
           "static",
           "heuristic",
-          "axe-core",
           "cognitive"
         ],
         "skipped_components": [],
-        "total_issues": 113,
-        "degradation_reason": "An internal scan engine error occurred.",
-        "scan_time_seconds": 61.6
+        "total_issues": 116,
+        "degradation_reason": null,
+        "scan_time_seconds": 75.73
       }
     },
     {
@@ -1403,8 +275,8 @@
         ],
         "skipped_components": [],
         "total_issues": 9,
-        "degradation_reason": "An internal scan engine error occurred.",
-        "scan_time_seconds": 0.84
+        "degradation_reason": null,
+        "scan_time_seconds": 2.14
       },
       "deep": {
         "degraded_mode": false,
@@ -1420,14 +292,14 @@
         ],
         "skipped_components": [],
         "total_issues": 14,
-        "degradation_reason": "An internal scan engine error occurred.",
-        "scan_time_seconds": 17.85
+        "degradation_reason": null,
+        "scan_time_seconds": 22.64
       },
       "max": {
         "degraded_mode": false,
         "degraded_reason": null,
-        "confidence_score": 0.856,
-        "score": 70.3,
+        "confidence_score": 0.8562,
+        "score": 70.6,
         "engines_used": [
           "browser-probe",
           "static",
@@ -1436,10 +308,224 @@
           "cognitive"
         ],
         "skipped_components": [],
-        "total_issues": 21,
-        "degradation_reason": "An internal scan engine error occurred.",
-        "scan_time_seconds": 42.8
+        "total_issues": 20,
+        "degradation_reason": null,
+        "scan_time_seconds": 40.45
+      }
+    },
+    {
+      "site": "Amazon",
+      "url": "https://www.amazon.com/",
+      "fast": {
+        "degraded_mode": false,
+        "degraded_reason": null,
+        "confidence_score": 0.674,
+        "score": 90.0,
+        "engines_used": [
+          "static",
+          "heuristic"
+        ],
+        "skipped_components": [],
+        "total_issues": 1,
+        "degradation_reason": null,
+        "scan_time_seconds": 1.77
+      },
+      "deep": {
+        "degraded_mode": false,
+        "degraded_reason": null,
+        "confidence_score": 0.9007,
+        "score": 70.0,
+        "engines_used": [
+          "browser-probe",
+          "static",
+          "heuristic",
+          "axe-core",
+          "cognitive"
+        ],
+        "skipped_components": [],
+        "total_issues": 23,
+        "degradation_reason": null,
+        "scan_time_seconds": 23.27
+      },
+      "max": {
+        "degraded_mode": false,
+        "degraded_reason": null,
+        "confidence_score": 0.856,
+        "score": 66.5,
+        "engines_used": [
+          "browser-probe",
+          "static",
+          "heuristic",
+          "axe-core",
+          "cognitive"
+        ],
+        "skipped_components": [],
+        "total_issues": 75,
+        "degradation_reason": null,
+        "scan_time_seconds": 46.9
+      }
+    },
+    {
+      "site": "Etsy",
+      "url": "https://www.etsy.com/",
+      "fast": {
+        "degraded_mode": true,
+        "degraded_reason": "bot_wall",
+        "confidence_score": 0.442,
+        "score": 83.5,
+        "engines_used": [],
+        "skipped_components": [
+          "content_fetch"
+        ],
+        "total_issues": 1,
+        "degradation_reason": "The target site blocked automated traffic or presented a bot challenge.",
+        "scan_time_seconds": 0.4
+      },
+      "deep": {
+        "degraded_mode": true,
+        "degraded_reason": "bot_wall",
+        "confidence_score": 0.538,
+        "score": 82.0,
+        "engines_used": [
+          "browser-probe",
+          "static",
+          "heuristic"
+        ],
+        "skipped_components": [],
+        "total_issues": 1,
+        "degradation_reason": "The target site blocked automated traffic or presented a bot challenge.",
+        "scan_time_seconds": 2.81
+      },
+      "max": {
+        "degraded_mode": true,
+        "degraded_reason": "bot_wall",
+        "confidence_score": 0.538,
+        "score": 82.0,
+        "engines_used": [
+          "browser-probe",
+          "static",
+          "heuristic"
+        ],
+        "skipped_components": [],
+        "total_issues": 1,
+        "degradation_reason": "The target site blocked automated traffic or presented a bot challenge.",
+        "scan_time_seconds": 2.59
+      }
+    },
+    {
+      "site": "Wikipedia",
+      "url": "https://www.wikipedia.org/",
+      "fast": {
+        "degraded_mode": false,
+        "degraded_reason": null,
+        "confidence_score": 0.82,
+        "score": 91.0,
+        "engines_used": [
+          "static",
+          "heuristic"
+        ],
+        "skipped_components": [],
+        "total_issues": 10,
+        "degradation_reason": null,
+        "scan_time_seconds": 2.77
+      },
+      "deep": {
+        "degraded_mode": false,
+        "degraded_reason": null,
+        "confidence_score": 0.856,
+        "score": 87.6,
+        "engines_used": [
+          "browser-probe",
+          "static",
+          "heuristic",
+          "axe-core",
+          "cognitive"
+        ],
+        "skipped_components": [],
+        "total_issues": 10,
+        "degradation_reason": null,
+        "scan_time_seconds": 14.38
+      },
+      "max": {
+        "degraded_mode": false,
+        "degraded_reason": null,
+        "confidence_score": 0.856,
+        "score": 88.5,
+        "engines_used": [
+          "browser-probe",
+          "static",
+          "heuristic",
+          "axe-core",
+          "cognitive"
+        ],
+        "skipped_components": [],
+        "total_issues": 10,
+        "degradation_reason": null,
+        "scan_time_seconds": 47.21
+      }
+    },
+    {
+      "site": "GitHub",
+      "url": "https://github.com/",
+      "fast": {
+        "degraded_mode": false,
+        "degraded_reason": null,
+        "confidence_score": 0.8339,
+        "score": 90.8,
+        "engines_used": [
+          "static",
+          "heuristic"
+        ],
+        "skipped_components": [],
+        "total_issues": 7,
+        "degradation_reason": null,
+        "scan_time_seconds": 2.99
+      },
+      "deep": {
+        "degraded_mode": false,
+        "degraded_reason": null,
+        "confidence_score": 0.8567,
+        "score": 86.0,
+        "engines_used": [
+          "browser-probe",
+          "static",
+          "heuristic",
+          "axe-core",
+          "cognitive"
+        ],
+        "skipped_components": [],
+        "total_issues": 19,
+        "degradation_reason": null,
+        "scan_time_seconds": 43.88
+      },
+      "max": {
+        "degraded_mode": false,
+        "degraded_reason": null,
+        "confidence_score": 0.856,
+        "score": 77.9,
+        "engines_used": [
+          "browser-probe",
+          "static",
+          "heuristic",
+          "axe-core",
+          "cognitive"
+        ],
+        "skipped_components": [],
+        "total_issues": 43,
+        "degradation_reason": null,
+        "scan_time_seconds": 50.85
       }
     }
-  ]
+  ],
+  "overall": {
+    "total_runs": 30,
+    "successful_runs": 27,
+    "success_rate": 90.0,
+    "degraded_sites": [
+      "Etsy"
+    ],
+    "failure_types_distribution": {
+      "bot_wall": 3
+    }
+  }
 }

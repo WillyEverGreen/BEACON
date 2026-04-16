@@ -53,7 +53,11 @@ async def _safe_inner_text(handle: Any) -> str:
 
 async def _safe_click(handle: Any) -> bool:
     try:
-        await handle.click()
+        try:
+            await handle.click(timeout=1500, no_wait_after=True)
+        except TypeError:
+            # Backward compatibility with older Playwright signatures.
+            await handle.click(timeout=1500)
         return True
     except Exception:
         return False

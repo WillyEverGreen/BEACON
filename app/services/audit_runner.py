@@ -37,7 +37,7 @@ from app.crawlers.common import http_get_with_backoff, normalize_scan_mode
 from app.services.static_checks import StaticChecker
 from app.services.heuristics import HeuristicAnalyzer
 from app.services.normalizer import normalize_all
-from app.services.dedup_engine import deduplicate
+from app.services.dedup_engine import deduplicate, proximity_dedup
 from app.services.confidence import apply_confidence_rules
 from app.services.grouper import group_issues
 from app.services.report import generate_markdown_report
@@ -719,7 +719,10 @@ def _enforce_audit_invariants(result: dict[str, Any]) -> dict[str, Any]:
     result["pages_audited"] = pages_audited
     result["pages_scanned"] = pages_audited
     degraded_mode = bool(result.get("degraded_mode", False))
-    degraded_reason = normalize_failure(result.get("degraded_reason")).value
+    raw_degraded_reason = str(result.get("degraded_reason") or "").strip()
+    lowered_reason = raw_degraded_reason.lower()
+    has_degraded_reason = lowered_reason not in {"", "none", "null", "ok"}
+    degraded_reason = normalize_failure(raw_degraded_reason).value if has_degraded_reason else ""
 
     if degraded_mode and not degraded_reason:
         fallback_reason = normalize_failure(result.get("degradation_reason")).value
@@ -730,6 +733,10 @@ def _enforce_audit_invariants(result: dict[str, Any]) -> dict[str, Any]:
         result["degraded_reason"] = degraded_reason
         if not result.get("degradation_reason"):
             result["degradation_reason"] = _degradation_reason_message(degraded_reason)
+    elif not degraded_mode:
+        result["degraded_reason"] = None
+        if result.get("degradation_reason"):
+            result["degradation_reason"] = ""
 
     if pages_audited > 0:
         confidence_score = float(result.get("confidence_score", 1.0) or 0.0)
@@ -1050,7 +1057,12 @@ async def _fetch_html(
         return any(token in text for token in retryable_tokens)
 
     def _is_blocked_status(status_code: int | None) -> bool:
-        return status_code in {401, 403, 407, 429}
+        """Non-recoverable block — do not retry. 429 is NOT included: it is rate-limited (recoverable)."""
+        return status_code in {401, 403, 407}
+
+    def _is_rate_limited_status(status_code: int | None) -> bool:
+        """Rate-limiting — recoverable with backoff. Must NOT be treated as blocked."""
+        return status_code == 429
 
     def _is_retryable_http_status(status_code: int | None) -> bool:
         if status_code is None:
@@ -1156,9 +1168,14 @@ async def _fetch_html(
             if body:
                 return body, "", meta
 
-            blocked_status = _is_blocked_status(status_code)
-            if blocked_status:
+            if _is_blocked_status(status_code):
                 break
+
+            if _is_rate_limited_status(status_code):
+                # Recoverable — honour Retry-After header then retry, do NOT break
+                retry_after = float(meta.get("retry_after_seconds") or 2 ** (idx + 1))
+                await asyncio.sleep(min(retry_after, 15.0))
+                continue
 
             should_retry = retryable_exc or _is_retryable_http_status(status_code)
             if should_retry and idx < len(attempt_budgets) - 1:
@@ -1340,8 +1357,6 @@ async def run_audit(
                         "csp_injection_blocked",
                     }:
                         _mark_degraded(preflight_result.degraded_reason, preflight_result.message)
-                        if preflight_result.degraded_reason in {"blocked_request", "bot_wall"}:
-                            skipped_components.extend(["browser_probes", "axe-core"])
             except Exception as exc:
                 logger.debug("Domain preflight check failed for %s: %s", url, exc)
 
@@ -1401,6 +1416,8 @@ async def run_audit(
                     if rendered_html:
                         html = rendered_html
                         engines_used.append("browser-probe")
+                        if "browser_probes" in skipped_components:
+                            skipped_components = [s for s in skipped_components if s != "browser_probes"]
                         
                         # Log SPA detection for debugging
                         spa_framework = browser_probe_metadata.get("spa_framework")
@@ -1433,10 +1450,25 @@ async def run_audit(
             fetch_timeout_budget = min(fetch_timeout, float(max_runtime))
             fetch_attempts = 3
             use_lightweight_fallback = True
-            if scan_mode == "fast" or is_minimal_mode:
+            complexity = str(adaptive_timeout_policy.get("complexity", "simple") or "simple")
+            if is_minimal_mode:
                 fetch_timeout_budget = min(fetch_timeout_budget, 4.0)
                 fetch_attempts = 1
                 use_lightweight_fallback = False
+            elif scan_mode == "fast":
+                # Keep fast mode fast, but avoid over-aggressive timeouts on heavy domains.
+                if complexity == "heavy":
+                    fetch_timeout_budget = min(fetch_timeout_budget, 8.0)
+                    fetch_attempts = 2
+                    use_lightweight_fallback = True
+                elif complexity == "moderate":
+                    fetch_timeout_budget = min(fetch_timeout_budget, 6.0)
+                    fetch_attempts = 2
+                    use_lightweight_fallback = True
+                else:
+                    fetch_timeout_budget = min(fetch_timeout_budget, 5.0)
+                    fetch_attempts = 1
+                    use_lightweight_fallback = False
 
             try:
                 html, fetch_reason, fetch_reliability_meta = await _fetch_html(
@@ -1458,10 +1490,15 @@ async def run_audit(
                 _mark_degraded(fetch_reason, _degradation_reason_message(fetch_reason, "content_fetch"))
 
         fetch_status = fetch_reliability_meta.get("status_code") if isinstance(fetch_reliability_meta, dict) else None
-        if fetch_status in {401, 403, 407, 429}:
+        if fetch_status in {401, 403, 407}:
             _mark_degraded(
                 "blocked_request",
                 f"Fetch returned status={fetch_status}; content may be partially blocked and results may be incomplete.",
+            )
+        elif fetch_status == 429:
+            _mark_degraded(
+                "rate_limited",
+                f"Fetch returned status={fetch_status}; upstream is rate-limiting requests.",
             )
         
         if not html:
@@ -1476,6 +1513,8 @@ async def run_audit(
                 suggested_fix="Retry with a stable network path or allowlist scanner user agents.",
                 fetch_status=fetch_status if isinstance(fetch_status, int) else None,
             )
+            _, fallback_priority_ranking = prioritize_issues([fallback_issue])
+            fallback_scoring_summary = build_scoring_summary([fallback_issue], degraded_mode=True)
             fallback_score, fallback_score_explanation = _calculate_score([fallback_issue], degraded_mode=True)
             scan_time = round(time.time() - start_time, 2)
 
@@ -1499,7 +1538,9 @@ async def run_audit(
                 "scan_mode": scan_mode,
                 "total_issues": 1,
                 "issues": [fallback_issue],
-                "priority_ranking": [],
+                "priority_ranking": fallback_priority_ranking,
+                "prioritized_issues": fallback_scoring_summary.get("prioritized_issues", []),
+                "recommendations": fallback_scoring_summary.get("recommendations", []),
                 "groups": [],
                 "score": response_score,
                 "score_raw": fallback_score,
@@ -1514,6 +1555,13 @@ async def run_audit(
                     "runtime_actual": scan_time,
                     "runtime_passed": scan_time <= max_runtime,
                     "safe_fallback_triggered": True,
+                    "total_before_dedup": 1,
+                    "total_after_dedup": 1,
+                    "duplicate_rate": 0.0,
+                    "duplicate_rate_passed": True,
+                    "precision_profile": precision_profile,
+                    "confidence_score": confidence_score,
+                    "confidence_note": confidence_note,
                 },
                 "enrichment_status": "skipped",
                 "pages_discovered": 1,
@@ -1645,6 +1693,9 @@ async def run_audit(
             elif engine_name == "axe-core":
                 axe_violations = engine_issues
 
+        if "axe-core" in engines_used and "axe-core" in skipped_components:
+            skipped_components = [s for s in skipped_components if s != "axe-core"]
+
         # If deep scan requested but browser engines did not execute, mark degraded.
         if scan_mode in {"deep", "max"}:
             used_set = set(engines_used)
@@ -1678,7 +1729,7 @@ async def run_audit(
                 *list(axe_violations or []),
             ]
 
-        # Deduplicate
+        # Deduplicate — primary pass removes exact/near-exact duplicates
         try:
             deduped_issues = deduplicate(all_issues)
         except Exception as e:
@@ -1686,6 +1737,13 @@ async def run_audit(
             _mark_degraded("extraction_failure", _degradation_reason_message("extraction_failure", "deduplication"))
             skipped_components.append("dedup")
             deduped_issues = list(all_issues)
+
+        # Proximity dedup — secondary pass removes near-duplicate selector variants
+        # (e.g. div.container > img vs div.container > img:nth-child(2) for same rule)
+        try:
+            deduped_issues = proximity_dedup(deduped_issues)
+        except Exception as e:
+            logger.warning("Proximity dedup failed (non-fatal): %s", e)
 
         # Apply confidence scoring
         try:

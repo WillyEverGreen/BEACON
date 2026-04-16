@@ -210,3 +210,9 @@ evaluation/sugarlabs_lighthouse_report.json
 frontend/test-results/
 frontend/.next/
 
+# Temporary validation artifacts (generated during local runs)
+tests/scripts/tmp_*.py
+tests/artifacts/
+tests/phase17_nytimes_max_report.json
+tests/subsets/phase17_nytimes_only.json
+

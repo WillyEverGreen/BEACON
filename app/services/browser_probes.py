@@ -99,7 +99,8 @@ class BrowserProber:
 
     def __init__(self, url: str, timeout: int = 30000, max_retries: int = 2):
         self.url = url
-        base_timeout_seconds = max(8, int(timeout / 1000))
+        caller_timeout_seconds = max(0, int(timeout / 1000))
+        base_timeout_seconds = max(8, caller_timeout_seconds)
         self.adaptive_timeouts = resolve_adaptive_timeouts(
             url,
             "deep",
@@ -107,7 +108,11 @@ class BrowserProber:
             network_idle_timeout_ms=12000,
             ready_state_timeout_ms=5000,
         )
-        self.timeout = int(self.adaptive_timeouts.get("page_timeout_seconds", base_timeout_seconds)) * 1000
+        resolved_timeout_seconds = int(self.adaptive_timeouts.get("page_timeout_seconds", base_timeout_seconds))
+        # Caller timeout (from run_audit adaptive policy) is already calibrated; do not downscale below it.
+        if caller_timeout_seconds > 0:
+            resolved_timeout_seconds = max(caller_timeout_seconds, resolved_timeout_seconds)
+        self.timeout = resolved_timeout_seconds * 1000
         self.max_retries = max_retries
         self.detected_framework: Optional[str] = None
         self.legacy_framework: Optional[str] = None
@@ -472,13 +477,13 @@ class BrowserProber:
     async def _navigate_with_retry(self, page, retry_count: int = 0) -> bool:
         """Navigate to URL with retry logic for CSP/Cloudflare/bot protection."""
         wait_strategies = ["networkidle", "domcontentloaded", "load", "commit"]
-        base_budget_ms = max(6000, int(self.timeout))
-        retry_factor = max(0.55, 1.0 - (retry_count * 0.2))
+        base_budget_ms = max(8000, int(self.timeout))
+        retry_factor = max(0.70, 1.0 - (retry_count * 0.15))
         strategy_timeouts = {
-            "networkidle": int(min(12000, base_budget_ms * 0.45) * retry_factor),
-            "domcontentloaded": int(min(9000, base_budget_ms * 0.35) * retry_factor),
-            "load": int(min(10000, base_budget_ms * 0.35) * retry_factor),
-            "commit": int(min(5000, base_budget_ms * 0.2) * retry_factor),
+            "networkidle": int(min(18000, base_budget_ms * 0.60) * retry_factor),
+            "domcontentloaded": int(min(14000, base_budget_ms * 0.50) * retry_factor),
+            "load": int(min(14000, base_budget_ms * 0.50) * retry_factor),
+            "commit": int(min(10000, base_budget_ms * 0.35) * retry_factor),
         }
 
         last_reason = "network_error"
@@ -765,7 +770,11 @@ class BrowserProber:
                     logger.info("Shadow DOM detected — some probes may have limited coverage")
 
                 # Capture rendered HTML (including shadow DOM content if possible)
-                rendered_html = await page.content()
+                try:
+                    rendered_html = await asyncio.wait_for(page.content(), timeout=8.0)
+                except asyncio.TimeoutError:
+                    logger.warning("Timed out capturing rendered HTML; using best-effort snapshot")
+                    rendered_html = await self._safe_snapshot_html(page)
 
                 # Max mode runs explicit interaction/scroll exploration and auth-wall fallback.
                 if str(scan_mode).lower() == "max":
@@ -847,12 +856,19 @@ class BrowserProber:
                     self._probe_focus_management,       # Phase 9.4: hybrid focus-management probes
                 ]
 
+                probe_timeout_s = float(self.adaptive_timeouts.get("probe_timeout_seconds", 8.0) or 8.0)
+                probe_timeout_s = max(2.5, min(12.0, probe_timeout_s))
+
                 for probe in probe_methods:
                     probe_name = probe.__name__
                     try:
-                        probe_issues = await probe(page)
-                        issues.extend(probe_issues)
+                        probe_issues = await asyncio.wait_for(probe(page), timeout=probe_timeout_s)
+                        if isinstance(probe_issues, list):
+                            issues.extend(probe_issues)
                         metadata["probes_executed"].append(probe_name)
+                    except asyncio.TimeoutError:
+                        logger.warning("Probe %s timed out after %.1fs", probe_name, probe_timeout_s)
+                        metadata["probes_failed"].append({"probe": probe_name, "error": "timeout"})
                     except Exception as e:
                         logger.warning(f"Probe {probe_name} failed: {e}")
                         metadata["probes_failed"].append({"probe": probe_name, "error": str(e)[:100]})

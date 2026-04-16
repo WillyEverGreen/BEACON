@@ -51,6 +51,7 @@ _HEAVY_HOST_HINTS = (
     "twitter.",
     "linkedin.",
     "reddit.",
+    "nytimes.",
     "pinterest.",
     "amazon.",
     "target.",
@@ -266,7 +267,10 @@ async def _safe_get_attribute(handle: Any, attribute: str) -> str:
 
 async def _safe_click(handle: Any) -> bool:
     try:
-        await handle.click()
+        try:
+            await handle.click(timeout=1500, no_wait_after=True)
+        except TypeError:
+            await handle.click(timeout=1500)
         return True
     except Exception:
         return False
