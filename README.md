@@ -1,8 +1,21 @@
-﻿![BEACON Logo](beacon.png)
+![BEACON Logo](beacon.png)
 
 # BEACON Accessibility Intelligence Engine
 
 BEACON is a FastAPI-based accessibility auditing platform with multi-engine scanning, crawler-assisted discovery, RAG-backed remediation, observability, and API-key RBAC.
+
+## Latest Updates — Phase 20 (April 20, 2026)
+
+- **Site topology detection** wired into the audit pipeline via `app/services/topology_detector.py`.
+  - Classifies every crawl as `single_page`, `thin`, `deep_uniform`, `paginated`, or `multi_template`.
+  - Topology influences `resolve_max_pages()` cap, ensuring template-diverse crawling.
+  - Results persisted in DB (`site_topology`, `templates_found`, `urls_discovered` columns via Alembic migration `81e9864e53a7`).
+- **Scan-mode page limit reform** — all crawl caps consolidated in `app/config.py::resolve_max_pages()`. No hardcoded `max_pages` in application code.
+- **Degraded-mode hardening** — unreachable and bot-blocked sites reliably surface `degraded_mode=True` with a human-readable `degraded_reason` and full E2 contract fields.
+- **Real-site validation** — 30-run all-modes suite (10 sites × fast/deep/max):
+  - **30/30 passed** (26 PASS + 4 expected-DEGRADED, 0 FAIL).
+  - Results archived in `docs/phase20_rule_distribution.md`.
+- **Rule diversity analysis** `docs/phase20_rule_distribution.md` confirms ≥5 unique rule IDs across passing sites with no single rule dominating >70%.
 
 ## Latest Updates (April 14, 2026)
 
@@ -70,7 +83,7 @@ flowchart LR
     ENRICH --> RAG[Hybrid Retrieval BM25 and Vector]
     RAG --> VDB[(ChromaDB)]
 
-    API --> DB[(SQLite via SQLAlchemy)]
+    API --> DB[(PostgreSQL / Neon via SQLAlchemy)]
     API --> OBS[Telemetry, Alerts, Metrics]
 ```
 
@@ -122,17 +135,20 @@ Recent hardening prevents the zero-score and empty-output failure class:
 
 ## Repository Layout
 
-- app/
-  - app/services: core engines, scoring, enrichment, caching
-  - app/audit: page auditor, parallel runner, site aggregation, scan-mode runner
-  - app/crawlers: sitemap, BFS, DOM crawlers and orchestrator
-  - app/security: API-key RBAC and URL validation
-  - app/observability: telemetry, alerts, logging, metrics
-  - app/db: SQLAlchemy models and repository
-- corpus/: source corpus used for ingestion and RAG
-- resources/: architecture and planning documents
-- tests/: unit and benchmark-related test assets
-- .env.example: environment variable template
+- `app/`
+  - `app/services/` — core engines, scoring, enrichment, caching, topology detection
+  - `app/audit/` — page auditor, parallel runner, site aggregation, scan-mode runner
+  - `app/crawlers/` — sitemap, BFS, DOM crawlers and orchestrator
+  - `app/security/` — API-key RBAC and URL validation
+  - `app/observability/` — telemetry, alerts, logging, metrics
+  - `app/db/` — SQLAlchemy models, Alembic migrations, repository
+- `alembic/versions/` — DB migrations (tracked in git)
+- `tests/unit/` — unit tests including Phase 20 topology + scan-mode tests
+- `tests/integration/` — real-site integration suites (Phase 19 & 20)
+- `scripts/` — CLI audit runner and validation helpers
+- `docs/` — analysis reports, CLI reference, triage notes
+- `corpus/` — source corpus used for ingestion and RAG
+- `.env.example` — environment variable template (never commit `.env`)
 
 ## Setup
 
@@ -261,6 +277,23 @@ curl -H "Authorization: Bearer <ADMIN_KEY>" http://localhost:8000/metrics
 curl -H "Authorization: Bearer <ADMIN_KEY>" http://localhost:8000/audit/cache/stats
 ```
 
+## Detailed CLI Audit (Any URL / Mode)
+
+Run a complete single-command audit bundle (raw JSON + markdown + CSV + dedup/group/WCAG summaries):
+
+```bash
+python scripts/run_detailed_audit_cli.py https://example.com --scan-mode fast
+```
+
+Deep and max examples:
+
+```bash
+python scripts/run_detailed_audit_cli.py https://www.nytimes.com --scan-mode deep --show-top 30
+python scripts/run_detailed_audit_cli.py https://www.wikipedia.org --scan-mode max --enable-enrichment --await-enrichment
+```
+
+See full flag reference in `docs/detailed_cli_audit.md`.
+
 ## Focused Regression Validation
 
 Use this command to validate the critical reliability fixes:
@@ -285,17 +318,28 @@ python evaluation/benchmark_production.py
 Run before opening a PR or pushing to shared branches:
 
 ```bash
-python -m py_compile app/config.py app/audit/scan_mode_runner.py app/routers/dashboard_api.py
-python -m pytest tests/unit/audit/test_site_aggregator.py -q
+# Syntax check core modules
+python -m py_compile app/config.py app/audit/scan_mode_runner.py app/routers/dashboard_api.py app/services/topology_detector.py
+
+# Unit tests (fast, ~6s)
+python -m pytest tests/unit/ -q
+
+# Integration smoke (fast-mode only, ~40s)
+python -m pytest tests/integration/test_phase20_all_modes.py -k "fast" -q --timeout=90
+
+# DB migration state
 alembic current
+
+# Repo hygiene
 git status --short
 ```
 
 Push hygiene:
 
-- Verify no secrets are staged (`.env` stays local).
+- `.env` stays local — **never stage it**. Confirm with `git status` before every push.
 - Keep `.env.example` updated when new env keys are introduced.
-- Ensure scan mode docs match current config values.
+- Phase run outputs (`phase*.json`, `*.log`) are gitignored; keep them local only.
+- Ensure scan mode docs (`README.md` table) match values in `app/config.py::SCAN_MODES`.
 
 ## Important Notes
 

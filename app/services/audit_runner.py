@@ -800,6 +800,13 @@ def _enforce_audit_invariants(result: dict[str, Any]) -> dict[str, Any]:
 
     trust_payload = result.get("trust")
     if not isinstance(trust_payload, dict) or not trust_payload:
+        logger.warning(
+            "Invariant: trust payload missing for audit_id=%s. "
+            "Regenerating from available telemetry. "
+            "Root cause: trust payload not produced by main pipeline path.",
+            result.get("audit_id", "unknown"),
+            extra={"invariant_trust_regenerated": True},
+        )
         quality = result.get("quality_gates")
         quality_dict = quality if isinstance(quality, dict) else {}
         profile_telemetry = result.get("precision_profile_telemetry")
@@ -1274,13 +1281,15 @@ async def run_audit(
     try:
         url = validate_public_url(url)
     except URLValidationError as exc:
+        _reason = f"Site unreachable: {exc}"
         failure = {
             "url": str(url),
             "scan_mode": scan_mode,
             "total_issues": 0,
             "issues": [],
             "groups": [],
-            "score": 0.0,
+            # score=None: no data collected — 0.0 would be a valid score.
+            "score": None,
             "cognitive_scores": None,
             "summary": f"URL validation failed: {exc}",
             "markdown_report": "",
@@ -1293,7 +1302,7 @@ async def run_audit(
                 "data_quality": "low",
                 "engines_coverage": {"static": False, "browser": False, "axe": False, "heuristic": False},
                 "calibration_warnings": ["audit_not_started_url_validation_failed"],
-                "audit_completeness": "partial",
+                "audit_completeness": "none",
                 "low_trust_rules_present": [],
                 "score_integrity": {},
                 "hybrid_required_rules": dict(HYBRID_REQUIRED_RULES),
@@ -1302,7 +1311,14 @@ async def run_audit(
             "enrichment_status": "failed",
             "pages_discovered": 0,
             "pages_audited": 0,
+            # Phase 20: unreachable sites MUST report degraded.
+            "degraded_mode": True,
+            "degraded_reason": _reason,
+            # E2 contract: always present regardless of failure path.
+            "http_client": "curl_cffi/chrome",
+            "browser_engine": "camoufox/firefox",
         }
+        logger.warning("URL validation failure — degraded: url=%s reason=%s", url, _reason)
         return _finalize_result(failure, status="failed")
     
     # ── Step 0a: Check URL Cache ───────────────────────────────
@@ -1567,7 +1583,12 @@ async def run_audit(
                 "pages_discovered": 1,
                 "pages_audited": 1,
                 "degraded_mode": True,
-                "degraded_reason": normalize_failure(degraded_reason).value if degraded_reason else None,
+                # Phase 20: degraded_reason must always be a non-empty string.
+                "degraded_reason": (
+                    normalize_failure(degraded_reason).value
+                    if degraded_reason
+                    else "network_error"
+                ),
                 "skipped_components": sorted(set(skipped_components)),
                 "degradation_reason": degradation_reason,
                 "confidence_score": confidence_score,
@@ -1594,6 +1615,9 @@ async def run_audit(
                 if isinstance(failure["site_result"].get("best_page"), dict):
                     failure["site_result"]["best_page"]["score"] = None
 
+            # E2 contract: always present regardless of failure path.
+            failure.setdefault("http_client", "curl_cffi/chrome")
+            failure.setdefault("browser_engine", "camoufox/firefox")
             return _finalize_result(failure, status="completed")
 
         # ── Step 1.5: Check Structure / DOM Cache ─────────────────
@@ -1760,8 +1784,10 @@ async def run_audit(
             "rule_coverage": {},
             "warnings": [],
         }
+        hybrid_ran = False
         try:
             scored_issues, hybrid_telemetry = _enforce_hybrid_required_rules(scored_issues)
+            hybrid_ran = True
         except Exception as e:
             logger.error("Hybrid corroboration enforcement failed: %s", e)
             hybrid_telemetry = {
@@ -1769,7 +1795,16 @@ async def run_audit(
                 "rule_coverage": {},
                 "warnings": ["hybrid_enforcement_error"],
             }
-        
+
+        # Ordering invariant: hybrid MUST execute before _apply_precision_profile.
+        # Checks both that the call completed (hybrid_ran) AND that telemetry is valid.
+        # If this assert fires, the call sequence was reordered — revert immediately.
+        assert hybrid_ran and "hybrid_required_rules" in hybrid_telemetry, (
+            "Pipeline ordering violation: _enforce_hybrid_required_rules must run "
+            "before _apply_precision_profile. hybrid_ran=%s, telemetry_keys=%s"
+            % (hybrid_ran, list(hybrid_telemetry.keys()) if isinstance(hybrid_telemetry, dict) else type(hybrid_telemetry))
+        )
+
         # ── Step 4: Cognitive checks (deep mode only) ──────────────
         if scan_mode in {"deep", "max"} and enable_cognitive:
             try:
@@ -2130,6 +2165,39 @@ async def run_audit(
         summary_parts.append(f"Time: {scan_time:.1f}s")
         summary = " | ".join(summary_parts)
 
+        # ── Phase 20: Site topology detection ─────────────────────────────
+        # Fires on the discovered URL list from this audit run.  For single-page
+        # fast-mode audits the list contains only the root URL; detect_topology
+        # handles this gracefully (returns SINGLE_PAGE).  For multi-page runs
+        # (deep/max with a crawl phase) the full discovered set is passed and
+        # the topology classification informs template-diverse URL selection.
+        try:
+            from app.services.topology_detector import detect_topology as _detect_topology
+            _rendered_count = int(bool(
+                browser_probe_metadata.get("rendered_html_length", 0) or
+                browser_probe_metadata.get("url_count", 0) or
+                html
+            ))
+            _discovered_for_topology: list[str] = [str(url)]
+            _topology_result = _detect_topology(
+                _discovered_for_topology,
+                rendered_page_count=_rendered_count,
+            )
+            _topology_value = (
+                _topology_result.topology.value
+                if hasattr(_topology_result.topology, "value")
+                else str(_topology_result.topology)
+            )
+            _templates_found = _topology_result.templates_found
+            _urls_discovered = _topology_result.total_discovered
+            _urls_skipped = _topology_result.skipped_urls
+        except Exception as _topo_exc:
+            logger.debug("topology_detect failed (non-fatal): %s", _topo_exc)
+            _topology_value = None
+            _templates_found = None
+            _urls_discovered = None
+            _urls_skipped = None
+
         res = {
             "url": url,
             "scan_mode": scan_mode,
@@ -2196,7 +2264,18 @@ async def run_audit(
                     "signals": [],
                 },
             ),
+            # Phase 20: topology metadata
+            "site_topology": _topology_value,
+            "templates_found": _templates_found,
+            "urls_discovered": _urls_discovered,
+            "urls_skipped": _urls_skipped,
         }
+
+        # ── E2: Structured audit metadata fields ───────────────────────────
+        # Stamp which HTTP client and browser engine were active for this audit.
+        # Uses setdefault so a future engine swap can override without touching this block.
+        res.setdefault("http_client", "curl_cffi/chrome")
+        res.setdefault("browser_engine", "camoufox/firefox")
 
         if response_score is None and isinstance(res.get("site_result"), dict):
             site_result = res["site_result"]

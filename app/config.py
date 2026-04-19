@@ -169,6 +169,23 @@ CRAWLER_CONFIG = {
 
 SITEMAP_MAX_DEPTH = 5
 
+# ── Degraded mode scoring contract ─────────────────────────────────────
+# Execution order is STRICT: raw_score → multiply → cap.
+# NEVER apply both as additive penalties — they compose, not add.
+#   Step 1: raw_score  computed by build_scoring_summary()
+#   Step 2: raw_score * DEGRADED_MODE_MULTIPLIER   (in prioritizer.py)
+#   Step 3: min(result, DEGRADED_MODE_MAX_SCORE)    (cap in _apply_score_integrity_caps)
+# Edge cases:
+#   raw_score < DEGRADED_MODE_MAX_SCORE already → multiplier still applies, cap is a no-op.
+#   multiplier brings score below 0 → max(0.0, score) guard in build_scoring_summary.
+#   e.g. raw=95 → 95*0.85=80.75 → cap no-op → penalty=14.25
+#   e.g. raw=100 → 100*0.85=85 → cap to 82.0 → penalty=18.0
+DEGRADED_MODE_MULTIPLIER: float = 0.85
+DEGRADED_MODE_MAX_SCORE: float = 82.0
+
+# Alias: MAX_SITEMAP_DEPTH mirrors SITEMAP_MAX_DEPTH for forward-compatibility.
+MAX_SITEMAP_DEPTH: int = SITEMAP_MAX_DEPTH
+
 CRAWL_ADAPTIVE_STRATEGY = {
     "rate_limit_backoff_seconds": 5.0,
     "max_consecutive_failures": 3,
@@ -894,3 +911,92 @@ CRAWL_CONCURRENCY = int(settings.crawl_concurrency or CRAWL_CONCURRENCY)
 SITEMAP_MAX_DEPTH = max(1, int(settings.sitemap_max_depth or SITEMAP_MAX_DEPTH))
 LLM_FIRE_BUDGET_PER_AUDIT = max(0, int(settings.llm_fire_budget_per_audit or LLM_FIRE_BUDGET_PER_AUDIT))
 AUDIT_CONCURRENCY_LIMIT = max(1, int(settings.audit_concurrency_limit or AUDIT_CONCURRENCY_LIMIT))
+
+
+# ── Phase 20: Scan Mode Page Count Envelope ──────────────────────────────────
+# SCAN_MODES is a new, additive dict that exposes three page-count values per
+# mode. The existing SCAN_MODE_CONFIG (crawl_cap, bfs_depth, etc.) is unchanged.
+# Call resolve_max_pages(scan_mode, has_sitemap) everywhere instead of
+# hardcoding a page count.
+
+from typing import Final  # noqa: E402  (needed here after module-level code)
+from enum import Enum      # noqa: E402
+
+SCAN_MODES: Final[dict] = {
+    "fast": {
+        "max_pages_default":  5,
+        "max_pages_sitemap":  8,
+        "max_pages_ceiling":  10,
+        "max_depth":          2,
+        "timeout_ms":         15_000,
+        "enable_enrichment":  False,
+        "enable_cognitive":   False,
+    },
+    "deep": {
+        "max_pages_default":  15,
+        "max_pages_sitemap":  25,
+        "max_pages_ceiling":  30,
+        "max_depth":          4,
+        "timeout_ms":         30_000,
+        "enable_enrichment":  True,
+        "enable_cognitive":   False,
+    },
+    "max": {
+        "max_pages_default":  40,
+        "max_pages_sitemap":  60,
+        "max_pages_ceiling":  75,
+        "max_depth":          6,
+        "timeout_ms":         60_000,
+        "enable_enrichment":  True,
+        "enable_cognitive":   True,
+    },
+}
+
+
+def resolve_max_pages(scan_mode: str, has_sitemap: bool) -> int:
+    """Return effective max_pages for a scan mode.
+
+    Callers should never set max_pages directly — always call this helper
+    after the sitemap crawler finishes so ``has_sitemap`` is accurate.
+
+    Args:
+        scan_mode:   One of "fast", "deep", "max".  Unknown modes fall back
+                     to "fast".
+        has_sitemap: True if the sitemap crawler returned at least one URL.
+
+    Returns:
+        Effective page ceiling, never exceeding ``max_pages_ceiling``.
+    """
+    mode = SCAN_MODES.get(scan_mode, SCAN_MODES["fast"])
+    if has_sitemap:
+        return min(mode["max_pages_sitemap"], mode["max_pages_ceiling"])
+    return min(mode["max_pages_default"], mode["max_pages_ceiling"])
+
+
+# ── Phase 20: Site Topology ──────────────────────────────────────────────────
+# Used by app/services/topology_detector.py (created in Phase 20).
+# SiteTopology is a str-Enum so it serialises cleanly to JSON / DB columns.
+
+class SiteTopology(str, Enum):
+    SINGLE_PAGE    = "single_page"
+    THIN           = "thin"
+    PAGINATED      = "paginated"
+    DEEP_UNIFORM   = "deep_uniform"
+    MULTI_TEMPLATE = "multi_template"
+
+
+# How many pages to sample per template group for each topology class.
+# THIN: 99 = effectively unlimited — thin brochure sites have few unique pages
+#            and every one should be audited (no template deduplication needed).
+# SINGLE_PAGE: exactly 1 — SPA root is the only auditable route discovered.
+# PAGINATED: 2 — sample two paginated variants to check consistency.
+# DEEP_UNIFORM: 2 — sample two instances of the dominant template.
+# MULTI_TEMPLATE: 3 — representative sample across each template section.
+TOPOLOGY_PAGES_PER_TEMPLATE: Final[dict] = {
+    SiteTopology.SINGLE_PAGE:    1,
+    SiteTopology.THIN:           99,  # audit everything — thin sites are small
+    SiteTopology.PAGINATED:      2,
+    SiteTopology.DEEP_UNIFORM:   2,
+    SiteTopology.MULTI_TEMPLATE: 3,
+}
+

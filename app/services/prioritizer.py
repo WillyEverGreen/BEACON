@@ -15,7 +15,7 @@ from collections import defaultdict
 from statistics import mean
 from typing import Any
 
-from app.config import TRUST_CALIBRATION
+from app.config import TRUST_CALIBRATION, DEGRADED_MODE_MULTIPLIER
 
 logger = logging.getLogger(__name__)
 
@@ -627,7 +627,10 @@ def build_scoring_summary(issues: list[dict[str, Any]], *, degraded_mode: bool =
         critical_issue_cap_applied = True
 
     if degraded_mode:
-        score = max(0.0, score * 0.85)
+        pre_degraded_score = score  # capture before multiplier for exact penalty
+        score = max(0.0, score * DEGRADED_MODE_MULTIPLIER)
+    else:
+        pre_degraded_score = score
 
     confidence_summary = _confidence_summary(scorable_issues)
     quality_signal = _high_quality_signal(
@@ -669,7 +672,7 @@ def build_scoring_summary(issues: list[dict[str, Any]], *, degraded_mode: bool =
         "major_penalty": round(major_penalty, 3),
         "minor_penalty": round(minor_penalty, 3),
         "total_penalty_applied": round(total_penalty, 3),
-        "degraded_mode_penalty": round((100.0 - total_penalty) * 0.15, 3) if degraded_mode else 0.0,
+        "degraded_mode_penalty": round(pre_degraded_score - score, 3) if degraded_mode else 0.0,
         "critical_issue_cap_applied": critical_issue_cap_applied,
         "multiple_critical_cap_applied": multiple_critical_cap_applied,
         "declared_critical_count": declared_critical_count,

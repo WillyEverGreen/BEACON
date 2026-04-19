@@ -265,6 +265,7 @@ def _normalize_site_scan_result(site_payload: dict, scan_mode: str, elapsed_seco
         "trust": trust_payload,
         "pages_scanned": pages_scanned,
         "pages_discovered": pages_discovered,
+        "scraped_pages": site_payload.get("urls_audited") or site_payload.get("scraped_pages") or [],
     }
 
 
@@ -634,6 +635,7 @@ async def start_scan(data: ScanStart):
         "scan_time_seconds": 0,
         "pages_scanned": 1,
         "pages_discovered": 1,
+        "scraped_pages": [],
         "degraded_mode": False,
         "degraded_reason": normalize_failure(None).value if False else None,
         "skipped_components": [],
@@ -735,6 +737,7 @@ async def start_scan(data: ScanStart):
             scan_record["scan_time_seconds"] = result.get("scan_time_seconds", 0)
             scan_record["pages_scanned"] = int(result.get("pages_scanned") or 1)
             scan_record["pages_discovered"] = int(result.get("pages_discovered") or scan_record["pages_scanned"])
+            scan_record["scraped_pages"] = result.get("scraped_pages", [])
             trust_payload = dict(result.get("trust", {}) or {})
             trust_payload["confidence_score"] = result.get("confidence_score")
             trust_payload["confidence_note"] = result.get("confidence_note", "")

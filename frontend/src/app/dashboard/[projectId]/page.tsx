@@ -735,7 +735,7 @@ export default function ProjectDetailPage() {
 
   return (
     <div className="animate-fade-in w-full pb-20">
-      {/* ── Header ────────────────────────────────────────────── */}
+      {/* ── Header {/* ── Tabs ──────────────────────────────────────── */}
       <div className="mb-8 pb-6 border-b border-[var(--beacon-border)]/60">
         <Link
           href="/dashboard"
@@ -918,10 +918,16 @@ export default function ProjectDetailPage() {
                 className="text-4xl md:text-5xl font-cabinet font-extrabold tabular-nums tracking-tighter"
                 style={{ color }}
               >
-                {value}
-                <span className="text-lg md:text-xl font-bold text-[var(--beacon-text-muted)] opacity-50">
-                  {suffix}
-                </span>
+                {label === "Score" && latestScan?.score == null ? (
+                  <span className="text-2xl font-extrabold text-amber-400/80">N/A</span>
+                ) : (
+                  <>
+                    {value}
+                    <span className="text-lg md:text-xl font-bold text-[var(--beacon-text-muted)] opacity-50">
+                      {suffix}
+                    </span>
+                  </>
+                )}
               </p>
               <p className="text-xs font-bold text-[var(--beacon-text-muted)] mt-2 uppercase tracking-[0.1em]">
                 {label}
@@ -942,7 +948,25 @@ export default function ProjectDetailPage() {
         </div>
       )}
 
-      {/* ── Tabs ──────────────────────────────────────────────── */}
+      {/* ── Degraded Mode Banner ─────────────────────────────── */}
+      {latestScan?.degraded_mode && (
+        <div className="flex items-center gap-3 px-5 py-3.5 mb-3 rounded-lg border border-amber-400/40 bg-amber-400/10 text-amber-300 text-xs font-bold uppercase tracking-[0.1em] shadow-sm animate-fade-in">
+          <span className="text-amber-400 text-base" aria-hidden>⚠</span>
+          <div className="flex-1">
+            <span className="text-amber-400">Degraded Scan</span>
+            {latestScan.degradation_reason && (
+              <span className="ml-2 font-medium text-amber-300/70 normal-case tracking-normal">
+                — {latestScan.degradation_reason}
+              </span>
+            )}
+          </div>
+          <span className="px-2 py-0.5 rounded bg-amber-400/20 border border-amber-400/30 text-[10px] text-amber-300 font-extrabold">
+            Score capped at {latestScan.trust?.score_integrity?.caps_applied?.find((c: any) => c.type === "partial_audit_cap")?.to ?? 82}/100
+          </span>
+        </div>
+      )}
+
+{/* ── Tabs ──────────────────────────────────────── */}
       <div className="flex gap-1 bg-[var(--beacon-surface)] border border-[var(--beacon-border)] p-1.5 rounded-lg w-full overflow-x-auto mb-8 shadow-sm">
         {TABS.map((t) => (
           <button
@@ -1306,7 +1330,42 @@ export default function ProjectDetailPage() {
             )}
           </div>
 
-          {/* Engines & Meta */}
+          {/* ── Pages Audited Accordion ────────────────────────── */}
+          {latestScan?.scraped_pages && latestScan.scraped_pages.length > 0 && (
+            <details className="glass-card p-5 group">
+              <summary className="flex items-center justify-between cursor-pointer select-none outline-none list-none">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-extrabold uppercase tracking-[0.1em] text-[var(--beacon-text)]">
+                    Pages Audited
+                  </span>
+                  <span className="bg-[var(--beacon-primary)]/15 text-[var(--beacon-primary)] text-[10px] font-extrabold px-2 py-0.5 rounded border border-[var(--beacon-primary)]/20">
+                    {latestScan.scraped_pages.length}
+                  </span>
+                  {latestScan.degraded_mode && (
+                    <span className="bg-amber-400/15 text-amber-300 text-[10px] font-extrabold px-2 py-0.5 rounded border border-amber-400/20">
+                      Incomplete
+                    </span>
+                  )}
+                </div>
+                <span className="text-[var(--beacon-text-muted)] text-xs transition-transform group-open:rotate-180 select-none">
+                  ▾
+                </span>
+              </summary>
+              <div className="mt-4 space-y-1 max-h-64 overflow-y-auto pr-1">
+                {latestScan.scraped_pages.map((pageUrl: string, idx: number) => (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-2 text-xs font-mono text-[var(--beacon-text-soft)] bg-[var(--beacon-bg)] px-3 py-2 rounded border border-[var(--beacon-border)] hover:border-[var(--beacon-primary)]/40 transition-colors"
+                  >
+                    <span className="text-[var(--beacon-primary)] opacity-60 shrink-0">{idx + 1}.</span>
+                    <span className="truncate flex-1">{pageUrl}</span>
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+
+
           <div className="glass-card p-5 px-6 flex flex-wrap items-center justify-between gap-6 text-xs text-[var(--beacon-text-muted)] font-bold">
             <div className="flex items-center gap-2">
               <span className="uppercase tracking-[0.1em] opacity-80">

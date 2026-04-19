@@ -357,7 +357,38 @@ async def run_scan_mode_audit(
         deduped_urls = _dedupe_urls(discovered_urls)
         if not deduped_urls:
             deduped_urls = [seed_url]
-        urls_to_audit = deduped_urls[:effective_max_pages]
+
+        # ── Phase 20: Topology-guided URL selection ──────────────────────────
+        # Run detect_topology on the full discovered set so the classification
+        # uses maximum signal.  The returned crawl_urls list is already:
+        #   • deduplicated          • template-diverse
+        #   • pagination-filtered   • homepage-first
+        # Fall back to the dumb slice if the detector fails.
+        _topo_value: str | None = None
+        _topo_templates: int | None = None
+        _topo_discovered: int | None = None
+        _topo_skipped: int | None = None
+        try:
+            from app.services.topology_detector import detect_topology as _topo_detect
+            _topo_result = _topo_detect(deduped_urls)
+            # Respect the effective_max_pages ceiling: even topology-guided lists
+            # must not exceed what the caller requested.
+            _topo_crawl = _topo_result.crawl_urls[:effective_max_pages]
+            urls_to_audit = _topo_crawl if _topo_crawl else deduped_urls[:effective_max_pages]
+            _topo_value = (
+                _topo_result.topology.value
+                if hasattr(_topo_result.topology, "value")
+                else str(_topo_result.topology)
+            )
+            _topo_templates = _topo_result.templates_found
+            _topo_discovered = _topo_result.total_discovered
+            _topo_skipped = _topo_result.skipped_urls
+        except Exception as _topo_err:
+            import logging as _logging
+            _logging.getLogger(__name__).warning(
+                "topology detection failed in scan_mode_runner (fallback to slice): %s", _topo_err
+            )
+            urls_to_audit = deduped_urls[:effective_max_pages]
 
         context = page_context or PageContext()
         created_context = page_context is None
@@ -405,6 +436,11 @@ async def run_scan_mode_audit(
                     AUDIT_PIPELINE_CONFIG["parallel_runner"].get("max_concurrent_site_audits", 4)
                 )
             }
+            # Phase 20: topology metadata propagated from URL-selection phase
+            result["site_topology"] = _topo_value
+            result["templates_found"] = _topo_templates
+            result["urls_discovered"] = _topo_discovered
+            result["urls_skipped"] = _topo_skipped
 
             if isinstance(result.get("site_result"), dict):
                 result["site_result"]["pages_discovered"] = len(deduped_urls)

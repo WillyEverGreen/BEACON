@@ -444,6 +444,15 @@ def apply_confidence_rules(issues: list[dict], html: str = "") -> list[dict]:
         rule_id = issue.get("rule_id", "")
         issue["impact_summary"] = IMPACT_SUMMARIES.get(rule_id, IMPACT_SUMMARIES["_default"])
 
+    # ── Confidence boost contract ── TWO PASSES BY DESIGN ─────────────────
+    # DO NOT consolidate these into a single pass without reading this contract.
+    # Pass 1 (_apply_production_confidence_boost, above): per-issue boost based on
+    #         source_count, recurrence, and structural trust. Hard-capped at 0.95.
+    # Pass 2 (_boost_cross_engine_agreement, below): rule-level floor when 2+
+    #         independent engines agree on same rule_id. Uses max(current, 0.85|0.95).
+    #         Never lowers a result from Pass 1; only raises it.
+    # Example: issue at 0.92 from Pass 1 stays 0.92. Issue at 0.70 from Pass 1
+    #          is floored to 0.85 if 2 engines agree, or 0.95 if 3+ agree.
     issues = _boost_cross_engine_agreement(issues)
 
     # Log summary

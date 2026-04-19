@@ -10,7 +10,7 @@ from urllib.parse import urljoin
 from defusedxml import ElementTree as SafeET
 from curl_cffi import AsyncSession
 
-from app.config import CRAWLER_CONFIG, SITEMAP_MAX_DEPTH
+from app.config import CRAWLER_CONFIG, SITEMAP_MAX_DEPTH, MAX_SITEMAP_DEPTH
 from app.crawlers.common import (
     clamp,
     get_origin,
@@ -125,8 +125,11 @@ class SitemapCrawler:
         disallow_set: frozenset[str],
         depth: int = 0,
     ) -> None:
-        if depth > self.max_depth:
-            logger.warning("Sitemap recursion depth exceeded at %s (depth=%s)", sitemap_url, depth)
+        if depth >= MAX_SITEMAP_DEPTH:
+            logger.warning(
+                "Sitemap depth %s reached MAX_SITEMAP_DEPTH=%s at %s. Stopping recursion.",
+                depth, MAX_SITEMAP_DEPTH, sitemap_url,
+            )
             return
 
         normalized_sitemap = normalize_url(sitemap_url)

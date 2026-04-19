@@ -216,3 +216,10 @@ tests/artifacts/
 tests/phase17_nytimes_max_report.json
 tests/subsets/phase17_nytimes_only.json
 
+# Phase run outputs (JSON + logs generated at project root during integration runs)
+phase*.json
+phase*.log
+phase*_triage.md
+
+# Generic root-level log files
+*.log

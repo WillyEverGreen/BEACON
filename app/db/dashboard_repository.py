@@ -71,6 +71,7 @@ def _serialize_scan(record: DashboardScanRecord) -> dict[str, Any]:
         "scan_time_seconds": float(record.scan_time_seconds or 0.0),
         "pages_scanned": int(record.pages_scanned or 1),
         "pages_discovered": int(record.pages_discovered or 1),
+        "scraped_pages": list(record.scraped_pages or []),
         "degraded_mode": bool(record.degraded_mode),
         "degraded_reason": normalize_failure(record.degraded_reason).value if record.degraded_reason else None,
         "skipped_components": list(record.skipped_components or []),
@@ -78,6 +79,10 @@ def _serialize_scan(record: DashboardScanRecord) -> dict[str, Any]:
         "enrichment_status": record.enrichment_status or "pending",
         "cognitive_scores": record.cognitive_scores,
         "markdown_report": record.markdown_report or "",
+        # Phase 20: topology fields
+        "site_topology": record.site_topology,
+        "templates_found": int(record.templates_found) if record.templates_found is not None else None,
+        "urls_discovered": int(record.urls_discovered) if record.urls_discovered is not None else None,
         "created_at": _to_iso(record.created_at),
         "completed_at": _to_iso(record.completed_at),
     }
@@ -128,6 +133,7 @@ def _apply_scan_record(record: DashboardScanRecord, payload: dict[str, Any]) -> 
     record.scan_time_seconds = float(payload.get("scan_time_seconds") or 0.0)
     record.pages_scanned = int(payload.get("pages_scanned") or 1)
     record.pages_discovered = int(payload.get("pages_discovered") or record.pages_scanned)
+    record.scraped_pages = list(payload.get("scraped_pages") or [])
     record.degraded_mode = bool(payload.get("degraded_mode", False))
     record.degraded_reason = normalize_failure(payload.get("degraded_reason")).value if payload.get("degraded_reason") else None
     record.skipped_components = list(payload.get("skipped_components") or [])
@@ -135,6 +141,13 @@ def _apply_scan_record(record: DashboardScanRecord, payload: dict[str, Any]) -> 
     record.enrichment_status = str(payload.get("enrichment_status") or "pending")
     record.cognitive_scores = payload.get("cognitive_scores")
     record.markdown_report = str(payload.get("markdown_report") or "")
+    # Phase 20: topology fields
+    _topo = payload.get("site_topology")
+    record.site_topology = str(_topo) if _topo is not None else None
+    _tf = payload.get("templates_found")
+    record.templates_found = int(_tf) if _tf is not None else None
+    _ud = payload.get("urls_discovered")
+    record.urls_discovered = int(_ud) if _ud is not None else None
     record.created_at = _from_iso(payload.get("created_at")) or dt.datetime.utcnow()
     record.completed_at = _from_iso(payload.get("completed_at"))
 

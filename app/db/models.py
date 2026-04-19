@@ -143,6 +143,7 @@ class DashboardScanRecord(Base):
     scan_time_seconds: Mapped[float] = mapped_column(Float, default=0.0)
     pages_scanned: Mapped[int] = mapped_column(Integer, default=1)
     pages_discovered: Mapped[int] = mapped_column(Integer, default=1)
+    scraped_pages: Mapped[list] = mapped_column(JSON, default=list)
     degraded_mode: Mapped[bool] = mapped_column(Boolean, default=False)
     degraded_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     skipped_components: Mapped[list] = mapped_column(JSON, default=list)
@@ -150,6 +151,10 @@ class DashboardScanRecord(Base):
     enrichment_status: Mapped[str] = mapped_column(String(32), default="pending")
     cognitive_scores: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     markdown_report: Mapped[str] = mapped_column(Text, default="")
+    # Phase 20: site topology metadata
+    site_topology: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    templates_found: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    urls_discovered: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=dt.datetime.utcnow, index=True)
     completed_at: Mapped[dt.datetime | None] = mapped_column(DateTime, nullable=True, index=True)
 
