@@ -1,103 +1,225 @@
-# ACCESSIBILITY_COVERAGE
+# ACCESSIBILITY_COVERAGE v2.6
 
-## 🚀 Quick Summary
+> Last Updated: 2026-04-20
+> Evidence Basis: runtime code + mappings + release validation artifacts
+> Scope: Detection coverage (WCAG 2.2 A/AA baseline), not legal compliance certification
 
-- Automated WCAG coverage: ~55% (core detection) + runtime JS enrichment via Lighthouse (deep/max)
-- Strong coverage in: semantics, ARIA, keyboard, structure
-- Partial coverage in: UX, cognitive, navigation
-- Not covered by static scan: advanced media, timing, gestures
-- Lighthouse enrichment: supplements detection in deep/max modes — adds runtime JS/performance findings BEACON cannot see with static analysis
-- RAG: enrichment only (not detection)
+## Quick Summary
 
-This tool is NOT a full compliance solution.
+- Implemented WCAG 2.2 A/AA coverage (full + partial): 55.2% (32/58)
+- Strongest coverage: structure, semantics, ARIA, name/role/value, keyboard fundamentals
+- Partial coverage: context-sensitive and runtime-dependent checks (focus visuals, reflow variants, input purpose, language nuances)
+- Not covered / weakly covered: advanced media, timing, gesture/pointer alternatives, several predictable-input criteria
+- Lighthouse (deep/max only) is a runtime enrichment layer and does not change baseline detector percentages in this report
+- RAG enriches remediation text only; it is not a detector engine
 
-## 📊 Coverage Overview
+This tool is not a full WCAG/ADA/EAA/Section 508 compliance solution by itself.
 
-| Category    | Coverage |
-| ----------- | -------- |
-| Full        | 34.5%    |
-| Partial     | 20.7%    |
-| Not Covered | 44.8%    |
+---
 
-## 1) Scope and Method
+## 1) Coverage Snapshot
 
-This document is generated from implementation evidence in code, not from marketing claims or benchmark assumptions.
+### 1.1 Percent Distribution (WCAG 2.2 A/AA baseline = 58 SC)
 
-Evidence sources analyzed:
+| Category                     | Count | Percent |
+| :--------------------------- | ----: | ------: |
+| Full                         |    20 |   34.5% |
+| Partial                      |    12 |   20.7% |
+| Not Covered                  |    26 |   44.8% |
+| Implemented (Full + Partial) |    32 |   55.2% |
+
+Both **Partial** and **Not Covered** categories are intentionally retained.
+
+- Partial: logic exists but is single-engine, heuristic-heavy, or mode/runtime-gated. Credibility gain comes from hardening these, not hiding them.
+- Not Covered: honest compliance-risk signal. Removing this category would be misleading to buyers, engineers, and auditors.
+
+### 1.2 Visual Coverage Split
+
+```mermaid
+pie title WCAG 2.2 A/AA Coverage Split (58 SC)
+    "Full (20)" : 20
+    "Partial (12)" : 12
+    "Not Covered (26)" : 26
+```
+
+### 1.3 A/AA Status Bar
+
+```mermaid
+xychart-beta
+    title "WCAG 2.2 A/AA Coverage Status (Count)"
+    x-axis [Full, Partial, NotCovered]
+    y-axis "SC Count" 0 --> 30
+    bar [20, 12, 26]
+```
+
+---
+
+## 2) Scope, Method, and Evidence
+
+This report is implementation-evidence based, not marketing-estimate based.
+
+### 2.1 Primary Evidence Sources
 
 - app/services/static_checks.py
 - app/services/heuristics.py
 - app/services/browser_probes.py
 - app/services/cognitive_checks.py
 - app/services/normalizer.py (AXE_WCAG_MAP)
+- app/services/confidence.py
 - app/services/audit_runner.py
+- app/audit/scan_mode_runner.py
+- app/audit/failure_taxonomy.py
+- app/services/lighthouse_runner.py
+- app/services/lighthouse_mapper.py
+- app/services/lighthouse_enricher.py
+- app/data/lighthouse_mapping.json
 - app/services/llm.py
 - app/routers/rag.py
-- app/services/lighthouse_runner.py (signal enrichment, deep/max)
-- app/services/lighthouse_mapper.py (BEACON schema normalization)
-- app/services/lighthouse_enricher.py (deterministic merge engine)
-- app/data/lighthouse_mapping.json (versioned audit inclusion list, v1)
+- RELEASE_NOTES.md (Phase 21 integration metrics)
 
-Method:
+### 2.2 Classification Method
 
-- Step 1: Extract static rules and WCAG mappings from static checker issue builders.
-- Step 2: Extract heuristic rules and WCAG mappings.
-- Step 3: Extract browser probe rules and WCAG mappings.
-- Step 4: Extract cognitive rules and WCAG mappings.
-- Step 5: Extract axe-core WCAG mapping from normalizer.
-- Step 6: Classify WCAG 2.2 A/AA criteria as Full, Partial, or Not Covered using deterministic-vs-heuristic evidence.
+- Full: deterministic, repeatable detection coverage signal (multi-rule and/or corroborated engine support)
+- Partial: single-engine, heuristic-heavy, or mode/runtime-gated coverage
+- Not Covered: no implemented detector path found for the SC
 
-Important constraints:
+### 2.3 Important Constraints
 
-- Coverage here means implemented detection logic exists in code.
-- Coverage here does not mean guaranteed legal conformance for every page type.
-- Dynamic checks depend on deep/max mode and Playwright availability.
+- Deep/max-only logic depends on browser runtime availability.
+- Availability degradation paths can intentionally emit availability findings instead of full structural/runtime findings.
+- Coverage in this document means detector logic exists; it does not guarantee legal conformance on all page types.
 
-## 2) Detection Pipeline by Stage
+---
 
-Pipeline sequencing is implemented in app/services/audit_runner.py.
+## 3) Detection Pipeline (Current Runtime)
 
-- Stage A: Static and heuristic checks run in parallel (run_static/run_heuristic path).
-- Stage B: axe-core runs in deep/max mode only.
-- Stage C: Normalization, deduplication, confidence scoring.
-- Stage D: Cognitive checks (deep/max when enabled).
-- Stage E: RAG enrichment is post-detection enrichment, not primary detection.
-- Stage F: Lighthouse enrichment (deep/max only, async). Runs lighthouse_runner → lighthouse_mapper → lighthouse_enricher.
-  Lighthouse findings are merged via 5-rule deterministic engine. BEACON primary findings are never overwritten.
-  Adds `lighthouse_confirmed`, `lighthouse_score`, `severity_upgraded_by_lighthouse` fields to confirmed findings.
-  Adds supplementary/additional_insight findings for Lighthouse-only discoveries.
+```mermaid
+flowchart TD
+    A[Input URL] --> B[Preflight and Fetch]
+    B --> C{Scan Mode}
+    C -->|minimal|min1[Static + basic heuristics only]
+    C -->|fast|fa1[curl_cffi HTTP fetch]
+    C -->|deep|de1[Camoufox/Playwright browser render]
+    C -->|max|ma1[Camoufox/Playwright + interaction/scroll]
+    min1 --> E[Stage A: Static checks + Heuristics]
+    fa1 --> E
+    de1 --> D[Stage A: Static + Heuristic]
+    ma1 --> D
+    D --> D2[Stage B: Browser probes + axe-core]
+    E --> E2[Stage C: Normalize + Dedup + Confidence]
+    D2 --> E2
+    E2 --> F[Stage D: Cognitive checks if max or enabled]
+    F --> G[Stage E: Prioritize + Remediation enrichment]
+    G --> H[Stage F: Lighthouse enrichment deep/max only]
+    H --> I[Final response]
+```
 
-Key evidence lines:
+Execution notes:
 
-- Scan mode behavior and engine gating: app/services/audit_runner.py:944
-- axe-core deep/max execution path: app/services/audit_runner.py:1249
-- Parallel engine execution: app/services/audit_runner.py:1286
-- RAG enrichment stage marker: app/services/audit_runner.py:1455
+- **minimal**: static checks + basic heuristics only. `enable_enrichment` and `enable_cognitive` are forced off. No browser, axe, or RAG. Guaranteed to finish in under 3 seconds.
+- **fast**: `curl_cffi AsyncSession` Chrome impersonation fetch → static + heuristic. No browser, no axe, no cognitive.
+- **deep**: Camoufox-backed Playwright browser render → all engines (static, heuristic, browser-probe, axe-core). Cognitive checks enabled when `enable_cognitive=True`. Lighthouse enrichment dispatched as an async background task.
+- **max**: Deep mode + explicit interaction/scroll exploration layer + journey simulation (URL-planning) + cognitive always on + Lighthouse enrichment background task.
+- If browser engines fail in deep/max mode, the run is marked `degraded_mode=True` and falls back to static-only with `degraded_reason=extraction_failure`.
+- Global backpressure can auto-degrade deep/max to fast mode when concurrent audits exceed the `AUDIT_CONCURRENCY_LIMIT` threshold.
 
-## 3) Engine Types and Trust Posture
+---
 
-| Engine              | Source                               | Base confidence | Default manual review | Detection type                    |
-| ------------------- | ------------------------------------ | --------------: | --------------------- | --------------------------------- |
-| Static              | app/services/static_checks.py:143    |            0.85 | False                 | Deterministic DOM checks          |
-| Heuristic           | app/services/heuristics.py:52        |             0.5 | True                  | Pattern/heuristic signals         |
-| Browser probe       | app/services/browser_probes.py:41    |             0.8 | False                 | Runtime interaction probes        |
-| Cognitive           | app/services/cognitive_checks.py:110 |             0.6 | True                  | UX/readability heuristics         |
-| axe-core normalized | app/services/normalizer.py:24        |             0.9 | False                 | Deterministic axe-core violations |
-| Lighthouse          | app/services/lighthouse_enricher.py  | supplementary   | False                 | Runtime JS enrichment (deep/max)  |
+## 4) Coverage by Scan Mode
 
-Additional confidence governance:
+This matrix shows which detector families activate per mode. Coverage percentages assume all engines activate without degradation.
 
-- Heuristic-only findings are forced to needs-review in confidence logic.
-- Cross-engine corroboration can boost confidence for the same rule.
+| Detector Family           | minimal | fast | deep | max  | Notes                                                            |
+| :------------------------ | :-----: | :--: | :--: | :--: | :--------------------------------------------------------------- |
+| Static checks (81 rules)  |   ✅    |  ✅  |  ✅  |  ✅  | Always-on baseline path                                          |
+| Heuristics (23 rules)     |   ✅    |  ✅  |  ✅  |  ✅  | Pattern-based, lower confidence                                  |
+| Browser probes (19 rules) |   ❌    |  ❌  |  ✅  |  ✅  | Requires Camoufox/Playwright runtime                             |
+| axe-core (31 mapped)      |   ❌    |  ❌  |  ✅  |  ✅  | Injected into rendered DOM                                       |
+| Cognitive (7 rules)       |   ❌    |  ❌  | opt  |  ✅  | `enable_cognitive=True` required for deep; always on in max      |
+| Lighthouse enrichment     |   ❌    |  ❌  |  ✅  |  ✅  | Async background task; result may arrive after initial response  |
+| RAG/LLM remediation       |   ❌    |  ✅  |  ✅  |  ✅  | Enriches fix text; not a detector                                |
 
-Evidence lines:
+**Effective SC reach by mode (approximate):**
 
-- Heuristic-only needs-review: app/services/confidence.py:419
-- Cross-engine boost: app/services/confidence.py:539
+| Mode    | Approx WCAG SC reach (Full+Partial) | Additional notes                                |
+| :------ | :---------------------------------: | :---------------------------------------------- |
+| minimal | ~20–22 (Full only, via static)      | No browser, no axe; partial coverage incomplete |
+| fast    | ~24–26                              | Heuristics add reach; still no runtime probes   |
+| deep    | ~30–32 (55.2% — the reported rate)  | Full detector set active                        |
+| max     | ~30–32 + interaction signals        | Journey simulation adds focus-flow coverage     |
 
-## 4) Rule Inventory (Code-Extracted)
+The 55.2% headline figure is a deep/max floor, not a fast-mode or minimal-mode figure.
 
-Code-extracted unique rule counts by engine:
+---
+
+## 5) Coverage Quality Modifiers
+
+Reported findings and score values can be modified by the following runtime conditions. These are not bugs — they are documented system behaviors.
+
+### 5.1 Confidence Gating and Score Suppression
+
+| Condition                             | Trigger                               | Effect on Output                                                              |
+| :------------------------------------ | :------------------------------------ | :---------------------------------------------------------------------------- |
+| Low confidence score (< 0.30)         | `confidence_score < 0.30`             | `score = null` in API response; `score_suppressed=True` in `score_explanation` |
+| Heuristic-only finding                | `confidence_sources == {"heuristic"}` | Auto-tagged `needs-review`; confidence multiplied by 0.95                    |
+| Below precision profile minimum       | `confidence < profile.min_confidence` | Issue filtered from output; does not affect score                            |
+| Cross-engine agreement boost          | 2+ engines report same rule_id        | Confidence floor raised to 0.85 (2 engines) or 0.95 (3+ engines)            |
+| Fragment penalty                      | Page-level rule on incomplete HTML    | Up to −0.45 confidence penalty applied                                       |
+
+**Score suppression contract** (`audit_runner.py` L2033–2039):
+
+```
+if confidence_score < 0.30:
+    response_score = None          # API returns score=null
+    score_explanation["score_suppressed"] = True
+    score_explanation["score_suppression_reason"] = "low_confidence"
+    score_explanation["score_raw"] = score   # raw value is preserved
+```
+
+When `score=null`, `expected_score_after_fix` and `score_improvement` are also set to `null`.
+
+### 5.2 Degraded Mode Score Caps
+
+Applied when `degraded_mode=True` (`config.py` L198–210):
+
+| Step | Operation                                    | Value                         |
+| :--- | :------------------------------------------- | :---------------------------- |
+| 1    | raw_score computed by `build_scoring_summary`| variable                      |
+| 2    | Multiply: `raw_score × DEGRADED_MODE_MULTIPLIER` | × 0.85                    |
+| 3    | Cap: `min(result, DEGRADED_MODE_MAX_SCORE)`  | capped at 82.0                |
+
+Example: raw=100 → multiply → 85.0 → cap → **82.0**. Example: raw=70 → multiply → **59.5** (cap is a no-op).
+
+---
+
+## 6) Engine Trust and Roles
+
+| Engine                | Role                                 | Detection Type                    | Typical Trust Posture                   |
+| :-------------------- | :----------------------------------- | :-------------------------------- | :-------------------------------------- |
+| Static                | Baseline structural checks           | Deterministic DOM                 | Higher confidence                       |
+| Heuristic             | Pattern and language signals         | Heuristic                         | Lower confidence, often review-oriented |
+| Browser probe         | Runtime interaction checks           | Runtime deterministic/interaction | Medium-high, mode-gated                 |
+| axe-core normalized   | Standards-aligned runtime violations | Deterministic (axe)               | High confidence                         |
+| Cognitive             | UX/readability judgments             | Heuristic                         | Review-oriented                         |
+| Lighthouse enrichment | Runtime JS signal enrichment         | Supplemental                      | Non-destructive corroboration/addition  |
+
+**Runtime stack (v3)**:
+
+- HTTP fetch layer: `curl_cffi AsyncSession` with Chrome impersonation (replaces httpx).
+- Browser layer: `camoufox` (Firefox-based stealth browser, Playwright-compatible API). Binary must be fetched once via `python -m camoufox fetch`.
+- Playwright is wired into `scan_mode_runner.py` via `AsyncNewBrowser(driver, headless=True)`. Detection reach for browser-probes and axe-core depends on `camoufox` binary presence.
+
+Confidence governance highlights:
+
+- Heuristic-only findings are forced toward review posture.
+- Cross-engine corroboration boosts confidence and explainability.
+- Low-confidence findings may be de-weighted from scoring paths.
+
+---
+
+## 7) Rule Inventory (Current Snapshot)
+
+Code-extracted unique rule counts by engine family:
 
 - Static: 81
 - Heuristic: 23
@@ -105,195 +227,267 @@ Code-extracted unique rule counts by engine:
 - Cognitive: 7
 - axe-core mapped rules: 31
 
-Total unique mapped SC identifiers detected across all engines (including AAA and legacy 4.1.1): 38
+Total unique mapped SC identifiers seen across engines (including AAA/legacy mapping residue): 38
 
-Notes:
+Interpretation:
 
-- Rule extraction is literal-call based with dynamic dict key capture.
-- Dynamic behavior can still emit additional runtime-specific variants.
+- Engine rule volume is higher than A/AA full-coverage count because multiple rules can map to the same SC and some mappings target AAA/legacy criteria.
 
-### 4.1 Full Rule Lists by Engine
+---
 
-Static rules (81):
-apg-dialog-no-name, apg-dialog-not-modal, apg-expanded-missing-controls, apg-tab-broken-controls, apg-tab-missing-controls, apg-tablist-missing-tabs, aria-allowed-attr, aria-allowed-role, aria-hidden-focusable, aria-required-children, aria-required-parent, aria-roles, aria-valid-attr, aria-valid-attr-value, auto-update-no-control, autocomplete-missing, autoplay-media, broken-aria-description, broken-aria-label, button-name, clickable-no-role, color-contrast, css-reordering, div-itis-missing-semantics, duplicate-aria-ref, duplicate-id, duplicate-label, empty-alt, empty-heading, empty-link, error-not-linked, fake-list, focus-management, heading-order, image-redundant-alt, inaccessible-document-link, input-name, invalid-lang, keyboard-trap, landmark-roles, lang-mismatch, link-no-underline, link-purpose, marquee-used, media-alternative, meta-refresh, missing-alt, missing-autocomplete-auth, missing-captions, missing-h1, missing-label, missing-landmark, missing-lang, missing-skip-link, missing-transcript, multiple-h1, no-aria-live, no-fieldset-legend, no-footer-landmark, no-header-landmark, no-headings, no-main-landmark, no-nav-landmark, no-title, placeholder-as-label, positive-tabindex, redundant-entry, role-no-name, semantic-html, small-font-size, svg-no-accessible-name, table-no-caption, table-no-headers, th-no-scope, timeout-no-warning, touch-target-spacing, unlabeled-icon, unsafe-external-link, video-transcript, viewport-zoom-disabled, visibility-aria-mismatch
+## 8) WCAG 2.2 A/AA Coverage Classification
 
-Heuristic rules (23):
-alt-is-filename, alt-quality, alt-too-long, aria-allowed-attr, aria-attribute, aria-roles, aria-valid-attr, aria-valid-attr-value, avoid-inline-spacing, coga-action-fatigue, coga-wall-of-text, keyboard-trap, letter-spacing, missing-landmark, no-main-landmark, semantic-html, sensory-language, short-link-text, svg-no-accessible-name, text-spacing, vague-button-text, vague-label, weak-error-message
+Denominator: 58 A/AA SC in internal analysis baseline.
 
-Browser probe rules (19):
-aria-tree-no-name, autoplay-media, excessive-motion, focus-management, focus-obscured, focus-trap-background, focus-trap-cycling, focus-trap-escape, focus-trap-initial, infinite-scroll-accessibility, keyboard-trap, keyboard-unreachable, lazy-img-missing-alt, no-focus-style, responsive-reflow, skeleton-loading-state, target-size-minimum, text-spacing, zoom-overflow
-
-Cognitive rules (7):
-cta-clarity, error-message-quality, form-no-progress, form-usability, jargon, nav-complexity, readability
-
-axe-core mapped rules (31):
-area-alt, aria-hidden-focus, aria-required-attr, aria-required-children, aria-required-parent, aria-roles, aria-valid-attr, aria-valid-attr-value, button-name, bypass, color-contrast, color-contrast-enhanced, definition-list, document-title, form-field-multiple-labels, heading-order, html-has-lang, html-lang-valid, image-alt, input-image-alt, label, landmark-one-main, link-name, list, listitem, meta-viewport, region, tabindex, td-headers-attr, th-has-data-cells, video-caption
-
-## 5) Standards Mapping
-
-### 5.1 WCAG Mapping
-
-WCAG SC mapping is explicitly attached in issue objects and/or normalizer mappings.
-
-Examples:
-
-- Static issue schema includes wcag_criterion and wcag_level fields.
-- Heuristic, browser, cognitive builders also emit wcag_criterion/wcag_level fields.
-- axe-core uses AXE_WCAG_MAP in normalizer.
-
-Evidence lines:
-
-- Static issue schema: app/services/static_checks.py:145
-- Heuristic issue schema: app/services/heuristics.py:53
-- Browser issue schema: app/services/browser_probes.py:41
-- Cognitive issue schema: app/services/cognitive_checks.py:110
-- axe-core map: app/services/normalizer.py:24
-
-### 5.2 ARIA and APG
-
-The implementation includes direct ARIA and APG-specific checks, not only generic WCAG labels.
-
-Examples:
-
-- ARIA role/attribute validation in static checks.
-- APG pattern checks in static checker modules.
-
-Evidence lines:
-
-- ARIA checks entry: app/services/static_checks.py:2320
-- APG pattern check: app/services/static_checks.py:2674
-
-### 5.3 Knowledge-Base Standards Used for Enrichment (Not Detection)
-
-Retrieval trust silos include wcag, aria, coga, axe, toolkit, local_wcag_kb.
-
-Evidence line:
-
-- app/services/retrieval.py:27
-
-## 6) WCAG 2.2 A/AA Coverage Classification
-
-Denominator used in this report:
-
-- 58 WCAG 2.2 A/AA SC identifiers in internal baseline list used for this code analysis.
-
-Classification rule used:
-
-- Full: strong deterministic coverage signal (multiple deterministic engines or dense deterministic rules).
-- Partial: only single-engine or mostly heuristic coverage.
-- Not Covered: no implemented detector found for that SC.
-
-### 6.1 Full Coverage (20/58)
+### 8.1 Full Coverage (20/58)
 
 1.1.1, 1.2.1, 1.2.2, 1.3.1, 1.4.2, 1.4.3, 1.4.4, 1.4.12, 2.1.1, 2.1.2, 2.4.1, 2.4.2, 2.4.3, 2.4.4, 2.5.8, 3.1.1, 3.3.1, 3.3.2, 4.1.2, 4.1.3
 
-### 6.2 Partial Coverage (12/58)
+### 8.2 Partial Coverage (12/58)
 
 1.3.3, 1.3.5, 1.4.1, 1.4.10, 2.2.1, 2.2.2, 2.4.5, 2.4.6, 2.4.7, 2.4.11, 3.1.2, 3.3.7
 
-### 6.3 Not Covered (26/58)
+### 8.3 Not Covered (26/58)
 
 1.2.3, 1.2.4, 1.2.5, 1.3.2, 1.3.4, 1.4.5, 1.4.11, 1.4.13, 2.1.4, 2.2.6, 2.3.1, 2.3.2, 2.4.12, 2.5.1, 2.5.2, 2.5.3, 2.5.4, 2.5.7, 3.2.1, 3.2.2, 3.2.3, 3.2.4, 3.2.6, 3.3.3, 3.3.4, 3.3.8
 
-## 7) Percentage Estimates (Honest)
+---
 
-Using the 58-item A/AA baseline in this analysis:
+## 9) Lighthouse Enrichment (Phase 21) in Coverage Context
 
-- Full: 20/58 = 34.5%
-- Partial: 12/58 = 20.7%
-- Not covered: 26/58 = 44.8%
-- Implemented at least partial: 32/58 = 55.2%
+Lighthouse is integrated as deep/max runtime signal enrichment.
 
-## 💪 Strength Areas
+### 9.1 Dispatch Path and Async Behavior
 
-- Semantic structure (WCAG 1.3.1)
-- Name, role, value (4.1.2)
-- Keyboard accessibility (2.1.x)
-- ARIA validation
+In the dashboard site-scan flow (`dashboard_api.py`), Lighthouse enrichment is dispatched as a background asyncio task via `_run_lighthouse_background()`. This means:
 
-Additional non-A/AA criteria observed in code mapping:
+1. The initial audit response returns immediately with BEACON-only findings and `enrichment_status="pending"`.
+2. Lighthouse runs asynchronously (up to 5 URLs, `asyncio.Semaphore(2)`, 90s per-URL timeout, 300s batch timeout).
+3. Clients poll `GET /audit/enrichment/<audit_id>` to retrieve the enriched result once `enrichment_status="complete"`.
+4. If Lighthouse fails (DNS, timeout, parse error), the BEACON baseline is preserved and `enrichment_status="failed"` or `"partial"` is returned.
 
-- AAA signals: 1.4.6, 2.3.3, 3.1.3, 3.1.5, 3.3.9
-- Legacy/obsolete in 2.2 context: 4.1.1 still appears in rule mapping path
+The gate is enforced in `scan_mode_runner._lighthouse_eligible()`: Lighthouse is never called for `fast` or `minimal` mode — this is an architectural constraint, not a feature flag.
 
-## 8) Limitations and Non-Coverage Risks
+### 9.2 Deterministic Merge Guarantees
 
-1. Dynamic engine dependency:
+- BEACON + Lighthouse confirmation can set confirmation flags and conditionally escalate severity on low Lighthouse scores.
+- Lighthouse-only findings can be added as supplementary/additional insight depending on score bands.
+- Lighthouse-only high-score findings may be dropped as low-value signal.
+- BEACON primary findings are never deleted, suppressed, or downgraded by Lighthouse merge rules.
 
-- Browser and axe evidence requires deep/max path and Playwright runtime.
+### 9.3 Validation Snapshot (from release artifacts)
 
-2. Heuristic/cognitive reliability:
+- Live integration set: 10 sites
+- Successful Lighthouse runs: 7/10
+- Expected failures: 3/10 (DNS / parse / timeout classes)
+- Reported uplift on reachable sites: roughly +30% to +50% additional findings
+- BEACON data loss during merge: 0 findings
 
-- Heuristic and cognitive findings are intentionally low-confidence or needs-review by default.
+Important: This uplift is enrichment-layer additive and does not rewrite the baseline A/AA percentages above.
 
-3. Mapping quality caveat:
+---
 
-- A cognitive rule call appears to pass arguments in a mismatched order for form-no-progress, which can distort wcag/level fields.
-- Evidence: app/services/cognitive_checks.py:376
+## 10) Canonical Degraded Reason Appendix
 
-4. Enrichment mutation caveat:
+All failure classification is routed through `normalize_failure()` in `app/audit/failure_taxonomy.py`. The canonical `DegradedReason` enum and their practical coverage impact:
 
-- Enrichment can overwrite wcag_criterion from generated text, so compliance accounting should use pre-enrichment detector mapping when auditing raw detector coverage.
-- Evidence: app/services/llm.py:452
+| Canonical Reason         | HTTP / Signal Trigger                              | Practical Coverage Impact                                                    |
+| :----------------------- | :------------------------------------------------- | :--------------------------------------------------------------------------- |
+| `connectivity_blocked`   | DNS failure, connection reset, SSL error, 5xx      | Full degradation: availability issue injected; no structural findings        |
+| `browser_navigation_failed` | Playwright `page.goto` failure, frame detached  | deep/max falls back to static-only; `degraded_mode=True`                    |
+| `extraction_failed`      | DOM parse/lxml/snapshot failure                    | Partial findings only; dedup/confidence may be skipped                       |
+| `render_timeout`         | Page render or navigation exceeded timeout budget  | Only partial DOM was captured; structural findings may be incomplete         |
+| `partial_content`        | Only partial body received (200KB body cap)        | Structural findings are based on truncated HTML                              |
+| `rate_limited`           | HTTP 429 response                                  | Score capped at 82.0 × 0.85 multiplier; availability issue injected if blocked |
+| `csp_blocked`            | `Content-Security-Policy` header blocks inline scripts | axe-core and browser-probe injection may fail; deep/max degraded to static |
+| `csp_injection_blocked`  | CSP error string in rendered DOM / console         | Same as `csp_blocked`; detected via script execution error text              |
+| `bot_wall`               | HTTP 403, Cloudflare, DataDome, CAPTCHA headers    | Score capped; availability issue replaces structural findings                |
+| `engine_error`           | Unclassified internal error                        | Fallback classification; results may be incomplete                           |
 
-5. Access and blocked-page degradation:
+**Legacy aliases** (normalized to canonical on read):
 
-- For blocked/auth-limited pages, pipeline can degrade and emit availability-focused findings rather than full structural coverage.
+| Legacy string              | Maps to canonical             |
+| :------------------------- | :---------------------------- |
+| `dns_error`, `dns_failure`, `name_resolution_failed` | `connectivity_blocked` |
+| `network_error`            | `connectivity_blocked`        |
+| `browser_timeout`          | `render_timeout`              |
+| `dom_parse_error`          | `extraction_failed`           |
+| `script_failure`           | `csp_injection_blocked`       |
+| `blocked`, `blocked_request`, `access_denied`, `cloudflare_block` | `bot_wall` |
 
-## 9) Detection vs RAG Enrichment Separation
+For `bot_wall` and `rate_limited`, the pipeline replaces scored issues with a synthetic `blocked-request-partial` availability issue (`audit_runner.py` L1836–1851). This prevents inflated structural findings based on anti-bot challenge pages from contributing to scores.
 
-This is critical:
+---
+
+## 11) Sampling Bias and Site-Level Coverage Limits
+
+BEACON does not exhaustively audit every page of multi-page sites. Coverage figures above are per-page detection rates; site-scan coverage is subject to sampling limits:
+
+### 11.1 Hard Page Caps per Mode (Phase 20 Envelope)
+
+The audit budget is now governed by the unified Phase 20 `SCAN_MODES` envelope and `resolve_max_pages()` logic, rather than legacy BFS-specific depths.
+
+| Mode | max_pages (default) | max_pages (sitemap) | max_pages (ceiling) | max_depth |
+| :--- | ------------------: | ------------------: | ------------------: | --------: |
+| fast |                   5 |                   8 |                  10 |         2 |
+| deep |                  15 |                  25 |                  30 |         4 |
+| max  |                  40 |                  60 |                  75 |         6 |
+
+`MAX_SCAN_GLOBAL_CAP = 80` remains the hard ceiling across all modes.
+
+**Note on Discovery vs Audit**: The system still uses discovery engines (Sitemap, Discovery Crawler, DOM-probe) to find up to ~500 URLs. However, the final **Audit Set** is selected from these candidates via the `topology_detector` and capped strictly by the envelope above. Legacy `bfs_depth` and `bfs_pages` limits are superseded by this unified budget.
+
+### 11.2 Topology-Guided URL Selection
+
+Before page auditing, `topology_detector.detect_topology()` classifies the site crawl shape (`single_page`, `thin`, `deep_uniform`, `paginated`, `multi_template`) and selects a template-diverse URL subset up to `effective_max_pages`. This means:
+
+- Large sites with many similar-template URLs are sub-sampled to maximize template diversity.
+- Pages not selected are not audited. Issues on un-audited pages are not reported.
+- `urls_discovered` (total found) and `pages_audited` (actually checked) will differ for medium-to-large sites.
+
+### 11.3 Sitemap Recursion Cap
+
+`MAX_SITEMAP_DEPTH = 5` prevents runaway sitemapindex recursion. Deeply nested sitemaps may not be fully traversed.
+
+### 11.4 Concurrency Limits
+
+At most 3 site audits run in parallel (`MAX_CONCURRENT_SITE_AUDITS = 3`). Dashboard deep/max runs use:
+- `DASHBOARD_DEEP_SCAN_MAX_PAGES = 12`
+- `DASHBOARD_MAX_SCAN_MAX_PAGES = 25`
+
+**Reader guidance**: A reported score reflects the sampled pages only. A site with 500 pages where only 12 are audited in deep mode may have issues on pages that were not selected. The `pages_discovered` and `pages_audited` fields in the API response make this transparent.
+
+---
+
+## 12) Strength Areas and Gaps
+
+### 12.1 Strength Areas
+
+- Semantic structure and landmark-related detection depth
+- ARIA validation and name-role-value core coverage
+- Keyboard baseline checks and focus-flow failure detection families
+- Confidence calibration and corroboration-aware trust scoring
+
+### 12.2 Major Gaps to Prioritize
+
+- Advanced media alternatives and synchronized media variants
+- Pointer/gesture alternatives and nuanced input modality criteria
+- Timing/session interruption criteria with runtime-state dependence
+- Predictable input and context-change criteria requiring richer journey modeling
+
+---
+
+## 13) Detection vs Enrichment Boundary (Strict)
 
 Detection engines:
 
-- Static, heuristic, browser-probe, axe-core, cognitive
-- These produce the actual issue detections.
+- Static
+- Heuristic
+- Browser probe
+- axe-core normalized
+- Cognitive
 
-Lighthouse enrichment engine (deep/max only):
+Enrichment engines:
 
-- Runs Google Lighthouse CLI (headless Chrome) against up to 5 URLs per scan.
-- Findings are mapped from Lighthouse audit format into BEACON findings_schema.
-- Merged with BEACON findings via 5-rule deterministic engine (lighthouse_enricher.py).
-- Lighthouse confirmed = BEACON finding corroborated by Lighthouse runtime.
-- Lighthouse-only (score <50): added as supplementary finding.
-- Lighthouse-only (score 50-89): added as additional_insight finding.
-- Lighthouse-only (score ≥90): dropped silently.
-- BEACON findings are NEVER deleted, suppressed, or downgraded by Lighthouse.
-- Live integration test (10 sites): +30–50% coverage uplift on reachable sites, 0 BEACON findings lost.
+- Lighthouse enrichment (runtime supplement and corroboration)
+- RAG/LLM remediation enrichment
 
-RAG enrichment:
+Boundary rule:
 
-- Happens later and enhances remediation payloads (explanations, steps, code fix suggestions).
-- RAG does not create detector reach for missing SC categories.
+- Enrichment may add/support findings and improve remediation quality, but baseline detector-coverage accounting should remain anchored to primary detector implementation.
 
-Evidence:
+---
 
-- Enrichment stage in runner: app/services/audit_runner.py:1455
-- Enrichment function: app/services/llm.py:901
-- Standalone RAG endpoint for Q/A over knowledge base: app/routers/rag.py:13
+## 14) Limitations and Caveats
 
-## 10) Practical Interpretation
+1. Mode gating:
 
-Current implementation has strong depth in core structural/semantics/name-role-value areas (notably 1.3.1 and 4.1.2) and moderate runtime keyboard/focus coverage.
+- deep/max findings require browser-enabled execution paths.
+- `camoufox` browser binary must be fetched via `python -m camoufox fetch` before deep/max scans.
 
-However, a large set of timing, pointer, advanced media, and predictable-input criteria remains uncovered.
+2. Heuristic subjectivity:
 
-Bottom line:
+- cognitive/heuristic findings are intentionally lower-trust and review-biased.
 
-- This is a capable multi-engine accessibility detector with meaningful WCAG breadth.
-- It is not full WCAG 2.2 A/AA coverage yet.
-- Current honest A/AA implemented coverage estimate is 55.2% (full+partial), with 34.5% in the stronger/full bucket under this report's evidence criteria.
+3. Enrichment mutation risk:
 
-## ⚠️ Disclaimer
+- downstream enrichment text can alter presentation fields; compliance accounting should use normalized detector fields for strict auditing.
 
-This tool provides automated accessibility analysis and does not guarantee full WCAG, ADA, EAA, or Section 508 compliance. Manual audits are required.
+4. Degraded scans:
 
-## 🔦 Lighthouse Integration Note (Phase 21)
+- blocked/access-limited targets can produce availability-focused output, reducing structural/runtime detector evidence for that run.
 
-As of April 2026, BEACON integrates Google Lighthouse as a runtime signal-enrichment layer for `deep` and `max` scan modes.
+5. Score suppression:
 
-- Lighthouse adds JavaScript-execution-dependent findings that static/heuristic analysis cannot reach (e.g. React-injected ARIA, lazy-loaded image alt attributes, dynamic focus management).
-- This integration **does not inflate the core WCAG coverage figures** in this document — those numbers reflect BEACON's own detectors only.
-- Lighthouse enrichment provides **additional signals** on top of the 55.2% coverage baseline documented here.
-- The live 10-site test showed average +30–50% additional finding uplift on reachable sites, with 0 BEACON findings overwritten.
-- Lighthouse coverage is limited to its own audit inclusion list (`app/data/lighthouse_mapping.json`). Not all WCAG criteria are covered by Lighthouse audits.
+- when `confidence_score < 0.30`, the numeric score is withheld (`score=null`). This is intentional transparency — a suppressed score is not a zero score.
+
+---
+
+## 15) Reproducibility
+
+To regenerate rule-count and SC-coverage data from the live codebase:
+
+```bash
+# Syntax-check all primary detector modules
+python -m py_compile \
+  app/services/static_checks.py \
+  app/services/heuristics.py \
+  app/services/browser_probes.py \
+  app/services/cognitive_checks.py \
+  app/services/normalizer.py \
+  app/services/audit_runner.py \
+  app/audit/failure_taxonomy.py
+
+# Run unit tests (includes confidence and scoring tests)
+python -m pytest tests/unit/ -q
+
+# Site-archetype deterministic validation
+python evaluation/validate_site_archetypes.py
+
+# ACT regression benchmark
+python evaluation/benchmark_act.py
+```
+
+Coverage classification source: manual SC-to-rule mapping analysis anchored to `app/services/normalizer.py::AXE_WCAG_MAP` and static/heuristic rule inventories.
+
+Denominator source: W3C WCAG 2.2 A/AA criterion count (58 SC). AAA criteria are explicitly excluded.
+
+---
+
+## 16) Version-to-Version Coverage Trend
+
+| Version | Date       | Full | Partial | Not Covered | Implemented (F+P) | Key Change                                             |
+| :------ | :--------- | ---: | ------: | ----------: | ----------------: | :----------------------------------------------------- |
+| v1.x    | 2026-03    |  ~15 |      ~8 |         ~35 |            ~39.7% | Initial static + heuristic baseline                    |
+| v2.0    | 2026-04-12 |   18 |      10 |          30 |            48.3%  | Browser probes + axe-core integration                  |
+| v2.3    | 2026-04-14 |   19 |      11 |          28 |            51.7%  | Confidence calibration + precision profiles            |
+| v2.4    | 2026-04-20 |   20 |      12 |          26 |            **55.2%**  | Phase 20 topology + degraded-mode hardening        |
+| v2.5    | 2026-04-20 |   20 |      12 |          26 |            55.2%  | Phase 21 Lighthouse enrichment (enrichment layer only; no SC additions) |
+| v2.6    | 2026-04-20 |   20 |      12 |          26 |            55.2%  | Doc update: mode matrix, degraded taxonomy, sampling bias, reproducibility |
+
+**What changed in v2.6 (this document)**:
+
+- Added coverage-by-scan-mode matrix (Section 4)
+- Added coverage quality modifiers with exact code references (Section 5)
+- Added canonical degraded-reason appendix mapped to practical coverage impact (Section 10)
+- Added sampling-bias and site-level limits section with config values (Section 11)
+- Added reproducibility block with commands (Section 15)
+- Added version-to-version trend table (this section)
+- Clarified Lighthouse async dispatch path (Section 9.1)
+- Documented runtime stack: `curl_cffi` and `camoufox` (Section 6)
+
+---
+
+## 17) Practical Interpretation
+
+- BEACON currently provides meaningful multi-engine automated accessibility detection with strong core structural and ARIA depth.
+- Current implemented A/AA reach is 55.2% when counting full+partial detector coverage under this methodology.
+- Full legal/compliance posture still requires human audit workflows, especially for the 44.8% not-covered set and subjective/contextual criteria.
+- Reported scores and finding counts reflect sampled pages only; consult `pages_audited` vs `pages_discovered` in the API response for scope transparency.
+- Scores from degraded scans are penalized (× 0.85, capped at 82.0) and flagged explicitly. A `score=null` response indicates suppression due to low audit confidence, not a scan failure.
+
+---
+
+## 18) Disclaimer
+
+This tool provides automated accessibility analysis and does not guarantee full WCAG, ADA, EAA, or Section 508 compliance. Manual audits remain required.

@@ -4,6 +4,8 @@
 
 BEACON is a FastAPI-based accessibility auditing platform with multi-engine scanning, crawler-assisted discovery, RAG-backed remediation, observability, and API-key RBAC.
 
+> **Architecture & Coverage docs**: [docs/architecture/master_architecture.md](docs/architecture/master_architecture.md) | [docs/architecture/ACCESSIBILITY_COVERAGE.md](docs/architecture/ACCESSIBILITY_COVERAGE.md)
+
 ## Latest Updates — Phase 21 (April 20, 2026)
 
 - **Lighthouse CI enrichment pipeline** integrated as signal-enrichment layer for `deep`/`max` scan modes.
@@ -201,6 +203,20 @@ Recent hardening prevents the zero-score and empty-output failure class:
   npm install -g lighthouse
   ```
 
+- **Required for deep/max Camoufox-backed browser sessions**: after installing Python dependencies, download the Camoufox browser binary:
+
+  ```bash
+  python -m camoufox fetch
+  ```
+
+  > **Why?** Camoufox ships without a bundled browser binary to keep the PyPI package small. The first `deep` or `max` scan will fail with `camoufox: browser binary not found` unless you run this one-time fetch command. Re-run after upgrading `camoufox` to a new major release.
+
+  Optionally also fetch the GeoIP database (improves geo-fingerprint realism, needed for some bot-wall bypass tests):
+
+  ```bash
+  python -m camoufox fetch --geoip
+  ```
+
 ### 2. Configure Environment
 
 Create local environment file:
@@ -244,12 +260,14 @@ Optional Lighthouse enrichment tuning keys (all have sane defaults in `app/confi
 pip install -r requirements.txt
 ```
 
-Optional browser support:
+Optional browser support (Playwright fallback path only):
 
 ```bash
 pip install playwright
 playwright install chromium
 ```
+
+> **Camoufox** is the primary browser runtime for deep/max scans. It is installed automatically via `requirements.txt` (`camoufox[geoip]`). You still need to run `python -m camoufox fetch` (see Prerequisites above) to download the binary.
 
 ### 4. Run the API
 
@@ -416,7 +434,12 @@ Push hygiene:
 - Cognitive scoring is experimental and intentionally isolated from core hard-rule detection.
 - Enrichment is asynchronous by design and may return pending initially.
 - Never commit secrets (.env files, serviceAccountKey.json, private API keys).
+- The `camoufox` browser binary must be fetched once with `python -m camoufox fetch` before running deep/max scans.
+- Lighthouse enrichment requires Node.js 18+ and `npm install -g lighthouse`. Without it, deep/max scans continue with BEACON-only results.
+- BEACON currently implements 55.2% (32/58) WCAG 2.2 A/AA criterion coverage. See [ACCESSIBILITY_COVERAGE.md](docs/architecture/ACCESSIBILITY_COVERAGE.md) for the full breakdown.
 
-## Related Architecture Doc
+## Architecture & Related Docs
 
-- resources/master_architecture_beacon.md.resolved
+- [docs/architecture/master_architecture.md](docs/architecture/master_architecture.md) — full system architecture (v2.5)
+- [docs/architecture/ACCESSIBILITY_COVERAGE.md](docs/architecture/ACCESSIBILITY_COVERAGE.md) — WCAG 2.2 coverage classification
+- [docs/plans/completed/](docs/plans/completed/) — completed implementation plans per phase

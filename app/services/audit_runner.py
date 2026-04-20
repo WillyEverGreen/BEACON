@@ -24,6 +24,7 @@ from curl_cffi import AsyncSession
 
 from app.config import (
     AUDIT_CONCURRENCY_LIMIT,
+    DEGRADED_MODE_MAX_SCORE,
     LLM_FIRE_BUDGET_PER_AUDIT,
     QUALITY_GATES,
     SCORING_CONFIG,
@@ -96,6 +97,8 @@ HYBRID_REQUIRED_RULES = {
 }
 
 # Phase 9.5: score integrity and anti-gaming policy.
+# IMPORTANT: partial_audit_max_score MUST equal DEGRADED_MODE_MAX_SCORE (config.py).
+# Do NOT change this literal — change DEGRADED_MODE_MAX_SCORE in config.py instead.
 SCORE_INTEGRITY_RULES = {
     "perfect_score_conditions": {
         "engines_used_count_min": 2,
@@ -103,7 +106,7 @@ SCORE_INTEGRITY_RULES = {
         "degraded_mode_must_be_false": True,
         "avg_confidence_min": 0.75,
     },
-    "partial_audit_max_score": 82.0,
+    "partial_audit_max_score": DEGRADED_MODE_MAX_SCORE,  # single source of truth: app/config.py
     "low_signal_max_score": 90.0,
 }
 
@@ -307,7 +310,7 @@ def _apply_score_integrity_caps(
             safe_score = capped
 
     if degraded_mode:
-        partial_cap = float(SCORE_INTEGRITY_RULES.get("partial_audit_max_score", 82.0))
+        partial_cap = float(SCORE_INTEGRITY_RULES.get("partial_audit_max_score", DEGRADED_MODE_MAX_SCORE))
         if safe_score > partial_cap:
             caps_applied.append(
                 {
