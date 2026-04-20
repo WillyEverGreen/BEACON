@@ -140,7 +140,7 @@ class _ProcessedPage:
 
 
 class SiteCrawlOrchestrator:
-    """Deterministic BFS crawl orchestrator with bounded audit and aggregation."""
+    """Deterministic discovery crawl orchestrator with bounded audit and aggregation."""
 
     def __init__(
         self,

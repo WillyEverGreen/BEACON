@@ -5,7 +5,7 @@ cycles during application bootstrap.
 """
 
 __all__ = [
-    "BFSCrawler",
+    "DiscoveryCrawler",
     "CrawlConfig",
     "CrawlerOrchestrator",
     "CrawledURL",
@@ -18,10 +18,10 @@ __all__ = [
 
 
 def __getattr__(name: str):
-    if name == "BFSCrawler":
-        from app.crawlers.bfs_crawler import BFSCrawler
+    if name == "DiscoveryCrawler":
+        from app.crawlers.discovery_crawler import DiscoveryCrawler
 
-        return BFSCrawler
+        return DiscoveryCrawler
 
     if name in {"CrawlConfig", "SiteCrawlOrchestrator", "crawl_site"}:
         from app.crawlers.crawl_orchestrator import CrawlConfig, SiteCrawlOrchestrator, crawl_site

@@ -2119,7 +2119,7 @@ class StaticChecker:
                         f'input[name="{name}"]', _snippet(inputs[0]),
                         f"Radio/checkbox group '{name}' not wrapped in <fieldset> with <legend>.",
                         "1.3.1", "A", "forms",
-                        f'Wrap the group in <fieldset><legend>Group label</legend>...</fieldset>.',
+                        'Wrap the group in <fieldset><legend>Group label</legend>...</fieldset>.',
                         fix_effort="medium"
                     ))
 
@@ -2456,7 +2456,7 @@ class StaticChecker:
 
         # Dynamic content without aria-live (look for common patterns)
         for elem in self.soup.find_all(class_=re.compile(r'toast|notification|alert|snackbar|message', re.I)):
-            if not elem.get("aria-live") and not elem.get("role") in ("alert", "status", "log"):
+            if not elem.get("aria-live") and elem.get("role") not in ("alert", "status", "log"):
                 issues.append(_issue(
                     self.url, "no-aria-live", "needs-review", "moderate",
                     _css_selector(elem), _snippet(elem),
@@ -3878,7 +3878,8 @@ class StaticChecker:
         non_en_indicators = {"der", "die", "und", "dans", "avec", "pour", "este", "como"}
         
         for elem in self.soup.find_all(["p", "div", "section"]):
-            if elem.get("lang"): continue # Already has a lang attribute
+            if elem.get("lang"):
+                continue # Already has a lang attribute
             
             text = elem.get_text(strip=True).lower()
             if len(text) > 100:
@@ -3920,7 +3921,8 @@ class StaticChecker:
         icon_classes = ["fa-", "icon-", "glyphicon-", "material-icons", "mdi-"]
         for elem in self.soup.find_all(["i", "span", "em"]):
             classes = elem.get("class", [])
-            if not isinstance(classes, list): classes = [classes]
+            if not isinstance(classes, list):
+                classes = [classes]
             
             is_icon = any(any(ic in c for ic in icon_classes) for c in classes)
             if is_icon:

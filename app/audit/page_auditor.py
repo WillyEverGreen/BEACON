@@ -779,7 +779,7 @@ async def audit_page(url: str, scan_mode: str, page_context: PageContext) -> Pag
             )
         )
 
-    total_issues = len(merged_issues)
+
     penalty = sum(
         float(SEVERITY_WEIGHTS.get(str(issue.get("severity") or "minor").lower(), 1.0))
         for issue in merged_issues.values()

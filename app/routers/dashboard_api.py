@@ -20,10 +20,7 @@ from pydantic import BaseModel
 from app.audit.failure_taxonomy import normalize_failure
 from app.audit.scan_mode_runner import run_scan_mode_audit
 from app.config import (
-    DASHBOARD_DEEP_SCAN_MAX_PAGES,
-    DASHBOARD_MAX_SCAN_MAX_PAGES,
-    MAX_SCAN_GLOBAL_CAP,
-    SCAN_MODE_CONFIG,
+    resolve_max_pages,
 )
 from app.db.dashboard_repository import (
     delete_project as delete_project_record,
@@ -53,15 +50,7 @@ _legacy_bootstrap_lock = threading.Lock()
 
 def _resolve_site_scan_page_budget(scan_mode: str) -> int:
     mode = (scan_mode or "deep").lower()
-    if mode not in {"deep", "max"}:
-        return 1
-
-    mode_cfg = SCAN_MODE_CONFIG.get(mode, SCAN_MODE_CONFIG["fast"])
-    dashboard_cap = DASHBOARD_MAX_SCAN_MAX_PAGES if mode == "max" else DASHBOARD_DEEP_SCAN_MAX_PAGES
-    mode_max_pages = int(mode_cfg["max_pages"])
-    crawl_cap = min(int(mode_cfg["crawl_cap"]), int(MAX_SCAN_GLOBAL_CAP))
-    requested = min(mode_max_pages, int(dashboard_cap))
-    return max(1, min(requested, crawl_cap))
+    return resolve_max_pages(mode, has_sitemap=False)
 
 
 def _extract_page_issue_occurrences(site_payload: dict) -> list[dict]:
@@ -164,7 +153,7 @@ def _normalize_site_scan_result(site_payload: dict, scan_mode: str, elapsed_seco
     groups = group_issues(site_issues) if site_issues else []
 
     engines_policy = site_payload.get("engines_policy", {}) if isinstance(site_payload.get("engines_policy"), dict) else {}
-    engines_used = ["site-orchestrator", "crawler-sitemap", "crawler-bfs", "static", "heuristic"]
+    engines_used = ["site-orchestrator", "crawler-sitemap", "crawler-discovery", "static", "heuristic"]
     if engines_policy.get("playwright"):
         engines_used.append("browser-probe")
     if engines_policy.get("axe"):

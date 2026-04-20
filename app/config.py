@@ -4,7 +4,8 @@ Includes scan mode definitions and quality gate thresholds.
 """
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import AliasChoices, Field
-from typing import Optional
+from typing import Final
+from enum import Enum
 
 
 
@@ -48,54 +49,72 @@ CRAWLER_URL_RULES = {
 }
 
 
-# ── Scan Mode Runtime Profiles ───────────────────────────────
+# ── Scan Mode Runtime Profiles & Page Budgets (Phase 20 Envelope) ───────
 
-SCAN_MODE_CONFIG = {
+SCAN_MODES: Final[dict] = {
     "fast": {
-        "max_pages": 1,
-        "crawl_cap": 10,
-        "bfs_depth": 1,
-        "bfs_pages": 10,
-        "dom_pages": 0,
-        "stage1_timeout": 12,
-        "stage2_timeout": 4,
-        "global_sla": 35,
-        "concurrency": 5,
+        "max_pages_default":  5,
+        "max_pages_sitemap":  8,
+        "max_pages_ceiling":  10,
+        "max_depth":          2,
+        "timeout_ms":         15_000,
+        "enable_enrichment":  False,
+        "enable_cognitive":   False,
+        "stage1_timeout":     12,
+        "stage2_timeout":     4,
+        "global_sla":         35,
+        "concurrency":        5,
     },
     "deep": {
-        "max_pages": 12,
-        "crawl_cap": 30,
-        "bfs_depth": 3,
-        "bfs_pages": 30,
-        "dom_pages": 0,
-        "stage1_timeout": 25,
-        "stage2_timeout": 12,
-        "global_sla": 120,
-        "concurrency": 3,
+        "max_pages_default":  15,
+        "max_pages_sitemap":  25,
+        "max_pages_ceiling":  30,
+        "max_depth":          4,
+        "timeout_ms":         30_000,
+        "enable_enrichment":  True,
+        "enable_cognitive":   False,
+        "stage1_timeout":     25,
+        "stage2_timeout":     12,
+        "global_sla":         120,
+        "concurrency":        3,
     },
     "max": {
-        "max_pages": 25,
-        "crawl_cap": 70,
-        "bfs_depth": 4,
-        "bfs_pages": 60,
-        "dom_pages": 15,
-        "stage1_timeout": 40,
-        "stage2_timeout": 18,
-        "global_sla": 240,
-        "concurrency": 2,
+        "max_pages_default":  40,
+        "max_pages_sitemap":  60,
+        "max_pages_ceiling":  75,
+        "max_depth":          6,
+        "timeout_ms":         60_000,
+        "enable_enrichment":  True,
+        "enable_cognitive":   True,
+        "stage1_timeout":     40,
+        "stage2_timeout":     18,
+        "global_sla":         240,
+        "concurrency":        2,
     },
 }
 
-# Backward-compatible alias expected in some planning/debug paths.
-scan_modes = SCAN_MODE_CONFIG
+def resolve_max_pages(scan_mode: str, has_sitemap: bool) -> int:
+    """Return effective max_pages for a scan mode.
+
+    Callers should never set max_pages directly — always call this helper
+    after the sitemap crawler finishes so ``has_sitemap`` is accurate.
+
+    Args:
+        scan_mode:   One of "fast", "deep", "max".  Unknown modes fall back
+                     to "fast".
+        has_sitemap: True if the sitemap crawler returned at least one URL.
+
+    Returns:
+        Effective page ceiling, never exceeding ``max_pages_ceiling``.
+    """
+    mode = SCAN_MODES.get(scan_mode, SCAN_MODES["fast"])
+    if has_sitemap:
+        return min(mode["max_pages_sitemap"], mode["max_pages_ceiling"])
+    return min(mode["max_pages_default"], mode["max_pages_ceiling"])
 
 # Global hard caps for stability.
 MAX_SCAN_GLOBAL_CAP = 80
 MAX_CONCURRENT_SITE_AUDITS = 3
-
-# Dashboard cap defaults (can be overridden by env).
-DASHBOARD_DEEP_SCAN_MAX_PAGES = 12
-DASHBOARD_MAX_SCAN_MAX_PAGES = 25
 
 
 # ── Lighthouse Enrichment Constants ────────────────────────────────────────────
@@ -137,7 +156,7 @@ CRAWLER_CONFIG = {
         "default_priority": 0.5,
         "priority_boost": 0.3,
     },
-    "bfs": {
+    "discovery": {
         "default_max_depth": 3,
         "default_max_pages": 100,
         "default_concurrency": 5,
@@ -159,33 +178,6 @@ CRAWLER_CONFIG = {
         "default_priority": 0.5,
     },
     "orchestrator": {
-        "scan_modes": {
-            "fast": {
-                "cap": int(SCAN_MODE_CONFIG["fast"]["crawl_cap"]),
-                "sitemap_max_pages": int(SCAN_MODE_CONFIG["fast"]["crawl_cap"]),
-                "sitemap_timeout_seconds": 8,
-                "bfs_max_depth": int(SCAN_MODE_CONFIG["fast"]["bfs_depth"]),
-                "bfs_max_pages": int(SCAN_MODE_CONFIG["fast"]["bfs_pages"]),
-                "dom_max_pages": int(SCAN_MODE_CONFIG["fast"]["dom_pages"]),
-                "use_dom": bool(SCAN_MODE_CONFIG["fast"]["dom_pages"] > 0),
-            },
-            "deep": {
-                "cap": int(SCAN_MODE_CONFIG["deep"]["crawl_cap"]),
-                "sitemap_max_pages": int(SCAN_MODE_CONFIG["deep"]["crawl_cap"]),
-                "bfs_max_depth": int(SCAN_MODE_CONFIG["deep"]["bfs_depth"]),
-                "bfs_max_pages": int(SCAN_MODE_CONFIG["deep"]["bfs_pages"]),
-                "dom_max_pages": int(SCAN_MODE_CONFIG["deep"]["dom_pages"]),
-                "use_dom": bool(SCAN_MODE_CONFIG["deep"]["dom_pages"] > 0),
-            },
-            "max": {
-                "cap": int(SCAN_MODE_CONFIG["max"]["crawl_cap"]),
-                "sitemap_max_pages": int(SCAN_MODE_CONFIG["max"]["crawl_cap"]),
-                "bfs_max_depth": int(SCAN_MODE_CONFIG["max"]["bfs_depth"]),
-                "bfs_max_pages": int(SCAN_MODE_CONFIG["max"]["bfs_pages"]),
-                "dom_max_pages": int(SCAN_MODE_CONFIG["max"]["dom_pages"]),
-                "use_dom": bool(SCAN_MODE_CONFIG["max"]["dom_pages"] > 0),
-            },
-        },
         "cross_crawler_agreement_boost": 0.2,
         "shallow_depth_boost": 0.1,
         "shallow_depth_threshold": 2,
@@ -236,25 +228,25 @@ CRAWL_CONCURRENCY = 2
 AUDIT_PIPELINE_CONFIG = {
     "parallel_runner": {
         "concurrency_by_mode": {
-            "fast": int(SCAN_MODE_CONFIG["fast"]["concurrency"]),
-            "deep": int(SCAN_MODE_CONFIG["deep"]["concurrency"]),
-            "max": int(SCAN_MODE_CONFIG["max"]["concurrency"]),
+            "fast": int(SCAN_MODES["fast"]["concurrency"]),
+            "deep": int(SCAN_MODES["deep"]["concurrency"]),
+            "max": int(SCAN_MODES["max"]["concurrency"]),
         },
         "max_concurrent_site_audits": int(MAX_CONCURRENT_SITE_AUDITS),
         "page_timeout_stage1_seconds": {
-            "fast": int(SCAN_MODE_CONFIG["fast"]["stage1_timeout"]),
-            "deep": int(SCAN_MODE_CONFIG["deep"]["stage1_timeout"]),
-            "max": int(SCAN_MODE_CONFIG["max"]["stage1_timeout"]),
+            "fast": int(SCAN_MODES["fast"]["stage1_timeout"]),
+            "deep": int(SCAN_MODES["deep"]["stage1_timeout"]),
+            "max": int(SCAN_MODES["max"]["stage1_timeout"]),
         },
         "page_timeout_stage2_seconds": {
-            "fast": int(SCAN_MODE_CONFIG["fast"]["stage2_timeout"]),
-            "deep": int(SCAN_MODE_CONFIG["deep"]["stage2_timeout"]),
-            "max": int(SCAN_MODE_CONFIG["max"]["stage2_timeout"]),
+            "fast": int(SCAN_MODES["fast"]["stage2_timeout"]),
+            "deep": int(SCAN_MODES["deep"]["stage2_timeout"]),
+            "max": int(SCAN_MODES["max"]["stage2_timeout"]),
         },
         "global_sla_seconds": {
-            "fast": int(SCAN_MODE_CONFIG["fast"]["global_sla"]),
-            "deep": int(SCAN_MODE_CONFIG["deep"]["global_sla"]),
-            "max": int(SCAN_MODE_CONFIG["max"]["global_sla"]),
+            "fast": int(SCAN_MODES["fast"]["global_sla"]),
+            "deep": int(SCAN_MODES["deep"]["global_sla"]),
+            "max": int(SCAN_MODES["max"]["global_sla"]),
         },
         "partial_summary_every_pages": 1,
         "event_buffer_max": 1000,
@@ -832,14 +824,6 @@ class Settings(BaseSettings):
         default=MAX_CONCURRENT_SITE_AUDITS,
         validation_alias=AliasChoices("MAX_CONCURRENT_SITE_AUDITS"),
     )
-    dashboard_deep_scan_max_pages: int = Field(
-        default=DASHBOARD_DEEP_SCAN_MAX_PAGES,
-        validation_alias=AliasChoices("DASHBOARD_DEEP_SCAN_MAX_PAGES"),
-    )
-    dashboard_max_scan_max_pages: int = Field(
-        default=DASHBOARD_MAX_SCAN_MAX_PAGES,
-        validation_alias=AliasChoices("DASHBOARD_MAX_SCAN_MAX_PAGES"),
-    )
 
     # Phase 6 crawl defaults
     crawl_max_pages_per_site: int = CRAWL_MAX_PAGES_PER_SITE
@@ -890,43 +874,6 @@ settings = Settings()
 # Runtime-resolved mode caps (env-configurable via Settings).
 MAX_SCAN_GLOBAL_CAP = max(1, int(settings.max_scan_global_cap or MAX_SCAN_GLOBAL_CAP))
 MAX_CONCURRENT_SITE_AUDITS = max(1, int(settings.max_concurrent_site_audits or MAX_CONCURRENT_SITE_AUDITS))
-DASHBOARD_DEEP_SCAN_MAX_PAGES = max(
-    1,
-    min(int(settings.dashboard_deep_scan_max_pages or DASHBOARD_DEEP_SCAN_MAX_PAGES), MAX_SCAN_GLOBAL_CAP),
-)
-DASHBOARD_MAX_SCAN_MAX_PAGES = max(
-    1,
-    min(int(settings.dashboard_max_scan_max_pages or DASHBOARD_MAX_SCAN_MAX_PAGES), MAX_SCAN_GLOBAL_CAP),
-)
-
-for _mode_name, _mode_cfg in SCAN_MODE_CONFIG.items():
-    _crawl_cap = min(int(_mode_cfg["crawl_cap"]), MAX_SCAN_GLOBAL_CAP)
-    _orchestrator_mode = CRAWLER_CONFIG["orchestrator"]["scan_modes"][_mode_name]
-    _orchestrator_mode["cap"] = _crawl_cap
-    _orchestrator_mode["sitemap_max_pages"] = _crawl_cap
-    _orchestrator_mode["bfs_max_depth"] = int(_mode_cfg["bfs_depth"])
-    _orchestrator_mode["bfs_max_pages"] = min(int(_mode_cfg["bfs_pages"]), _crawl_cap)
-    _orchestrator_mode["dom_max_pages"] = min(int(_mode_cfg["dom_pages"]), _crawl_cap)
-    _orchestrator_mode["use_dom"] = bool(int(_mode_cfg["dom_pages"]) > 0)
-
-_parallel = AUDIT_PIPELINE_CONFIG["parallel_runner"]
-_parallel["concurrency_by_mode"] = {
-    mode_name: max(1, int(mode_cfg["concurrency"]))
-    for mode_name, mode_cfg in SCAN_MODE_CONFIG.items()
-}
-_parallel["page_timeout_stage1_seconds"] = {
-    mode_name: max(1, int(mode_cfg["stage1_timeout"]))
-    for mode_name, mode_cfg in SCAN_MODE_CONFIG.items()
-}
-_parallel["page_timeout_stage2_seconds"] = {
-    mode_name: max(1, int(mode_cfg["stage2_timeout"]))
-    for mode_name, mode_cfg in SCAN_MODE_CONFIG.items()
-}
-_parallel["global_sla_seconds"] = {
-    mode_name: max(1, int(mode_cfg["global_sla"]))
-    for mode_name, mode_cfg in SCAN_MODE_CONFIG.items()
-}
-_parallel["max_concurrent_site_audits"] = MAX_CONCURRENT_SITE_AUDITS
 
 
 # Runtime-resolved crawl limits (env-configurable via Settings).
@@ -939,64 +886,7 @@ LLM_FIRE_BUDGET_PER_AUDIT = max(0, int(settings.llm_fire_budget_per_audit or LLM
 AUDIT_CONCURRENCY_LIMIT = max(1, int(settings.audit_concurrency_limit or AUDIT_CONCURRENCY_LIMIT))
 
 
-# ── Phase 20: Scan Mode Page Count Envelope ──────────────────────────────────
-# SCAN_MODES is a new, additive dict that exposes three page-count values per
-# mode. The existing SCAN_MODE_CONFIG (crawl_cap, bfs_depth, etc.) is unchanged.
-# Call resolve_max_pages(scan_mode, has_sitemap) everywhere instead of
-# hardcoding a page count.
 
-from typing import Final  # noqa: E402  (needed here after module-level code)
-from enum import Enum      # noqa: E402
-
-SCAN_MODES: Final[dict] = {
-    "fast": {
-        "max_pages_default":  5,
-        "max_pages_sitemap":  8,
-        "max_pages_ceiling":  10,
-        "max_depth":          2,
-        "timeout_ms":         15_000,
-        "enable_enrichment":  False,
-        "enable_cognitive":   False,
-    },
-    "deep": {
-        "max_pages_default":  15,
-        "max_pages_sitemap":  25,
-        "max_pages_ceiling":  30,
-        "max_depth":          4,
-        "timeout_ms":         30_000,
-        "enable_enrichment":  True,
-        "enable_cognitive":   False,
-    },
-    "max": {
-        "max_pages_default":  40,
-        "max_pages_sitemap":  60,
-        "max_pages_ceiling":  75,
-        "max_depth":          6,
-        "timeout_ms":         60_000,
-        "enable_enrichment":  True,
-        "enable_cognitive":   True,
-    },
-}
-
-
-def resolve_max_pages(scan_mode: str, has_sitemap: bool) -> int:
-    """Return effective max_pages for a scan mode.
-
-    Callers should never set max_pages directly — always call this helper
-    after the sitemap crawler finishes so ``has_sitemap`` is accurate.
-
-    Args:
-        scan_mode:   One of "fast", "deep", "max".  Unknown modes fall back
-                     to "fast".
-        has_sitemap: True if the sitemap crawler returned at least one URL.
-
-    Returns:
-        Effective page ceiling, never exceeding ``max_pages_ceiling``.
-    """
-    mode = SCAN_MODES.get(scan_mode, SCAN_MODES["fast"])
-    if has_sitemap:
-        return min(mode["max_pages_sitemap"], mode["max_pages_ceiling"])
-    return min(mode["max_pages_default"], mode["max_pages_ceiling"])
 
 
 # ── Phase 20: Site Topology ──────────────────────────────────────────────────

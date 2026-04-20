@@ -3,7 +3,6 @@ Fix Validator: Re-runs the static checker against proposed code fixes
 to validate they actually resolve the flagged issue before storing to cache.
 """
 import logging
-from typing import Optional
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
@@ -100,7 +99,7 @@ def _validate_form_label(orig, fix, orig_html, fix_html) -> dict:
         if parent_label:
             continue
             
-        return {"valid": False, "reason": f"Input still lacks label association", "confidence": 0.1}
+        return {"valid": False, "reason": "Input still lacks label association", "confidence": 0.1}
 
     return {"valid": True, "reason": "All inputs have label associations", "confidence": 0.9}
 

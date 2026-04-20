@@ -4,15 +4,13 @@ from __future__ import annotations
 
 import json
 import math
-import os
 import threading
 from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
-from statistics import median
 from typing import Any
 
-from app.audit.failure_taxonomy import classify_failure_reason, normalize_failure, normalize_reason
+from app.audit.failure_taxonomy import classify_failure_reason, normalize_failure
 from app.config import CACHE_STATS, settings
 
 _WINDOW_LOCK = threading.RLock()
@@ -331,6 +329,6 @@ def render_prometheus_metrics() -> str:
     # These crawler metrics are placeholders until site-mode runner populates them.
     # Keep explicit gauges so dashboards remain stable.
     lines.append("beacon_crawler_sitemap_success_rate 0.000000")
-    lines.append("beacon_crawler_bfs_fallback_rate 0.000000")
+    lines.append("beacon_crawler_discovery_fallback_rate 0.000000")
 
     return "\n".join(lines) + "\n"

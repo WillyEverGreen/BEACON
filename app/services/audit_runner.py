@@ -27,7 +27,6 @@ from app.config import (
     DEGRADED_MODE_MAX_SCORE,
     LLM_FIRE_BUDGET_PER_AUDIT,
     QUALITY_GATES,
-    SCORING_CONFIG,
     SEVERITY_WEIGHTS,
     settings,
 )

@@ -4,7 +4,6 @@ into a unified AuditIssue schema.
 """
 import hashlib
 import logging
-from typing import Optional
 
 from app.config import RULE_DOMAIN_MAP
 
@@ -127,7 +126,6 @@ def normalize_axe_results(axe_violations: list[dict], url: str) -> list[dict]:
     Convert axe-core violation results into unified AuditIssue dicts.
     Groupable rules produce one representative issue with affected_count.
     """
-    import hashlib
     issues = []
     for violation in axe_violations:
         raw_rule_id = violation.get("id", "unknown")

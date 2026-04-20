@@ -5,9 +5,7 @@ form usability, and error message quality analysis.
 """
 import hashlib
 import logging
-import math
 import re
-from typing import Optional
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)

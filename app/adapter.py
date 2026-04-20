@@ -10,13 +10,12 @@ Wraps the DJ HACK audit pipeline to expose:
 This adapter is the primary integration point between the engine and the app.
 """
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from app.schema_compat import (
     audit_issue_to_accessibility_issue,
     audit_issue_to_rag_finding,
     checklist_to_app_format,
-    get_disability_groups,
 )
 
 logger = logging.getLogger(__name__)

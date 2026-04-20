@@ -6,7 +6,7 @@ import asyncio
 import json
 import logging
 import time
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from app.models import (
     AuditRequest, AuditResponse, AuditIssue, IssueGroup,

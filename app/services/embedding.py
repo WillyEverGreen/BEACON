@@ -7,7 +7,6 @@ loading the same ~90MB model multiple times.
 import logging
 import sys
 import os
-from typing import Optional
 
 from sentence_transformers import SentenceTransformer
 
@@ -16,7 +15,7 @@ _rag_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", 
 if _rag_path not in sys.path:
     sys.path.insert(0, _rag_path)
 
-from model_registry import get_embedding_model as _get_shared_model
+from model_registry import get_embedding_model as _get_shared_model  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

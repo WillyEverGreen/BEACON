@@ -15,7 +15,6 @@ Playwright is an optional dependency — all probes fail gracefully if unavailab
 import asyncio
 import hashlib
 import logging
-import re
 from typing import Any, Optional
 from urllib.parse import urlparse
 
@@ -521,12 +520,12 @@ class BrowserProber:
                 """)
                 
                 if is_blocked:
-                    logger.warning(f"Bot protection detected, waiting...")
+                    logger.warning("Bot protection detected, waiting...")
                     await asyncio.sleep(2)
                     # Try to wait for redirect
                     try:
                         await page.wait_for_load_state("networkidle", timeout=10000)
-                    except:
+                    except Exception:
                         pass
                 
                     still_blocked = await page.evaluate("""
@@ -749,7 +748,7 @@ class BrowserProber:
                     # Additional wait for lazy-loaded content
                     try:
                         await page.wait_for_load_state("networkidle", timeout=5000)
-                    except:
+                    except Exception:
                         pass
                 else:
                     metadata["hydration_waited"] = False

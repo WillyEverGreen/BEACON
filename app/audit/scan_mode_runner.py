@@ -14,7 +14,7 @@ from app.audit.failure_taxonomy import normalize_failure
 from app.audit.parallel_runner import PageAuditor, SSEEmitter, run_site_audit
 from app.crawlers.common import http_get_with_backoff, normalize_scan_mode
 from app.crawlers.orchestrator import CrawlerOrchestrator
-from app.config import AUDIT_PIPELINE_CONFIG, MAX_SCAN_GLOBAL_CAP, SCAN_MODE_CONFIG
+from app.config import AUDIT_PIPELINE_CONFIG, resolve_max_pages, SCAN_MODES
 from app.services.heuristics import HeuristicAnalyzer
 from app.services.normalizer import normalize_all
 from app.services.static_checks import StaticChecker
@@ -70,15 +70,6 @@ class _ManagedPlaywrightBrowser:
                     await stop_result
             except Exception:
                 pass
-
-
-def _mode_config(scan_mode: str) -> dict[str, Any]:
-    return SCAN_MODE_CONFIG.get(scan_mode, SCAN_MODE_CONFIG["fast"])
-
-
-def _mode_cap(scan_mode: str) -> int:
-    mode_cfg = _mode_config(scan_mode)
-    return min(int(mode_cfg["crawl_cap"]), int(MAX_SCAN_GLOBAL_CAP))
 
 
 def _journey_config() -> dict[str, int]:
@@ -357,11 +348,10 @@ async def run_scan_mode_audit(
 ) -> dict[str, Any]:
     """Execute full mode-specific site auditing from discovery through aggregation."""
     mode = normalize_scan_mode(scan_mode)
-    mode_config = _mode_config(mode)
-    cap = _mode_cap(mode)
     requested_pages = max(1, int(max_pages))
-    requested_pages = min(requested_pages, int(mode_config["max_pages"]), int(MAX_SCAN_GLOBAL_CAP))
-    effective_max_pages = min(requested_pages, cap)
+    ceiling = resolve_max_pages(mode, has_sitemap=False)
+    effective_max_pages = min(requested_pages, ceiling)
+    mode_config = SCAN_MODES.get(mode, SCAN_MODES["fast"])
 
     async with _SITE_AUDIT_SEMAPHORE:
         orchestrator = crawler_orchestrator or CrawlerOrchestrator()
@@ -438,7 +428,7 @@ async def run_scan_mode_audit(
 
             result["seed_url"] = seed_url
             result["scan_mode"] = mode
-            result["pages_cap"] = cap
+            result["pages_cap"] = effective_max_pages
             result["pages_requested"] = requested_pages
             result["pages_discovered"] = len(deduped_urls)
             result["urls_audited"] = urls_to_audit

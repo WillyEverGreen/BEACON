@@ -25,7 +25,7 @@ _rag_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", 
 if _rag_path not in sys.path:
     sys.path.insert(0, _rag_path)
 
-from query import hybrid_retrieve, rerank, expand_query
+from query import hybrid_retrieve, rerank, expand_query  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

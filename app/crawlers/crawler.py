@@ -10,7 +10,7 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 @dataclass(slots=True)
 class CrawlQueueEntry:
-    """Queue entry tracked by the BFS crawler."""
+    """Queue entry tracked by the Discovery crawler."""
 
     fetch_url: str
     dedup_key: str
@@ -20,7 +20,7 @@ class CrawlQueueEntry:
 
 
 class CrawlSession:
-    """Mutable crawl session state with deterministic BFS queue semantics."""
+    """Mutable crawl session state with deterministic Discovery queue semantics."""
 
     def __init__(self) -> None:
         self._queue: deque[CrawlQueueEntry] = deque()

@@ -6,11 +6,11 @@ import asyncio
 from collections import Counter
 from dataclasses import dataclass
 import logging
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
-from app.config import CRAWLER_CONFIG
-from app.crawlers.bfs_crawler import BFSCrawler
-from app.crawlers.common import detect_critical_page_type, normalize_url, path_depth, priority_path_boost
+from app.config import CRAWLER_CONFIG, SCAN_MODES, resolve_max_pages
+from app.crawlers.discovery_crawler import DiscoveryCrawler
+from app.crawlers.common import detect_critical_page_type, normalize_url, priority_path_boost
 from app.crawlers.dom_crawler import DOMCrawler
 from app.crawlers.models import CrawledURL, SitemapURL
 from app.crawlers.sitemap_crawler import SitemapCrawler
@@ -35,74 +35,80 @@ class CrawlerOrchestrator:
         self,
         *,
         sitemap_crawler: Optional[SitemapCrawler] = None,
-        bfs_factory: Optional[Callable[..., BFSCrawler]] = None,
+        discovery_factory: Optional[Callable[..., DiscoveryCrawler]] = None,
         dom_crawler: Optional[DOMCrawler] = None,
     ) -> None:
         self.sitemap_crawler = sitemap_crawler or SitemapCrawler()
-        self.bfs_factory = bfs_factory or (lambda **kwargs: BFSCrawler(**kwargs))
+        self.discovery_factory = discovery_factory or (lambda **kwargs: DiscoveryCrawler(**kwargs))
         self.dom_crawler = dom_crawler or DOMCrawler()
 
     async def discover_urls(self, seed_url: str, scan_mode: str, max_pages: int) -> list[str]:
         """Discover and prioritize URLs for the requested scan mode."""
         mode_key = scan_mode.lower()
-        mode_cfg = CRAWLER_CONFIG["orchestrator"]["scan_modes"].get(mode_key)
+        mode_cfg = SCAN_MODES.get(mode_key)
         if mode_cfg is None:
             raise ValueError(f"Unsupported scan_mode: {scan_mode}")
 
-        mode_cap = int(mode_cfg["cap"])
-        requested_cap = max(1, int(max_pages))
-        cap = min(mode_cap, requested_cap)
+        cap = max(1, int(max_pages))
+        max_depth = mode_cfg.get("max_depth", 2)
 
         sitemap_results: list[SitemapURL] = []
-        bfs_results: list[CrawledURL] = []
+        discovery_results: list[CrawledURL] = []
         dom_results: list[CrawledURL] = []
 
         if mode_key == "fast":
             sitemap_results = await self._run_sitemap_with_timeout(
                 seed_url,
-                max_pages=int(mode_cfg["sitemap_max_pages"]),
-                timeout_seconds=float(mode_cfg["sitemap_timeout_seconds"]),
+                max_pages=mode_cfg["max_pages_ceiling"],
+                timeout_seconds=8.0,
             )
+            has_sitemap = len(sitemap_results) > 0
+            resolved_cap = min(resolve_max_pages(mode_key, has_sitemap), cap)
+
             if not sitemap_results:
-                bfs_crawler = self.bfs_factory(
-                    max_depth=int(mode_cfg["bfs_max_depth"]),
-                    max_pages=int(mode_cfg["bfs_max_pages"]),
+                discovery_crawler = self.discovery_factory(
+                    max_depth=max_depth,
+                    max_pages=resolved_cap,
                 )
-                bfs_results = await self._safe_crawl_bfs(bfs_crawler, seed_url)
+                discovery_results = await self._safe_crawl_discovery(discovery_crawler, seed_url)
 
         elif mode_key == "deep":
-            bfs_crawler = self.bfs_factory(
-                max_depth=int(mode_cfg["bfs_max_depth"]),
-                max_pages=int(mode_cfg["bfs_max_pages"]),
+            discovery_crawler = self.discovery_factory(
+                max_depth=max_depth,
+                max_pages=mode_cfg["max_pages_ceiling"],
             )
             sitemap_task = asyncio.create_task(
-                self._safe_discover_sitemap(seed_url, int(mode_cfg["sitemap_max_pages"]))
+                self._safe_discover_sitemap(seed_url, mode_cfg["max_pages_ceiling"])
             )
-            bfs_task = asyncio.create_task(self._safe_crawl_bfs(bfs_crawler, seed_url))
-            sitemap_results, bfs_results = await asyncio.gather(sitemap_task, bfs_task)
+            discovery_task = asyncio.create_task(self._safe_crawl_discovery(discovery_crawler, seed_url))
+            sitemap_results, discovery_results = await asyncio.gather(sitemap_task, discovery_task)
+            has_sitemap = len(sitemap_results) > 0
+            resolved_cap = min(resolve_max_pages(mode_key, has_sitemap), cap)
 
         elif mode_key == "max":
-            bfs_crawler = self.bfs_factory(
-                max_depth=int(mode_cfg["bfs_max_depth"]),
-                max_pages=int(mode_cfg["bfs_max_pages"]),
+            discovery_crawler = self.discovery_factory(
+                max_depth=max_depth,
+                max_pages=mode_cfg["max_pages_ceiling"],
             )
             sitemap_task = asyncio.create_task(
-                self._safe_discover_sitemap(seed_url, int(mode_cfg["sitemap_max_pages"]))
+                self._safe_discover_sitemap(seed_url, mode_cfg["max_pages_ceiling"])
             )
-            bfs_task = asyncio.create_task(self._safe_crawl_bfs(bfs_crawler, seed_url))
+            discovery_task = asyncio.create_task(self._safe_crawl_discovery(discovery_crawler, seed_url))
             dom_task = asyncio.create_task(
-                self._safe_crawl_dom(self.dom_crawler, seed_url, int(mode_cfg["dom_max_pages"]))
+                self._safe_crawl_dom(self.dom_crawler, seed_url, mode_cfg["max_pages_ceiling"])
             )
-            sitemap_results, bfs_results, dom_results = await asyncio.gather(
+            sitemap_results, discovery_results, dom_results = await asyncio.gather(
                 sitemap_task,
-                bfs_task,
+                discovery_task,
                 dom_task,
             )
+            has_sitemap = len(sitemap_results) > 0
+            resolved_cap = min(resolve_max_pages(mode_key, has_sitemap), cap)
 
-        merged = self._merge_results(sitemap_results, bfs_results, dom_results)
+        merged = self._merge_results(sitemap_results, discovery_results, dom_results)
         prioritized = self._prioritize(merged)
-        selected = self._ensure_critical_path_coverage(prioritized, cap)
-        return [item.url for item in selected[:cap]]
+        selected = self._ensure_critical_path_coverage(prioritized, resolved_cap)
+        return [item.url for item in selected[:resolved_cap]]
 
     async def _run_sitemap_with_timeout(self, seed_url: str, max_pages: int, timeout_seconds: float) -> list[SitemapURL]:
         try:
@@ -122,11 +128,11 @@ class CrawlerOrchestrator:
             return []
 
     @staticmethod
-    async def _safe_crawl_bfs(crawler: BFSCrawler, seed_url: str) -> list[CrawledURL]:
+    async def _safe_crawl_discovery(crawler: DiscoveryCrawler, seed_url: str) -> list[CrawledURL]:
         try:
             return await crawler.crawl(seed_url)
         except Exception as exc:
-            logger.warning("BFS crawl failed for %s: %s", seed_url, exc)
+            logger.warning("Discovery crawl failed for %s: %s", seed_url, exc)
             return []
 
     @staticmethod
@@ -140,7 +146,7 @@ class CrawlerOrchestrator:
     def _merge_results(
         self,
         sitemap_results: list[SitemapURL],
-        bfs_results: list[CrawledURL],
+        discovery_results: list[CrawledURL],
         dom_results: list[CrawledURL],
     ) -> list[_MergedURL]:
         merged: dict[str, _MergedURL] = {}
@@ -171,11 +177,11 @@ class CrawlerOrchestrator:
             else:
                 upsert(str(getattr(row, "url")), "sitemap", int(getattr(row, "depth", 0)), float(getattr(row, "priority", default_priority)))
 
-        for row in bfs_results:
+        for row in discovery_results:
             if isinstance(row, CrawledURL):
-                upsert(row.url, "bfs", int(row.depth), default_priority)
+                upsert(row.url, "discovery", int(row.depth), default_priority)
             else:
-                upsert(str(getattr(row, "url")), "bfs", int(getattr(row, "depth", 0)), default_priority)
+                upsert(str(getattr(row, "url")), "discovery", int(getattr(row, "depth", 0)), default_priority)
 
         for row in dom_results:
             if isinstance(row, CrawledURL):
@@ -193,7 +199,7 @@ class CrawlerOrchestrator:
         for item in items:
             score = item.base_priority
             score += priority_path_boost(item.url)
-            if "sitemap" in item.sources and "bfs" in item.sources:
+            if "sitemap" in item.sources and "discovery" in item.sources:
                 score += cross_boost
             if item.depth <= shallow_depth_threshold:
                 score += shallow_boost

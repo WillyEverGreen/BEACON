@@ -4,6 +4,7 @@ Multi-signal formula: source reliability + signal strength + cross-engine agreem
 + evidence quality + rule trust (from adaptive trust registry).
 """
 import logging
+import re
 
 from app.config import (
     CONFIDENCE_WEIGHTS,
@@ -503,8 +504,7 @@ def _boost_cross_engine_agreement(issues: list[dict]) -> list[dict]:
 # They do NOT affect visibility filtering.  Confidence ≠ visibility.
 # Visibility decisions happen in audit_runner._apply_precision_profile().
 
-import math
-import re
+
 
 
 def detect_semantic_html_density(html: str) -> float:

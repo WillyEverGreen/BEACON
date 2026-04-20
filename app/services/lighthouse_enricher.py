@@ -35,7 +35,6 @@ Merge rules (do not change without updating test_lighthouse_enricher.py):
 """
 from __future__ import annotations
 
-import asyncio
 import datetime
 import logging
 import time
@@ -43,7 +42,6 @@ from typing import Any
 from urllib.parse import urlparse
 
 from app.config import (
-    LIGHTHOUSE_GLOBAL_TIMEOUT_SECONDS,
     LIGHTHOUSE_MAX_URLS_PER_SCAN,
     _LIGHTHOUSE_ELIGIBLE_MODES,
 )

@@ -73,7 +73,7 @@ except Exception:  # pragma: no cover - optional dependency
 
 @dataclass(slots=True)
 class SelectedLink:
-    """A normalized internal link ready for BFS enqueueing."""
+    """A normalized internal link ready for Discovery enqueueing."""
 
     fetch_url: str
     dedup_key: str

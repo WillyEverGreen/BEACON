@@ -18,7 +18,7 @@ class SitemapURL:
 
 @dataclass(slots=True)
 class CrawledURL:
-    """URL discovered through BFS or DOM crawling."""
+    """URL discovered through Discovery or DOM crawling."""
 
     url: str
     source: str

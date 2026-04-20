@@ -5,7 +5,7 @@ and the DJ FR Localbros3000 app's AccessibilityIssue / RagFinding formats.
 This ensures the upgraded engine can be dropped into the full app without
 breaking Firestore storage, PDF reports, or the GitHub auto-fix pipeline.
 """
-from typing import Any, Optional
+from typing import Optional
 
 # ── WCAG → Disability Group Mapping ───────────────────────────
 # Maps WCAG success criterion prefixes to affected disability groups.

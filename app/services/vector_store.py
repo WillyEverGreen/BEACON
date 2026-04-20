@@ -4,7 +4,6 @@ Persists to disk as JSON + numpy arrays.
 """
 import json
 import logging
-import os
 import hashlib
 from pathlib import Path
 from typing import Optional

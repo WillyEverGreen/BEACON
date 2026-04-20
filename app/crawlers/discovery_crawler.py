@@ -1,4 +1,4 @@
-"""Breadth-first crawler for same-origin link discovery."""
+"""Discovery crawler for same-origin link discovery."""
 
 from __future__ import annotations
 
@@ -36,8 +36,8 @@ except Exception:  # pragma: no cover - optional dependency
     AsyncWebCrawler = None  # type: ignore[assignment]
 
 
-class BFSCrawler:
-    """Crawl links level-by-level from a seed URL using BFS traversal."""
+class DiscoveryCrawler:
+    """Crawl links level-by-level from a seed URL using discovery traversal."""
 
     def __init__(
         self,
@@ -46,7 +46,7 @@ class BFSCrawler:
         concurrency: Optional[int] = None,
         timeout_seconds: Optional[float] = None,
     ) -> None:
-        cfg = CRAWLER_CONFIG["bfs"]
+        cfg = CRAWLER_CONFIG["discovery"]
         self.max_depth = int(max_depth if max_depth is not None else cfg["default_max_depth"])
         self.max_pages = int(max_pages if max_pages is not None else cfg["default_max_pages"])
         self.concurrency = int(concurrency if concurrency is not None else cfg["default_concurrency"])
@@ -57,7 +57,7 @@ class BFSCrawler:
         self.queue: asyncio.Queue[tuple[str, int, Optional[str]]] = asyncio.Queue()
 
     async def crawl(self, seed_url: str, *, disallow_set: frozenset[str] = frozenset()) -> list[CrawledURL]:
-        """Discover same-origin URLs from a seed page with bounded BFS traversal."""
+        """Discover same-origin URLs from a seed page with bounded traversal."""
         self.visited = set()
         semaphore = asyncio.Semaphore(max(1, int(self.concurrency)))
 
@@ -87,7 +87,7 @@ class BFSCrawler:
                 results.append(
                     CrawledURL(
                         url=normalized,
-                        source="bfs",
+                        source="discovery",
                         depth=depth,
                         discovered_from=parent,
                         priority=self.default_priority,
@@ -111,7 +111,7 @@ class BFSCrawler:
             level_results = await asyncio.gather(*fetch_tasks, return_exceptions=True)
             for (parent_fetch_url, parent_normalized, parent_depth), links_result in zip(fetch_targets, level_results):
                 if isinstance(links_result, Exception):
-                    logger.warning("BFS link extraction failed for %s: %s", parent_fetch_url, links_result)
+                    logger.warning("Discovery link extraction failed for %s: %s", parent_fetch_url, links_result)
                     continue
 
                 child_depth = parent_depth + 1
