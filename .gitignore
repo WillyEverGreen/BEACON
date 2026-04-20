@@ -229,3 +229,12 @@ phase*_triage.md
 
 # Generic root-level log files
 *.log
+
+# -- Cleanup artifacts --------------------------------------------------------
+cleanup_dead_files.bat
+
+# -- Camoufox browser binary cache --------------------------------------------
+.camoufox/
+
+# -- Local benchmark run outputs ----------------------------------------------
+test_comparison_results*.json
