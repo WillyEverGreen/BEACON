@@ -757,6 +757,28 @@ async def start_scan(data: ScanStart):
 
             upsert_scan_record(scan_record)
 
+            # ── Phase 2.5: Lighthouse Enrichment (fire and forget, deep/max only) ──
+            if scan_mode in {"deep", "max"}:
+                try:
+                    from app.audit.scan_mode_runner import _lighthouse_eligible
+                    from app.services.audit_runner import _run_lighthouse_background
+                    if _lighthouse_eligible(scan_mode):
+                        crawl_urls = list(result.get("scraped_pages") or result.get("urls_audited") or [scan_url])
+                        beacon_findings = list(result.get("issues") or [])
+                        asyncio.create_task(
+                            _run_lighthouse_background(
+                                scan_id=scan_id,
+                                beacon_findings=beacon_findings,
+                                crawl_urls=crawl_urls,
+                                scan_mode=scan_mode,
+                            )
+                        )
+                        logger.info("Lighthouse enrichment background task dispatched for scan %s", scan_id)
+                except Exception as lh_exc:
+                    logger.error("Failed to dispatch lighthouse enrichment for scan %s: %s", scan_id, lh_exc)
+
+
+
             fresh_project = get_project_record(data.project_id)
             if fresh_project:
                 fresh_project["latest_score"] = scan_record["score"]

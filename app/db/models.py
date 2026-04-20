@@ -157,5 +157,8 @@ class DashboardScanRecord(Base):
     urls_discovered: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=dt.datetime.utcnow, index=True)
     completed_at: Mapped[dt.datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    # Lighthouse enrichment: full enrichment block written atomically after async background task completes.
+    lighthouse_enrichment: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     project: Mapped[DashboardProjectRecord] = relationship("DashboardProjectRecord", back_populates="scans")
+

@@ -28,6 +28,18 @@ _SITE_AUDIT_SEMAPHORE = asyncio.Semaphore(
 )
 
 
+def _lighthouse_eligible(scan_mode: str) -> bool:
+    """Hard architectural gate: Lighthouse enrichment only runs in deep and max modes.
+
+    This is not a feature flag. Never call Lighthouse code without passing this check.
+    The eligible mode set is defined in app.config._LIGHTHOUSE_ELIGIBLE_MODES.
+    """
+    from app.config import _LIGHTHOUSE_ELIGIBLE_MODES
+    return str(scan_mode).lower() in _LIGHTHOUSE_ELIGIBLE_MODES
+
+
+
+
 _PLAYWRIGHT_AVAILABLE = False
 try:
     from playwright.async_api import async_playwright

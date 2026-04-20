@@ -1,0 +1,911 @@
+{
+  "apg-dialog-no-name": {
+    "precision_score": 0.0,
+    "recall_score": 0.0,
+    "trust_score": 0.0,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "aria-dialog-name": {
+    "precision_score": 0.0,
+    "recall_score": 0.0,
+    "trust_score": 0.0,
+    "last_calibrated": "2026-04-10",
+    "calibration_source": "ACT-subset-v1",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "aria-input-field-name": {
+    "precision_score": 0.0,
+    "recall_score": 0.0,
+    "trust_score": 0.0,
+    "last_calibrated": "2026-04-10",
+    "calibration_source": "ACT-subset-v1",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "aria-required-attr": {
+    "precision_score": 0.0,
+    "recall_score": 0.0,
+    "trust_score": 0.0,
+    "last_calibrated": "2026-04-10",
+    "calibration_source": "ACT-subset-v1",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "aria-required-parent": {
+    "precision_score": 0.9735,
+    "recall_score": 0.9314,
+    "trust_score": 0.9394,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "moderate",
+    "required_engines": 2
+  },
+  "aria-valid-attr": {
+    "precision_score": 0.9999,
+    "recall_score": 0.605,
+    "trust_score": 0.697,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "noisy",
+    "required_engines": 2
+  },
+  "document-title": {
+    "precision_score": 0.0,
+    "recall_score": 0.0,
+    "trust_score": 0.0,
+    "last_calibrated": "2026-04-10",
+    "calibration_source": "ACT-subset-v1",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "focus-management": {
+    "precision_score": 0.0796,
+    "recall_score": 0.0001,
+    "trust_score": 0.0503,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "focus-trap-cycling": {
+    "precision_score": 0.0,
+    "recall_score": 0.0,
+    "trust_score": 0.0,
+    "last_calibrated": "2026-04-10",
+    "calibration_source": "ACT-subset-v1",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "focus-trap-escape": {
+    "precision_score": 0.0,
+    "recall_score": 0.0,
+    "trust_score": 0.0,
+    "last_calibrated": "2026-04-10",
+    "calibration_source": "ACT-subset-v1",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "html-has-lang": {
+    "precision_score": 0.0,
+    "recall_score": 0.0,
+    "trust_score": 0.0,
+    "last_calibrated": "2026-04-10",
+    "calibration_source": "ACT-subset-v1",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "landmark-one-main": {
+    "precision_score": 0.0,
+    "recall_score": 0.0,
+    "trust_score": 0.0,
+    "last_calibrated": "2026-04-10",
+    "calibration_source": "ACT-subset-v1",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "landmark-unique": {
+    "precision_score": 0.0,
+    "recall_score": 0.0,
+    "trust_score": 0.0,
+    "last_calibrated": "2026-04-10",
+    "calibration_source": "ACT-subset-v1",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "list": {
+    "precision_score": 0.0,
+    "recall_score": 0.0,
+    "trust_score": 0.0,
+    "last_calibrated": "2026-04-10",
+    "calibration_source": "ACT-subset-v1",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "missing-lang": {
+    "precision_score": 0.0,
+    "recall_score": 0.0,
+    "trust_score": 0.0,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "no-headings": {
+    "precision_score": 0.9226,
+    "recall_score": 0.9121,
+    "trust_score": 0.9142,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "noisy",
+    "required_engines": 2
+  },
+  "no-title": {
+    "precision_score": 0.0,
+    "recall_score": 0.0,
+    "trust_score": 0.0458,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "page-has-heading-one": {
+    "precision_score": 0.0,
+    "recall_score": 0.0,
+    "trust_score": 0.0,
+    "last_calibrated": "2026-04-10",
+    "calibration_source": "ACT-subset-v1",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "semantic-html": {
+    "precision_score": 0.6262,
+    "recall_score": 0.5904,
+    "trust_score": 0.6109,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "target-size-minimum": {
+    "precision_score": 0.0,
+    "recall_score": 0.0,
+    "trust_score": 0.0,
+    "last_calibrated": "2026-04-10",
+    "calibration_source": "ACT-subset-v1",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "missing-alt": {
+    "precision_score": 0.1196,
+    "recall_score": 0.1105,
+    "trust_score": 0.1157,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "missing-label": {
+    "precision_score": 0.1707,
+    "recall_score": 0.0002,
+    "trust_score": 0.0767,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "color-contrast": {
+    "precision_score": 0.82,
+    "recall_score": 0.75,
+    "trust_score": 0.79,
+    "last_calibrated": "2026-04-10",
+    "calibration_source": "domain-expert-v1",
+    "verdict": "trusted",
+    "required_engines": 1
+  },
+  "button-no-name": {
+    "precision_score": 0.9,
+    "recall_score": 0.78,
+    "trust_score": 0.85,
+    "last_calibrated": "2026-04-10",
+    "calibration_source": "domain-expert-v1",
+    "verdict": "trusted",
+    "required_engines": 1
+  },
+  "empty-link": {
+    "precision_score": 1.0,
+    "recall_score": 0.925,
+    "trust_score": 0.9346,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "noisy",
+    "required_engines": 2
+  },
+  "link-purpose": {
+    "precision_score": 0.962,
+    "recall_score": 0.9512,
+    "trust_score": 0.9544,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "moderate",
+    "required_engines": 2
+  },
+  "no-lang": {
+    "precision_score": 0.475,
+    "recall_score": 0.0,
+    "trust_score": 0.1745,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "missing-skip-link": {
+    "precision_score": 0.6,
+    "recall_score": 0.5,
+    "trust_score": 0.56,
+    "last_calibrated": "2026-04-10",
+    "calibration_source": "domain-expert-v1",
+    "verdict": "moderate",
+    "required_engines": 2
+  },
+  "text-spacing": {
+    "precision_score": 0.6898,
+    "recall_score": 0.6723,
+    "trust_score": 0.6887,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "video-transcript": {
+    "precision_score": 0.9771,
+    "recall_score": 0.9771,
+    "trust_score": 0.9771,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "trusted",
+    "required_engines": 1
+  },
+  "keyboard-trap": {
+    "precision_score": 0.9998,
+    "recall_score": 0.6822,
+    "trust_score": 0.759,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "noisy",
+    "required_engines": 2
+  },
+  "svg-no-accessible-name": {
+    "precision_score": 0.8202,
+    "recall_score": 0.6836,
+    "trust_score": 0.7579,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "noisy",
+    "required_engines": 2
+  },
+  "empty-heading": {
+    "precision_score": 1.0,
+    "recall_score": 0.933,
+    "trust_score": 0.9435,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "moderate",
+    "required_engines": 2
+  },
+  "aria-allowed-attr": {
+    "precision_score": 0.9999,
+    "recall_score": 0.605,
+    "trust_score": 0.697,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "noisy",
+    "required_engines": 2
+  },
+  "aria-attribute": {
+    "precision_score": 0.9999,
+    "recall_score": 0.605,
+    "trust_score": 0.697,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "noisy",
+    "required_engines": 2
+  },
+  "aria-required-children": {
+    "precision_score": 0.9735,
+    "recall_score": 0.9314,
+    "trust_score": 0.9394,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "moderate",
+    "required_engines": 2
+  },
+  "aria-roles": {
+    "precision_score": 0.9999,
+    "recall_score": 0.605,
+    "trust_score": 0.697,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "noisy",
+    "required_engines": 2
+  },
+  "aria-valid-attr-value": {
+    "precision_score": 0.9996,
+    "recall_score": 0.5928,
+    "trust_score": 0.6151,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "avoid-inline-spacing": {
+    "precision_score": 0.8453,
+    "recall_score": 0.6723,
+    "trust_score": 0.6888,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "button-name": {
+    "precision_score": 0.9858,
+    "recall_score": 0.9415,
+    "trust_score": 0.9506,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "moderate",
+    "required_engines": 2
+  },
+  "invalid-lang": {
+    "precision_score": 0.9717,
+    "recall_score": 0.9554,
+    "trust_score": 0.9599,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "trusted",
+    "required_engines": 1
+  },
+  "letter-spacing": {
+    "precision_score": 0.8421,
+    "recall_score": 0.6723,
+    "trust_score": 0.6888,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "link-name": {
+    "precision_score": 1.0,
+    "recall_score": 0.925,
+    "trust_score": 0.9346,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "noisy",
+    "required_engines": 2
+  },
+  "meta-refresh": {
+    "precision_score": 1.0,
+    "recall_score": 0.9338,
+    "trust_score": 0.9442,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "moderate",
+    "required_engines": 2
+  },
+  "missing-landmark": {
+    "precision_score": 0.6609,
+    "recall_score": 0.5906,
+    "trust_score": 0.6194,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "no-main-landmark": {
+    "precision_score": 0.5408,
+    "recall_score": 0.5906,
+    "trust_score": 0.5851,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "valid-lang": {
+    "precision_score": 0.9717,
+    "recall_score": 0.9554,
+    "trust_score": 0.9599,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "trusted",
+    "required_engines": 1
+  },
+  "label": {
+    "precision_score": 0.1641,
+    "recall_score": 0.0002,
+    "trust_score": 0.0574,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "form-label-missing": {
+    "precision_score": 0.1641,
+    "recall_score": 0.0002,
+    "trust_score": 0.0574,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "focus-visible": {
+    "precision_score": 0.5,
+    "recall_score": 0.0019,
+    "trust_score": 0.317,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "underdetected",
+    "required_engines": 2
+  },
+  "image-alt": {
+    "precision_score": 0.175,
+    "recall_score": 0.0,
+    "trust_score": 0.0856,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "input-name": {
+    "precision_score": 0.2193,
+    "recall_score": 0.0002,
+    "trust_score": 0.0833,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "aria-role": {
+    "precision_score": 0.4,
+    "recall_score": 0.0,
+    "trust_score": 0.24,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "underdetected",
+    "required_engines": 2
+  },
+  "bypass-blocks": {
+    "precision_score": 0.5,
+    "recall_score": 0.0001,
+    "trust_score": 0.3009,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "underdetected",
+    "required_engines": 2
+  },
+  "audio-transcript": {
+    "precision_score": 0.5,
+    "recall_score": 0.0001,
+    "trust_score": 0.3013,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "underdetected",
+    "required_engines": 2
+  },
+  "missing-page-title": {
+    "precision_score": 0.5,
+    "recall_score": 0.0019,
+    "trust_score": 0.317,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "underdetected",
+    "required_engines": 2
+  },
+  "missing-lang-attr": {
+    "precision_score": 0.5,
+    "recall_score": 0.0019,
+    "trust_score": 0.317,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "underdetected",
+    "required_engines": 2
+  },
+  "unique-id": {
+    "precision_score": 0.5,
+    "recall_score": 0.0001,
+    "trust_score": 0.3009,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "underdetected",
+    "required_engines": 2
+  },
+  "input-label": {
+    "precision_score": 0.2193,
+    "recall_score": 0.0002,
+    "trust_score": 0.0833,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "media-alternative": {
+    "precision_score": 0.9162,
+    "recall_score": 0.8322,
+    "trust_score": 0.8826,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "underdetected",
+    "required_engines": 2
+  },
+  "form-error": {
+    "precision_score": 0.5,
+    "recall_score": 0.0029,
+    "trust_score": 0.3261,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "underdetected",
+    "required_engines": 2
+  },
+  "unsafe-external-link": {
+    "precision_score": 0.5,
+    "recall_score": 0.0,
+    "trust_score": 0.3001,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "underdetected",
+    "required_engines": 2
+  },
+  "table-caption": {
+    "precision_score": 0.5,
+    "recall_score": 0.0001,
+    "trust_score": 0.3019,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "underdetected",
+    "required_engines": 2
+  },
+  "main-landmark": {
+    "precision_score": 0.5,
+    "recall_score": 0.0029,
+    "trust_score": 0.3261,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "underdetected",
+    "required_engines": 2
+  },
+  "no-keyboard": {
+    "precision_score": 0.5,
+    "recall_score": 0.0001,
+    "trust_score": 0.3019,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "underdetected",
+    "required_engines": 2
+  },
+  "line-height": {
+    "precision_score": 0.5,
+    "recall_score": 0.0,
+    "trust_score": 0.3001,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "underdetected",
+    "required_engines": 2
+  },
+  "empty-title": {
+    "precision_score": 0.5,
+    "recall_score": 0.0001,
+    "trust_score": 0.3019,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "underdetected",
+    "required_engines": 2
+  },
+  "table-header": {
+    "precision_score": 0.5,
+    "recall_score": 0.0001,
+    "trust_score": 0.3019,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "underdetected",
+    "required_engines": 2
+  },
+  "autoplay-media": {
+    "precision_score": 0.0201,
+    "recall_score": 0.0201,
+    "trust_score": 0.0201,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "no-header-landmark": {
+    "precision_score": 0.0038,
+    "recall_score": 0.0038,
+    "trust_score": 0.0038,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "no-nav-landmark": {
+    "precision_score": 0.0038,
+    "recall_score": 0.0038,
+    "trust_score": 0.0038,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "missing-captions": {
+    "precision_score": 0.3729,
+    "recall_score": 0.3729,
+    "trust_score": 0.3729,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "no-footer-landmark": {
+    "precision_score": 0.0038,
+    "recall_score": 0.0038,
+    "trust_score": 0.0038,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "multiple-h1": {
+    "precision_score": 0.32,
+    "recall_score": 0.32,
+    "trust_score": 0.32,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "moderate",
+    "required_engines": 2
+  },
+  "landmark-roles": {
+    "precision_score": 0.0038,
+    "recall_score": 0.0038,
+    "trust_score": 0.0038,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "empty-alt": {
+    "precision_score": 0.1137,
+    "recall_score": 0.1137,
+    "trust_score": 0.1137,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "apg-expanded-missing-controls": {
+    "precision_score": 0.1625,
+    "recall_score": 0.1625,
+    "trust_score": 0.1625,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "broken-aria-label": {
+    "precision_score": 0.32,
+    "recall_score": 0.32,
+    "trust_score": 0.32,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "moderate",
+    "required_engines": 2
+  },
+  "th-no-scope": {
+    "precision_score": 0.0612,
+    "recall_score": 0.0612,
+    "trust_score": 0.0612,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "aria-hidden-focusable": {
+    "precision_score": 0.0838,
+    "recall_score": 0.0838,
+    "trust_score": 0.0838,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "moderate",
+    "required_engines": 2
+  },
+  "apg-tablist-missing-tabs": {
+    "precision_score": 0.32,
+    "recall_score": 0.32,
+    "trust_score": 0.32,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "moderate",
+    "required_engines": 2
+  },
+  "missing-h1": {
+    "precision_score": 0.32,
+    "recall_score": 0.32,
+    "trust_score": 0.32,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "moderate",
+    "required_engines": 2
+  },
+  "clickable-no-role": {
+    "precision_score": 0.32,
+    "recall_score": 0.32,
+    "trust_score": 0.32,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "moderate",
+    "required_engines": 2
+  },
+  "duplicate-id": {
+    "precision_score": 0.32,
+    "recall_score": 0.32,
+    "trust_score": 0.32,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "moderate",
+    "required_engines": 2
+  },
+  "viewport-zoom-disabled": {
+    "precision_score": 0.0838,
+    "recall_score": 0.0838,
+    "trust_score": 0.0838,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "moderate",
+    "required_engines": 2
+  },
+  "placeholder-as-label": {
+    "precision_score": 0.32,
+    "recall_score": 0.32,
+    "trust_score": 0.32,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "moderate",
+    "required_engines": 2
+  },
+  "apg-dialog-not-modal": {
+    "precision_score": 0.32,
+    "recall_score": 0.32,
+    "trust_score": 0.32,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "moderate",
+    "required_engines": 2
+  },
+  "redundant-entry": {
+    "precision_score": 0.32,
+    "recall_score": 0.32,
+    "trust_score": 0.32,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "moderate",
+    "required_engines": 2
+  },
+  "table-no-caption": {
+    "precision_score": 0.0612,
+    "recall_score": 0.0612,
+    "trust_score": 0.0612,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "missing-transcript": {
+    "precision_score": 0.0875,
+    "recall_score": 0.0875,
+    "trust_score": 0.0875,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "autocomplete-missing": {
+    "precision_score": 0.32,
+    "recall_score": 0.32,
+    "trust_score": 0.32,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "moderate",
+    "required_engines": 2
+  },
+  "role-no-name": {
+    "precision_score": 0.125,
+    "recall_score": 0.125,
+    "trust_score": 0.125,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "suppress",
+    "required_engines": 2
+  },
+  "image-redundant-alt": {
+    "precision_score": 0.32,
+    "recall_score": 0.32,
+    "trust_score": 0.32,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "moderate",
+    "required_engines": 2
+  },
+  "table-no-headers": {
+    "precision_score": 0.2113,
+    "recall_score": 0.2113,
+    "trust_score": 0.2113,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "noisy",
+    "required_engines": 2
+  },
+  "aria-allowed-role": {
+    "precision_score": 0.32,
+    "recall_score": 0.32,
+    "trust_score": 0.32,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "moderate",
+    "required_engines": 2
+  },
+  "positive-tabindex": {
+    "precision_score": 0.32,
+    "recall_score": 0.32,
+    "trust_score": 0.32,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "moderate",
+    "required_engines": 2
+  },
+  "apg-tab-missing-controls": {
+    "precision_score": 0.32,
+    "recall_score": 0.32,
+    "trust_score": 0.32,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "moderate",
+    "required_engines": 2
+  },
+  "duplicate-aria-ref": {
+    "precision_score": 0.32,
+    "recall_score": 0.32,
+    "trust_score": 0.32,
+    "last_calibrated": "2026-04-11",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "moderate",
+    "required_engines": 2
+  },
+  "div-itis-missing-semantics": {
+    "precision_score": 0.5,
+    "recall_score": 0.4,
+    "trust_score": 0.49,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "underdetected",
+    "required_engines": 1
+  },
+  "svg-nav-accessible-name": {
+    "precision_score": 0.5,
+    "recall_score": 0.32,
+    "trust_score": 0.4802,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "underdetected",
+    "required_engines": 1
+  },
+  "svg-accessible-name": {
+    "precision_score": 0.5,
+    "recall_score": 0.32,
+    "trust_score": 0.4802,
+    "last_calibrated": "2026-04-12",
+    "calibration_source": "ACT-auto-calibration",
+    "verdict": "underdetected",
+    "required_engines": 1
+  }
+}

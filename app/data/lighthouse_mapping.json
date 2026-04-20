@@ -1,0 +1,196 @@
+{
+  "lighthouse_version": "10.x",
+  "mapping_version": "v1",
+  "_comment": "Severity thresholds: score < serious_threshold → serious, score < moderate_threshold → moderate, score >= drop_threshold → drop silently. Scores are 0.0–1.0 from Lighthouse raw JSON.",
+  "audits": {
+    "unused-javascript": {
+      "normalized_issue_key": "js_bundle_size",
+      "beacon_category": "performance",
+      "serious_threshold": 0.5,
+      "moderate_threshold": 0.9,
+      "drop_threshold": 0.9,
+      "title": "Remove unused JavaScript",
+      "wcag_criterion": ""
+    },
+    "unused-css-rules": {
+      "normalized_issue_key": "unused_css",
+      "beacon_category": "performance",
+      "serious_threshold": 0.5,
+      "moderate_threshold": 0.9,
+      "drop_threshold": 0.9,
+      "title": "Remove unused CSS",
+      "wcag_criterion": ""
+    },
+    "render-blocking-resources": {
+      "normalized_issue_key": "render_blocking_resources",
+      "beacon_category": "performance",
+      "serious_threshold": 0.5,
+      "moderate_threshold": 0.9,
+      "drop_threshold": 0.9,
+      "title": "Eliminate render-blocking resources",
+      "wcag_criterion": ""
+    },
+    "uses-optimized-images": {
+      "normalized_issue_key": "image_optimization",
+      "beacon_category": "performance",
+      "serious_threshold": 0.5,
+      "moderate_threshold": 0.9,
+      "drop_threshold": 0.9,
+      "title": "Efficiently encode images",
+      "wcag_criterion": ""
+    },
+    "uses-responsive-images": {
+      "normalized_issue_key": "image_responsive",
+      "beacon_category": "performance",
+      "serious_threshold": 0.5,
+      "moderate_threshold": 0.9,
+      "drop_threshold": 0.9,
+      "title": "Properly size images",
+      "wcag_criterion": ""
+    },
+    "efficient-animated-content": {
+      "normalized_issue_key": "animated_content",
+      "beacon_category": "performance",
+      "serious_threshold": 0.5,
+      "moderate_threshold": 0.9,
+      "drop_threshold": 0.9,
+      "title": "Use video formats for animated content",
+      "wcag_criterion": ""
+    },
+    "cumulative-layout-shift": {
+      "normalized_issue_key": "layout_shift",
+      "beacon_category": "performance",
+      "serious_threshold": 0.5,
+      "moderate_threshold": 0.9,
+      "drop_threshold": 0.9,
+      "title": "Avoid large layout shifts",
+      "wcag_criterion": ""
+    },
+    "first-contentful-paint": {
+      "normalized_issue_key": "first_contentful_paint",
+      "beacon_category": "performance",
+      "serious_threshold": 0.5,
+      "moderate_threshold": 0.9,
+      "drop_threshold": 0.9,
+      "title": "First Contentful Paint",
+      "wcag_criterion": ""
+    },
+    "largest-contentful-paint": {
+      "normalized_issue_key": "largest_contentful_paint",
+      "beacon_category": "performance",
+      "serious_threshold": 0.5,
+      "moderate_threshold": 0.9,
+      "drop_threshold": 0.9,
+      "title": "Largest Contentful Paint",
+      "wcag_criterion": ""
+    },
+    "total-blocking-time": {
+      "normalized_issue_key": "total_blocking_time",
+      "beacon_category": "performance",
+      "serious_threshold": 0.5,
+      "moderate_threshold": 0.9,
+      "drop_threshold": 0.9,
+      "title": "Total Blocking Time",
+      "wcag_criterion": ""
+    },
+    "color-contrast": {
+      "normalized_issue_key": "color_contrast_insufficient",
+      "beacon_category": "accessibility",
+      "serious_threshold": 0.5,
+      "moderate_threshold": 0.9,
+      "drop_threshold": 0.9,
+      "title": "Background and foreground colors do not have a sufficient contrast ratio",
+      "wcag_criterion": "1.4.3"
+    },
+    "meta-viewport": {
+      "normalized_issue_key": "viewport_zoom_disabled",
+      "beacon_category": "accessibility",
+      "serious_threshold": 0.5,
+      "moderate_threshold": 0.9,
+      "drop_threshold": 0.9,
+      "title": "user-scalable=[no] found in <meta name=\"viewport\">",
+      "wcag_criterion": "1.4.4"
+    },
+    "document-title": {
+      "normalized_issue_key": "missing_document_title",
+      "beacon_category": "accessibility",
+      "serious_threshold": 0.5,
+      "moderate_threshold": 0.9,
+      "drop_threshold": 0.9,
+      "title": "Document doesn't have a <title> element",
+      "wcag_criterion": "2.4.2"
+    },
+    "html-has-lang": {
+      "normalized_issue_key": "missing_document_lang",
+      "beacon_category": "accessibility",
+      "serious_threshold": 0.5,
+      "moderate_threshold": 0.9,
+      "drop_threshold": 0.9,
+      "title": "<html> element does not have a [lang] attribute",
+      "wcag_criterion": "3.1.1"
+    },
+    "link-name": {
+      "normalized_issue_key": "empty_link_text",
+      "beacon_category": "accessibility",
+      "serious_threshold": 0.5,
+      "moderate_threshold": 0.9,
+      "drop_threshold": 0.9,
+      "title": "Links do not have a discernible name",
+      "wcag_criterion": "2.4.4"
+    },
+    "meta-description": {
+      "normalized_issue_key": "missing_meta_description",
+      "beacon_category": "seo",
+      "serious_threshold": 0.5,
+      "moderate_threshold": 0.9,
+      "drop_threshold": 0.9,
+      "title": "Document does not have a meta description",
+      "wcag_criterion": ""
+    },
+    "robots-txt": {
+      "normalized_issue_key": "robots_txt_invalid",
+      "beacon_category": "seo",
+      "serious_threshold": 0.5,
+      "moderate_threshold": 0.9,
+      "drop_threshold": 0.9,
+      "title": "robots.txt is not valid",
+      "wcag_criterion": ""
+    },
+    "canonical": {
+      "normalized_issue_key": "missing_canonical",
+      "beacon_category": "seo",
+      "serious_threshold": 0.5,
+      "moderate_threshold": 0.9,
+      "drop_threshold": 0.9,
+      "title": "Document does not have a valid rel=canonical",
+      "wcag_criterion": ""
+    },
+    "is-on-https": {
+      "normalized_issue_key": "uses_https",
+      "beacon_category": "security",
+      "serious_threshold": 0.5,
+      "moderate_threshold": 0.9,
+      "drop_threshold": 0.9,
+      "title": "Does not use HTTPS",
+      "wcag_criterion": ""
+    },
+    "no-vulnerable-libraries": {
+      "normalized_issue_key": "vulnerable_libraries",
+      "beacon_category": "security",
+      "serious_threshold": 0.5,
+      "moderate_threshold": 0.9,
+      "drop_threshold": 0.9,
+      "title": "Includes front-end JavaScript libraries with known security vulnerabilities",
+      "wcag_criterion": ""
+    },
+    "csp-xss": {
+      "normalized_issue_key": "csp_missing",
+      "beacon_category": "security",
+      "serious_threshold": 0.5,
+      "moderate_threshold": 0.9,
+      "drop_threshold": 0.9,
+      "title": "Ensure CSP is effective against XSS attacks",
+      "wcag_criterion": ""
+    }
+  }
+}

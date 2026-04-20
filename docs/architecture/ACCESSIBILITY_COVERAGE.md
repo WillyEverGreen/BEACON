@@ -2,10 +2,11 @@
 
 ## 🚀 Quick Summary
 
-- Automated WCAG coverage: ~55%
+- Automated WCAG coverage: ~55% (core detection) + runtime JS enrichment via Lighthouse (deep/max)
 - Strong coverage in: semantics, ARIA, keyboard, structure
 - Partial coverage in: UX, cognitive, navigation
-- Not covered: advanced media, timing, gestures
+- Not covered by static scan: advanced media, timing, gestures
+- Lighthouse enrichment: supplements detection in deep/max modes — adds runtime JS/performance findings BEACON cannot see with static analysis
 - RAG: enrichment only (not detection)
 
 This tool is NOT a full compliance solution.
@@ -32,6 +33,10 @@ Evidence sources analyzed:
 - app/services/audit_runner.py
 - app/services/llm.py
 - app/routers/rag.py
+- app/services/lighthouse_runner.py (signal enrichment, deep/max)
+- app/services/lighthouse_mapper.py (BEACON schema normalization)
+- app/services/lighthouse_enricher.py (deterministic merge engine)
+- app/data/lighthouse_mapping.json (versioned audit inclusion list, v1)
 
 Method:
 
@@ -57,6 +62,10 @@ Pipeline sequencing is implemented in app/services/audit_runner.py.
 - Stage C: Normalization, deduplication, confidence scoring.
 - Stage D: Cognitive checks (deep/max when enabled).
 - Stage E: RAG enrichment is post-detection enrichment, not primary detection.
+- Stage F: Lighthouse enrichment (deep/max only, async). Runs lighthouse_runner → lighthouse_mapper → lighthouse_enricher.
+  Lighthouse findings are merged via 5-rule deterministic engine. BEACON primary findings are never overwritten.
+  Adds `lighthouse_confirmed`, `lighthouse_score`, `severity_upgraded_by_lighthouse` fields to confirmed findings.
+  Adds supplementary/additional_insight findings for Lighthouse-only discoveries.
 
 Key evidence lines:
 
@@ -74,6 +83,7 @@ Key evidence lines:
 | Browser probe       | app/services/browser_probes.py:41    |             0.8 | False                 | Runtime interaction probes        |
 | Cognitive           | app/services/cognitive_checks.py:110 |             0.6 | True                  | UX/readability heuristics         |
 | axe-core normalized | app/services/normalizer.py:24        |             0.9 | False                 | Deterministic axe-core violations |
+| Lighthouse          | app/services/lighthouse_enricher.py  | supplementary   | False                 | Runtime JS enrichment (deep/max)  |
 
 Additional confidence governance:
 
@@ -239,6 +249,18 @@ Detection engines:
 - Static, heuristic, browser-probe, axe-core, cognitive
 - These produce the actual issue detections.
 
+Lighthouse enrichment engine (deep/max only):
+
+- Runs Google Lighthouse CLI (headless Chrome) against up to 5 URLs per scan.
+- Findings are mapped from Lighthouse audit format into BEACON findings_schema.
+- Merged with BEACON findings via 5-rule deterministic engine (lighthouse_enricher.py).
+- Lighthouse confirmed = BEACON finding corroborated by Lighthouse runtime.
+- Lighthouse-only (score <50): added as supplementary finding.
+- Lighthouse-only (score 50-89): added as additional_insight finding.
+- Lighthouse-only (score ≥90): dropped silently.
+- BEACON findings are NEVER deleted, suppressed, or downgraded by Lighthouse.
+- Live integration test (10 sites): +30–50% coverage uplift on reachable sites, 0 BEACON findings lost.
+
 RAG enrichment:
 
 - Happens later and enhances remediation payloads (explanations, steps, code fix suggestions).
@@ -265,3 +287,13 @@ Bottom line:
 ## ⚠️ Disclaimer
 
 This tool provides automated accessibility analysis and does not guarantee full WCAG, ADA, EAA, or Section 508 compliance. Manual audits are required.
+
+## 🔦 Lighthouse Integration Note (Phase 21)
+
+As of April 2026, BEACON integrates Google Lighthouse as a runtime signal-enrichment layer for `deep` and `max` scan modes.
+
+- Lighthouse adds JavaScript-execution-dependent findings that static/heuristic analysis cannot reach (e.g. React-injected ARIA, lazy-loaded image alt attributes, dynamic focus management).
+- This integration **does not inflate the core WCAG coverage figures** in this document — those numbers reflect BEACON's own detectors only.
+- Lighthouse enrichment provides **additional signals** on top of the 55.2% coverage baseline documented here.
+- The live 10-site test showed average +30–50% additional finding uplift on reachable sites, with 0 BEACON findings overwritten.
+- Lighthouse coverage is limited to its own audit inclusion list (`app/data/lighthouse_mapping.json`). Not all WCAG criteria are covered by Lighthouse audits.

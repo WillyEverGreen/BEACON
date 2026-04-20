@@ -98,6 +98,32 @@ DASHBOARD_DEEP_SCAN_MAX_PAGES = 12
 DASHBOARD_MAX_SCAN_MAX_PAGES = 25
 
 
+# ── Lighthouse Enrichment Constants ────────────────────────────────────────────
+# All Lighthouse operational limits live here.
+# Nothing is hardcoded in lighthouse_runner.py, lighthouse_mapper.py, or
+# lighthouse_enricher.py. When tuning infrastructure, change only this block.
+#
+# LIGHTHOUSE_MAX_URLS_PER_SCAN    Max URLs per enrichment batch. Hard ceiling.
+# LIGHTHOUSE_PER_URL_TIMEOUT_SECONDS  Chrome CLI timeout per individual URL.
+# LIGHTHOUSE_GLOBAL_TIMEOUT_SECONDS   Outer safety net for the whole batch.
+# LIGHTHOUSE_MAX_CONCURRENT_RUNS  Semaphore bound — prevents Chrome OOM on lean VPS.
+# LIGHTHOUSE_CACHE_TTL_SECONDS    In-process result cache TTL.
+# LIGHTHOUSE_RETRY_COUNT          Retries allowed for network_unreachable + parse_error only.
+# LIGHTHOUSE_RETRY_DELAY_SECONDS  Fixed delay between retry attempts.
+
+LIGHTHOUSE_MAX_URLS_PER_SCAN: int = 5
+LIGHTHOUSE_PER_URL_TIMEOUT_SECONDS: int = 90
+LIGHTHOUSE_GLOBAL_TIMEOUT_SECONDS: int = 300
+LIGHTHOUSE_MAX_CONCURRENT_RUNS: int = 2
+LIGHTHOUSE_CACHE_TTL_SECONDS: int = 3600
+LIGHTHOUSE_RETRY_COUNT: int = 1
+LIGHTHOUSE_RETRY_DELAY_SECONDS: int = 5
+
+# Hard gate: Lighthouse enrichment runs only in these scan modes.
+# This is an architectural constraint, not a feature flag.
+_LIGHTHOUSE_ELIGIBLE_MODES: frozenset[str] = frozenset({"deep", "max"})
+
+
 CRAWLER_CONFIG = {
     "sitemap": {
         "timeout_seconds": 8,

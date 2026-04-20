@@ -2318,6 +2318,8 @@ async def run_audit(
 
         return _finalize_result(res, status="completed")
 
+
+
     finally:
         _active_audits = max(0, _active_audits - 1)
 
@@ -2884,3 +2886,63 @@ def _apply_precision_profile(
         "estimated_precision_floor": 0.95 if profile_name in _ADAPTIVE_PROFILES else 0.85,
     }
     return kept, telemetry
+
+
+# ── Lighthouse Enrichment Background Task ─────────────────────────────────────
+
+async def _run_lighthouse_background(
+    scan_id: str,
+    beacon_findings: list[dict[str, Any]],
+    crawl_urls: list[str],
+    scan_mode: str,
+) -> None:
+    """Background task: run Lighthouse enrichment and atomically write result to DB.
+
+    This function is fire-and-forget. Any exception here must NOT propagate to
+    the caller or affect the main scan result in any way.
+
+    Global timeout: LIGHTHOUSE_GLOBAL_TIMEOUT_SECONDS (300s).
+    On timeout or any failure: writes status='failed' with failure_reason to DB.
+    """
+    from app.config import LIGHTHOUSE_GLOBAL_TIMEOUT_SECONDS
+    from app.services.lighthouse_enricher import run_lighthouse_enrichment
+    from app.db.repository import persist_lighthouse_enrichment
+
+    try:
+        enrichment_block = await asyncio.wait_for(
+            run_lighthouse_enrichment(
+                scan_id=scan_id,
+                beacon_findings=beacon_findings,
+                crawl_urls=crawl_urls,
+                scan_mode=scan_mode,
+            ),
+            timeout=float(LIGHTHOUSE_GLOBAL_TIMEOUT_SECONDS),
+        )
+    except asyncio.TimeoutError:
+        logger.error(
+            "lighthouse_background global_timeout scan_id=%s timeout=%ds",
+            scan_id, LIGHTHOUSE_GLOBAL_TIMEOUT_SECONDS,
+        )
+        enrichment_block = {
+            "status": "failed",
+            "failure_reason": "global_timeout",
+            "scan_id": scan_id,
+        }
+    except Exception as exc:
+        logger.error(
+            "lighthouse_background unexpected_failure scan_id=%s error=%s",
+            scan_id, exc,
+        )
+        enrichment_block = {
+            "status": "failed",
+            "failure_reason": "internal_error",
+            "error_detail": str(exc)[:200],
+            "scan_id": scan_id,
+        }
+
+    try:
+        persist_lighthouse_enrichment(scan_id, enrichment_block)
+    except Exception as exc:
+        logger.error(
+            "lighthouse_background persist_failed scan_id=%s error=%s", scan_id, exc
+        )

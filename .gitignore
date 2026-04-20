@@ -152,8 +152,14 @@ cython_debug/
 .vscode/
 
 # Project Data (JSON storage for projects/scans)
-app/data/*.json
-!app/data/.gitkeep
+# Ignore runtime-generated data files
+app/data/page_cache.json
+app/data/page_cache.lock
+app/data/api_keys.json
+app/data/projects.json
+app/data/scans.json
+# Commit static source data files that are part of the codebase
+# (lighthouse_mapping.json, rule_quality_policy.json, rule_trust_registry.json, wcag_criteria.json, fix_library.json)
 chroma_db/
 data/ingestion_report.json
 beacon.db

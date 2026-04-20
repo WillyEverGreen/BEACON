@@ -4,6 +4,26 @@
 
 BEACON is a FastAPI-based accessibility auditing platform with multi-engine scanning, crawler-assisted discovery, RAG-backed remediation, observability, and API-key RBAC.
 
+## Latest Updates — Phase 21 (April 20, 2026)
+
+- **Lighthouse CI enrichment pipeline** integrated as signal-enrichment layer for `deep`/`max` scan modes.
+  - New modules: `app/services/lighthouse_runner.py`, `lighthouse_mapper.py`, `lighthouse_enricher.py`.
+  - New config block in `app/config.py`: `LIGHTHOUSE_*` constants (per-URL timeout, concurrency, cache TTL, retry).
+  - New mapping file: `app/data/lighthouse_mapping.json` (versioned, v1).
+  - New self-audit CI workflow: `.github/workflows/lighthouse_ci.yml`.
+- **Lighthouse enrichment pipeline behaviour** (5 deterministic merge rules):
+  - BEACON + Lighthouse confirm same rule → `lighthouse_confirmed=True`, severity upgrade if score <50.
+  - Lighthouse-only, score <50 → `supplementary` finding added.
+  - Lighthouse-only, score 50–89 → `additional_insight` finding added.
+  - Lighthouse-only, score ≥90 → dropped silently.
+  - **BEACON findings are NEVER deleted, suppressed, or downgraded.**
+- **Live 10-site integration test** (`test_comparison.py`) against real-world public sites:
+  - 7/10 Lighthouse runs successful; 3 expected failures (DNS, parse error, 91.3s timeout lock).
+  - All 3 failures bailed cleanly without crashing the pipeline.
+  - Average +30–50% coverage uplift on all functional sites.
+  - 0 BEACON findings deleted across all merges.
+- **Enrichment mode gate**: Lighthouse only runs in `deep` and `max` modes; `fast` mode is fully unchanged.
+
 ## Latest Updates — Phase 20 (April 20, 2026)
 
 - **Site topology detection** wired into the audit pipeline via `app/services/topology_detector.py`.
@@ -76,9 +96,14 @@ flowchart LR
     RUN --> ENGINES[Static, Heuristic, Browser, Axe, Cognitive]
     RUN --> SCORE[Normalize, Dedup, Confidence, Prioritize]
     RUN --> ENRICH[Async Enrichment LLM and Fix Cache]
+    RUN --> LH[Lighthouse Enrichment deep/max]
 
     RUN --> CRAWL[Crawlers: Sitemap, BFS, DOM]
     RUN --> SITE[Site Aggregation and Parallel Audit]
+
+    LH --> LH_RUNNER[lighthouse_runner.py]
+    LH --> LH_MAPPER[lighthouse_mapper.py]
+    LH --> LH_MERGER[lighthouse_enricher.py]
 
     ENRICH --> RAG[Hybrid Retrieval BM25 and Vector]
     RAG --> VDB[(ChromaDB)]
@@ -89,12 +114,12 @@ flowchart LR
 
 ## Scan Modes
 
-| Mode    | Purpose                         | Typical Engines                                                          |
-| :------ | :------------------------------ | :----------------------------------------------------------------------- |
-| minimal | quickest deterministic baseline | static + heuristic only                                                  |
-| fast    | rapid production checks         | static + heuristic                                                       |
-| deep    | comprehensive page analysis     | static + heuristic + browser + axe (+ cognitive on single-page `/audit`) |
-| max     | deepest interactive exploration | deep + interaction/scroll + cognitive layers                             |
+| Mode    | Purpose                         | Typical Engines                                                                                   |
+| :------ | :------------------------------ | :------------------------------------------------------------------------------------------------ |
+| minimal | quickest deterministic baseline | static + heuristic only                                                                           |
+| fast    | rapid production checks         | static + heuristic                                                                                |
+| deep    | comprehensive page analysis     | static + heuristic + browser + axe (+ Lighthouse enrichment) (+ cognitive on single-page `/audit`) |
+| max     | deepest interactive exploration | deep + interaction/scroll + cognitive layers + Lighthouse enrichment                              |
 
 ## Production Scan Profiles (Site Scan Path)
 
@@ -137,14 +162,27 @@ Recent hardening prevents the zero-score and empty-output failure class:
 
 - `app/`
   - `app/services/` — core engines, scoring, enrichment, caching, topology detection
+    - `lighthouse_runner.py` — headless Chrome subprocess runner (Phase 21)
+    - `lighthouse_mapper.py` — raw Lighthouse JSON → BEACON findings_schema (Phase 21)
+    - `lighthouse_enricher.py` — 5-rule deterministic merge engine (Phase 21)
+  - `app/data/`
+    - `lighthouse_mapping.json` — versioned Lighthouse audit inclusion list (v1, Phase 21)
   - `app/audit/` — page auditor, parallel runner, site aggregation, scan-mode runner
   - `app/crawlers/` — sitemap, BFS, DOM crawlers and orchestrator
   - `app/security/` — API-key RBAC and URL validation
   - `app/observability/` — telemetry, alerts, logging, metrics
   - `app/db/` — SQLAlchemy models, Alembic migrations, repository
 - `alembic/versions/` — DB migrations (tracked in git)
+  - `c9e1f3a27b84` — adds `lighthouse_enrichment` JSON column to `scans` table (Phase 21)
+  - `81e9864e53a7` — adds topology columns to `scans` table (Phase 20)
 - `tests/unit/` — unit tests including Phase 20 topology + scan-mode tests
+  - `tests/unit/services/test_lighthouse_runner.py` (Phase 21)
+  - `tests/unit/services/test_lighthouse_mapper.py` (Phase 21)
+  - `tests/unit/services/test_lighthouse_enricher.py` (Phase 21)
 - `tests/integration/` — real-site integration suites (Phase 19 & 20)
+- `test_comparison.py` — live 10-site BEACON vs BEACON+Lighthouse benchmark (Phase 21)
+- `.github/workflows/lighthouse_ci.yml` — self-audit CI for the BEACON dashboard (Phase 21)
+- `.lighthouserc.json` — Lighthouse CI assertion thresholds (Phase 21)
 - `scripts/` — CLI audit runner and validation helpers
 - `docs/` — analysis reports, CLI reference, triage notes
 - `corpus/` — source corpus used for ingestion and RAG
@@ -157,6 +195,11 @@ Recent hardening prevents the zero-score and empty-output failure class:
 - Python 3.10+
 - pip
 - Optional for deep and max browser scans: Playwright Chromium
+- Optional for Lighthouse enrichment (deep/max): Node.js 18+ and Lighthouse CLI
+
+  ```bash
+  npm install -g lighthouse
+  ```
 
 ### 2. Configure Environment
 
@@ -185,6 +228,15 @@ Optional production scan tuning keys:
 - DASHBOARD_MAX_SCAN_MAX_PAGES
 - MAX_SCAN_GLOBAL_CAP
 - MAX_CONCURRENT_SITE_AUDITS
+
+Optional Lighthouse enrichment tuning keys (all have sane defaults in `app/config.py`):
+
+- LIGHTHOUSE_MAX_URLS_PER_SCAN (default: 5)
+- LIGHTHOUSE_PER_URL_TIMEOUT_SECONDS (default: 90)
+- LIGHTHOUSE_GLOBAL_TIMEOUT_SECONDS (default: 300)
+- LIGHTHOUSE_MAX_CONCURRENT_RUNS (default: 2)
+- LIGHTHOUSE_CACHE_TTL_SECONDS (default: 3600)
+- LIGHTHOUSE_RETRY_COUNT (default: 1)
 
 ### 3. Install Dependencies
 
@@ -318,19 +370,37 @@ python evaluation/benchmark_production.py
 Run before opening a PR or pushing to shared branches:
 
 ```bash
-# Syntax check core modules
-python -m py_compile app/config.py app/audit/scan_mode_runner.py app/routers/dashboard_api.py app/services/topology_detector.py
+# Syntax check core modules (including Phase 21 Lighthouse modules)
+python -m py_compile \
+  app/config.py \
+  app/audit/scan_mode_runner.py \
+  app/routers/dashboard_api.py \
+  app/services/topology_detector.py \
+  app/services/lighthouse_runner.py \
+  app/services/lighthouse_mapper.py \
+  app/services/lighthouse_enricher.py
 
-# Unit tests (fast, ~6s)
+# Unit tests — includes Phase 21 Lighthouse unit tests (~6–10s)
 python -m pytest tests/unit/ -q
 
-# Integration smoke (fast-mode only, ~40s)
+# Lighthouse unit test suite (subset, for fast feedback)
+python -m pytest \
+  tests/unit/services/test_lighthouse_runner.py \
+  tests/unit/services/test_lighthouse_mapper.py \
+  tests/unit/services/test_lighthouse_enricher.py \
+  -q --timeout=30
+
+# Integration smoke — fast-mode only (~40s)
 python -m pytest tests/integration/test_phase20_all_modes.py -k "fast" -q --timeout=90
 
-# DB migration state
+# Lighthouse live integration test — requires Node.js + lighthouse CLI installed
+# (runs against 10 real-world sites; ~10–15 minutes on a residential connection)
+python test_comparison.py
+
+# DB migration state — must be at head (c9e1f3a27b84)
 alembic current
 
-# Repo hygiene
+# Repo hygiene — confirm .env is NOT staged
 git status --short
 ```
 

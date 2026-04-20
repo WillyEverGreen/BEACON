@@ -198,3 +198,33 @@ def get_audit_history(url: str, limit: int = 20) -> list[dict[str, Any]]:
                 }
             )
         return history
+
+
+def persist_lighthouse_enrichment(scan_id: str, enrichment_block: dict[str, Any]) -> None:
+    """Atomic write of the lighthouse_enrichment field on an existing DashboardScanRecord.
+
+    Called once, after the full Lighthouse batch completes (or fails). Never called
+    mid-run or interleaved with BEACON's core findings write.
+
+    Args:
+        scan_id: The scan record primary key (DashboardScanRecord.id).
+        enrichment_block: The complete lighthouse_enrichment dict, including status,
+            scores, findings, failure_reason, and batch telemetry metrics.
+    """
+    if not scan_id or not isinstance(enrichment_block, dict):
+        return
+
+    try:
+        from app.db.models import DashboardScanRecord
+        with get_session() as session:
+            scan = session.get(DashboardScanRecord, str(scan_id))
+            if scan is None:
+                return
+            scan.lighthouse_enrichment = enrichment_block
+    except Exception:
+        # Never let enrichment persistence failure surface to callers.
+        import logging as _logging
+        _logging.getLogger(__name__).exception(
+            "persist_lighthouse_enrichment failed for scan_id=%s", scan_id
+        )
+

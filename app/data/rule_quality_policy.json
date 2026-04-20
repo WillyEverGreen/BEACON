@@ -1,0 +1,194 @@
+{
+  "structural_rules": {
+    "landmark-roles": {
+      "weight": 0.1,
+      "report_in_summary": false,
+      "require_context": true
+    },
+    "no-main-landmark": {
+      "weight": 0.2,
+      "report_in_summary": false
+    },
+    "region": {
+      "weight": 0.3,
+      "min_occurrences": 3,
+      "report_in_summary": false
+    },
+    "no-nav-landmark": {
+      "weight": 0.2,
+      "report_in_summary": false
+    },
+    "no-header-landmark": {
+      "weight": 0.1,
+      "report_in_summary": false
+    },
+    "no-footer-landmark": {
+      "weight": 0.1,
+      "report_in_summary": false
+    },
+    "no-headings": {
+      "weight": 0.2,
+      "report_in_summary": false
+    }
+  },
+  "suppression_safeguard": {
+    "max_suppression_rate": 0.7,
+    "warning_action": "log_and_flag",
+    "warning_message": "Suppression rate exceeded 70%. Review structural rule policy for over-suppression."
+  },
+  "low_issue_guard": {
+    "enabled": true,
+    "threshold": 5,
+    "action": "relax_confidence_overrides",
+    "relaxation_factor": 0.85
+  },
+  "profiles": {
+    "production": {
+      "exclude_rules": [],
+      "include_needs_review": true,
+      "per_rule_min_confidence": {
+        "no-headings": 0.72,
+        "no-lang": 0.62,
+        "missing-lang": 0.85,
+        "no-title": 0.85,
+        "missing-captions": 0.85,
+        "missing-transcript": 0.92,
+        "autoplay-media": 0.85,
+        "missing-skip-link": 0.8,
+        "th-no-scope": 0.8,
+        "missing-autocomplete": 0.8,
+        "missing-alt": 0.8,
+        "button-no-name": 0.8,
+        "role-no-name": 0.8,
+        "table-no-headers": 0.8
+      },
+      "per_rule_confidence_override": {
+        "text-spacing": 0.6,
+        "video-transcript": 0.6,
+        "svg-no-accessible-name": 0.6,
+        "semantic-html": 0.6,
+        "link-purpose": 0.6,
+        "empty-link": 0.62,
+        "aria-valid-attr-value": 0.62,
+        "empty-heading": 0.62
+      },
+      "suppress_when_present": {
+        "no-headings": ["no-main-landmark"]
+      }
+    },
+    "high_precision_recall_boost": {
+      "exclude_rules": ["no-main-landmark", "no-title"],
+      "per_rule_min_confidence": {
+        "no-headings": 0.78,
+        "no-lang": 0.62,
+        "missing-captions": 0.92,
+        "autoplay-media": 0.92,
+        "missing-skip-link": 0.92,
+        "th-no-scope": 0.9,
+        "missing-autocomplete": 0.9,
+        "missing-alt": 0.9,
+        "button-no-name": 0.9,
+        "role-no-name": 0.9,
+        "table-no-headers": 0.9
+      },
+      "per_rule_confidence_override": {
+        "text-spacing": 0.55,
+        "video-transcript": 0.55,
+        "svg-no-accessible-name": 0.55,
+        "semantic-html": 0.55,
+        "link-purpose": 0.55,
+        "empty-link": 0.55,
+        "aria-valid-attr-value": 0.6,
+        "empty-heading": 0.6
+      },
+      "suppress_when_present": {
+        "no-headings": ["no-title", "no-main-landmark"]
+      }
+    },
+    "high_precision_recall_strict": {
+      "exclude_rules": [
+        "no-main-landmark",
+        "no-title",
+        "aria-valid-attr-value"
+      ],
+      "per_rule_min_confidence": {
+        "no-headings": 0.78,
+        "no-lang": 0.95,
+        "missing-captions": 0.92,
+        "autoplay-media": 0.92,
+        "missing-skip-link": 0.92,
+        "th-no-scope": 0.9,
+        "missing-autocomplete": 0.9,
+        "missing-alt": 0.9,
+        "button-no-name": 0.9,
+        "role-no-name": 0.9,
+        "table-no-headers": 0.9
+      },
+      "per_rule_confidence_override": {
+        "text-spacing": 0.55,
+        "video-transcript": 0.55,
+        "svg-no-accessible-name": 0.55,
+        "semantic-html": 0.55,
+        "link-purpose": 0.55,
+        "empty-link": 0.55,
+        "aria-valid-attr-value": 0.6,
+        "empty-heading": 0.6
+      },
+      "suppress_when_present": {
+        "no-headings": ["no-lang", "no-title", "no-main-landmark"]
+      }
+    },
+    "high_precision_recall_balanced": {
+      "exclude_rules": ["no-main-landmark", "no-title"],
+      "per_rule_min_confidence": {
+        "no-headings": 0.62,
+        "no-lang": 0.75,
+        "missing-captions": 0.88,
+        "autoplay-media": 0.88,
+        "missing-skip-link": 0.88,
+        "th-no-scope": 0.72,
+        "missing-autocomplete": 0.72,
+        "missing-alt": 0.72,
+        "button-no-name": 0.72,
+        "role-no-name": 0.72,
+        "table-no-headers": 0.72
+      },
+      "per_rule_confidence_override": {
+        "text-spacing": 0.55,
+        "video-transcript": 0.55,
+        "svg-no-accessible-name": 0.55,
+        "semantic-html": 0.55,
+        "link-purpose": 0.55,
+        "empty-link": 0.55,
+        "aria-valid-attr-value": 0.6,
+        "empty-heading": 0.6
+      }
+    },
+    "high_precision_recall_exploratory": {
+      "exclude_rules": ["no-main-landmark", "no-title"],
+      "per_rule_min_confidence": {
+        "no-headings": 0.74,
+        "no-lang": 0.9,
+        "missing-captions": 0.84,
+        "autoplay-media": 0.84,
+        "missing-skip-link": 0.84,
+        "th-no-scope": 0.62,
+        "missing-autocomplete": 0.62,
+        "missing-alt": 0.62,
+        "button-no-name": 0.62,
+        "role-no-name": 0.62,
+        "table-no-headers": 0.62
+      },
+      "per_rule_confidence_override": {
+        "text-spacing": 0.5,
+        "video-transcript": 0.5,
+        "svg-no-accessible-name": 0.5,
+        "semantic-html": 0.5,
+        "link-purpose": 0.5,
+        "empty-link": 0.5,
+        "aria-valid-attr-value": 0.55,
+        "empty-heading": 0.55
+      }
+    }
+  }
+}
