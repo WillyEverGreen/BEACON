@@ -1,12 +1,12 @@
-# ACCESSIBILITY_COVERAGE v2.6
+# ACCESSIBILITY_COVERAGE v2.7
 
-> Last Updated: 2026-04-20
+> Last Updated: 2026-04-25
 > Evidence Basis: runtime code + mappings + release validation artifacts
 > Scope: Detection coverage (WCAG 2.2 A/AA baseline), not legal compliance certification
 
 ## Quick Summary
 
-- Implemented WCAG 2.2 A/AA coverage (full + partial): 55.2% (32/58)
+- Implemented WCAG 2.2 A/AA coverage (full + partial): 62.1% (36/58)
 - Strongest coverage: structure, semantics, ARIA, name/role/value, keyboard fundamentals
 - Partial coverage: context-sensitive and runtime-dependent checks (focus visuals, reflow variants, input purpose, language nuances)
 - Not covered / weakly covered: advanced media, timing, gesture/pointer alternatives, several predictable-input criteria
@@ -24,9 +24,9 @@ This tool is not a full WCAG/ADA/EAA/Section 508 compliance solution by itself.
 | Category                     | Count | Percent |
 | :--------------------------- | ----: | ------: |
 | Full                         |    20 |   34.5% |
-| Partial                      |    12 |   20.7% |
-| Not Covered                  |    26 |   44.8% |
-| Implemented (Full + Partial) |    32 |   55.2% |
+| Partial                      |    16 |   27.6% |
+| Not Covered                  |    22 |   37.9% |
+| Implemented (Full + Partial) |    36 |   62.1% |
 
 Both **Partial** and **Not Covered** categories are intentionally retained.
 
@@ -38,8 +38,8 @@ Both **Partial** and **Not Covered** categories are intentionally retained.
 ```mermaid
 pie title WCAG 2.2 A/AA Coverage Split (58 SC)
     "Full (20)" : 20
-    "Partial (12)" : 12
-    "Not Covered (26)" : 26
+    "Partial (16)" : 16
+    "Not Covered (22)" : 22
 ```
 
 ### 1.3 A/AA Status Bar
@@ -48,8 +48,8 @@ pie title WCAG 2.2 A/AA Coverage Split (58 SC)
 xychart-beta
     title "WCAG 2.2 A/AA Coverage Status (Count)"
     x-axis [Full, Partial, NotCovered]
-    y-axis "SC Count" 0 --> 30
-    bar [20, 12, 26]
+    y-axis "SC Count" 0 --> 40
+    bar [20, 16, 22]
 ```
 
 ---
@@ -118,7 +118,7 @@ Execution notes:
 
 - **minimal**: static checks + basic heuristics only. `enable_enrichment` and `enable_cognitive` are forced off. No browser, axe, or RAG. Guaranteed to finish in under 3 seconds.
 - **fast**: `curl_cffi AsyncSession` Chrome impersonation fetch → static + heuristic. No browser, no axe, no cognitive.
-- **deep**: Camoufox-backed Playwright browser render → all engines (static, heuristic, browser-probe, axe-core). Cognitive checks enabled when `enable_cognitive=True`. Lighthouse enrichment dispatched as an async background task.
+- **deep**: Camoufox-backed Playwright browser render → all engines (static, heuristic, browser-probe, axe-core, IBM Equal Access). Cognitive checks enabled when `enable_cognitive=True`. Lighthouse enrichment dispatched as an async background task.
 - **max**: Deep mode + explicit interaction/scroll exploration layer + journey simulation (URL-planning) + cognitive always on + Lighthouse enrichment background task.
 - If browser engines fail in deep/max mode, the run is marked `degraded_mode=True` and falls back to static-only with `degraded_reason=extraction_failure`.
 - Global backpressure can auto-degrade deep/max to fast mode when concurrent audits exceed the `AUDIT_CONCURRENCY_LIMIT` threshold.
@@ -135,6 +135,7 @@ This matrix shows which detector families activate per mode. Coverage percentage
 | Heuristics (23 rules)     |   ✅    |  ✅  |  ✅  |  ✅  | Pattern-based, lower confidence                                  |
 | Browser probes (19 rules) |   ❌    |  ❌  |  ✅  |  ✅  | Requires Camoufox/Playwright runtime                             |
 | axe-core (31 mapped)      |   ❌    |  ❌  |  ✅  |  ✅  | Injected into rendered DOM                                       |
+| IBM Equal Access (mapped) |   ❌    |  ❌  |  ✅  |  ✅  | Node-side external engine (`accessibility-checker`)              |
 | Cognitive (7 rules)       |   ❌    |  ❌  | opt  |  ✅  | `enable_cognitive=True` required for deep; always on in max      |
 | Lighthouse enrichment     |   ❌    |  ❌  |  ✅  |  ✅  | Async background task; result may arrive after initial response  |
 | RAG/LLM remediation       |   ❌    |  ✅  |  ✅  |  ✅  | Enriches fix text; not a detector                                |
@@ -144,11 +145,11 @@ This matrix shows which detector families activate per mode. Coverage percentage
 | Mode    | Approx WCAG SC reach (Full+Partial) | Additional notes                                |
 | :------ | :---------------------------------: | :---------------------------------------------- |
 | minimal | ~20–22 (Full only, via static)      | No browser, no axe; partial coverage incomplete |
-| fast    | ~24–26                              | Heuristics add reach; still no runtime probes   |
-| deep    | ~30–32 (55.2% — the reported rate)  | Full detector set active                        |
-| max     | ~30–32 + interaction signals        | Journey simulation adds focus-flow coverage     |
+| fast    | ~28–30                              | Heuristics add reach; still no runtime probes   |
+| deep    | ~35–38 (62.1% floor, target up)      | Full detector set active + IBM corroboration    |
+| max     | ~34–36 + interaction signals        | Journey simulation adds focus-flow coverage     |
 
-The 55.2% headline figure is a deep/max floor, not a fast-mode or minimal-mode figure.
+The 62.1% headline figure is a deep/max floor, not a fast-mode or minimal-mode figure.
 
 ---
 
@@ -200,6 +201,7 @@ Example: raw=100 → multiply → 85.0 → cap → **82.0**. Example: raw=70 →
 | Heuristic             | Pattern and language signals         | Heuristic                         | Lower confidence, often review-oriented |
 | Browser probe         | Runtime interaction checks           | Runtime deterministic/interaction | Medium-high, mode-gated                 |
 | axe-core normalized   | Standards-aligned runtime violations | Deterministic (axe)               | High confidence                         |
+| IBM normalized        | Standards-aligned runtime violations | Deterministic (external engine)   | High confidence                         |
 | Cognitive             | UX/readability judgments             | Heuristic                         | Review-oriented                         |
 | Lighthouse enrichment | Runtime JS signal enrichment         | Supplemental                      | Non-destructive corroboration/addition  |
 
@@ -208,6 +210,7 @@ Example: raw=100 → multiply → 85.0 → cap → **82.0**. Example: raw=70 →
 - HTTP fetch layer: `curl_cffi AsyncSession` with Chrome impersonation (replaces httpx).
 - Browser layer: `camoufox` (Firefox-based stealth browser, Playwright-compatible API). Binary must be fetched once via `python -m camoufox fetch`.
 - Playwright is wired into `scan_mode_runner.py` via `AsyncNewBrowser(driver, headless=True)`. Detection reach for browser-probes and axe-core depends on `camoufox` binary presence.
+- IBM layer: `accessibility-checker` Node package invoked via `scripts/ibm_scan.js`; active in deep/max when `enable_ibm=True`.
 
 Confidence governance highlights:
 
@@ -385,6 +388,7 @@ Detection engines:
 - Heuristic
 - Browser probe
 - axe-core normalized
+- IBM normalized
 - Cognitive
 
 Enrichment engines:
@@ -464,6 +468,7 @@ Denominator source: W3C WCAG 2.2 A/AA criterion count (58 SC). AAA criteria are 
 | v2.4    | 2026-04-20 |   20 |      12 |          26 |            **55.2%**  | Phase 20 topology + degraded-mode hardening        |
 | v2.5    | 2026-04-20 |   20 |      12 |          26 |            55.2%  | Phase 21 Lighthouse enrichment (enrichment layer only; no SC additions) |
 | v2.6    | 2026-04-20 |   20 |      12 |          26 |            55.2%  | Doc update: mode matrix, degraded taxonomy, sampling bias, reproducibility |
+| v2.7    | 2026-04-25 |   20 |      16 |          22 |            **62.1%**  | Phase 1+2: IBM Equal Access (Engine 6), 4 new SC heuristics (1.3.2, 1.3.4, 1.4.5, 3.2.2), COGA citations on all cognitive rules, CAPTCHA detection |
 
 **What changed in v2.6 (this document)**:
 
@@ -481,8 +486,8 @@ Denominator source: W3C WCAG 2.2 A/AA criterion count (58 SC). AAA criteria are 
 ## 17) Practical Interpretation
 
 - BEACON currently provides meaningful multi-engine automated accessibility detection with strong core structural and ARIA depth.
-- Current implemented A/AA reach is 55.2% when counting full+partial detector coverage under this methodology.
-- Full legal/compliance posture still requires human audit workflows, especially for the 44.8% not-covered set and subjective/contextual criteria.
+- Current implemented A/AA reach is **62.1%** when counting full+partial detector coverage under this methodology (20 Full + 16 Partial out of 58 SC).
+- Full legal/compliance posture still requires human audit workflows, especially for the 37.9% not-covered set and subjective/contextual criteria.
 - Reported scores and finding counts reflect sampled pages only; consult `pages_audited` vs `pages_discovered` in the API response for scope transparency.
 - Scores from degraded scans are penalized (× 0.85, capped at 82.0) and flagged explicitly. A `score=null` response indicates suppression due to low audit confidence, not a scan failure.
 

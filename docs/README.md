@@ -30,6 +30,7 @@ docs/
 | Use the CLI audit tool | [detailed_cli_audit.md](detailed_cli_audit.md) |
 | See development history | [architecture/BEACON_Phase_History.md](architecture/BEACON_Phase_History.md) |
 | See what is planned next | [ROADMAP.md](ROADMAP.md) |
+| Reference links and tools | [resources.md](resources.md) |
 
 ---
 

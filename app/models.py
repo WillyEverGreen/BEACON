@@ -143,6 +143,7 @@ class AuditIssue(BaseModel):
     observed_signals: list[str] = Field(default_factory=list, description="Signals observed for this specific issue/rule")
     missing_signals: list[str] = Field(default_factory=list, description="Required hybrid signals that were not observed")
     hybrid_enforcement: str = Field(default="", description="Hybrid enforcement status, if applied")
+    coga_pattern_ref: str = Field(default="", description="COGA Usable pattern citation")
 
     # ── Remediation ──
     description: str = Field(default="", description="Technical description or 'What is broken' in plain English")
@@ -242,7 +243,7 @@ class AuditResponse(BaseModel):
     """Full audit response with enriched metadata."""
     url: str
     scan_mode: str = "fast"
-    cognitive_mode: str = Field(default="off", description="off | experimental")
+    cognitive_mode: str = Field(default="off", description="off | on")
     total_issues: int
     issues: list[AuditIssue]
     priority_ranking: list[dict] = Field(

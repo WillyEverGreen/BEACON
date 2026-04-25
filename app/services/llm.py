@@ -753,6 +753,129 @@ RETRIEVED REFERENCE MATERIAL:
 Produce one structured fix JSON object. Return JSON only."""
 
 
+ACCESSGURU_SEMANTIC_SYSTEM_PROMPT = """You are a multimodal web accessibility expert.
+You analyze web accessibility issues using an attached screenshot of the UI element and the corresponding HTML.
+
+You MUST return a strict JSON object with this exact schema:
+{
+    "explanation": "Plain-English explanation of what is visually broken and why",
+    "fix_steps": [
+        "Concrete step 1",
+        "Concrete step 2"
+    ],
+    "code_example": {
+        "vanilla": "Specific HTML/CSS/JS fix",
+        "react": "React fix",
+        "vue": "Vue fix",
+        "angular": "Angular fix"
+    },
+    "impact": "Who is impacted and how",
+    "wcag_reference": "WCAG success criterion reference"
+}
+Rules:
+1. Return ONLY valid JSON.
+2. Rely on the screenshot to verify the problem before suggesting a fix.
+"""
+
+ACCESSGURU_SEMANTIC_USER_PROMPT = """
+Violation Category: "Semantic" - Misuse or absence of meaningful content or attributes.
+Violation type: {rule_id}
+Violation description: {description}
+Impact: {severity}
+Web page URL: {url}
+Affected HTML Element(s): {html_snippet}
+
+Please interpret the visual content of the attached image, compare it with the HTML, and return the required JSON.
+"""
+
+async def generate_semantic_remediation(issue: dict, context_chunks: list[dict]) -> dict:
+    """Generate remediation for semantic issues using AccessGuru multimodal prompt."""
+    client = get_client()
+
+    context_parts = []
+    for chunk in context_chunks:
+        context_parts.append(chunk.get('content', ''))
+    context_str = "\n\n---\n\n".join(context_parts) if context_parts else "No reference material."
+
+    user_text = ACCESSGURU_SEMANTIC_USER_PROMPT.format(
+        rule_id=issue.get("rule_id", "Unknown"),
+        description=issue.get("description", "Unknown"),
+        severity=issue.get("severity", "moderate"),
+        url=issue.get("url", "Unknown"),
+        html_snippet=issue.get("html_snippet", "")
+    )
+    if context_str:
+        user_text += f"\n\nRETRIEVED CONTEXT:\n{context_str}"
+
+    content = [{"type": "text", "text": user_text}]
+    
+    screenshot_base64 = issue.get("screenshot_base64")
+    if screenshot_base64:
+        content.append({
+            "type": "image_url",
+            "image_url": {"url": f"data:image/png;base64,{screenshot_base64}"}
+        })
+        issue["context"] = issue.get("context", {})
+        issue["context"]["screenshot_included"] = True
+
+    try:
+        response = await client.chat.completions.create(
+            model=settings.featherless_model,
+            messages=[
+                {"role": "system", "content": ACCESSGURU_SEMANTIC_SYSTEM_PROMPT},
+                {"role": "user", "content": content},
+            ],
+            max_tokens=1700,
+            temperature=0.2,
+            timeout=40.0,
+        )
+
+        text = response.choices[0].message.content.strip()
+
+        # Parse JSON
+        json_text = text
+        if "```" in text:
+            import re
+            match = re.search(r'```(?:json)?\s*([\s\S]*?)```', text)
+            if match:
+                json_text = match.group(1).strip()
+
+        import re, json
+        match = re.search(r'\{[\s\S]*\}', json_text)
+        if match:
+            parsed = json.loads(match.group())
+            result = _validate_response(parsed)
+            result["issue_id"] = issue.get("issue_id", "")
+            result["confidence"] = 0.85
+            result["needs_manual_review"] = False
+            return result
+
+        return {
+            "issue_id": issue.get("issue_id", ""),
+            "explanation": text[:500],
+            "wcag_references": [],
+            "code_fix": "",
+            "practical_assets": [],
+            "validation_hint": "",
+            "confidence": 0.3,
+            "needs_manual_review": True,
+        }
+
+    except Exception as e:
+        logger.error(f"Semantic remediation generation failed: {e}")
+        return {
+            "issue_id": issue.get("issue_id", ""),
+            "explanation": f"Semantic remediation generation failed: {str(e)}",
+            "wcag_references": [],
+            "code_fix": "",
+            "practical_assets": [],
+            "validation_hint": "",
+            "confidence": 0.0,
+            "needs_manual_review": True,
+        }
+
+
+
 async def generate_remediation(issue: dict, context_chunks: list[dict]) -> dict:
     """
     Generate a structured RemediationPacket for a specific accessibility issue.
@@ -1172,26 +1295,74 @@ async def enrich_issues(
                 base_delay = max(0.0, float(getattr(settings, "enrichment_retry_base_delay_seconds", 0.4) or 0.4))
                 max_delay = max(base_delay, float(getattr(settings, "enrichment_retry_max_delay_seconds", 3.0) or 3.0))
 
-                results: list[dict] = []
-                for attempt in range(attempts):
+                semantic_issues = [iss for iss in group_iss if iss.get("engine") in ("cognitive", "heuristic")]
+                non_semantic_issues = [iss for iss in group_iss if iss.get("engine") not in ("cognitive", "heuristic")]
+
+                if semantic_issues:
+                    try:
+                        from playwright.async_api import async_playwright
+                        url = semantic_issues[0].get("url")
+                        async with async_playwright() as p:
+                            browser = await p.chromium.launch(headless=True)
+                            page = await browser.new_page()
+                            await page.goto(url, wait_until="domcontentloaded")
+                            for issue in semantic_issues:
+                                selector = issue.get("selector")
+                                if selector:
+                                    try:
+                                        screenshot_bytes = await page.locator(selector).first.screenshot(timeout=3000)
+                                        import base64
+                                        issue["screenshot_base64"] = base64.b64encode(screenshot_bytes).decode("utf-8")
+                                    except Exception:
+                                        pass
+                            await browser.close()
+                    except Exception:
+                        pass
+
+                results_map = {}
+
+                # Process semantic issues individually
+                for issue in semantic_issues:
                     if not await _budget_available():
                         break
-
                     enrichment_meta["llm"]["calls"] += 1
-                    batch_results, usage = await generate_remediation_batch(group_iss, context_str, wcag_reference)
-                    await _record_usage(usage)
+                    res = await generate_semantic_remediation(issue, context_chunks)
+                    results_map[id(issue)] = res
+                    # Record dummy usage for semantic individual calls since we don't have accurate token counts from the manual function
+                    await _record_usage({"total_tokens": 1500, "estimated_cost_usd": 0.001})
 
-                    if batch_results:
-                        results = batch_results
-                        break
+                # Process non-semantic issues in batch
+                if non_semantic_issues:
+                    attempts = max(1, int(getattr(settings, "enrichment_retry_attempts", 3) or 3))
+                    base_delay = max(0.0, float(getattr(settings, "enrichment_retry_base_delay_seconds", 0.4) or 0.4))
+                    max_delay = max(base_delay, float(getattr(settings, "enrichment_retry_max_delay_seconds", 3.0) or 3.0))
 
-                    if attempt < attempts - 1:
-                        enrichment_meta["llm"]["retries"] += 1
-                        delay = min(max_delay, base_delay * (2 ** attempt))
-                        if delay > 0:
-                            await asyncio.sleep(delay)
+                    batch_results = []
+                    for attempt in range(attempts):
+                        if not await _budget_available():
+                            break
 
-                if not results:
+                        enrichment_meta["llm"]["calls"] += 1
+                        batch_res, usage = await generate_remediation_batch(non_semantic_issues, context_str, wcag_reference)
+                        await _record_usage(usage)
+
+                        if batch_res:
+                            batch_results = batch_res
+                            break
+
+                        if attempt < attempts - 1:
+                            enrichment_meta["llm"]["retries"] += 1
+                            delay = min(max_delay, base_delay * (2 ** attempt))
+                            if delay > 0:
+                                await asyncio.sleep(delay)
+                    
+                    for idx, issue in enumerate(non_semantic_issues):
+                        if idx < len(batch_results):
+                            results_map[id(issue)] = batch_results[idx]
+
+                results = [results_map.get(id(issue)) for issue in group_iss if results_map.get(id(issue))]
+
+                if not results and not semantic_issues:
                     source = "rule_fallback_budget" if enrichment_meta["budget"]["budget_exhausted"] else "rule_fallback"
                     logger.warning(f"LLM unavailable for batch '{group_label}'. Applying {source} remediation.")
                     return _apply_rule_fallback(group_iss, source, context_chunks_used=len(context_chunks))

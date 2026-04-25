@@ -104,6 +104,10 @@ class HeuristicAnalyzer:
             "check_sensory_language",
             "check_coga_usability",
             "check_action_fatigue",
+            "check_meaningful_sequence",
+            "check_orientation_lock",
+            "check_images_of_text",
+            "check_on_input_context_change",
         ]:
             try:
                 method = getattr(self, method_name)
@@ -778,4 +782,94 @@ class HeuristicAnalyzer:
                 "Use specific, descriptive calls to action for buttons.",
                 fix_effort="medium"
             ))
+        return issues
+
+    def check_meaningful_sequence(self) -> list[dict]:
+        """SC 1.3.2: Detect CSS that alters reading order (e.g. float right on adjacent elements, row-reverse)."""
+        issues = []
+        for parent in self.soup.find_all(True):
+            if not isinstance(parent, Tag):
+                continue
+            
+            style = str(parent.get("style", "")).lower()
+            if "row-reverse" in style or "column-reverse" in style:
+                issues.append(_make_issue(
+                    self.url, "meaningful-sequence", "needs-review", "moderate",
+                    _css_selector(parent), _snippet(parent, 200),
+                    "CSS flex-direction reverse alters visual order from DOM order, which may confuse screen reader users.",
+                    "1.3.2", "A", "html",
+                    "Ensure the DOM order matches the visual reading order."
+                ))
+            
+            children = [c for c in parent.find_all(recursive=False) if isinstance(c, Tag)]
+            float_right_count = sum(1 for c in children if "float:right" in str(c.get("style", "")).replace(" ", "").lower())
+            if float_right_count >= 2:
+                issues.append(_make_issue(
+                    self.url, "meaningful-sequence", "needs-review", "moderate",
+                    _css_selector(parent), _snippet(parent, 200),
+                    "Multiple adjacent elements floated right. This reverses their visual order compared to the DOM.",
+                    "1.3.2", "A", "html",
+                    "Ensure the DOM order matches the visual reading order."
+                ))
+        return issues
+
+    def check_orientation_lock(self) -> list[dict]:
+        """SC 1.3.4: Detect scripts that lock screen orientation."""
+        issues = []
+        for script in self.soup.find_all("script"):
+            content = script.string or ""
+            if "screen.orientation.lock" in content:
+                issues.append(_make_issue(
+                    self.url, "orientation-lock", "violation", "serious",
+                    "script", _snippet(script, 200),
+                    "Script attempts to lock screen orientation. This restricts users who have their device mounted in a fixed orientation.",
+                    "1.3.4", "AA", "html",
+                    "Remove orientation locks unless essential (e.g., a piano app)."
+                ))
+        
+        body = self.soup.find("body")
+        if body and isinstance(body, Tag):
+            onload = str(body.get("onload", ""))
+            if "orientation.lock" in onload:
+                issues.append(_make_issue(
+                    self.url, "orientation-lock", "violation", "serious",
+                    "body", _snippet(body, 200),
+                    "Inline script attempts to lock screen orientation.",
+                    "1.3.4", "AA", "html",
+                    "Remove orientation locks unless essential."
+                ))
+        return issues
+
+    def check_images_of_text(self) -> list[dict]:
+        """SC 1.4.5: Detect images that likely contain text (long alt text or text-related filenames)."""
+        issues = []
+        for img in self.soup.find_all("img"):
+            alt = (img.get("alt") or "").strip()
+            src = (img.get("src") or "").lower()
+            
+            if len(alt) > 100 or "textimage" in src:
+                issues.append(_make_issue(
+                    self.url, "images-of-text", "needs-review", "moderate",
+                    _css_selector(img), _snippet(img, 200),
+                    "Image has very long alt text or filename suggesting it contains text.",
+                    "1.4.5", "AA", "images",
+                    "Use actual text styled with CSS rather than images of text."
+                ))
+        return issues
+
+    def check_on_input_context_change(self) -> list[dict]:
+        """SC 3.2.2: Detect forms with select inputs but no submit buttons, which might change context automatically."""
+        issues = []
+        for form in self.soup.find_all("form"):
+            has_select = bool(form.find("select"))
+            has_submit = bool(form.find("input", type=["submit", "image"])) or bool(form.find("button", type="submit")) or bool(form.find("button", type=None))
+            
+            if has_select and not has_submit:
+                issues.append(_make_issue(
+                    self.url, "on-input-context-change", "needs-review", "moderate",
+                    _css_selector(form), _snippet(form, 200),
+                    "Form contains a select element but no submit button. Changing the select might trigger an unexpected context change.",
+                    "3.2.2", "A", "forms",
+                    "Provide a submit button to allow users to explicitly request the change."
+                ))
         return issues

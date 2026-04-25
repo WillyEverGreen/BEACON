@@ -20,9 +20,10 @@ def _rule_ids(issues: list[dict]) -> set[str]:
 
 def test_missing_h1_valid_case():
     html = """
-    <html><body>
+    <html lang="en"><head><title>Test</title></head><body>
       <h1>Main page heading</h1>
       <h2>Section</h2>
+      <p>Enough body text to satisfy the incomplete-HTML guard.</p>
     </body></html>
     """
     issues, activity = _run_checks(html, ["headings"])
@@ -33,9 +34,10 @@ def test_missing_h1_valid_case():
 
 def test_missing_h1_invalid_case():
     html = """
-    <html><body>
+    <html lang="en"><head><title>Test</title></head><body>
       <h2>Section heading only</h2>
       <h3>Nested subsection</h3>
+      <p>Enough body text to satisfy the incomplete-HTML guard.</p>
     </body></html>
     """
     issues, activity = _run_checks(html, ["headings"])
@@ -47,9 +49,10 @@ def test_missing_h1_invalid_case():
 
 def test_missing_h1_edge_case_hidden_h1_logged_as_medium():
     html = """
-    <html><body>
+    <html lang="en"><head><title>Test</title></head><body>
       <h1 style="display:none">Hidden heading</h1>
       <h2>Visible section heading</h2>
+      <p>Enough body text to satisfy the incomplete-HTML guard.</p>
     </body></html>
     """
     issues, activity = _run_checks(html, ["headings"])
@@ -61,8 +64,8 @@ def test_missing_h1_edge_case_hidden_h1_logged_as_medium():
 
 def test_missing_h1_edge_case_no_headings_skips_rule():
     html = """
-    <html><body>
-      <p>No headings at all.</p>
+    <html lang="en"><head><title>Test</title></head><body>
+      <p>No headings at all. This paragraph adds enough text length.</p>
     </body></html>
     """
     issues, activity = _run_checks(html, ["headings"])
@@ -76,9 +79,10 @@ def test_missing_h1_edge_case_no_headings_skips_rule():
 
 def test_multiple_h1_valid_case():
     html = """
-    <html><body>
+    <html lang="en"><head><title>Test</title></head><body>
       <h1>Main heading</h1>
       <h2>Section</h2>
+      <p>Enough body text to satisfy the incomplete-HTML guard.</p>
     </body></html>
     """
     issues, activity = _run_checks(html, ["headings"])
@@ -89,9 +93,10 @@ def test_multiple_h1_valid_case():
 
 def test_multiple_h1_invalid_case():
     html = """
-    <html><body>
+    <html lang="en"><head><title>Test</title></head><body>
       <h1>Main heading</h1>
       <h1>Another top heading</h1>
+      <p>Enough body text to satisfy the incomplete-HTML guard.</p>
     </body></html>
     """
     issues, activity = _run_checks(html, ["headings"])
@@ -102,9 +107,9 @@ def test_multiple_h1_invalid_case():
 
 def test_multiple_h1_edge_sectioning_context_logged_as_medium():
     html = """
-    <html><body>
-      <article><h1>Article A</h1></article>
-      <article><h1>Article B</h1></article>
+    <html lang="en"><head><title>Test</title></head><body>
+      <article><h1>Article A</h1><p>Content A.</p></article>
+      <article><h1>Article B</h1><p>Content B.</p></article>
     </body></html>
     """
     issues, activity = _run_checks(html, ["headings"])
@@ -116,10 +121,11 @@ def test_multiple_h1_edge_sectioning_context_logged_as_medium():
 
 def test_multiple_h1_edge_case_non_h1_headings_not_flagged():
     html = """
-    <html><body>
+    <html lang="en"><head><title>Test</title></head><body>
       <h1>Main heading</h1>
       <h2>Section A</h2>
       <h2>Section B</h2>
+      <p>Enough body text to satisfy the incomplete-HTML guard.</p>
     </body></html>
     """
     issues, activity = _run_checks(html, ["headings"])
@@ -132,10 +138,11 @@ def test_multiple_h1_edge_case_non_h1_headings_not_flagged():
 
 def test_heading_order_valid_case():
     html = """
-    <html><body>
+    <html lang="en"><head><title>Test</title></head><body>
       <h1>Main heading</h1>
       <h2>Section</h2>
       <h3>Subsection</h3>
+      <p>Enough body text to satisfy the incomplete-HTML guard.</p>
     </body></html>
     """
     issues, activity = _run_checks(html, ["headings"])
@@ -146,9 +153,10 @@ def test_heading_order_valid_case():
 
 def test_heading_order_invalid_case():
     html = """
-    <html><body>
+    <html lang="en"><head><title>Test</title></head><body>
       <h1>Main heading</h1>
       <h3>Skipped directly to h3</h3>
+      <p>Enough body text to satisfy the incomplete-HTML guard.</p>
     </body></html>
     """
     issues, activity = _run_checks(html, ["headings"])
@@ -159,9 +167,10 @@ def test_heading_order_invalid_case():
 
 def test_heading_order_edge_case_first_heading_h2_is_allowed():
     html = """
-    <html><body>
+    <html lang="en"><head><title>Test</title></head><body>
       <h2>First visible heading is h2</h2>
       <h3>Next heading</h3>
+      <p>Enough body text to satisfy the incomplete-HTML guard.</p>
     </body></html>
     """
     issues, activity = _run_checks(html, ["headings"])
@@ -172,8 +181,9 @@ def test_heading_order_edge_case_first_heading_h2_is_allowed():
 
 def test_heading_order_edge_case_single_visible_heading_not_penalized():
     html = """
-    <html><body>
+    <html lang="en"><head><title>Test</title></head><body>
       <h2>Only one heading</h2>
+      <p>Enough body text to satisfy the incomplete-HTML guard.</p>
     </body></html>
     """
     issues, activity = _run_checks(html, ["headings"])
@@ -186,10 +196,10 @@ def test_heading_order_edge_case_single_visible_heading_not_penalized():
 
 def test_landmark_roles_valid_case():
     html = """
-    <html><body>
+    <html lang="en"><head><title>Test</title></head><body>
       <header>Header</header>
       <nav aria-label="Primary navigation"></nav>
-      <main>Main content</main>
+      <main>Main content goes here for sufficient text length.</main>
       <footer>Footer</footer>
     </body></html>
     """
@@ -201,9 +211,9 @@ def test_landmark_roles_valid_case():
 
 def test_landmark_roles_invalid_multiple_main_landmarks():
     html = """
-    <html><body>
-      <main>Primary content</main>
-      <main>Secondary content incorrectly marked as main</main>
+    <html lang="en"><head><title>Test</title></head><body>
+      <main>Primary content area with enough text.</main>
+      <main>Secondary content incorrectly marked as main.</main>
     </body></html>
     """
     issues, activity = _run_checks(html, ["landmarks"])
@@ -214,9 +224,9 @@ def test_landmark_roles_invalid_multiple_main_landmarks():
 
 def test_landmark_roles_invalid_missing_main_landmark():
     html = """
-    <html><body>
-      <nav aria-label="Site navigation"></nav>
-      <section>Content without main landmark</section>
+    <html lang="en"><head><title>Test</title></head><body>
+      <nav aria-label="Site navigation"><a href="/">Home</a></nav>
+      <section>Content without main landmark and enough text here.</section>
     </body></html>
     """
     issues, activity = _run_checks(html, ["landmarks"])
@@ -228,8 +238,8 @@ def test_landmark_roles_invalid_missing_main_landmark():
 
 def test_landmark_roles_edge_multiple_unlabeled_navs_logged_as_medium():
     html = """
-    <html><body>
-      <main>Main content</main>
+    <html lang="en"><head><title>Test</title></head><body>
+      <main>Main content area with enough text for the guard.</main>
       <nav><a href="#a">A</a></nav>
       <nav><a href="#b">B</a></nav>
     </body></html>
@@ -245,7 +255,7 @@ def test_landmark_roles_edge_multiple_unlabeled_navs_logged_as_medium():
 
 def test_button_name_valid_case():
     html = """
-    <html><body>
+    <html lang="en"><head><title>Test</title></head><body>
       <button type="button">Save</button>
     </body></html>
     """
@@ -257,7 +267,7 @@ def test_button_name_valid_case():
 
 def test_button_name_invalid_case():
     html = """
-    <html><body>
+    <html lang="en"><head><title>Test</title></head><body>
       <button type="button"></button>
     </body></html>
     """
@@ -269,7 +279,7 @@ def test_button_name_invalid_case():
 
 def test_button_name_edge_invalid_aria_labelledby_reference_is_flagged():
     html = """
-    <html><body>
+    <html lang="en"><head><title>Test</title></head><body>
       <button aria-labelledby="missing-id"></button>
     </body></html>
     """
@@ -281,7 +291,7 @@ def test_button_name_edge_invalid_aria_labelledby_reference_is_flagged():
 
 def test_button_name_edge_icon_only_button_logged_as_medium():
     html = """
-    <html><body>
+    <html lang="en"><head><title>Test</title></head><body>
       <button type="button"><svg><path d="M0 0"/></svg></button>
     </body></html>
     """
@@ -294,11 +304,11 @@ def test_button_name_edge_icon_only_button_logged_as_medium():
 
 def test_group2_rule_activity_contains_confidence_buckets():
     html = """
-    <html><body>
+    <html lang="en"><head><title>Test</title></head><body>
       <h2>Section heading only</h2>
       <h4>Skipped heading</h4>
-      <main>Primary</main>
-      <main>Duplicate main</main>
+      <main>Primary content area with sufficient text length here.</main>
+      <main>Duplicate main landmark is an error.</main>
       <button></button>
     </body></html>
     """

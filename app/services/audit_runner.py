@@ -37,6 +37,7 @@ from app.crawlers.common import http_get_with_backoff, normalize_scan_mode
 from app.services.static_checks import StaticChecker
 from app.services.heuristics import HeuristicAnalyzer
 from app.services.normalizer import normalize_all
+from app.services.ibm_checker import run_ibm_scan_url
 from app.services.dedup_engine import deduplicate, proximity_dedup
 from app.services.confidence import apply_confidence_rules
 from app.services.grouper import group_issues
@@ -138,6 +139,7 @@ _SIGNAL_SOURCE_MAP: dict[str, set[str]] = {
     "browser-probe": {"behavioral_probe", "dom_interaction"},
     "heuristic": {"dom_structure_heuristic"},
     "axe-core": {"dom_structure_heuristic"},
+    "ibm": {"dom_structure_heuristic"},
 }
 
 
@@ -389,6 +391,7 @@ def _build_trust_payload(
         "static": "static" in engines_set,
         "browser": "browser-probe" in engines_set,
         "axe": "axe-core" in engines_set,
+        "ibm": "ibm" in engines_set,
         "heuristic": "heuristic" in engines_set,
     }
 
@@ -1255,6 +1258,7 @@ async def run_audit(
     await_enrichment: bool = False,
     use_cache: bool = True,
     run_id: Optional[str] = None,
+    enable_ibm: bool = True,
 ) -> dict:
     """
     Run the full accessibility audit pipeline.
@@ -1409,6 +1413,7 @@ async def run_audit(
         heuristic_issues = []
         browser_issues = []
         axe_violations = []
+        ibm_findings = []
         cognitive_scores = None
 
         # ── Step 1: Fetch / Render page ────────────────────────────
@@ -1694,12 +1699,28 @@ async def run_audit(
                 logger.warning(f"axe-core execution failed: {e}")
                 return [], "axe-core", {"executed": False}
 
-        # Execute all 3 rule engines concurrently
+        async def run_ibm():
+            if not enable_ibm:
+                return [], "ibm", {"executed": False, "skipped_reason": "disabled"}
+            if scan_mode not in {"deep", "max"}:
+                return [], "ibm", {"executed": False}
+            if degraded_reason in {"blocked_request", "bot_wall", "rate_limited"}:
+                return [], "ibm", {"executed": False, "skipped_reason": "blocked_request"}
+            try:
+                timeout_seconds = max(10.0, min(45.0, float(browser_timeout_ms) / 1000.0))
+                findings = await run_ibm_scan_url(url, timeout_seconds=timeout_seconds)
+                return findings, "ibm", {"executed": True}
+            except Exception as e:
+                logger.warning(f"IBM checker execution failed: {e}")
+                return [], "ibm", {"executed": False}
+
+        # Execute all rule engines concurrently
         t_static = asyncio.to_thread(run_static)
         t_heuristic = asyncio.to_thread(run_heuristic)
         t_axe = run_axe()
+        t_ibm = run_ibm()
         
-        results = await asyncio.gather(t_static, t_heuristic, t_axe, return_exceptions=True)
+        results = await asyncio.gather(t_static, t_heuristic, t_axe, t_ibm, return_exceptions=True)
         
         for res in results:
             if isinstance(res, Exception):
@@ -1718,9 +1739,13 @@ async def run_audit(
                 heuristic_issues = engine_issues
             elif engine_name == "axe-core":
                 axe_violations = engine_issues
+            elif engine_name == "ibm":
+                ibm_findings = engine_issues
 
         if "axe-core" in engines_used and "axe-core" in skipped_components:
             skipped_components = [s for s in skipped_components if s != "axe-core"]
+        if "ibm" in engines_used and "ibm" in skipped_components:
+            skipped_components = [s for s in skipped_components if s != "ibm"]
 
         # If deep scan requested but browser engines did not execute, mark degraded.
         if scan_mode in {"deep", "max"}:
@@ -1742,6 +1767,7 @@ async def run_audit(
                 heuristic_issues=heuristic_issues,
                 browser_issues=browser_issues,
                 axe_issues=axe_violations,
+                ibm_issues=ibm_findings,
                 url=url,
             )
         except Exception as e:
@@ -1753,6 +1779,7 @@ async def run_audit(
                 *list(heuristic_issues or []),
                 *list(browser_issues or []),
                 *list(axe_violations or []),
+                *list(ibm_findings or []),
             ]
 
         # Deduplicate — primary pass removes exact/near-exact duplicates
@@ -2203,7 +2230,7 @@ async def run_audit(
         res = {
             "url": url,
             "scan_mode": scan_mode,
-            "cognitive_mode": "experimental" if enable_cognitive and scan_mode in {"deep", "max"} else "off",
+            "cognitive_mode": "on" if enable_cognitive and scan_mode in {"deep", "max"} else "off",
             "schema_version": getattr(settings, "schema_version", "3.1"),
             "total_issues": len(scored_issues),
             "issues": scored_issues,

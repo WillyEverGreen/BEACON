@@ -238,3 +238,18 @@ cleanup_dead_files.bat
 
 # -- Local benchmark run outputs ----------------------------------------------
 test_comparison_results*.json
+
+# -- Downloaded Reference Repositories ----------------------------------------
+AccessGuruLLM/
+GenA11y/
+a11y-llm-eval/
+act-rules.github.io/
+equal-access/
+
+# -- Dynamic Artifacts & Data -------------------------------------------------
+evaluation/fixtures/
+evaluation/results/
+evaluation/retest_act_latest.json
+results/
+data/raw/
+*out*.txt

@@ -60,7 +60,14 @@ async def test():
     print(f"  Found {len(heur)} issues")
 
     print("--- Normalize ---")
-    all_issues = normalize_all(static, heur, [], [], url)
+    all_issues = normalize_all(
+        static_issues=static,
+        heuristic_issues=heur,
+        browser_issues=[],
+        axe_issues=[],
+        url=url,
+        ibm_issues=[],
+    )
     print(f"  Total: {len(all_issues)}")
 
     print("--- Dedup ---")

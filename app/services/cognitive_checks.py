@@ -106,7 +106,7 @@ COMMON_JARGON = {
 
 
 def _make_issue(url, rule_id, severity, description, wcag_criterion, wcag_level,
-                suggested_fix, evidence=None, fix_effort="medium"):
+                suggested_fix, evidence=None, fix_effort="medium", coga_pattern_ref=""):
     issue_id = hashlib.sha256(f"{url}|cognitive|{rule_id}".encode()).hexdigest()[:16]
     return {
         "issue_id": issue_id,
@@ -126,6 +126,7 @@ def _make_issue(url, rule_id, severity, description, wcag_criterion, wcag_level,
         "suggested_fix": suggested_fix,
         "code_fix": "",
         "fix_effort": fix_effort,
+        "coga_pattern_ref": coga_pattern_ref,
         "group_id": "",
         "domain": "cognitive",
         "evidence": evidence or {},
@@ -190,6 +191,11 @@ class CognitiveAnalyzer:
         # Error message quality
         issues.extend(self._analyze_error_messages())
 
+        # ── Phase 2 COGA rules (Objective 4: Help users focus) ─────────────
+        issues.extend(self._analyze_auto_carousel())
+        issues.extend(self._analyze_focus_disruption())
+        issues.extend(self._analyze_autoplay_media())
+
         # Calculate overall cognitive score
         penalties = 0
         if scores["readability_grade"] > 8:
@@ -237,7 +243,8 @@ class CognitiveAnalyzer:
                 f"COGA recommends grade 8 or below for broad accessibility.",
                 "3.1.5", "AAA",
                 "Simplify language: use shorter sentences, common words, active voice.",
-                evidence={"flesch_kincaid_grade": grade, "reading_ease": ease, "gunning_fog": fog}
+                evidence={"flesch_kincaid_grade": grade, "reading_ease": ease, "gunning_fog": fog},
+                coga_pattern_ref="Clear Language"
             ))
         elif grade > 8:
             issues.append(_make_issue(
@@ -246,7 +253,8 @@ class CognitiveAnalyzer:
                 f"Consider simplifying for broader cognitive accessibility.",
                 "3.1.5", "AAA",
                 "Use plain language, break long sentences, explain technical terms.",
-                evidence={"flesch_kincaid_grade": grade, "reading_ease": ease, "gunning_fog": fog}
+                evidence={"flesch_kincaid_grade": grade, "reading_ease": ease, "gunning_fog": fog},
+                coga_pattern_ref="Clear Language"
             ))
 
         return issues, scores
@@ -269,7 +277,8 @@ class CognitiveAnalyzer:
                 "3.1.3", "AAA",
                 "Define technical terms on first use, or provide a glossary.",
                 evidence={"jargon_density_percent": round(density, 1),
-                          "sample_jargon": list(set(jargon_found))[:10]}
+                          "sample_jargon": list(set(jargon_found))[:10]},
+                coga_pattern_ref="Explain Complex Terms"
             ))
         elif density > 5:
             issues.append(_make_issue(
@@ -277,7 +286,8 @@ class CognitiveAnalyzer:
                 f"Moderate jargon density ({density:.1f}%). Consider providing definitions.",
                 "3.1.3", "AAA",
                 "Add tooltips or a glossary for technical terms.",
-                evidence={"jargon_density_percent": round(density, 1)}
+                evidence={"jargon_density_percent": round(density, 1)},
+                coga_pattern_ref="Explain Complex Terms"
             ))
 
         return issues, round(density, 1)
@@ -297,7 +307,8 @@ class CognitiveAnalyzer:
                     f'CTA button text "{text}" is vague. Users may not understand the action.',
                     "2.4.6", "AA",
                     f'Use specific text like "Submit application", "Save changes" instead of "{text}".',
-                    fix_effort="low"
+                    fix_effort="low",
+                    coga_pattern_ref="Clear Purpose"
                 ))
 
         return issues
@@ -332,7 +343,8 @@ class CognitiveAnalyzer:
                 f"Users with cognitive disabilities may be overwhelmed.",
                 "2.4.5", "AA",
                 "Simplify navigation: limit top-level items to 7±2, reduce nesting depth.",
-                evidence={"total_nav_links": total_links, "max_nesting_depth": max_depth}
+                evidence={"total_nav_links": total_links, "max_nesting_depth": max_depth},
+                coga_pattern_ref="Clear Navigation"
             ))
         elif total_links > 15 or max_depth > 2:
             level = "medium"
@@ -358,7 +370,8 @@ class CognitiveAnalyzer:
                     "3.3.2", "A",
                     "Break form into logical steps with a progress indicator, or reduce fields.",
                     evidence={"field_count": field_count},
-                    fix_effort="high"
+                    fix_effort="high",
+                    coga_pattern_ref="Help Users Complete Forms"
                 ))
             elif field_count > 5:
                 if level != "poor":
@@ -375,7 +388,8 @@ class CognitiveAnalyzer:
                     f"Form has {field_count} fields but no progress indicator.",
                     "3.3.2", "A",
                     "Add a progress indicator or step counter for longer forms.",
-                    fix_effort="medium"
+                    fix_effort="medium",
+                    coga_pattern_ref="Provide Clear Steps"
                 ))
 
         return issues, level
@@ -405,8 +419,107 @@ class CognitiveAnalyzer:
                         f'Error message "{text}" is too generic. Users need specific guidance.',
                         "3.3.1", "A",
                         'Provide specific messages: "Email must include @" instead of just "Error".',
-                        fix_effort="low"
+                        fix_effort="low",
+                        coga_pattern_ref="Help Users Avoid Mistakes"
                     ))
                     break
 
+        return issues
+
+    def _analyze_auto_carousel(self) -> list[dict]:
+        """COGA Objective 4 — Help users focus: Detect auto-advancing carousels.
+
+        Auto-play content (carousels, sliders without pause controls) forces
+        users to track moving content against their will, harming cognitive
+        accessibility.  Reference: COGA-Usable Pattern 4.2.3.
+        """
+        issues = []
+        carousel_signals = self.soup.find_all(
+            class_=re.compile(r"carousel|slider|slideshow|swiper|glide|splide", re.I)
+        )
+        for elem in carousel_signals:
+            # Heuristic: auto-advancing if data-autoplay or interval attributes
+            # are present without a visible pause button nearby.
+            has_autoplay = (
+                elem.get("data-autoplay")
+                or elem.get("data-auto-play")
+                or elem.get("data-interval")
+                or elem.get("data-delay")
+                or elem.get("autoplay") is not None
+            )
+            has_pause = bool(
+                elem.find(class_=re.compile(r"pause|stop", re.I))
+                or elem.find(attrs={"aria-label": re.compile(r"pause|stop", re.I)})
+            )
+            if has_autoplay and not has_pause:
+                issues.append(_make_issue(
+                    self.url, "auto-carousel", "moderate",
+                    "Auto-advancing carousel detected without a visible pause control. "
+                    "Users with cognitive disabilities cannot stop moving content.",
+                    "2.2.2", "A",
+                    "Add a pause/stop button to the carousel. "
+                    "Alternatively, disable auto-play by default and let users opt in.",
+                    evidence={"element": str(elem)[:300]},
+                    fix_effort="medium",
+                    coga_pattern_ref="Stop or Limit Time (COGA Obj 4, Pattern 4.2.3)"
+                ))
+        return issues
+
+    def _analyze_focus_disruption(self) -> list[dict]:
+        """COGA Objective 4 — Help users focus: Detect popup/overlay triggers on focus.
+
+        Dialogs or overlays that open on focus events disorient users with
+        cognitive disabilities.  Reference: COGA-Usable Pattern 4.1.2.
+        """
+        issues = []
+        # Detect elements wired to trigger dialogs/popups
+        focus_triggers = self.soup.find_all(
+            attrs={"onfocus": re.compile(r"modal|popup|dialog|overlay|show\(", re.I)}
+        )
+        focus_triggers += self.soup.find_all(
+            attrs={"data-toggle": re.compile(r"modal|popup|dropdown", re.I),
+                   "tabindex": True}
+        )
+        if focus_triggers:
+            issues.append(_make_issue(
+                self.url, "focus-disruption", "moderate",
+                f"Detected {len(focus_triggers)} element(s) that may trigger dialogs or overlays "
+                "on focus events. This disrupts the reading flow for users with cognitive disabilities.",
+                "3.2.1", "A",
+                "Avoid triggering popups or modals on focus. "
+                "Use explicit user actions (click/enter) to open dialogs instead.",
+                evidence={"trigger_count": len(focus_triggers)},
+                fix_effort="medium",
+                coga_pattern_ref="Avoid Interruptions (COGA Obj 4, Pattern 4.1.2)"
+            ))
+        return issues
+
+    def _analyze_autoplay_media(self) -> list[dict]:
+        """COGA Objective 4 — Help users focus: Detect autoplay audio/video without controls.
+
+        Autoplay media competes for attention and is a significant barrier for
+        users with cognitive disabilities.  Reference: COGA-Usable Pattern 4.2.1.
+        """
+        issues = []
+        # <video autoplay> or <audio autoplay> without controls or muted
+        for tag_name in ("video", "audio"):
+            for elem in self.soup.find_all(tag_name):
+                if elem.get("autoplay") is None:
+                    continue
+                has_controls = elem.get("controls") is not None
+                is_muted = elem.get("muted") is not None
+                # Muted video autoplay (e.g. hero background) is generally OK.
+                # Non-muted audio/video autoplay is a barrier.
+                if not has_controls and not is_muted:
+                    issues.append(_make_issue(
+                        self.url, "autoplay-media", "serious",
+                        f"<{tag_name}> element autoplays without controls or muted attribute. "
+                        "Unexpected audio/video disturbs users with cognitive disabilities.",
+                        "1.4.2", "A",
+                        f"Add the 'controls' attribute to the <{tag_name}> element "
+                        "so users can pause or stop media, or add 'muted' for background video.",
+                        evidence={"element": str(elem)[:300]},
+                        fix_effort="low",
+                        coga_pattern_ref="Control Media (COGA Obj 4, Pattern 4.2.1)"
+                    ))
         return issues

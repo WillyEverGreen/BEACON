@@ -403,6 +403,7 @@ CONFIDENCE_WEIGHTS = {
 
 SOURCE_RELIABILITY_SCORES = {
     "axe-core":      0.95,
+    "ibm":           0.95,
     "static":        0.90,
     "browser-probe": 0.85,
     "heuristic":     0.50,

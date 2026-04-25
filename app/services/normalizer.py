@@ -84,6 +84,56 @@ AXE_CATEGORY_MAP = {
     "video-caption": "media",
 }
 
+# ── IBM Equal Access rule → WCAG mapping ──────────────────────
+
+IBM_WCAG_MAP = {
+    "WCAG20_Img_HasAlt": ("1.1.1", "A"),
+    "WCAG20_Img_Button_HasAlt": ("1.1.1", "A"),
+    "WCAG20_Html_HasLang": ("3.1.1", "A"),
+    "WCAG20_Form_LabelExists": ("1.3.1", "A"),
+    "WCAG20_A_HasName": ("2.4.4", "A"),
+    "WCAG20_Button_HasName": ("4.1.2", "A"),
+    "WCAG20_Text_Contrast": ("1.4.3", "AA"),
+    "WCAG21_NameRoleValue": ("4.1.2", "A"),
+}
+
+
+def _infer_ibm_wcag(rule_id: str) -> tuple[str, str]:
+    mapped = IBM_WCAG_MAP.get(rule_id)
+    if mapped:
+        return mapped
+
+    lowered = str(rule_id or "").lower()
+    if "img" in lowered and "alt" in lowered:
+        return ("1.1.1", "A")
+    if "contrast" in lowered:
+        return ("1.4.3", "AA")
+    if "lang" in lowered:
+        return ("3.1.1", "A")
+    if "label" in lowered or "form" in lowered:
+        return ("1.3.1", "A")
+    if "button" in lowered or "name" in lowered or "role" in lowered:
+        return ("4.1.2", "A")
+    if "link" in lowered or "anchor" in lowered:
+        return ("2.4.4", "A")
+    return ("", "")
+
+
+def _infer_ibm_category(sc_id: str) -> str:
+    if sc_id.startswith("1.1"):
+        return "images"
+    if sc_id.startswith("1.4"):
+        return "color"
+    if sc_id.startswith("1.3"):
+        return "forms"
+    if sc_id.startswith("2.4"):
+        return "navigation"
+    if sc_id.startswith("3.1"):
+        return "html"
+    if sc_id.startswith("4.1"):
+        return "aria"
+    return "general"
+
 
 # ── Rule Translation Map ──────────────────────────────────────
 # Maps internal engine/axe IDs to standard ACT benchmark expects.
@@ -250,12 +300,103 @@ def normalize_browser_results(browser_issues: list[dict]) -> list[dict]:
     return browser_issues
 
 
+def normalize_ibm_results(ibm_issues: list[dict], url: str) -> list[dict]:
+    """Normalize IBM Equal Access findings into AuditIssue shape."""
+    normalized: list[dict] = []
+    for issue in ibm_issues:
+        raw_rule_id = str(issue.get("rule_id", "") or issue.get("id", "")).strip()
+        if not raw_rule_id:
+            continue
+
+        rule_id = _translate_rule_id(raw_rule_id)
+        selector = str(issue.get("selector", "") or issue.get("element", "")).strip()
+        message = str(issue.get("message", "") or issue.get("description", "")).strip()
+        severity = str(issue.get("severity", "moderate") or "moderate").lower().strip()
+        if severity not in AXE_SEVERITY_MAP:
+            severity = "moderate"
+
+        wcag_criterion, wcag_level = _infer_ibm_wcag(raw_rule_id)
+        category = _infer_ibm_category(wcag_criterion)
+
+        normalized.append(
+            {
+                "issue_id": _make_issue_id(url, selector, rule_id),
+                "rule_id": rule_id,
+                "is_grouped": False,
+                "issue_type": "violation",
+                "element": selector,
+                "html_snippet": str(issue.get("html_snippet", "") or "")[:500],
+                "page_url": url,
+                "severity": severity,
+                "wcag_criterion": wcag_criterion,
+                "wcag_level": wcag_level,
+                "category": category,
+                "confidence": 0.85,
+                "confidence_sources": ["ibm"],
+                "needs_manual_review": False,
+                "description": message,
+                "suggested_fix": "",
+                "code_fix": "",
+                "fix_effort": "medium",
+                "group_id": "",
+                "domain": RULE_DOMAIN_MAP.get(rule_id, ""),
+                "evidence": {
+                    "ibm_rule_id": raw_rule_id,
+                },
+                "reproducibility": "",
+            }
+        )
+
+    return normalized
+
+
+def _apply_axe_ibm_corroboration(issues: list[dict]) -> None:
+    """Boost confidence when axe-core and IBM report the same WCAG signal."""
+    axe_indices: dict[tuple[str, str], list[int]] = {}
+    ibm_indices: dict[tuple[str, str], list[int]] = {}
+
+    for idx, issue in enumerate(issues):
+        sources = issue.get("confidence_sources", [])
+        if not isinstance(sources, list) or not sources:
+            continue
+        source_set = {str(s).strip().lower() for s in sources}
+
+        selector = str(issue.get("element", "") or "").strip()
+        wcag_or_rule = str(issue.get("wcag_criterion", "") or issue.get("rule_id", "")).strip()
+        if not selector and not wcag_or_rule:
+            continue
+
+        key = (selector, wcag_or_rule)
+        if "axe-core" in source_set:
+            axe_indices.setdefault(key, []).append(idx)
+        if "ibm" in source_set:
+            ibm_indices.setdefault(key, []).append(idx)
+
+    for key, axe_rows in axe_indices.items():
+        ibm_rows = ibm_indices.get(key, [])
+        if not ibm_rows:
+            continue
+        for row_idx in [*axe_rows, *ibm_rows]:
+            issue = issues[row_idx]
+            sources = issue.get("confidence_sources", [])
+            if isinstance(sources, list):
+                merged = sorted(set([*sources, "axe-core", "ibm"]))
+                issue["confidence_sources"] = merged
+            issue["confidence"] = max(0.85, float(issue.get("confidence", 0.0) or 0.0))
+            evidence = issue.get("evidence")
+            if not isinstance(evidence, dict):
+                evidence = {}
+            evidence["cross_engine_corroborated"] = True
+            issue["evidence"] = evidence
+
+
 def normalize_all(
     static_issues: list[dict],
     heuristic_issues: list[dict],
     browser_issues: list[dict],
     axe_issues: list[dict],
     url: str,
+    ibm_issues: list[dict] | None = None,
 ) -> list[dict]:
     """
     Normalize and merge results from all engines into a single list.
@@ -266,11 +407,15 @@ def normalize_all(
     all_issues.extend(normalize_heuristic_results(heuristic_issues))
     all_issues.extend(normalize_browser_results(browser_issues))
     all_issues.extend(normalize_axe_results(axe_issues, url))
+    all_issues.extend(normalize_ibm_results(ibm_issues or [], url))
+
+    _apply_axe_ibm_corroboration(all_issues)
 
     logger.info(
         f"Normalized {len(all_issues)} total issues: "
         f"{len(static_issues)} static, {len(heuristic_issues)} heuristic, "
-        f"{len(browser_issues)} browser, {len(axe_issues)} axe-core"
+        f"{len(browser_issues)} browser, {len(axe_issues)} axe-core, "
+        f"{len(ibm_issues or [])} ibm"
     )
 
     return all_issues

@@ -183,7 +183,7 @@ def _chunk_has_signal(text: str) -> bool:
 
 def _metadata_wcag_tokens(meta: dict[str, Any]) -> set[str]:
     tokens: set[str] = set()
-    for key in ("wcag_sc", "criterion_id", "wcag_reference"):
+    for key in ("wcag_sc", "criterion_id", "wcag_reference", "sc_id"):
         raw = str(meta.get(key, "") or "")
         for match in re.findall(r"\b\d\.\d+\.\d+\b", raw):
             tokens.add(match)
@@ -375,11 +375,11 @@ def _select_relevant_chunks(
     ranked: list[tuple[float, dict[str, Any]]] = []
 
     for candidate in candidates:
-        text = str(candidate.get("text", "") or "").strip()
+        text = str(candidate.get("content", candidate.get("text", "")) or "").strip()
         if not text:
             continue
 
-        raw_meta = candidate.get("meta", {})
+        raw_meta = candidate.get("metadata", candidate.get("meta", {}))
         meta = _normalize_metadata(raw_meta if isinstance(raw_meta, dict) else {})
         if not _matches_filters(meta, filters):
             continue
@@ -412,6 +412,11 @@ def _select_relevant_chunks(
             adjusted += 0.35
         if wcag_match:
             adjusted += 0.45
+        # Phase 2 — WCAG Techniques corpus priority: when sc_id is known,
+        # prefer chunks from the indexed WCAG Techniques corpus (3.5 spec).
+        source_raw = str(meta.get("source", "") or "").lower()
+        if wcag_reference and source_raw in ("wcag_techniques", "wcag-techniques"):
+            adjusted += 0.55  # Boost above generic wcag/aria chunks
         if issue_match:
             adjusted += 0.15
         adjusted += min(0.25, overlap * 0.5)
@@ -465,7 +470,9 @@ async def retrieve(
 
     limit = _bounded_chunk_limit(n_results)
     issue_type = str((filters or {}).get("issue_type", "") or "")
-    wcag_reference = _extract_wcag_reference(str((filters or {}).get("wcag_reference", "") or query))
+    wcag_reference = _extract_wcag_reference(
+        str((filters or {}).get("wcag_reference", "") or (filters or {}).get("sc_id", "") or query)
+    )
     key = _cache_key(query=query, filters=filters, limit=limit, wcag_reference=wcag_reference, issue_type=issue_type)
 
     cached = _cache_get(key)
@@ -534,6 +541,7 @@ async def retrieve_for_issue(
 
     cache_filters = {
         "wcag_reference": wcag_reference,
+        "sc_id": wcag_reference,
         "issue_type": issue_type,
     }
     key = _cache_key(
@@ -555,7 +563,7 @@ async def retrieve_for_issue(
         wcag_reference=wcag_reference,
         issue_type=issue_type,
         limit=limit,
-        filters=None,
+        filters={"sc_id": wcag_reference} if wcag_reference else None,
     )
 
     if wcag_reference and (not selected or not any(_chunk_is_wcag_aligned(c, wcag_reference) for c in selected)):

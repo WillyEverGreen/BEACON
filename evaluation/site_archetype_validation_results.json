@@ -92,14 +92,8 @@
       "detected_rules": [
         "aria-allowed-attr",
         "aria-valid-attr",
-        "landmark-roles",
-        "missing-lang",
-        "no-footer-landmark",
-        "no-header-landmark",
-        "no-headings",
-        "no-main-landmark",
-        "no-nav-landmark",
-        "no-title"
+        "html-incomplete",
+        "missing-lang"
       ],
       "expect_present": [
         "aria-allowed-attr",
@@ -108,7 +102,7 @@
       "expect_absent": [],
       "missing_expected": [],
       "unexpected_present": [],
-      "static_issue_count": 10,
+      "static_issue_count": 4,
       "heuristic_issue_count": 2
     },
     {
@@ -118,14 +112,8 @@
       "detected_rules": [
         "aria-roles",
         "focus-management",
-        "landmark-roles",
-        "missing-lang",
-        "no-footer-landmark",
-        "no-header-landmark",
-        "no-headings",
-        "no-main-landmark",
-        "no-nav-landmark",
-        "no-title"
+        "html-incomplete",
+        "missing-lang"
       ],
       "expect_present": [
         "aria-roles"
@@ -133,7 +121,7 @@
       "expect_absent": [],
       "missing_expected": [],
       "unexpected_present": [],
-      "static_issue_count": 10,
+      "static_issue_count": 4,
       "heuristic_issue_count": 0
     },
     {
@@ -143,14 +131,8 @@
       "detected_rules": [
         "aria-roles",
         "focus-management",
-        "landmark-roles",
-        "missing-lang",
-        "no-footer-landmark",
-        "no-header-landmark",
-        "no-headings",
-        "no-main-landmark",
-        "no-nav-landmark",
-        "no-title"
+        "html-incomplete",
+        "missing-lang"
       ],
       "expect_present": [
         "aria-roles"
@@ -158,7 +140,7 @@
       "expect_absent": [],
       "missing_expected": [],
       "unexpected_present": [],
-      "static_issue_count": 10,
+      "static_issue_count": 4,
       "heuristic_issue_count": 0
     },
     {
@@ -168,14 +150,8 @@
       "detected_rules": [
         "aria-allowed-attr",
         "focus-management",
-        "landmark-roles",
-        "missing-lang",
-        "no-footer-landmark",
-        "no-header-landmark",
-        "no-headings",
-        "no-main-landmark",
-        "no-nav-landmark",
-        "no-title"
+        "html-incomplete",
+        "missing-lang"
       ],
       "expect_present": [
         "aria-allowed-attr"
@@ -183,7 +159,7 @@
       "expect_absent": [],
       "missing_expected": [],
       "unexpected_present": [],
-      "static_issue_count": 10,
+      "static_issue_count": 4,
       "heuristic_issue_count": 0
     },
     {
@@ -214,14 +190,8 @@
       "description": "Inline informative SVG without accessible name should be detected.",
       "passed": true,
       "detected_rules": [
-        "landmark-roles",
+        "html-incomplete",
         "missing-lang",
-        "no-footer-landmark",
-        "no-header-landmark",
-        "no-headings",
-        "no-main-landmark",
-        "no-nav-landmark",
-        "no-title",
         "svg-no-accessible-name"
       ],
       "expect_present": [
@@ -230,7 +200,7 @@
       "expect_absent": [],
       "missing_expected": [],
       "unexpected_present": [],
-      "static_issue_count": 9,
+      "static_issue_count": 3,
       "heuristic_issue_count": 1
     }
   ]

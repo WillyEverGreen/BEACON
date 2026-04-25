@@ -440,7 +440,7 @@ class StaticChecker:
             # New high-impact checks
             "color_contrast", "duplicate_ids", "redundant_alt",
             "svg_accessible_name", "empty_headings", "unsafe_external_links", "form_label_missing",
-            "accessible_auth", "redundant_entry", "aria_apg_patterns", "semantic_depth"
+            "accessible_auth", "redundant_entry", "aria_apg_patterns", "semantic_depth", "captcha"
         ]
         issues = []
         
@@ -4440,3 +4440,47 @@ class StaticChecker:
     def check_form_label_missing(self) -> list[dict]:
         # Unified label detection is handled in check_forms().
         return []
+
+    def check_captcha(self) -> list[dict]:
+        """Detect presence of common CAPTCHA implementations."""
+        issues = []
+        
+        recaptcha = self.soup.find("div", class_=re.compile(r"g-recaptcha")) or \
+                    self.soup.find("iframe", src=re.compile(r"recaptcha", re.I)) or \
+                    self.soup.find("script", src=re.compile(r"recaptcha/api", re.I))
+        if recaptcha:
+            issues.append(_issue(
+                self.url, "captcha-detected", "needs-review", "moderate",
+                _css_selector(recaptcha) if isinstance(recaptcha, Tag) else "<body>",
+                _snippet(recaptcha, 200) if isinstance(recaptcha, Tag) else "",
+                "reCAPTCHA detected. Traditional CAPTCHAs can present significant accessibility barriers.",
+                "3.3.8", "AA", "forms",
+                "Ensure an accessible alternative is provided or use invisible/passive bot detection."
+            ))
+
+        hcaptcha = self.soup.find("div", class_=re.compile(r"h-captcha")) or \
+                   self.soup.find("iframe", src=re.compile(r"hcaptcha", re.I)) or \
+                   self.soup.find("script", src=re.compile(r"hcaptcha\.com", re.I))
+        if hcaptcha:
+            issues.append(_issue(
+                self.url, "captcha-detected", "needs-review", "moderate",
+                _css_selector(hcaptcha) if isinstance(hcaptcha, Tag) else "<body>",
+                _snippet(hcaptcha, 200) if isinstance(hcaptcha, Tag) else "",
+                "hCaptcha detected. Traditional CAPTCHAs can present significant accessibility barriers.",
+                "3.3.8", "AA", "forms",
+                "Ensure an accessible alternative is provided or use invisible/passive bot detection."
+            ))
+
+        turnstile = self.soup.find("div", class_=re.compile(r"cf-turnstile")) or \
+                    self.soup.find("script", src=re.compile(r"turnstile/v0", re.I))
+        if turnstile:
+            issues.append(_issue(
+                self.url, "captcha-detected", "needs-review", "minor",
+                _css_selector(turnstile) if isinstance(turnstile, Tag) else "<body>",
+                _snippet(turnstile, 200) if isinstance(turnstile, Tag) else "",
+                "Cloudflare Turnstile detected. While generally more accessible than puzzle CAPTCHAs, verify fallback methods.",
+                "3.3.8", "AA", "forms",
+                "Verify that Turnstile's accessible fallback works properly."
+            ))
+            
+        return issues

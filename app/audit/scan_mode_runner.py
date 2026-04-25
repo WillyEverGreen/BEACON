@@ -142,6 +142,7 @@ def _default_static_engine(dom: str, page_url: str) -> list[dict[str, Any]]:
             heuristic_issues=heuristic_issues,
             browser_issues=[],
             axe_issues=[],
+            ibm_issues=[],
             url=page_url,
         )
     except Exception:

@@ -78,7 +78,7 @@ async def audit_site(site: dict, scan_mode: str) -> dict:
             scan_mode=scan_mode,
             precision_profile="production",
             enable_enrichment=False,
-            enable_cognitive=False,
+            enable_cognitive=True,
             use_cache=False,
         )
         elapsed = round(time.time() - start, 2)
@@ -123,6 +123,14 @@ async def audit_site(site: dict, scan_mode: str) -> dict:
             aligned = False
             alignment_distance = 0
 
+        # Phase 2 Rule Tracking
+        phase2_rules = {
+            "meaningful-sequence", "orientation-lock", "images-of-text", "on-input-context-change",
+            "captcha-detected", "readability", "jargon", "cta-clarity", 
+            "nav-complexity", "form-usability", "form-no-progress", "error-message-quality"
+        }
+        phase2_found = {i.get("rule_id") for i in issues if i.get("rule_id") in phase2_rules}
+
         return {
             "name": site["name"],
             "url": site["url"],
@@ -139,6 +147,7 @@ async def audit_site(site: dict, scan_mode: str) -> dict:
             "structural_fp": structural_fp,
             "severity": dict(severity_counts),
             "top_rules": [{"rule": r, "count": c} for r, c in top_rules],
+            "phase2_rules_found": list(phase2_found),
             "categories": dict(cat_counts),
             "avg_confidence": round(avg_conf, 3),
             "low_confidence_count": low_conf_count,
@@ -189,19 +198,19 @@ async def audit_site(site: dict, scan_mode: str) -> dict:
 
 
 def print_header(title: str):
-    print(f"\n{'═' * 72}")
+    print(f"\n{'=' * 72}")
     print(f"  {title}")
-    print(f"{'═' * 72}")
+    print(f"{'=' * 72}")
 
 
 def print_section(title: str):
-    print(f"\n{'─' * 60}")
+    print(f"\n{'-' * 60}")
     print(f"  {title}")
-    print(f"{'─' * 60}")
+    print(f"{'-' * 60}")
 
 
 async def main():
-    print_header("BEACON Production Readiness — 10-Site Comprehensive Benchmark")
+    print_header("BEACON Production Readiness - 10-Site Comprehensive Benchmark")
     print(f"  Profile: production | Modes: fast + deep")
     print(f"  Sites: {len(BENCHMARK_SITES)} | Expected audits: {len(BENCHMARK_SITES) * 2}")
 
@@ -211,20 +220,21 @@ async def main():
         print_header(f"SCAN MODE: {mode.upper()}")
 
         for site in BENCHMARK_SITES:
-            print(f"  [{mode:4s}] {site['name']:20s} → ", end="", flush=True)
+            print(f"  [{mode:4s}] {site['name']:20s} -> ", end="", flush=True)
             result = await audit_site(site, mode)
             all_results[mode].append(result)
 
-            status = "✅" if result["success"] else "❌"
-            guard = " 🛡️" if result.get("telemetry", {}).get("low_issue_guard_active") else ""
-            warn = " ⚠️" if result.get("telemetry", {}).get("suppression_warning") else ""
+            status = "[OK]" if result["success"] else "[FAIL]"
+            guard = " [GUARD]" if result.get("telemetry", {}).get("low_issue_guard_active") else ""
+            warn = " [WARN]" if result.get("telemetry", {}).get("suppression_warning") else ""
 
+            phase2_str = f" Phase2: {', '.join(result['phase2_rules_found'])}" if result['phase2_rules_found'] else ""
             print(
                 f"{status} score={result['score']:5.1f}  "
                 f"issues={result['total_issues']:3d}  "
                 f"strFP={result['structural_fp']}  "
                 f"time={result['scan_time_s']:.1f}s"
-                f"{guard}{warn}"
+                f"{guard}{warn}{phase2_str}"
             )
 
     # ════════════════════════════════════════════════════════════
@@ -232,9 +242,9 @@ async def main():
     # ════════════════════════════════════════════════════════════
 
     print_header("DETAILED COMPARISON TABLE: FAST vs DEEP")
-    hdr = f"{'Site':20s} │ {'F.Score':>7s} {'D.Score':>7s} {'Δ':>5s} │ {'F.Iss':>5s} {'D.Iss':>5s} │ {'F.Time':>6s} {'D.Time':>6s} │ {'Cat':>10s}"
+    hdr = f"{'Site':20s} | {'F.Score':>7s} {'D.Score':>7s} {'Delta':>5s} | {'F.Iss':>5s} {'D.Iss':>5s} | {'F.Time':>6s} {'D.Time':>6s} | {'Cat':>10s}"
     print(hdr)
-    print("─" * len(hdr))
+    print("-" * len(hdr))
 
     for f, d in zip(all_results["fast"], all_results["deep"]):
         if not f["success"] and not d["success"]:
@@ -261,12 +271,12 @@ async def main():
         print_section(f"Mode: {mode.upper()}")
         for r in all_results[mode]:
             if not r["success"]:
-                print(f"\n  ❌ {r['name']}: {r['error'][:80]}")
+                print(f"\n  [X] {r['name']}: {r['error'][:80]}")
                 continue
 
-            print(f"\n  {'━' * 50}")
+            print(f"\n  {'-' * 50}")
             print(f"  {r['name']} ({r['url']})")
-            print(f"  {'━' * 50}")
+            print(f"  {'-' * 50}")
             print(f"  Score: {r['score']:.1f}/100 | Issues: {r['total_issues']} | Time: {r['scan_time_s']:.2f}s")
             if bool(r.get("alignment_applicable", True)):
                 print(
@@ -290,7 +300,7 @@ async def main():
                     print(f"    • {rule['rule']:35s} ×{rule['count']}")
 
             t = r.get("telemetry", {})
-            print(f"  Filtering: {t.get('input_issues', 0)} → {t.get('reported_issues', 0)} "
+            print(f"  Filtering: {t.get('input_issues', 0)} -> {t.get('reported_issues', 0)} "
                   f"(dropped: struct={t.get('dropped_structural',0)}, "
                   f"conf={t.get('dropped_low_confidence',0)}, "
                   f"excl={t.get('dropped_excluded_rules',0)})")
@@ -300,9 +310,9 @@ async def main():
 
             # Precision signal check
             if r["avg_confidence"] > 0.85 and r["total_issues"] > 0:
-                print(f"  ✅ High avg confidence ({r['avg_confidence']:.2f}) → strong precision signal")
+                print(f"  [OK] High avg confidence ({r['avg_confidence']:.2f}) -> strong precision signal")
             elif r["low_confidence_count"] > r["total_issues"] * 0.3:
-                print(f"  ⚠️ {r['low_confidence_count']}/{r['total_issues']} issues have low confidence → review")
+                print(f"  [WARN] {r['low_confidence_count']}/{r['total_issues']} issues have low confidence -> review")
 
     # ── Aggregate metrics ───────────────────────────────────────
     print_header("AGGREGATE PRODUCTION READINESS METRICS")
@@ -323,23 +333,23 @@ async def main():
         )
 
         print(f"\n  {mode.upper()} MODE ({len(results)}/{len(BENCHMARK_SITES)} sites successful)")
-        print(f"  ├─ Avg Score:        {sum(scores)/len(scores):.1f}")
-        print(f"  ├─ Score Range:      {min(scores):.1f} – {max(scores):.1f}")
-        print(f"  ├─ Avg Issues:       {sum(issues)/len(issues):.1f}")
-        print(f"  ├─ Avg Scan Time:    {sum(times)/len(times):.2f}s")
-        print(f"  ├─ P95 Scan Time:    {sorted(times)[int(len(times)*0.95)]:.2f}s")
-        print(f"  ├─ Safeguard Warns:  {warnings}/{len(results)}")
-        print(f"  ├─ Guard Activations:{guards}/{len(results)}")
-        print(f"  ├─ Alignment Rate:   {aligned}/{len(results)} ({(aligned/len(results)):.0%})")
-        print(f"  ├─ Avg Align Delta:  {avg_alignment_distance:.2f} tiers")
+        print(f"  |- Avg Score:        {sum(scores)/len(scores):.1f}")
+        print(f"  |- Score Range:      {min(scores):.1f} - {max(scores):.1f}")
+        print(f"  |- Avg Issues:       {sum(issues)/len(issues):.1f}")
+        print(f"  |- Avg Scan Time:    {sum(times)/len(times):.2f}s")
+        print(f"  |- P95 Scan Time:    {sorted(times)[int(len(times)*0.95)]:.2f}s")
+        print(f"  |- Safeguard Warns:  {warnings}/{len(results)}")
+        print(f"  |- Guard Activations:{guards}/{len(results)}")
+        print(f"  |- Alignment Rate:   {aligned}/{len(results)} ({(aligned/len(results)):.0%})")
+        print(f"  |- Avg Align Delta:  {avg_alignment_distance:.2f} tiers")
 
         # Category breakdown
         cat_scores = defaultdict(list)
         for r in results:
             cat_scores[r["category"]].append(r["score"])
-        print(f"  └─ By Category:")
+        print(f"  |_ By Category:")
         for cat, cat_s in sorted(cat_scores.items()):
-            print(f"     ├─ {cat:12s}: avg={sum(cat_s)/len(cat_s):.1f} ({len(cat_s)} sites)")
+            print(f"     |- {cat:12s}: avg={sum(cat_s)/len(cat_s):.1f} ({len(cat_s)} sites)")
 
     # ── Production readiness verdict ────────────────────────────
     print_header("PRODUCTION READINESS VERDICT")
@@ -402,18 +412,18 @@ async def main():
     for name, passed, detail in checks:
         is_advisory = name in advisory_checks
         if passed:
-            icon = "✅"
+            icon = "[PASS]"
         else:
-            icon = "ℹ️" if is_advisory else "❌"
+            icon = "[INFO]" if is_advisory else "[FAIL]"
         print(f"  {icon} {name:35s} {detail}")
         if not passed and not is_advisory:
             all_pass = False
 
     print()
     if all_pass:
-        print("  🎉 ALL CHECKS PASSED — Production profile is ready for rollout!")
+        print("  [SUCCESS] ALL CHECKS PASSED - Production profile is ready for rollout!")
     else:
-        print("  ⚠️  Some checks failed — review before promoting to default.")
+        print("  [WARNING] Some checks failed - review before promoting to default.")
 
     summary_payload = {"fast": {}, "deep": {}, "overall": {}}
     for mode in ["fast", "deep"]:

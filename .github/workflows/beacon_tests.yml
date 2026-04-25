@@ -1,0 +1,151 @@
+name: BEACON Test Suite
+
+on:
+  push:
+    branches: [main, dev, phase-*]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      run_full_benchmarks:
+        description: 'Run weekly/monthly benchmarks now'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  PYTHONDONTWRITEBYTECODE: 1
+  PYTHONUNBUFFERED: 1
+
+jobs:
+  # ── Per-commit: unit tests (< 60s) ─────────────────────────────────────────
+  unit_tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Phase 1 unit tests
+        run: |
+          pytest tests/unit/test_webaim_six.py \
+                 tests/unit/test_ibm_checker.py \
+                 tests/unit/test_rag_techniques.py \
+                 -v --tb=short -q
+        env:
+          PYTHONPATH: .
+
+      - name: Run Phase 1 loader tests
+        run: |
+          pytest evaluation/test_phase1_loaders.py \
+                 evaluation/test_gena11y.py \
+                 -v --tb=short -q
+        env:
+          PYTHONPATH: .
+
+  # ── Per-commit: smoke benchmark (must stay at F1=1.00 on 23-case baseline) ─
+  smoke_benchmark:
+    name: ACT Smoke Benchmark (23-case baseline)
+    runs-on: ubuntu-latest
+    needs: unit_tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run ACT 23-case smoke benchmark
+        run: python evaluation/benchmark_act.py --cases evaluation/benchmark_cases_20.json
+        env:
+          PYTHONPATH: .
+
+  # ── Weekly: expanded benchmarks ────────────────────────────────────────────
+  weekly_benchmarks:
+    name: Weekly Benchmarks (GenA11y + ACT Full)
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.run_full_benchmarks == 'true')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run GenA11y benchmark
+        run: python evaluation/benchmark_gena11y.py
+        env:
+          PYTHONPATH: .
+
+      - name: Run ACT full benchmark
+        run: python evaluation/benchmark_act_full.py
+        env:
+          PYTHONPATH: .
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: weekly-benchmark-results-${{ github.run_number }}
+          path: evaluation/results/
+          retention-days: 90
+
+  # ── Monthly: AccessGuru gap analysis ───────────────────────────────────────
+  monthly_benchmarks:
+    name: Monthly Benchmarks (AccessGuru)
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.run_full_benchmarks == 'true')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run AccessGuru semantic baseline
+        run: python evaluation/benchmark_accessguru.py
+        env:
+          PYTHONPATH: .
+
+      - name: Upload AccessGuru results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: monthly-accessguru-results-${{ github.run_number }}
+          path: evaluation/results/accessguru_semantic_baseline_*.json
+          retention-days: 180
+
+# Scheduled runs: weekly Monday 2am UTC, monthly 1st of month 3am UTC
+# Note: GitHub Actions only runs scheduled jobs on the default branch.
+# Add these back once the repo has a stable main branch:
+# on:
+#   schedule:
+#     - cron: "0 2 * * 1"   # Weekly Monday 2am
+#     - cron: "0 3 1 * *"   # Monthly 1st 3am

@@ -2,6 +2,7 @@
 RAG router: query the WCAG knowledge base.
 """
 import logging
+import re
 from fastapi import APIRouter, HTTPException
 from app.models import RAGRequest, RAGResponse, TopicsResponse, WCAGReference, PracticalAsset, RetrievedSource
 from app.services.retrieval import retrieve
@@ -29,6 +30,13 @@ def _explanation_to_text(raw: object) -> str:
     return str(raw or "")
 
 
+def _extract_sc_id(text: str) -> str:
+    match = re.search(r"\b(\d\.\d+\.\d+)\b", str(text or ""))
+    if not match:
+        return ""
+    return match.group(1)
+
+
 @router.post("", response_model=RAGResponse)
 async def query_rag(request: RAGRequest):
     """
@@ -36,10 +44,17 @@ async def query_rag(request: RAGRequest):
     Returns explanation, WCAG references, code fix, practical assets, and validation hints.
     """
     try:
+        merged_filters = dict(request.filters or {})
+        if not merged_filters.get("sc_id"):
+            query_sc = _extract_sc_id(request.query)
+            if query_sc:
+                merged_filters["sc_id"] = query_sc
+                merged_filters.setdefault("wcag_reference", query_sc)
+
         # 1. Retrieve relevant chunks
         chunks = await retrieve(
             query=request.query,
-            filters=request.filters,
+            filters=merged_filters,
         )
 
         if not chunks:
