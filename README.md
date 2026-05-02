@@ -1,10 +1,10 @@
-# 🔦 BEACON (formerly Legally AI) — Accessibility Intelligence Engine
+# 🔦 BEACON — Accessibility Intelligence Engine
 
 <div align="center">
 
 <img src="assets/beacon.png" alt="BEACON Logo" width="200">
 
-**Production-grade web accessibility auditing with multi-engine scanning, AI-powered remediation, and Lighthouse enrichment.**
+**Find accessibility issues. Understand them. Fix them.**
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-3.x-009688.svg)](https://fastapi.tiangolo.com/)
