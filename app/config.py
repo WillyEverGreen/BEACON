@@ -756,10 +756,22 @@ class Settings(BaseSettings):
 
     schema_version: str = "3.1"
 
-    # Featherless AI (OpenAI-compatible API)
-    featherless_api_key: str = ""
-    featherless_model: str = "Qwen/Qwen2.5-Coder-32B-Instruct"
-    featherless_base_url: str = "https://api.featherless.ai/v1"
+    # LLM Configuration (NVIDIA NIM, Featherless, or OpenAI)
+    llm_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("LLM_API_KEY", "NVIDIA_API_KEY", "FEATHERLESS_API_KEY"),
+    )
+    llm_model: str = Field(
+        default="meta/llama-3.1-70b-instruct",
+        validation_alias=AliasChoices("LLM_MODEL", "FEATHERLESS_MODEL"),
+    )
+    llm_base_url: str = Field(
+        default="https://integrate.api.nvidia.com/v1",
+        validation_alias=AliasChoices("LLM_BASE_URL", "FEATHERLESS_BASE_URL"),
+    )
+
+    # Feature Flags
+    beacon_ai_enabled: bool = Field(default=False, validation_alias="BEACON_AI_ENABLED")
 
     # Embedding model (local sentence-transformers)
     embedding_model: str = "all-MiniLM-L6-v2"
@@ -767,6 +779,10 @@ class Settings(BaseSettings):
     # Vector store
     vector_store: str = "chromadb"  # chromadb (local)
     chroma_persist_dir: str = "./chroma_db"
+
+    # Supabase Configuration
+    supabase_url: str = Field(default="", validation_alias="SUPABASE_URL")
+    supabase_key: str = Field(default="", validation_alias="SUPABASE_KEY")
 
     # Backend
     backend_host: str = "0.0.0.0"  # nosec B104
@@ -780,7 +796,7 @@ class Settings(BaseSettings):
     # Database
     db_url: str = Field(
         default="sqlite:///./beacon.db",
-        validation_alias=AliasChoices("DATABASE_URL", "DB_URL"),
+        validation_alias=AliasChoices("DATABASE_URL", "DB_URL", "SUPABASE_DB_URL"),
     )
     db_echo: bool = False
     db_pool_size: int = 5

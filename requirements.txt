@@ -18,12 +18,12 @@ tiktoken==0.8.0
 # Search & Ranking
 rank-bm25==0.2.2
 
-# LLM (Featherless - OpenAI compatible)
+# LLM (OpenAI compatible - e.g. NVIDIA NIM)
 openai==1.51.0
 
-# Database + migrations
-sqlalchemy==2.0.39
-alembic==1.15.2
+# Database (Cloud-Native Persistence)
+supabase==2.11.0
+postgrest==0.19.2
 psycopg2-binary==2.9.10
 
 # Security

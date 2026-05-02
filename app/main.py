@@ -1,4 +1,4 @@
-﻿"""
+"""
 FastAPI application entry point.
 Registers routers, CORS, health check, and ingestion endpoint.
 """
@@ -29,11 +29,11 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """App startup/shutdown lifecycle."""
     logger.info("Accessibility Intelligence Engine starting")
-    logger.info(f"LLM Model: {settings.featherless_model}")
+    logger.info(f"Supabase Project: {settings.supabase_url}")
+    logger.info(f"LLM Model: {settings.llm_model}")
     logger.info(f"Embedding Model: {settings.embedding_model}")
     logger.info(f"Vector Store: {settings.vector_store}")
 
-    init_db()
     bootstrap_auth_store()
 
     chunks_count = get_chunks_count()
@@ -47,12 +47,12 @@ async def lifespan(app: FastAPI):
     logger.info("Accessibility Intelligence Engine shutting down")
 
 
-# â”€â”€ App Setup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── App Setup ───────────────────────────────────────────────────
 
 app = FastAPI(
     title="Accessibility Intelligence Engine",
     description=(
-        "Production-grade accessibility auditing API â€” multi-engine scanning (static + heuristic + "
+        "Production-grade accessibility auditing API — multi-engine scanning (static + heuristic + "
         "browser probes + axe-core), AI-powered cognitive analysis, confidence scoring, "
         "RAG-backed remediation with WCAG 2.2 + ARIA APG + COGA references. "
         "Features async enrichment, parallel engines, self-learning fix library, "
@@ -86,7 +86,7 @@ app.include_router(audit.router)
 app.include_router(dashboard_api.router)
 
 
-# â”€â”€ Health & Utility Endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Health & Utility Endpoints ──────────────────────────────────
 
 @app.get("/v1/config")
 async def v1_config():
@@ -95,6 +95,7 @@ async def v1_config():
         "aiEnabled": bool(getattr(settings, "beacon_ai_enabled", False)),
         "streamEnabled": False,
         "apiVersion": "v1",
+        "supabaseUrl": settings.supabase_url,
     }
 
 @app.get("/health", response_model=HealthResponse)
@@ -104,7 +105,7 @@ async def health_check():
         status="healthy",
         vector_store=settings.vector_store,
         chunks_count=get_chunks_count(),
-        llm_model=settings.featherless_model,
+        llm_model=settings.llm_model,
     )
 
 
@@ -116,12 +117,14 @@ async def health_live():
 
 @app.get("/health/ready")
 async def health_ready():
-    """Readiness probe: DB + vector store path is available for serving audits."""
+    """Readiness probe: Supabase + vector store path is available for serving audits."""
     db_ready = True
     db_error = ""
     try:
-        # Lightweight DB touch via existing repository API.
-        _ = get_audit_history("https://example.com", limit=1)
+        from app.db.supabase_client import get_supabase
+        sb = get_supabase()
+        # Ping Supabase with a simple health touch
+        _ = sb.table("audits").select("id").limit(1).execute()
     except Exception as exc:
         db_ready = False
         db_error = str(exc)

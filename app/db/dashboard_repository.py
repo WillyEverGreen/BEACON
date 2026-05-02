@@ -6,8 +6,7 @@ import datetime as dt
 from typing import Any
 
 from app.audit.failure_taxonomy import normalize_failure
-from app.db.base import get_session
-from app.db.models import DashboardProjectRecord, DashboardScanRecord
+from app.audit.failure_taxonomy import normalize_failure
 
 
 def _to_iso(value: dt.datetime | None) -> str | None:
@@ -152,88 +151,64 @@ def _apply_scan_record(record: DashboardScanRecord, payload: dict[str, Any]) -> 
     record.completed_at = _from_iso(payload.get("completed_at"))
 
 
+from app.db.supabase_client import get_supabase
+
 def list_projects() -> list[dict[str, Any]]:
-    with get_session() as session:
-        rows = (
-            session.query(DashboardProjectRecord)
-            .order_by(DashboardProjectRecord.created_at.desc())
-            .all()
-        )
-        return [_serialize_project(row) for row in rows]
+    sb = get_supabase()
+    res = sb.table("projects").select("*").order("created_at", desc=True).execute()
+    return res.data if res.data else []
 
 
 def get_project(project_id: str) -> dict[str, Any] | None:
-    with get_session() as session:
-        row = session.get(DashboardProjectRecord, project_id)
-        if row is None:
-            return None
-        return _serialize_project(row)
+    sb = get_supabase()
+    res = sb.table("projects").select("*").eq("id", project_id).maybe_single().execute()
+    return res.data if res.data else None
 
 
 def upsert_project(project: dict[str, Any]) -> dict[str, Any]:
     project_id = str(project.get("id") or "").strip()
     if not project_id:
         raise ValueError("project id is required")
-
-    with get_session() as session:
-        row = session.get(DashboardProjectRecord, project_id)
-        if row is None:
-            row = DashboardProjectRecord(id=project_id)
-            session.add(row)
-
-        _apply_project_record(row, project)
-        session.flush()
-        return _serialize_project(row)
+    
+    sb = get_supabase()
+    res = sb.table("projects").upsert(project).execute()
+    return res.data[0] if res.data else {}
 
 
 def delete_project(project_id: str) -> bool:
-    with get_session() as session:
-        row = session.get(DashboardProjectRecord, project_id)
-        if row is None:
-            return False
-        session.delete(row)
-        return True
+    sb = get_supabase()
+    res = sb.table("projects").delete().eq("id", project_id).execute()
+    return len(res.data) > 0 if res.data else True
 
 
 def list_scans(project_id: str | None = None) -> list[dict[str, Any]]:
-    with get_session() as session:
-        query = session.query(DashboardScanRecord)
-        if project_id:
-            query = query.filter(DashboardScanRecord.project_id == project_id)
-
-        rows = query.order_by(DashboardScanRecord.created_at.desc()).all()
-        return [_serialize_scan(row) for row in rows]
+    sb = get_supabase()
+    query = sb.table("scans").select("*")
+    if project_id:
+        query = query.eq("project_id", project_id)
+    
+    res = query.order("created_at", desc=True).execute()
+    return res.data if res.data else []
 
 
 def get_scan(scan_id: str) -> dict[str, Any] | None:
-    with get_session() as session:
-        row = session.get(DashboardScanRecord, scan_id)
-        if row is None:
-            return None
-        return _serialize_scan(row)
+    sb = get_supabase()
+    res = sb.table("scans").select("*").eq("id", scan_id).maybe_single().execute()
+    return res.data if res.data else None
 
 
 def upsert_scan(scan: dict[str, Any]) -> dict[str, Any]:
     scan_id = str(scan.get("id") or "").strip()
     if not scan_id:
         raise ValueError("scan id is required")
-
-    with get_session() as session:
-        row = session.get(DashboardScanRecord, scan_id)
-        if row is None:
-            row = DashboardScanRecord(id=scan_id)
-            session.add(row)
-
-        _apply_scan_record(row, scan)
-        session.flush()
-        return _serialize_scan(row)
+    
+    sb = get_supabase()
+    # Handle nested objects/lists by ensuring they are serializable (Supabase SDK does this)
+    res = sb.table("scans").upsert(scan).execute()
+    return res.data[0] if res.data else {}
 
 
 def delete_scans_for_project(project_id: str) -> int:
-    with get_session() as session:
-        count = (
-            session.query(DashboardScanRecord)
-            .filter(DashboardScanRecord.project_id == project_id)
-            .delete(synchronize_session=False)
-        )
-        return int(count or 0)
+    sb = get_supabase()
+    res = sb.table("scans").delete().eq("project_id", project_id).execute()
+    return len(res.data) if res.data else 0

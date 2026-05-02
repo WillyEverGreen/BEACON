@@ -101,8 +101,8 @@ def get_client() -> AsyncOpenAI:
     global _client
     if _client is None:
         _client = AsyncOpenAI(
-            api_key=settings.featherless_api_key,
-            base_url=settings.featherless_base_url,
+            api_key=settings.llm_api_key,
+            base_url=settings.llm_base_url,
         )
     return _client
 
@@ -497,7 +497,7 @@ async def expand_query_with_llm(query: str) -> list[str]:
 
     try:
         response = await client.chat.completions.create(
-            model=settings.featherless_model,
+            model=settings.llm_model,
             messages=[
                 {"role": "system", "content": "You are a web accessibility expert. Respond only with valid JSON."},
                 {"role": "user", "content": EXPANSION_PROMPT.format(query=query)},
@@ -599,7 +599,7 @@ async def generate_rag_response(query: str, context_chunks: list[dict]) -> dict:
 
     try:
         response = await client.chat.completions.create(
-            model=settings.featherless_model,
+            model=settings.llm_model,
             messages=[
                 {"role": "system", "content": RAG_SYSTEM_PROMPT},
                 {"role": "user", "content": RAG_USER_PROMPT.format(
@@ -820,7 +820,7 @@ async def generate_semantic_remediation(issue: dict, context_chunks: list[dict])
 
     try:
         response = await client.chat.completions.create(
-            model=settings.featherless_model,
+            model=settings.llm_model,
             messages=[
                 {"role": "system", "content": ACCESSGURU_SEMANTIC_SYSTEM_PROMPT},
                 {"role": "user", "content": content},
@@ -905,7 +905,7 @@ async def generate_remediation(issue: dict, context_chunks: list[dict]) -> dict:
 
     try:
         response = await client.chat.completions.create(
-            model=settings.featherless_model,
+            model=settings.llm_model,
             messages=[
                 {"role": "system", "content": REMEDIATION_SYSTEM_PROMPT},
                 {"role": "user", "content": REMEDIATION_USER_PROMPT.format(
@@ -980,7 +980,7 @@ async def generate_remediation_batch(
 
     try:
         response = await client.chat.completions.create(
-            model=settings.featherless_model,
+            model=settings.llm_model,
             messages=[
                 {"role": "system", "content": BATCH_REMEDIATION_SYSTEM_PROMPT},
                 {"role": "user", "content": BATCH_REMEDIATION_USER_PROMPT.format(

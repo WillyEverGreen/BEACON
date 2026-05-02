@@ -1,17 +1,4 @@
-"""Database package for BEACON persistence."""
+"""Database layer for BEACON Engine."""
+from app.db.supabase_client import get_supabase
 
-from app.db.base import Base, SessionLocal, engine, get_session, init_db
-from app.db import models
-from app.db.repository import get_audit_history, persist_audit_payload, persist_enrichment_payload
-
-__all__ = [
-    "Base",
-    "SessionLocal",
-    "engine",
-    "get_session",
-    "init_db",
-    "models",
-    "persist_audit_payload",
-    "persist_enrichment_payload",
-    "get_audit_history",
-]
+__all__ = ["get_supabase"]

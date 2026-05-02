@@ -5,17 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import Any, Optional
 
-from sqlalchemy.orm import Session
-
 from app.config import CACHE_STATS, settings
-from app.db.base import get_session
-from app.db.models import (
-    AuditRecord,
-    CacheMetaRecord,
-    EnrichmentRecord,
-    IssueRecord,
-    PageRecord,
-)
 
 
 def _audit_id(payload: dict[str, Any]) -> str:
@@ -36,69 +26,71 @@ def _upsert_cache_meta(session: Session) -> None:
         record.writes = int(CACHE_STATS.get(f"{tier}_writes", 0) or 0)
 
 
+from app.db.supabase_client import get_supabase
+
 def persist_audit_payload(payload: dict[str, Any], *, status: str = "completed") -> str:
-    """Persist an audit payload to SQLite using SQLAlchemy models."""
+    """Persist an audit payload directly to Supabase using the SDK."""
     aid = _audit_id(payload)
     issues = list(payload.get("issues") or [])
+    sb = get_supabase()
 
-    with get_session() as session:
-        audit = session.get(AuditRecord, aid)
-        if audit is None:
-            audit = AuditRecord(id=aid)
-            session.add(audit)
+    # 1. Persist Audit Master Record
+    audit_data = {
+        "id": aid,
+        "url": str(payload.get("url") or ""),
+        "scan_mode": str(payload.get("scan_mode") or settings.default_scan_mode),
+        "site_score": float(payload.get("score") or 0.0),
+        "status": status,
+        "pages_audited": int(payload.get("pages_audited") or 1),
+        "pages_discovered": int(payload.get("pages_discovered") or int(payload.get("pages_audited") or 1)),
+        "total_duration_ms": int(float(payload.get("scan_time_seconds") or 0.0) * 1000),
+        "degraded_mode": bool(payload.get("degraded_mode", False)),
+        "enrichment_status": str(payload.get("enrichment_status") or "pending"),
+        "schema_version": str(getattr(settings, "schema_version", "3.1")),
+        "summary": str(payload.get("summary") or ""),
+    }
+    sb.table("audits").upsert(audit_data).execute()
 
-        audit.url = str(payload.get("url") or "")
-        audit.scan_mode = str(payload.get("scan_mode") or settings.default_scan_mode)
-        audit.site_score = float(payload.get("score") or 0.0)
-        audit.status = status
-        audit.pages_audited = int(payload.get("pages_audited") or 1)
-        audit.pages_discovered = int(payload.get("pages_discovered") or audit.pages_audited)
-        audit.total_duration_ms = int(float(payload.get("scan_time_seconds") or 0.0) * 1000)
-        audit.degraded_mode = bool(payload.get("degraded_mode", False))
-        audit.enrichment_status = str(payload.get("enrichment_status") or "pending")
-        audit.schema_version = str(getattr(settings, "schema_version", "3.1"))
-        audit.summary = str(payload.get("summary") or "")
+    # 2. Cleanup old associated data (Idempotency)
+    sb.table("issues").delete().eq("audit_id", aid).execute()
+    sb.table("pages").delete().eq("audit_id", aid).execute()
+    sb.table("enrichments").delete().eq("audit_id", aid).execute()
 
-        # Keep this write idempotent for repeated updates of the same audit id.
-        session.query(IssueRecord).filter(IssueRecord.audit_id == aid).delete(synchronize_session=False)
-        session.query(PageRecord).filter(PageRecord.audit_id == aid).delete(synchronize_session=False)
-        session.query(EnrichmentRecord).filter(EnrichmentRecord.audit_id == aid).delete(synchronize_session=False)
+    # 3. Persist Page Record
+    page_data = {
+        "audit_id": aid,
+        "url": str(payload.get("url") or ""),
+        "score": float(payload.get("score") or 0.0),
+        "degraded_mode": bool(payload.get("degraded_mode", False)),
+        "engine_timings": dict(payload.get("quality_gates") or {}),
+    }
+    page_res = sb.table("pages").insert(page_data).execute()
+    page_id = page_res.data[0]["id"] if page_res.data else None
 
-        page = PageRecord(
-            audit_id=aid,
-            url=str(payload.get("url") or ""),
-            score=float(payload.get("score") or 0.0),
-            degraded_mode=bool(payload.get("degraded_mode", False)),
-            engine_timings=dict(payload.get("quality_gates") or {}),
-        )
-        session.add(page)
-        session.flush()
+    # 4. Persist Issues in bulk if possible, but keep it simple for now
+    for issue in issues:
+        issue_data = {
+            "page_id": page_id,
+            "audit_id": aid,
+            "rule_id": str(issue.get("rule_id") or ""),
+            "wcag_criterion": str(issue.get("wcag_criterion") or ""),
+            "severity": str(issue.get("severity") or "moderate"),
+            "confidence": float(issue.get("confidence") or 0.0),
+            "affected_pages": int(issue.get("affected_pages") or 1),
+            "enrichment_source": str(issue.get("_enrichment_source") or issue.get("enrichment_source") or "pending"),
+            "fix": dict(issue.get("fix") or {}),
+        }
+        issue_res = sb.table("issues").insert(issue_data).execute()
+        issue_row_id = issue_res.data[0]["id"] if issue_res.data else None
 
-        for issue in issues:
-            issue_row = IssueRecord(
-                page_id=page.id,
-                audit_id=aid,
-                rule_id=str(issue.get("rule_id") or ""),
-                wcag_criterion=str(issue.get("wcag_criterion") or ""),
-                severity=str(issue.get("severity") or "moderate"),
-                confidence=float(issue.get("confidence") or 0.0),
-                affected_pages=int(issue.get("affected_pages") or 1),
-                enrichment_source=str(issue.get("_enrichment_source") or issue.get("enrichment_source") or "pending"),
-                fix=dict(issue.get("fix") or {}),
-            )
-            session.add(issue_row)
-            session.flush()
-
-            session.add(
-                EnrichmentRecord(
-                    issue_id=issue_row.id,
-                    audit_id=aid,
-                    source=issue_row.enrichment_source,
-                    latency_ms=int(issue.get("enrichment_latency_ms") or 0),
-                )
-            )
-
-        _upsert_cache_meta(session)
+        # 5. Persist Enrichment Metadata
+        enrich_data = {
+            "issue_id": issue_row_id,
+            "audit_id": aid,
+            "source": issue_data["enrichment_source"],
+            "latency_ms": int(issue.get("enrichment_latency_ms") or 0),
+        }
+        sb.table("enrichments").insert(enrich_data).execute()
 
     return aid
 
@@ -114,114 +106,85 @@ def persist_enrichment_payload(
     if not audit_id:
         return
 
-    with get_session() as session:
-        audit = session.get(AuditRecord, audit_id)
-        if audit is None:
-            return
+    sb = get_supabase()
+    
+    # 1. Update audit status
+    sb.table("audits").update({"enrichment_status": status}).eq("id", audit_id).execute()
 
-        audit.enrichment_status = str(status)
+    # 2. Cleanup old associated data (Idempotency)
+    sb.table("issues").delete().eq("audit_id", audit_id).execute()
+    sb.table("enrichments").delete().eq("audit_id", audit_id).execute()
 
-        # Refresh issue-level enrichment source/fix data.
-        session.query(IssueRecord).filter(IssueRecord.audit_id == audit_id).delete(synchronize_session=False)
-        session.query(EnrichmentRecord).filter(EnrichmentRecord.audit_id == audit_id).delete(synchronize_session=False)
+    # 3. Get the first page for this audit to associate issues
+    page_res = sb.table("pages").select("id").eq("audit_id", audit_id).order("id").limit(1).execute()
+    page_id = page_res.data[0]["id"] if page_res.data else None
 
-        page = (
-            session.query(PageRecord)
-            .filter(PageRecord.audit_id == audit_id)
-            .order_by(PageRecord.id.asc())
-            .first()
-        )
+    latency_ms = 0
+    if isinstance(enrichment_meta, dict):
+        llm_meta = enrichment_meta.get("llm", {})
+        calls = int(llm_meta.get("calls", 0) or 0)
+        retries = int(llm_meta.get("retries", 0) or 0)
+        latency_ms = max(0, (calls + retries) * 100)
 
-        page_id = page.id if page else None
+    for issue in enrichment_issues:
+        issue_data = {
+            "page_id": page_id,
+            "audit_id": audit_id,
+            "rule_id": str(issue.get("rule_id") or ""),
+            "wcag_criterion": str(issue.get("wcag_criterion") or ""),
+            "severity": str(issue.get("severity") or "moderate"),
+            "confidence": float(issue.get("confidence") or 0.0),
+            "affected_pages": int(issue.get("affected_pages") or 1),
+            "enrichment_source": str(issue.get("_enrichment_source") or issue.get("enrichment_source") or "pending"),
+            "fix": dict(issue.get("fix") or {}),
+        }
+        issue_res = sb.table("issues").insert(issue_data).execute()
+        issue_row_id = issue_res.data[0]["id"] if issue_res.data else None
 
-        latency_ms = 0
-        if isinstance(enrichment_meta, dict):
-            llm_meta = enrichment_meta.get("llm", {})
-            calls = int(llm_meta.get("calls", 0) or 0)
-            retries = int(llm_meta.get("retries", 0) or 0)
-            latency_ms = max(0, (calls + retries) * 100)
-
-        for issue in enrichment_issues:
-            issue_row = IssueRecord(
-                page_id=page_id,
-                audit_id=audit_id,
-                rule_id=str(issue.get("rule_id") or ""),
-                wcag_criterion=str(issue.get("wcag_criterion") or ""),
-                severity=str(issue.get("severity") or "moderate"),
-                confidence=float(issue.get("confidence") or 0.0),
-                affected_pages=int(issue.get("affected_pages") or 1),
-                enrichment_source=str(issue.get("_enrichment_source") or issue.get("enrichment_source") or "pending"),
-                fix=dict(issue.get("fix") or {}),
-            )
-            session.add(issue_row)
-            session.flush()
-
-            session.add(
-                EnrichmentRecord(
-                    issue_id=issue_row.id,
-                    audit_id=audit_id,
-                    source=issue_row.enrichment_source,
-                    latency_ms=latency_ms,
-                )
-            )
-
-        _upsert_cache_meta(session)
+        enrich_data = {
+            "issue_id": issue_row_id,
+            "audit_id": audit_id,
+            "source": issue_data["enrichment_source"],
+            "latency_ms": latency_ms,
+        }
+        sb.table("enrichments").insert(enrich_data).execute()
 
 
 def get_audit_history(url: str, limit: int = 20) -> list[dict[str, Any]]:
-    """Return latest persisted audits for a URL."""
+    """Return latest persisted audits for a URL from Supabase."""
     limit = max(1, min(int(limit), 100))
-    with get_session() as session:
-        rows = (
-            session.query(AuditRecord)
-            .filter(AuditRecord.url == url)
-            .order_by(AuditRecord.created_at.desc())
-            .limit(limit)
-            .all()
-        )
+    sb = get_supabase()
+    
+    res = sb.table("audits").select("*").eq("url", url).order("created_at", desc=True).limit(limit).execute()
+    rows = res.data if res.data else []
 
-        history = []
-        for row in rows:
-            issues = (
-                session.query(IssueRecord)
-                .filter(IssueRecord.audit_id == row.id, IssueRecord.severity == "critical")
-                .count()
-            )
-            history.append(
-                {
-                    "timestamp": row.created_at.isoformat() if row.created_at else "",
-                    "score": float(row.site_score or 0.0),
-                    "scan_mode": row.scan_mode,
-                    "pages_audited": int(row.pages_audited or 0),
-                    "critical_issues": int(issues or 0),
-                }
-            )
-        return history
+    history = []
+    for row in rows:
+        # Count critical issues for this audit
+        issue_res = sb.table("issues").select("id", count="exact").eq("audit_id", row["id"]).eq("severity", "critical").execute()
+        critical_count = issue_res.count if issue_res.count is not None else 0
+        
+        history.append(
+            {
+                "timestamp": row.get("created_at", ""),
+                "score": float(row.get("site_score") or 0.0),
+                "scan_mode": row.get("scan_mode"),
+                "pages_audited": int(row.get("pages_audited") or 0),
+                "critical_issues": int(critical_count),
+            }
+        )
+    return history
 
 
 def persist_lighthouse_enrichment(scan_id: str, enrichment_block: dict[str, Any]) -> None:
-    """Atomic write of the lighthouse_enrichment field on an existing DashboardScanRecord.
-
-    Called once, after the full Lighthouse batch completes (or fails). Never called
-    mid-run or interleaved with BEACON's core findings write.
-
-    Args:
-        scan_id: The scan record primary key (DashboardScanRecord.id).
-        enrichment_block: The complete lighthouse_enrichment dict, including status,
-            scores, findings, failure_reason, and batch telemetry metrics.
-    """
+    """Atomic write of the lighthouse_enrichment field using Supabase SDK."""
     if not scan_id or not isinstance(enrichment_block, dict):
         return
 
     try:
-        from app.db.models import DashboardScanRecord
-        with get_session() as session:
-            scan = session.get(DashboardScanRecord, str(scan_id))
-            if scan is None:
-                return
-            scan.lighthouse_enrichment = enrichment_block
+        sb = get_supabase()
+        sb.table("scans").update({"lighthouse_enrichment": enrichment_block}).eq("id", str(scan_id)).execute()
     except Exception:
-        # Never let enrichment persistence failure surface to callers.
         import logging as _logging
         _logging.getLogger(__name__).exception(
             "persist_lighthouse_enrichment failed for scan_id=%s", scan_id
