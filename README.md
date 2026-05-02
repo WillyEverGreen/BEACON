@@ -1,8 +1,8 @@
-# 🔦 BEACON (formerly TSEC Legal AI) — Accessibility Intelligence Engine
+# 🔦 BEACON (formerly Legally AI) — Accessibility Intelligence Engine
 
 <div align="center">
 
-![BEACON Logo](assets/beacon.png)
+<img src="assets/beacon.png" alt="BEACON Logo" width="200">
 
 **Production-grade web accessibility auditing with multi-engine scanning, AI-powered remediation, and Lighthouse enrichment.**
 
