@@ -8,6 +8,10 @@ ALTER TABLE audits   ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users
 ALTER TABLE audits   ADD COLUMN IF NOT EXISTS earl_report JSONB DEFAULT '{}';
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE scans    ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE scans    ADD COLUMN IF NOT EXISTS earl_report JSONB DEFAULT '{}';
+ALTER TABLE scans    ADD COLUMN IF NOT EXISTS issue_types_count INTEGER DEFAULT 0;
+ALTER TABLE scans    ADD COLUMN IF NOT EXISTS failing_elements_count INTEGER DEFAULT 0;
+ALTER TABLE scans    ADD COLUMN IF NOT EXISTS degradation_reason TEXT;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE;
 ALTER TABLE pages    ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE issues   ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
@@ -84,6 +88,8 @@ CREATE TABLE IF NOT EXISTS scans (
     scan_mode TEXT DEFAULT 'fast',
     score FLOAT,
     total_issues INTEGER DEFAULT 0,
+    issue_types_count INTEGER DEFAULT 0,
+    failing_elements_count INTEGER DEFAULT 0,
     critical_issues INTEGER DEFAULT 0,
     serious_issues INTEGER DEFAULT 0,
     moderate_issues INTEGER DEFAULT 0,
@@ -101,6 +107,7 @@ CREATE TABLE IF NOT EXISTS scans (
     scraped_pages JSONB DEFAULT '[]',
     degraded_mode BOOLEAN DEFAULT FALSE,
     degraded_reason TEXT,
+    degradation_reason TEXT,
     skipped_components JSONB DEFAULT '[]',
     enrichment_status TEXT DEFAULT 'pending',
     cognitive_scores JSONB,
@@ -108,9 +115,10 @@ CREATE TABLE IF NOT EXISTS scans (
     site_topology TEXT,
     templates_found INTEGER,
     urls_discovered INTEGER,
+    earl_report JSONB DEFAULT '{}',
+    lighthouse_enrichment JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     completed_at TIMESTAMP WITH TIME ZONE,
-    lighthouse_enrichment JSONB,
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
 );
 

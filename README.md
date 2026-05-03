@@ -163,7 +163,7 @@ flowchart LR
     ENRICH --> RAG[Hybrid Retrieval — BM25 + Vector]
     RAG --> VDB[(ChromaDB)]
 
-    API --> DB[(PostgreSQL / Neon — SQLAlchemy + Alembic)]
+    API --> DB[(Supabase / PostgreSQL — RLS + realtime)]
     API --> OBS[Telemetry · Alerts · Prometheus Metrics]
 ```
 
@@ -178,8 +178,8 @@ flowchart LR
 | Lighthouse Enrichment | Lighthouse CLI (Node.js 18+) |
 | Vector Store | ChromaDB |
 | LLM | Featherless API (model configurable) |
-| Database | PostgreSQL (Neon) via SQLAlchemy + Alembic |
-| Auth | API-key RBAC middleware |
+| Database | Supabase (PostgreSQL) via asyncpg |
+| Auth | Supabase Auth + API-key RBAC middleware |
 | Observability | Prometheus + custom sliding telemetry window |
 
 ---
@@ -346,10 +346,13 @@ playwright install chromium
 
 ---
 
-### 3. Run Database Migrations
-
+### 3. Initialize Database Schema
+ 
+Apply the production schema to your Supabase project:
+ 
 ```bash
-alembic upgrade head
+# Via Supabase Dashboard SQL Editor:
+# Copy and run contents of supabase/supabase_schema.sql
 ```
 
 ---
@@ -588,10 +591,10 @@ beacon/
 │   │   └── lighthouse_mapping.json  # Versioned Lighthouse audit inclusion list (v1)
 │   ├── security/                    # API-key RBAC + URL SSRF validation
 │   ├── observability/               # Telemetry, alerts, structured logging, Prometheus metrics
-│   └── db/                          # SQLAlchemy models, Alembic migrations, repository layer
-├── alembic/versions/                # Git-tracked DB migrations
-│   ├── c9e1f3a27b84                 # Adds lighthouse_enrichment JSON column to scans table
-│   └── 81e9864e53a7                 # Adds topology columns (site_topology, templates_found, urls_discovered)
+│   ├── db/                          # Supabase repositories and model helpers
+│   └── services/
+├── supabase/                        # Supabase SQL schema, RLS, and Auth
+│   └── supabase_schema.sql          # Idempotent production schema v3.2.2
 ├── frontend/                        # Next.js 15 dashboard (TypeScript)
 │   └── src/
 │       ├── app/                     # Next.js app router pages
@@ -641,8 +644,8 @@ python -m pytest tests/unit/ -q
 # Integration smoke — fast mode only (~40 s)
 python -m pytest tests/integration/test_phase20_all_modes.py -k "fast" -q --timeout=90
 
-# Confirm DB migrations are at head
-alembic current
+# Verify Supabase schema is up to date
+# Check your Supabase Dashboard -> SQL Editor / Table Editor
 
 # Verify .env is NOT staged
 git status --short

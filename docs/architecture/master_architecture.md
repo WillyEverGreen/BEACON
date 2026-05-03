@@ -514,7 +514,7 @@ The report is **never empty** during LLM outage. Each issue is tagged with `_enr
 | HTTP Runtime Client | `curl_cffi` (`AsyncSession`, Chrome impersonation)                                               |
 | Lighthouse Engine   | Google Lighthouse CLI 10.x (headless Chrome, subprocess, semaphore-gated)                        |
 | Lighthouse Mapping  | `app/data/lighthouse_mapping.json` (versioned, v1)                                               |
-| Database            | PostgreSQL/Neon + SQLAlchemy + Alembic migrations (`81e9864e53a7`, `c9e1f3a27b84`)               |
+| Database            | Supabase (PostgreSQL) + RLS + realtime (`supabase/supabase_schema.sql`) |
 | Browser Runtime     | Camoufox-backed browser sessions (`camoufox/firefox`) with Playwright-compatible automation APIs |
 | Standards           | WCAG 2.2 (86 SC), WAI-ARIA 1.2, ACT Rules, COGA, Lighthouse Accessibility Audits                 |
 
