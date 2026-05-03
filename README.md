@@ -61,7 +61,7 @@ BEACON gives you **actionable intelligence**.
 
 | | Traditional Tools | BEACON |
 |---|---|---|
-| Detection | Single engine, static rules | 5 parallel engines (static + browser + cognitive) |
+| Detection | Single engine, static rules | 6 parallel engines (static + heuristic + browser + axe + IBM + cognitive) |
 | Scope | Page-level only | Full site crawl with topology detection |
 | Fix guidance | Generic rule descriptions | AI-grounded fixes via WCAG 2.2 RAG |
 | Signal quality | Raw violations | Deduplicated, confidence-scored, prioritized findings |
@@ -72,14 +72,15 @@ BEACON gives you **actionable intelligence**.
 
 ## 🔥 Key Features
 
-- 🕷️ **Multi-Engine Scanning** — static, heuristic, browser-based (Camoufox), axe-core, and cognitive layers run in parallel
+- 🕷️ **Multi-Engine Scanning** — static, heuristic, browser-based (Camoufox), axe-core, IBM Equal Access, and cognitive layers run in parallel
 - 🌐 **Intelligent Site Crawling** — Sitemap, BFS, and DOM crawlers auto-discover pages and detect site topology before auditing
 - 🤖 **AI-Powered Fix Suggestions** — hybrid BM25 + vector RAG retrieval grounded in WCAG 2.2, ARIA APG, COGA, and WebAIM
 - 🏮 **Lighthouse Enrichment** — deterministic 5-rule merge pipeline adds Google Lighthouse signal without ever deleting BEACON findings
 - 📡 **Real-time SSE Streaming** — live audit progress via Server-Sent Events
 - 🔐 **API-key RBAC** — viewer / auditor / admin roles enforced at middleware level
 - 📊 **Full Observability** — Prometheus metrics, structured telemetry, and Lighthouse CI self-audit on every push
-- 🗄️ **Persistent Scan History** — PostgreSQL-backed longitudinal tracking via SQLAlchemy + Alembic
+- 📄 **EARL Reporting** — Machine-readable JSON-LD reports for W3C standards-compliant compliance tracking
+- 🗄️ **Persistent Scan History** — Supabase-backed (PostgreSQL) longitudinal tracking with RLS security
 - 🖥️ **Next.js Dashboard** — interactive UI surfacing topology labels, scan metrics, and issue breakdowns
 
 ---
@@ -87,8 +88,6 @@ BEACON gives you **actionable intelligence**.
 ## 🧠 What Makes BEACON Different?
 
 ### 1. Multi-Engine Fusion
-
-BEACON does not rely on a single detection strategy. Five engines run concurrently and their outputs are normalized, deduplicated, confidence-scored, and prioritized before the response is assembled. This reduces false positives, improves coverage, and ensures every finding has a clear source.
 
 ### 2. RAG-Based Remediation — Not Generic AI
 
@@ -258,7 +257,7 @@ MAX_CONCURRENT_SITE_AUDITS = 3
 
 ### WCAG 2.2 Coverage
 
-BEACON currently implements **55.2% (32/58)** of WCAG 2.2 A/AA criteria.
+BEACON currently implements **62.1% (36/58)** of WCAG 2.2 A/AA criteria.
 See [`ACCESSIBILITY_COVERAGE.md`](docs/architecture/ACCESSIBILITY_COVERAGE.md) for the full criterion-level breakdown.
 
 ---
@@ -608,7 +607,7 @@ beacon/
 ├── corpus/                          # Source corpus for RAG ingestion
 ├── docs/
 │   ├── architecture/
-│   │   ├── master_architecture.md   # Full system architecture (v2.5)
+│   │   ├── master_architecture.md   # Full system architecture (v2.8)
 │   │   └── ACCESSIBILITY_COVERAGE.md
 │   ├── detailed_cli_audit.md        # Full CLI flag reference
 │   └── phase20_rule_distribution.md # Rule diversity analysis
@@ -659,11 +658,10 @@ git status --short
 
 ## 🧭 Roadmap
 
-- [ ] Expand WCAG 2.2 A/AA criterion coverage from 55% to 80%+
-- [ ] Improve cognitive engine accuracy and reduce experimental flag dependency
+- [ ] Expand WCAG 2.2 A/AA criterion coverage from 62% to 80%+
+- [x] Export to EARL / JSON-LD format for standards-compliant reporting
 - [ ] Add interaction-replay analysis for authenticated flows
 - [ ] Learning-based page selection to maximise template diversity per crawl budget
-- [ ] Export to EARL / JSON-LD format for standards-compliant reporting
 - [ ] Expand benchmark dataset beyond 10 sites for production validation
 - [ ] Dashboard: issue timeline view and trend graphs across scan history
 
@@ -688,7 +686,7 @@ Please open an issue before submitting a large PR so we can align on approach.
 - **RAG enrichment** is asynchronous — initial audit responses may return `enrichment: pending`; poll `/audit/enrichment/<id>` to retrieve results
 - **Camoufox binary** must be fetched once (`python -m camoufox fetch`) before any `deep` or `max` scan will succeed; re-run after major Camoufox upgrades
 - **Lighthouse enrichment** requires Node.js 18+ and `npm install -g lighthouse`; without it, `deep`/`max` scans continue normally with BEACON-only results
-- **WCAG 2.2 coverage:** 55.2% (32/58) criteria — see [`ACCESSIBILITY_COVERAGE.md`](docs/architecture/ACCESSIBILITY_COVERAGE.md) for the full breakdown
+- **WCAG 2.2 coverage:** 62.1% (36/58) criteria — see [`ACCESSIBILITY_COVERAGE.md`](docs/architecture/ACCESSIBILITY_COVERAGE.md) for the full breakdown
 
 ---
 
@@ -696,7 +694,7 @@ Please open an issue before submitting a large PR so we can align on approach.
 
 | Document | Description |
 |---|---|
-| [`docs/architecture/master_architecture.md`](docs/architecture/master_architecture.md) | Full system architecture (v2.5) |
+| [`docs/architecture/master_architecture.md`](docs/architecture/master_architecture.md) | Full system architecture (v2.8) |
 | [`docs/architecture/ACCESSIBILITY_COVERAGE.md`](docs/architecture/ACCESSIBILITY_COVERAGE.md) | WCAG 2.2 criterion-level coverage breakdown |
 | [`docs/detailed_cli_audit.md`](docs/detailed_cli_audit.md) | Full CLI flag reference |
 | [`docs/phase20_rule_distribution.md`](docs/phase20_rule_distribution.md) | Rule diversity analysis across production sites |

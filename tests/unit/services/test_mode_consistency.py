@@ -52,7 +52,7 @@ SCENARIOS: list[Scenario] = [
         name="csp_strict_header_blocked",
         expected_reason="csp_blocked",
         preflight_reason="csp_blocked",
-        fetch_html="<html><body></body></html>",
+        fetch_html="<div id='csp-blocked-incomplete'>CSP Blocked Snippet</div>",
         fetch_reason="",
         fetch_status=200,
         expect_html_incomplete=True,

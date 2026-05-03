@@ -7,7 +7,8 @@
 #   make unit-tests      — Per-commit unit test suite
 #   make build-act-index — Rebuild ACT fixture index from cloned repo
 
-.PHONY: eval-gena11y eval-act-full eval-accessguru phase1-tests unit-tests \
+.PHONY: eval-gena11y eval-act-full eval-accessguru eval-a11ybench \
+        phase1-tests unit-tests test-quick \
         phase1-gate build-act-index build-gena11y-fixtures
 
 # ── Benchmark targets ─────────────────────────────────────────────────────────
@@ -20,6 +21,17 @@ eval-act-full:
 
 eval-accessguru:
 	python evaluation/benchmark_accessguru.py
+
+eval-a11ybench:
+	python evaluation/benchmark_a11ybench.py
+
+test-quick:
+	python -m py_compile app/config.py app/services/audit_runner.py app/services/static_checks.py
+	python -m pytest tests/unit/ -q
+	python -m pytest tests/unit/test_static_checker.py -v
+	python evaluation/benchmark_act.py --profile production
+	python -m pytest tests/unit/test_webaim_six.py -v
+	python -m pytest tests/integration/test_phase20_all_modes.py -k "fast" -q --timeout=90
 
 # ── Fixture builders ──────────────────────────────────────────────────────────
 

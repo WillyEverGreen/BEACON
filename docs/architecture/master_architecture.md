@@ -3,7 +3,7 @@
 ## Production-Grade Accessibility Intelligence Engine
 
 > **Status**: Production-ready core. Experimental extensions clearly labelled.
-> **Last Updated**: 2026-04-20 — Fully reconciled with crawler stack v3 (curl_cffi + Camoufox), Phase 20 topology/degraded-mode hardening, and Phase 21 Lighthouse enrichment.
+> **Last Updated**: 2026-05-03 — Fully reconciled with IBM Engine 6, Contrast-Finder integration, EARL 1.0 export, and multi-dataset benchmark suites (GenA11y, AccessGuru, ACT-Full).
 
 ---
 
@@ -54,6 +54,12 @@ Developer / CI Tool
 │                          │                                        │
 │                          ▼                                        │
 │   ┌─────────────────────────────────────────────────┐            │
+│   │         IBM Equal Access Engine [deep/max]       │            │
+│   │   Node-side Engine 6 → accessibility-checker     │            │
+│   └─────────────────────────────────────────────────┘            │
+│                          │                                        │
+│                          ▼                                        │
+│   ┌─────────────────────────────────────────────────┐            │
 │   │     Cognitive Engine [max, experimental]         │            │
 │   │   Readability + Jargon + Form UX + COGA checks   │            │
 │   │   cognitive_mode = "experimental"                │            │
@@ -99,6 +105,7 @@ Developer / CI Tool
 │  │  confidence = 0.35×source + 0.25×signal + 0.15×agreement   │ │
 │  │             + 0.20×evidence + 0.05×user_impact (NEW)        │ │
 │  │                                                               │ │
+│  │  agreement: axe + static + ibm + heuristic corroboration     │ │
 │  │  user_impact: missing-alt=1.0, focus-trap=1.0, jargon=0.5   │ │
 │  └─────────────────────────────────────────────────────────────┘ │
 │                                                                    │
@@ -121,12 +128,15 @@ Developer / CI Tool
 │  ├─ BM25 Okapi (cached index, built once)                        │
 │  └─ Reciprocal Rank Fusion (RRF k=60)                            │
 │                                                                    │
+│  Contrast-Finder Integration (NEW)                                 │
+│  └─ HSL binary search for nearest-passing color replacement       │
+│                                                                    │
 │  CrossEncoder reranker (ms-marco-MiniLM-L-6-v2)                  │
-│  └─ MAX_CONTEXT_CHUNKS = 5  ← hard cap (NEW)                     │
-│     (prevents latency/cost/hallucination from long prompts)       │
+│  └─ MAX_CONTEXT_CHUNKS = 5  ← hard cap                           │
 │                                                                    │
 │  LLM: Featherless AI → Qwen/Qwen2.5-Coder-32B-Instruct           │
 │  ├─ Batched by WCAG criterion (60-80% cost reduction)             │
+│  ├─ AccessGuru-style multimodal prompt patterns (NEW)              │
 │  └─ Async enrichment: report returns instantly, AI streams later  │
 └──────────────────────────────────────────────────────────────────┘
                        │
@@ -169,6 +179,7 @@ Developer / CI Tool
               ├─ quality_gates.max_mode_validation  ← NEW (phase execution proof)
               ├─ invariant_safe_score_applied       ← NEW (non-zero output guard)
               ├─ enrichment_status: "pending" (SSE)
+              ├─ earl_report: { ... }               ← NEW (EARL 1.0 JSON-LD)
               └─ lighthouse_enrichment: {           ← NEW (Phase 21)
                    status, aggregate_scores,
                    merge_telemetry, per_url_results }
@@ -193,7 +204,7 @@ Developer / CI Tool
 | **P8**     | `store.py`        | ChromaDB batched upsert (HNSW cosine, 100/batch)                         |
 | **Verify** | `verify.py`       | Confirms 86/86 WCAG 2.2 SC coverage in the vector store                  |
 
-**Current state**: 25,346 chunks, 86/86 SC coverage confirmed. ✅
+**Current state**: 25,346 chunks, 86/86 SC coverage confirmed. Includes WCAG 2.2 Techniques, ARIA patterns, and MDN reference material. ✅
 
 ---
 
@@ -364,19 +375,17 @@ form usability, nav complexity, error message quality (WCAG COGA-aligned).
 
 ## 📊 7. Benchmark & Evaluation
 
-### ACT Regression Retest (production profile, fast mode)
+### Multi-Dataset Benchmark Baseline (v2.8)
 
-| Metric                                    | Value              |
-| :---------------------------------------- | :----------------- |
-| Cases evaluated                           | 23                 |
-| True positives                            | 38                 |
-| False positives                           | 0                  |
-| False negatives                           | 0                  |
-| Micro precision / recall / F1             | 1.00 / 1.00 / 1.00 |
-| Adjudicated micro precision / recall / F1 | 1.00 / 1.00 / 1.00 |
-| Macro precision / recall / F1             | 1.00 / 1.00 / 1.00 |
+| Dataset         | Source                      | Scope                                  | Latest F1/Recall |
+| :-------------- | :-------------------------- | :------------------------------------- | :--------------- |
+| **ACT Full**    | W3C ACT Rules               | ~80 rules (pass/fail HTML fixtures)    | 0.94 (Full)      |
+| **GenA11y**     | seal-hub/GenA11y            | 148 labelled HTML pages (37 SC)        | 0.82 (Recall)    |
+| **AccessGuru**  | DARUS/AccessGuru            | 3,500+ real-world violations (Semantic) | 0.58 (Baseline)  |
+| **A11YBench**   | LLM4APR/A11YBench           | 60 real GitHub projects (IBM-grounded) | 0.77 (Agreement) |
+| **WebAIM Six**  | WebAIM Million 2026         | Top 6 common failures (Regression)      | 1.00 (Pass)      |
 
-Artifact: `evaluation/retest_act_latest.json`
+Artifacts: `evaluation/results/*_baseline_*.json`
 
 ### Real-World Production Benchmark (10 sites, fast + deep)
 
@@ -521,7 +530,8 @@ This section preserves prior architecture eras so teams can reason about histori
 | **v2.0-v2.2 (Phases 9-12)**          | Scoring integrity + confidence + suppression hardening           | Trust tiers, invariant protection, precision profiles, anti-zero-score guards                                       | Shipped, retained                  |
 | **v2.3 (Phases 13-17 plan)**         | Failure normalization + crawler resilience redesign              | Canonical degraded taxonomy, adaptive crawl strategy, preflight/domain intelligence model                           | Substantially shipped (v3 runtime) |
 | **v2.4 (Phase 20)**                  | Topology-aware site auditing + dashboard observability           | `topology_detector`, centralized page budgeting, degraded E2 contract, topology telemetry columns                   | Shipped                            |
-| **v2.5 (Phase 21 + reconciliation)** | Lighthouse enrichment + crawler stack v3 documentation alignment | Deterministic Lighthouse merge + modern crawler runtime (`curl_cffi` + Camoufox) + historical compatibility mapping | **Current**                        |
+| **v2.5 (Phase 21 + reconciliation)** | Lighthouse enrichment + crawler stack v3 documentation alignment | Deterministic Lighthouse merge + modern crawler runtime (`curl_cffi` + Camoufox) + historical compatibility mapping | Shipped                            |
+| **v2.8 (Current)**                   | Phase 1+2 External Resource Integration            | IBM Engine 6, Contrast-Finder, EARL 1.0, and Multi-Dataset Benchmarking (GenA11y, AccessGuru, A11YBench)            | **Active**                         |
 
 ### Legacy Compatibility Notes
 

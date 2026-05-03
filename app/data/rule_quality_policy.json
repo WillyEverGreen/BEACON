@@ -27,8 +27,8 @@
       "report_in_summary": false
     },
     "no-headings": {
-      "weight": 0.2,
-      "report_in_summary": false
+      "weight": 0.6,
+      "report_in_summary": true
     }
   },
   "suppression_safeguard": {
@@ -72,9 +72,7 @@
         "aria-valid-attr-value": 0.62,
         "empty-heading": 0.62
       },
-      "suppress_when_present": {
-        "no-headings": ["no-main-landmark"]
-      }
+      "suppress_when_present": {}
     },
     "high_precision_recall_boost": {
       "exclude_rules": ["no-main-landmark", "no-title"],

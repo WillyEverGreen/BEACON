@@ -1,6 +1,6 @@
-# ACCESSIBILITY_COVERAGE v2.7
+# ACCESSIBILITY_COVERAGE v2.8
 
-> Last Updated: 2026-04-25
+> Last Updated: 2026-05-03
 > Evidence Basis: runtime code + mappings + release validation artifacts
 > Scope: Detection coverage (WCAG 2.2 A/AA baseline), not legal compliance certification
 
@@ -75,6 +75,10 @@ This report is implementation-evidence based, not marketing-estimate based.
 - app/data/lighthouse_mapping.json
 - app/services/llm.py
 - app/routers/rag.py
+- app/services/contrast_finder.py
+- app/audit/earl_report.py
+- app/services/ibm_checker.py
+- evaluation/results/a11ybench_regression_20260503.json
 - RELEASE_NOTES.md (Phase 21 integration metrics)
 
 ### 2.2 Classification Method
@@ -448,8 +452,10 @@ python -m pytest tests/unit/ -q
 # Site-archetype deterministic validation
 python evaluation/validate_site_archetypes.py
 
-# ACT regression benchmark
-python evaluation/benchmark_act.py
+# Multi-dataset benchmarking
+make eval-gena11y
+make eval-act-full
+make eval-a11ybench
 ```
 
 Coverage classification source: manual SC-to-rule mapping analysis anchored to `app/services/normalizer.py::AXE_WCAG_MAP` and static/heuristic rule inventories.
@@ -468,7 +474,8 @@ Denominator source: W3C WCAG 2.2 A/AA criterion count (58 SC). AAA criteria are 
 | v2.4    | 2026-04-20 |   20 |      12 |          26 |            **55.2%**  | Phase 20 topology + degraded-mode hardening        |
 | v2.5    | 2026-04-20 |   20 |      12 |          26 |            55.2%  | Phase 21 Lighthouse enrichment (enrichment layer only; no SC additions) |
 | v2.6    | 2026-04-20 |   20 |      12 |          26 |            55.2%  | Doc update: mode matrix, degraded taxonomy, sampling bias, reproducibility |
-| v2.7    | 2026-04-25 |   20 |      16 |          22 |            **62.1%**  | Phase 1+2: IBM Equal Access (Engine 6), 4 new SC heuristics (1.3.2, 1.3.4, 1.4.5, 3.2.2), COGA citations on all cognitive rules, CAPTCHA detection |
+| v2.7    | 2026-04-25 |   20 |   16 |          22 |            62.1%  | Phase 1+2: IBM Equal Access (Engine 6), 4 new SC heuristics (1.3.2, 1.3.4, 1.4.5, 3.2.2), COGA citations on all cognitive rules, CAPTCHA detection |
+| v2.8    | 2026-05-03 |   20 |   16 |          22 |            **62.1%**  | Multi-dataset baseline (GenA11y, AccessGuru, A11YBench), Contrast-Finder integration, EARL 1.0 export |
 
 **What changed in v2.6 (this document)**:
 

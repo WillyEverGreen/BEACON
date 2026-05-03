@@ -234,6 +234,14 @@ def _build_structured_issue_input(issue: dict) -> dict[str, Any]:
         "severity": str(issue.get("severity", "") or "moderate"),
         "description": str(issue.get("description", "") or "")[:260],
     }
+    
+    evidence = issue.get("evidence", {})
+    if isinstance(evidence, dict) and "suggested_color" in evidence:
+        element_context["contrast_hint"] = (
+            f"Mathematically verified accessible color: {evidence['suggested_color']} "
+            f"(Background: {evidence.get('bg_color')}, Target Ratio: {evidence.get('required_ratio')})"
+        )
+
     return {
         "issue_type": issue_type,
         "element_context": element_context,
@@ -876,7 +884,7 @@ async def generate_semantic_remediation(issue: dict, context_chunks: list[dict])
 
 
 
-async def generate_remediation(issue: dict, context_chunks: list[dict]) -> dict:
+async def generate_remediation(issue: dict, context_chunks: list[dict], temperature: float = 0.2) -> dict:
     """
     Generate a structured RemediationPacket for a specific accessibility issue.
     Takes an issue dict + retrieved context chunks, returns parsed remediation dict.
@@ -914,7 +922,7 @@ async def generate_remediation(issue: dict, context_chunks: list[dict]) -> dict:
                 )},
             ],
             max_tokens=1700,
-            temperature=0.2,
+            temperature=temperature,
             timeout=30.0,
         )
 
@@ -966,6 +974,7 @@ async def generate_remediation_batch(
     issues_group: list[dict],
     context_str: str,
     wcag_criterion: str,
+    temperature: float = 0.2,
 ) -> tuple[list[dict], dict[str, float | int]]:
     client = get_client()
     usage = {
@@ -990,7 +999,7 @@ async def generate_remediation_batch(
                 )},
             ],
             max_tokens=2600,
-            temperature=0.2,
+            temperature=temperature,
             timeout=40.0,
         )
         usage = _normalize_usage(getattr(response, "usage", None))

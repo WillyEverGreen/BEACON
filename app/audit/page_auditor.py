@@ -25,6 +25,7 @@ from app.audit.failure_taxonomy import classify_failure_reason, normalize_failur
 from app.audit.exploration import SPAStrategyPack
 from app.audit.fingerprint import stable_selector_fingerprint
 from app.audit.models import PageAuditResult, PageContext, PageStateMeta, state_meta_to_dict
+from app.audit.earl_report import generate_earl_report
 from app.crawlers.common import normalize_scan_mode
 
 
@@ -799,4 +800,9 @@ async def audit_page(url: str, scan_mode: str, page_context: PageContext) -> Pag
         enrichment_status="pending",
         states_meta=states_meta,
         page_dom=page_dom,
+        earl_report=generate_earl_report(
+            url, 
+            list(merged_issues.values()), 
+            {"scan_mode": scan_mode_key, "timings": engine_timings}
+        )
     )

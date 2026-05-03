@@ -1,0 +1,17 @@
+<!-- evaluation/fixtures/webaim/low_contrast.html -->
+<html lang="en"><body><p style="color: #999; background-color: #fff;">Low contrast text</p></body></html>
+<!-- slide -->
+<!-- evaluation/fixtures/webaim/missing_alt.html -->
+<html lang="en"><body><img src="logo.png"></body></html>
+<!-- slide -->
+<!-- evaluation/fixtures/webaim/form_no_label.html -->
+<html lang="en"><body><input type="text"></body></html>
+<!-- slide -->
+<!-- evaluation/fixtures/webaim/empty_link.html -->
+<html lang="en"><body><a href="/somewhere"></a></body></html>
+<!-- slide -->
+<!-- evaluation/fixtures/webaim/empty_button.html -->
+<html lang="en"><body><button></button></body></html>
+<!-- slide -->
+<!-- evaluation/fixtures/webaim/no_lang.html -->
+<html><body>Missing lang attribute</body></html>

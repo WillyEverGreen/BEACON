@@ -14,8 +14,9 @@ import time
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel
+from app.security.jwt_utils import extract_user_id_from_jwt
 
 from app.audit.failure_taxonomy import normalize_failure
 from app.audit.scan_mode_runner import run_scan_mode_audit
@@ -507,8 +508,12 @@ class ScanStart(BaseModel):
 
 
 @router.post("/projects/")
-async def create_project(data: ProjectCreate):
+async def create_project(
+    data: ProjectCreate,
+    x_supabase_token: Optional[str] = Header(None, alias="X-Supabase-Token"),
+):
     _ensure_legacy_bootstrap()
+    user_id = extract_user_id_from_jwt(x_supabase_token)
 
     pid = str(uuid.uuid4())[:8]
     project = {
@@ -520,6 +525,7 @@ async def create_project(data: ProjectCreate):
         "last_scan_at": None,
         "latest_score": None,
         "total_issues": 0,
+        "user_id": user_id,
     }
     return upsert_project_record(project)
 
@@ -567,8 +573,12 @@ async def delete_project(pid: str):
 
 
 @router.post("/scans/")
-async def start_scan(data: ScanStart):
+async def start_scan(
+    data: ScanStart,
+    x_supabase_token: Optional[str] = Header(None, alias="X-Supabase-Token"),
+):
     _ensure_legacy_bootstrap()
+    user_id = extract_user_id_from_jwt(x_supabase_token)
 
     project = get_project_record(data.project_id)
     if not project:
@@ -637,6 +647,7 @@ async def start_scan(data: ScanStart):
         "created_at": _utc_now_iso(),
         "completed_at": None,
         "markdown_report": "",
+        "user_id": user_id,
     }
     upsert_scan_record(scan_record)
 
@@ -664,6 +675,7 @@ async def start_scan(data: ScanStart):
                             max_pages=1,
                             enable_enrichment=False,
                             use_cache=False,
+                            user_id=user_id,
                         )
                         direct_issue_count = int(direct_result.get("total_issues") or 0)
                         if direct_issue_count > site_issue_count:
@@ -677,7 +689,7 @@ async def start_scan(data: ScanStart):
                     except Exception as direct_exc:
                         logger.warning("Direct single-page comparison failed for %s: %s", scan_id, direct_exc)
             else:
-                result = await run_audit(url=scan_url, scan_mode=scan_mode)
+                result = await run_audit(url=scan_url, scan_mode=scan_mode, user_id=user_id)
 
             failed, failure_reason = _detect_audit_failure(result)
             if failed:

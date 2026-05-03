@@ -17,8 +17,8 @@ async def run_axe_on_html(html_content: str) -> list:
                 
             await page.set_content(html_content)
             
-            # We need axe.min.js. Let's assume it's in node_modules/axe-core/axe.min.js
-            axe_path = os.path.join(os.getcwd(), "node_modules", "axe-core", "axe.min.js")
+            # We need axe.min.js.
+            axe_path = os.path.join(os.getcwd(), "frontend", "node_modules", "axe-core", "axe.min.js")
             if os.path.exists(axe_path):
                 await page.add_script_tag(path=axe_path)
                 results = await page.evaluate("axe.run()")

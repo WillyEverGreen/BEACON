@@ -32,6 +32,7 @@ from app.config import (
 )
 from app.config import PRECISION_PROFILES
 from app.audit.dynamic_handling import resolve_adaptive_timeouts, stable_request_headers
+from app.audit.earl_report import generate_earl_report
 from app.audit.failure_taxonomy import normalize_failure, reason_message
 from app.crawlers.common import http_get_with_backoff, normalize_scan_mode
 from app.services.static_checks import StaticChecker
@@ -958,13 +959,15 @@ def get_audit_runtime_health() -> dict[str, Any]:
     }
 
 
-def _finalize_result(result: dict[str, Any], *, status: str, persist_db: bool = True) -> dict[str, Any]:
+def _finalize_result(
+    result: dict[str, Any], *, status: str, persist_db: bool = True, user_id: Optional[str] = None
+) -> dict[str, Any]:
     """Persist DB state and emit telemetry/alert side effects for an audit result."""
     result = _enforce_audit_invariants(result)
 
     if persist_db:
         try:
-            result["audit_id"] = persist_audit_payload(result, status=status)
+            result["audit_id"] = persist_audit_payload(result, status=status, user_id=user_id)
         except Exception as exc:
             logger.error("Failed to persist audit payload: %s", exc)
 
@@ -1259,6 +1262,7 @@ async def run_audit(
     use_cache: bool = True,
     run_id: Optional[str] = None,
     enable_ibm: bool = True,
+    user_id: Optional[str] = None,
 ) -> dict:
     """
     Run the full accessibility audit pipeline.
@@ -1325,7 +1329,7 @@ async def run_audit(
             "browser_engine": "camoufox/firefox",
         }
         logger.warning("URL validation failure — degraded: url=%s reason=%s", url, _reason)
-        return _finalize_result(failure, status="failed")
+        return _finalize_result(failure, status="failed", user_id=user_id)
     
     # ── Step 0a: Check URL Cache ───────────────────────────────
     url_hash = get_url_hash(url, scan_mode, precision_profile)
@@ -1338,7 +1342,7 @@ async def run_audit(
             else:
                 logger.info(f"Page Cache HIT (URL) for {url}")
                 cached_res["cache_hit"] = True
-                return _finalize_result(cached_res, status="cached", persist_db=False)
+                return _finalize_result(cached_res, status="cached", persist_db=False, user_id=user_id)
 
     degraded_mode = False
     degraded_reason = normalize_failure(None).value if False else None
@@ -1570,6 +1574,11 @@ async def run_audit(
                 "score_explanation": fallback_score_explanation,
                 "cognitive_scores": None,
                 "summary": f"Degraded audit: unable to fetch content for {url}. Returned safe baseline scoring.",
+                "earl_report": generate_earl_report(
+                    url, 
+                    [fallback_issue], 
+                    {"scan_mode": scan_mode, "degraded": True}
+                ),
                 "markdown_report": "",
                 "scan_time_seconds": scan_time,
                 "engines_used": engines_used,
@@ -1625,7 +1634,7 @@ async def run_audit(
             # E2 contract: always present regardless of failure path.
             failure.setdefault("http_client", "curl_cffi/chrome")
             failure.setdefault("browser_engine", "camoufox/firefox")
-            return _finalize_result(failure, status="completed")
+            return _finalize_result(failure, status="completed", user_id=user_id)
 
         # ── Step 1.5: Check Structure / DOM Cache ─────────────────
         dom_hash = get_dom_hash(clean_html_for_hash(html), scan_mode, precision_profile)
@@ -1638,7 +1647,7 @@ async def run_audit(
                 else:
                     logger.info(f"Page Cache HIT (DOM Hash) for {url}")
                     cached_dom_res["cache_hit"] = True
-                    return _finalize_result(cached_dom_res, status="cached", persist_db=False)
+                    return _finalize_result(cached_dom_res, status="cached", persist_db=False, user_id=user_id)
 
         # ── Step 2: Run check engines (Parallel) ──────────────────────
         def run_static():
@@ -2279,6 +2288,11 @@ async def run_audit(
             "enrichment_status": enrichment_status,
             "enrichment_meta": enrichment_meta,
             "audit_id": audit_id,
+            "earl_report": generate_earl_report(
+                url, 
+                scored_issues, 
+                {"scan_mode": scan_mode, "precision_profile": precision_profile}
+            ),
             "trust": trust_payload,
             "site_result": _single_page_site_result(score=score, total_issues=len(scored_issues), url=url),
             # World-class SPA detection metadata
@@ -2345,7 +2359,7 @@ async def run_audit(
             ),
         )
 
-        return _finalize_result(res, status="completed")
+        return _finalize_result(res, status="completed", user_id=user_id)
 
 
 

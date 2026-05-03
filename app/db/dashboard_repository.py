@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import os
 import datetime as dt
-from typing import Any
+from typing import Any, Optional
 
 from app.audit.failure_taxonomy import normalize_failure
 from app.audit.failure_taxonomy import normalize_failure
@@ -165,11 +166,17 @@ def get_project(project_id: str) -> dict[str, Any] | None:
     return res.data if res.data else None
 
 
-def upsert_project(project: dict[str, Any]) -> dict[str, Any]:
+def upsert_project(project: dict[str, Any], user_id: Optional[str] = None) -> dict[str, Any]:
     project_id = str(project.get("id") or "").strip()
     if not project_id:
         raise ValueError("project id is required")
     
+    if user_id:
+        project["user_id"] = user_id
+    elif not project.get("user_id"):
+        if os.environ.get("ENVIRONMENT") == "production":
+            raise ValueError("user_id is required in production")
+
     sb = get_supabase()
     res = sb.table("projects").upsert(project).execute()
     return res.data[0] if res.data else {}
@@ -197,11 +204,17 @@ def get_scan(scan_id: str) -> dict[str, Any] | None:
     return res.data if res.data else None
 
 
-def upsert_scan(scan: dict[str, Any]) -> dict[str, Any]:
+def upsert_scan(scan: dict[str, Any], user_id: Optional[str] = None) -> dict[str, Any]:
     scan_id = str(scan.get("id") or "").strip()
     if not scan_id:
         raise ValueError("scan id is required")
     
+    if user_id:
+        scan["user_id"] = user_id
+    elif not scan.get("user_id"):
+        if os.environ.get("ENVIRONMENT") == "production":
+            raise ValueError("user_id is required in production")
+
     sb = get_supabase()
     # Handle nested objects/lists by ensuring they are serializable (Supabase SDK does this)
     res = sb.table("scans").upsert(scan).execute()

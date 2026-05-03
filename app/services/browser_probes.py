@@ -853,6 +853,7 @@ class BrowserProber:
                     self._probe_lazy_loading,      # New: detect lazy-load issues
                     self._probe_focus_trap_detection,  # Production readiness: focus management
                     self._probe_focus_management,       # Phase 9.4: hybrid focus-management probes
+                    self._probe_meaningful_sequence,    # Phase 22: Visual vs DOM order (1.3.2)
                 ]
 
                 probe_timeout_s = float(self.adaptive_timeouts.get("probe_timeout_seconds", 8.0) or 8.0)
@@ -981,6 +982,71 @@ class BrowserProber:
 
         except Exception as e:
             logger.warning(f"Keyboard nav probe error: {e}")
+
+        return issues
+
+    async def _probe_meaningful_sequence(self, page) -> list[dict]:
+        """
+        Check WCAG 1.3.2 (Meaningful Sequence) by comparing DOM order vs visual order.
+        Focuses on interactive elements where tab order confusion is most critical.
+        """
+        issues = []
+        try:
+            # Extract coordinates and DOM index of focusable elements
+            sequence_data = await page.evaluate("""
+                () => {
+                    const focusables = Array.from(document.querySelectorAll(
+                        'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])'
+                    )).filter(el => {
+                        const style = window.getComputedStyle(el);
+                        return style.display !== 'none' && style.visibility !== 'hidden';
+                    });
+
+                    return focusables.map((el, index) => {
+                        const rect = el.getBoundingClientRect();
+                        return {
+                            tag: el.tagName.toLowerCase(),
+                            text: (el.textContent || '').trim().substring(0, 30),
+                            domIndex: index,
+                            x: Math.round(rect.left + window.scrollX),
+                            y: Math.round(rect.top + window.scrollY),
+                            outerHTML: el.outerHTML.substring(0, 200)
+                        };
+                    });
+                }
+            """)
+
+            if len(sequence_data) < 2:
+                return issues
+
+            # Sort by visual position (Top-to-Bottom, then Left-to-Right)
+            # We use a small threshold (10px) for Y to handle slightly misaligned elements in a row
+            visual_order = sorted(sequence_data, key=lambda e: (e['y'] // 10, e['x']))
+            
+            violations = 0
+            mismatched_elements = []
+
+            for i in range(len(visual_order)):
+                expected_dom_index = visual_order[i]['domIndex']
+                # If visual order and DOM order differ by more than 5 positions, it's a high risk
+                if abs(i - expected_dom_index) > 5:
+                    violations += 1
+                    if len(mismatched_elements) < 3:
+                        mismatched_elements.append(visual_order[i])
+
+            if violations > 0:
+                severity = "moderate" if violations < 5 else "serious"
+                issues.append(_make_issue(
+                    self.url, "meaningful-sequence-mismatch", "warning", severity,
+                    "<body>", "",
+                    f"Detected {violations} elements where the visual reading order does not match the DOM (tab) order.",
+                    "1.3.2", "A", "structure",
+                    "Ensure the DOM order matches the logical reading order. Avoid using CSS absolute positioning or flexbox-order to move elements visually away from their source order.",
+                    evidence={"violations": violations, "samples": mismatched_elements}
+                ))
+
+        except Exception as e:
+            logger.warning(f"Meaningful sequence probe error: {e}")
 
         return issues
 

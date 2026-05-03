@@ -10,6 +10,7 @@ from urllib.parse import urlsplit, urlunsplit
 from bs4 import BeautifulSoup, Tag
 
 from app.audit.failure_taxonomy import normalize_failure
+from app.services.contrast_finder import find_accessible_color
 
 logger = logging.getLogger(__name__)
 
@@ -181,6 +182,7 @@ class StaticChecker:
         self.fetch_status = int(fetch_status) if isinstance(fetch_status, int) else None
         self.degraded_reason = normalize_failure(degraded_reason).value if str(degraded_reason or "").strip() else ""
         self.rule_activity: dict[str, dict[str, Any]] = {}
+        self.is_incomplete_html, self.incomplete_evidence = self._detect_incomplete_html()
 
     def _is_blocked_partial_page(self) -> bool:
         """Heuristic guard for access-blocked or anti-bot pages with unreliable structure."""
@@ -249,6 +251,10 @@ class StaticChecker:
         """
         visible_text = self.soup.get_text(" ", strip=True)
         visible_text_length = len(visible_text)
+        has_doctype = "<!doctype" in str(self.soup).lower()[:100]
+        
+        # Heuristics for incomplete HTML:
+
         dom_element_count = len(self.soup.find_all(True))
         has_head_tag = self.soup.find("head") is not None
         has_body_tag = self.soup.find("body") is not None
@@ -283,12 +289,14 @@ class StaticChecker:
             and visible_text_length > 0  # Some content but very little
             and dom_element_count <= 5
             and len(interactive_elements) == 0
+            and len(semantic_elements) == 0
         )
         
         # 3. Missing critical structure tags
         is_missing_critical_tags = (
             not has_html_tag
-            or (not has_body_tag and dom_element_count < 10)
+            and len(semantic_elements) == 0
+            or (not has_body_tag and dom_element_count < 10 and len(semantic_elements) == 0)
         )
         
         # 4. No head tag with otherwise minimal structure
@@ -297,6 +305,7 @@ class StaticChecker:
             and dom_element_count <= 8
             and visible_text_length < 100
             and len(semantic_elements) == 0
+            and not has_doctype  # Doctype implies it's a deliberate document
         )
         
         is_incomplete = (
@@ -440,12 +449,14 @@ class StaticChecker:
             # New high-impact checks
             "color_contrast", "duplicate_ids", "redundant_alt",
             "svg_accessible_name", "empty_headings", "unsafe_external_links", "form_label_missing",
-            "accessible_auth", "redundant_entry", "aria_apg_patterns", "semantic_depth", "captcha"
+            "accessible_auth", "redundant_entry", "aria_apg_patterns", "semantic_depth", "captcha",
+            "nested_interactive"
         ]
         issues = []
         
         # Detect incomplete/truncated HTML early
-        is_incomplete_html, incomplete_evidence = self._detect_incomplete_html()
+        is_incomplete_html = self.is_incomplete_html
+        incomplete_evidence = self.incomplete_evidence
         
         blocked_partial = self._is_blocked_partial_page()
         blocked_sensitive_checks = {
@@ -812,10 +823,12 @@ class StaticChecker:
                 continue
             aria_level_raw = str(node.get("aria-level") or "").strip()
             if not aria_level_raw.isdigit():
-                continue
-            aria_level = int(aria_level_raw)
-            if not (1 <= aria_level <= 6):
-                continue
+                # ARIA default for role="heading" is level 2
+                aria_level = 2
+            else:
+                aria_level = int(aria_level_raw)
+                if not (1 <= aria_level <= 6):
+                    aria_level = 2 # Clamp to default if out of range
             if self._is_visible_for_static(node):
                 aria_heading_nodes.append(node)
 
@@ -845,7 +858,7 @@ class StaticChecker:
         heading_order_checked_samples: list[str] = []
         heading_order_violation_samples: list[str] = []
 
-        if total_visible_headings == 0:
+        if total_visible_headings == 0 and not self.is_incomplete_html:
             contentful_blocks = 0
             for node in self.soup.find_all(["main", "article", "section", "p", "li", "td", "th", "blockquote", "figcaption"]):
                 if not self._is_visible_for_static(node):
@@ -4141,16 +4154,29 @@ class StaticChecker:
             required = 3.0 if is_large else 4.5
 
             if contrast < required:
-                issues.append(_issue(
+                fg_hex = f"#{fg[0]:02x}{fg[1]:02x}{fg[2]:02x}"
+                bg_hex = f"#{bg[0]:02x}{bg[1]:02x}{bg[2]:02x}"
+                new_fg = find_accessible_color(fg_hex, bg_hex, target_ratio=required)
+
+                issue = _issue(
                     self.url, "color-contrast", "violation",
                     "serious" if contrast < 2.0 else "moderate",
                     _css_selector(elem), _snippet(elem, 200),
                     f"Color contrast ratio {contrast:.2f}:1 is below the required {required}:1. "
                     f"Text: rgb{fg}, Background: rgb{bg}.",
                     "1.4.3", "AA", "color",
-                    f"Adjust colors to achieve at least {required}:1 contrast ratio.",
+                    f"Change text color to {new_fg} (currently {fg_hex}) to meet the {required}:1 ratio.",
                     fix_effort="low"
-                ))
+                )
+                issue["evidence"] = {
+                    "fg_color": fg_hex,
+                    "bg_color": bg_hex,
+                    "contrast_ratio": round(contrast, 2),
+                    "required_ratio": required,
+                    "is_large_text": is_large,
+                    "suggested_color": new_fg
+                }
+                issues.append(issue)
         return issues
 
     # ── Duplicate IDs ──────────────────────────────────────────
@@ -4483,4 +4509,46 @@ class StaticChecker:
                 "Verify that Turnstile's accessible fallback works properly."
             ))
             
+        return issues
+
+    def check_nested_interactive(self) -> list[dict]:
+        """
+        WCAG SC 4.1.2 (Name, Role, Value): Interactive elements must not be nested.
+        Checks for:
+        - a > a
+        - a > button
+        - button > button
+        - button > a
+        - a > input
+        """
+        issues = []
+        interactive_tags = {"a", "button", "input", "select", "textarea", "details"}
+        already_flagged = set()
+        
+        for parent_tag in ["a", "button"]:
+            for parent in self.soup.find_all(parent_tag):
+                # Search for any interactive children
+                for child in parent.find_all(interactive_tags):
+                    # Dedup: don't flag the same child element multiple times
+                    child_id = id(child)
+                    if child_id in already_flagged:
+                        continue
+                        
+                    selector = _css_selector(child)
+                    issues.append(_issue(
+                        self.url, "nested-interactive", "violation", "serious",
+                        selector, _snippet(child),
+                        f"Interactive element <{child.name}> is nested inside another interactive element <{parent.name}>.",
+                        "4.1.2", "A", "aria",
+                        f"Remove the nested <{child.name}> or move it outside of the <{parent.name}>."
+                    ))
+                    already_flagged.add(child_id)
+        
+        self._track_rule_activity(
+            "nested-interactive",
+            elements_checked=len(self.soup.find_all(["a", "button"])),
+            violations_found=len(issues),
+            confidence_bucket="high" if issues else None
+        )
+        
         return issues

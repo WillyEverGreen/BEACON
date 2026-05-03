@@ -81,6 +81,7 @@ class PageAuditResult:
     enrichment_status: str = "pending"
     states_meta: list[dict[str, Any]] = field(default_factory=list)
     page_dom: str = ""
+    earl_report: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(slots=True)

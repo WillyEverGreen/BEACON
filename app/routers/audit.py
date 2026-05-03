@@ -6,14 +6,16 @@ import asyncio
 import json
 import logging
 import time
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Header
 from fastapi.responses import StreamingResponse
+from typing import Optional
 from app.models import (
     AuditRequest, AuditResponse, AuditIssue, IssueGroup,
     CognitiveScore, FeedbackRequest, FeedbackResponse,
 )
 from app.services.audit_runner import get_audit_runtime_health, run_audit
 from app.services.feedback import record_feedback, get_feedback_stats
+from app.security.jwt_utils import extract_user_id_from_jwt
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +100,7 @@ def _build_explain_payload(result: dict) -> dict:
 async def audit_url(
     request: AuditRequest,
     explain: bool = Query(default=False, description="Include explainability payload in response"),
+    x_supabase_token: Optional[str] = Header(None, alias="X-Supabase-Token"),
 ):
     """
     Run accessibility audit on a URL.
@@ -108,12 +111,17 @@ async def audit_url(
     Returns enriched issues with confidence scores, grouped by domain, and a markdown report.
     """
     try:
+        user_id = extract_user_id_from_jwt(x_supabase_token)
+        if user_id is None and x_supabase_token:
+            logger.warning("Supabase token provided but user_id extraction failed")
+        
         _enforce_backpressure(request.scan_mode.value)
         result = await run_audit(
             url=request.url,
             scan_mode=request.scan_mode.value,
             checks=request.checks,
             max_pages=request.max_pages,
+            user_id=user_id,
         )
 
         # Build issue models

@@ -245,6 +245,8 @@ GenA11y/
 a11y-llm-eval/
 act-rules.github.io/
 equal-access/
+axe-core/
+MagicMock/
 
 # -- Dynamic Artifacts & Data -------------------------------------------------
 evaluation/fixtures/

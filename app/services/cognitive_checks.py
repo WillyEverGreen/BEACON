@@ -191,6 +191,12 @@ class CognitiveAnalyzer:
         # Error message quality
         issues.extend(self._analyze_error_messages())
 
+        # Heading hierarchy (Cognitive Focus)
+        issues.extend(self._analyze_heading_sequence())
+
+        # Visual clutter & complexity
+        issues.extend(self._analyze_visual_clutter())
+
         # ── Phase 2 COGA rules (Objective 4: Help users focus) ─────────────
         issues.extend(self._analyze_auto_carousel())
         issues.extend(self._analyze_focus_disruption())
@@ -522,4 +528,58 @@ class CognitiveAnalyzer:
                         fix_effort="low",
                         coga_pattern_ref="Control Media (COGA Obj 4, Pattern 4.2.1)"
                     ))
+        return issues
+
+    def _analyze_visual_clutter(self) -> list[dict]:
+        """COGA Objective 3 — Help users focus: Detect visual clutter.
+        
+        Excessive elements or dense layouts can overwhelm users with 
+        cognitive disabilities. Reference: COGA-Usable Pattern 4.4.1.
+        """
+        issues = []
+        # Check for link density in non-nav areas
+        content_links = 0
+        for p in self.soup.find_all(["p", "div", "section"]):
+            if p.find_parent("nav") or p.find_parent("footer"):
+                continue
+            content_links += len(p.find_all("a"))
+            
+        if content_links > 50:
+            issues.append(_make_issue(
+                self.url, "visual-clutter", "moderate",
+                f"Detected high link density ({content_links} links) in content areas. "
+                "Too many links can be distracting and cause 'choice paralysis'.",
+                "2.4.5", "AA",
+                "Reduce the number of links in main content or group them logically into sub-sections.",
+                evidence={"content_link_count": content_links},
+                coga_pattern_ref="Provide a Clear Hierarchy (COGA Obj 3, Pattern 4.4.1)"
+            ))
+            
+        return issues
+
+    def _analyze_heading_sequence(self) -> list[dict]:
+        """COGA Objective 3 — Help users focus: Check for logical heading sequences.
+        
+        Predictable structure helps users with cognitive disabilities build 
+        a mental map of the content. Reference: COGA-Usable Pattern 4.3.3.
+        """
+        issues = []
+        import re
+        headings = self.soup.find_all(re.compile(r'^h[1-6]$'))
+        last_level = 0
+        
+        for h in headings:
+            level = int(h.name[1])
+            if level > last_level + 1 and last_level > 0:
+                issues.append(_make_issue(
+                    self.url, "heading-gap", "moderate",
+                    f"Skipped heading level: {h.name} followed {last_level}. "
+                    "Gaps in hierarchy disrupt the mental model for users with cognitive disabilities.",
+                    "1.3.1", "A",
+                    f"Change {h.name} to H{last_level + 1} to maintain a logical sequence.",
+                    evidence={"gap": f"H{last_level} -> {h.name}"},
+                    coga_pattern_ref="Provide a Clear Structure (COGA Obj 3, Pattern 4.3.3)"
+                ))
+            last_level = level
+            
         return issues

@@ -1,9 +1,10 @@
-"""Persistence helpers for audit payloads and telemetry metadata."""
-
 from __future__ import annotations
-
+import os
 import uuid
+import logging
 from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
 
 from app.config import CACHE_STATS, settings
 
@@ -28,8 +29,13 @@ def _upsert_cache_meta(session: Session) -> None:
 
 from app.db.supabase_client import get_supabase
 
-def persist_audit_payload(payload: dict[str, Any], *, status: str = "completed") -> str:
+def persist_audit_payload(payload: dict[str, Any], *, status: str = "completed", user_id: Optional[str] = None) -> str:
     """Persist an audit payload directly to Supabase using the SDK."""
+    if user_id is None:
+        if os.environ.get("ENVIRONMENT") == "production":
+            raise ValueError("user_id is required in production")
+        logger.warning("persist_audit_payload called without user_id — row will be hidden by RLS")
+
     aid = _audit_id(payload)
     issues = list(payload.get("issues") or [])
     sb = get_supabase()
@@ -48,6 +54,8 @@ def persist_audit_payload(payload: dict[str, Any], *, status: str = "completed")
         "enrichment_status": str(payload.get("enrichment_status") or "pending"),
         "schema_version": str(getattr(settings, "schema_version", "3.1")),
         "summary": str(payload.get("summary") or ""),
+        "earl_report": dict(payload.get("earl_report") or {}),
+        "user_id": user_id,
     }
     sb.table("audits").upsert(audit_data).execute()
 
@@ -63,6 +71,7 @@ def persist_audit_payload(payload: dict[str, Any], *, status: str = "completed")
         "score": float(payload.get("score") or 0.0),
         "degraded_mode": bool(payload.get("degraded_mode", False)),
         "engine_timings": dict(payload.get("quality_gates") or {}),
+        "user_id": user_id,
     }
     page_res = sb.table("pages").insert(page_data).execute()
     page_id = page_res.data[0]["id"] if page_res.data else None
@@ -79,6 +88,7 @@ def persist_audit_payload(payload: dict[str, Any], *, status: str = "completed")
             "affected_pages": int(issue.get("affected_pages") or 1),
             "enrichment_source": str(issue.get("_enrichment_source") or issue.get("enrichment_source") or "pending"),
             "fix": dict(issue.get("fix") or {}),
+            "user_id": user_id,
         }
         issue_res = sb.table("issues").insert(issue_data).execute()
         issue_row_id = issue_res.data[0]["id"] if issue_res.data else None
@@ -89,6 +99,7 @@ def persist_audit_payload(payload: dict[str, Any], *, status: str = "completed")
             "audit_id": aid,
             "source": issue_data["enrichment_source"],
             "latency_ms": int(issue.get("enrichment_latency_ms") or 0),
+            "user_id": user_id,
         }
         sb.table("enrichments").insert(enrich_data).execute()
 
@@ -101,6 +112,7 @@ def persist_enrichment_payload(
     enrichment_meta: Optional[dict[str, Any]] = None,
     *,
     status: str = "complete",
+    user_id: Optional[str] = None,
 ) -> None:
     """Update persisted enrichment details after background enrichment completes."""
     if not audit_id:
@@ -137,6 +149,7 @@ def persist_enrichment_payload(
             "affected_pages": int(issue.get("affected_pages") or 1),
             "enrichment_source": str(issue.get("_enrichment_source") or issue.get("enrichment_source") or "pending"),
             "fix": dict(issue.get("fix") or {}),
+            "user_id": user_id,
         }
         issue_res = sb.table("issues").insert(issue_data).execute()
         issue_row_id = issue_res.data[0]["id"] if issue_res.data else None
@@ -146,6 +159,7 @@ def persist_enrichment_payload(
             "audit_id": audit_id,
             "source": issue_data["enrichment_source"],
             "latency_ms": latency_ms,
+            "user_id": user_id,
         }
         sb.table("enrichments").insert(enrich_data).execute()
 

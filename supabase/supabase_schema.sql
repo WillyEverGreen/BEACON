@@ -5,6 +5,7 @@
 
 -- STEP 1: MIGRATION SAFEGUARDS (Update existing tables)
 ALTER TABLE audits   ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE audits   ADD COLUMN IF NOT EXISTS earl_report JSONB DEFAULT '{}';
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE scans    ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE;
@@ -27,6 +28,7 @@ CREATE TABLE IF NOT EXISTS audits (
     enrichment_status TEXT DEFAULT 'pending',
     schema_version TEXT DEFAULT '3.1',
     summary TEXT DEFAULT '',
+    earl_report JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
 );
@@ -112,6 +114,17 @@ CREATE TABLE IF NOT EXISTS scans (
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
+-- 6. Enrichments Table (Detailed metadata for AI/External scans)
+CREATE TABLE IF NOT EXISTS enrichments (
+    id BIGSERIAL PRIMARY KEY,
+    audit_id TEXT REFERENCES audits(id) ON DELETE CASCADE,
+    issue_id BIGINT REFERENCES issues(id) ON DELETE CASCADE,
+    source TEXT NOT NULL, -- e.g., 'llm', 'axe-core', 'ibm'
+    latency_ms INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
 -- 6. Usage Limits Table
 CREATE TABLE IF NOT EXISTS usage_limits (
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
@@ -141,6 +154,7 @@ REVOKE ALL ON scans        FROM anon;
 REVOKE ALL ON audits       FROM anon;
 REVOKE ALL ON pages        FROM anon;
 REVOKE ALL ON issues       FROM anon;
+REVOKE ALL ON enrichments  FROM anon;
 REVOKE ALL ON usage_limits FROM anon;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON projects     TO authenticated;
@@ -148,6 +162,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON scans        TO authenticated;
 GRANT SELECT                         ON audits       TO authenticated;
 GRANT SELECT                         ON pages        TO authenticated;
 GRANT SELECT                         ON issues       TO authenticated;
+GRANT SELECT                         ON enrichments  TO authenticated;
 GRANT SELECT                         ON usage_limits TO authenticated;
 
 -- Backend (Python) full access
@@ -158,6 +173,10 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;
 
 -- STEP 5: ROW LEVEL SECURITY (RLS) policies
+ALTER TABLE enrichments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users see own enrichments" ON enrichments;
+CREATE POLICY "Users see own enrichments" ON enrichments 
+    FOR SELECT USING (auth.uid() = user_id);
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users see own projects" ON projects;
 CREATE POLICY "Users see own projects" ON projects 
@@ -201,3 +220,4 @@ END $$;
 
 ALTER PUBLICATION supabase_realtime ADD TABLE scans;
 ALTER PUBLICATION supabase_realtime ADD TABLE audits;
+ALTER PUBLICATION supabase_realtime ADD TABLE enrichments;
