@@ -323,3 +323,12 @@ class TopicsResponse(BaseModel):
     topics: list[str]
     levels: list[str]
     chunk_types: list[str]
+
+
+from app.models.contracts import (
+    AntiBotState,
+    Fingerprint,
+    Finding,
+    PatchResult,
+    FindingNormalizer,
+)

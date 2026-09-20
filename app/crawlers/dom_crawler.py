@@ -19,8 +19,18 @@ from app.crawlers.common import (
     should_skip_href,
 )
 from app.crawlers.models import CrawledURL
+from app.models.contracts import AntiBotState
 
 logger = logging.getLogger(__name__)
+
+
+_PATCHRIGHT_AVAILABLE = False
+try:
+    from patchright.async_api import async_playwright as async_patchright
+
+    _PATCHRIGHT_AVAILABLE = True
+except Exception:  # pragma: no cover
+    async_patchright = None  # type: ignore[assignment]
 
 
 _PLAYWRIGHT_AVAILABLE = False
@@ -39,6 +49,24 @@ try:
     _CAMOUFOX_AVAILABLE = True
 except Exception:  # pragma: no cover - optional dependency
     AsyncNewBrowser = None  # type: ignore[assignment]
+
+
+def detect_antibot_challenge(html: str) -> AntiBotState:
+    """Detect Cloudflare, Turnstile, or DataDome challenge pages."""
+    text = (html or "").lower()
+    cf_indicators = (
+        "challenges.cloudflare.com",
+        "turnstile",
+        "cf-challenge",
+        "just a moment...",
+        "checking your browser",
+        "verify you are human",
+        "attention required! | cloudflare",
+        "datadome",
+    )
+    if any(ind in text for ind in cf_indicators):
+        return AntiBotState.CHALLENGE_DETECTED
+    return AntiBotState.CLEAR
 
 
 _DOM_GLOBAL_SEMAPHORE = asyncio.Semaphore(int(CRAWLER_CONFIG["dom"]["concurrency"]))
@@ -77,6 +105,7 @@ class DOMCrawler:
         self.scroll_wait_ms = int(cfg["scroll_wait_ms"])
         self.default_priority = float(cfg["default_priority"])
         self._shared_browser = shared_browser
+        self.last_antibot_state = AntiBotState.CLEAR
         self.last_exploration_quality: dict[str, Any] = {
             "actions_taken": 0,
             "new_states": 0,
@@ -469,6 +498,23 @@ class DOMCrawler:
         # Add explicit timeout to prevent hanging on slow/protected pages
         await page.goto(url, wait_until="domcontentloaded", timeout=int(self.page_timeout_seconds * 1000))
 
+        content = await page.content()
+        antibot_state = detect_antibot_challenge(content)
+        if antibot_state == AntiBotState.CHALLENGE_DETECTED:
+            logger.info("Anti-bot challenge detected on %s; observing resolution...", url)
+            for _ in range(4):
+                await page.wait_for_timeout(1000)
+                content = await page.content()
+                if detect_antibot_challenge(content) == AntiBotState.CLEAR:
+                    logger.info("Anti-bot challenge resolved on %s", url)
+                    antibot_state = AntiBotState.CHALLENGE_SOLVED
+                    break
+            else:
+                logger.warning("Anti-bot challenge active on %s (bounded timeout reached)", url)
+                antibot_state = AntiBotState.DEGRADED_TIMEOUT
+
+        self.last_antibot_state = antibot_state
+
         try:
             await page.wait_for_load_state("networkidle", timeout=self.network_idle_timeout_ms)
         except Exception:
@@ -536,30 +582,65 @@ class DOMCrawler:
 
             return page, _close
 
-        if _CAMOUFOX_AVAILABLE and AsyncNewBrowser is not None:
-            if not _PLAYWRIGHT_AVAILABLE or async_playwright is None:
-                raise RuntimeError("Playwright is required for Camoufox")
-            playwright = await async_playwright().start()
-            browser = await AsyncNewBrowser(playwright, headless=True)
-            context = await browser.new_context()
-            page = await context.new_page()
+        # Tier 1: Try Patchright (native undetected Chromium)
+        if _PATCHRIGHT_AVAILABLE and async_patchright is not None:
+            try:
+                pr = await async_patchright().start()
+                browser = await pr.chromium.launch(
+                    headless=True,
+                    args=["--disable-blink-features=AutomationControlled"],
+                )
+                context = await browser.new_context(
+                    viewport={"width": 1280, "height": 800},
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                )
+                page = await context.new_page()
 
-            async def _close() -> None:
-                with suppress(Exception):
-                    await context.close()
-                with suppress(Exception):
-                    await browser.close()
-                with suppress(Exception):
-                    await playwright.stop()
+                async def _close_pr() -> None:
+                    with suppress(Exception):
+                        await context.close()
+                    with suppress(Exception):
+                        await browser.close()
+                    with suppress(Exception):
+                        await pr.stop()
 
-            return page, _close
+                return page, _close_pr
+            except Exception as exc:
+                logger.debug("Patchright launcher unavailable (%s); attempting fallback", exc)
 
+        # Tier 2: Try Camoufox (if available and binary installed)
+        if _CAMOUFOX_AVAILABLE and AsyncNewBrowser is not None and _PLAYWRIGHT_AVAILABLE and async_playwright is not None:
+            try:
+                pw = await async_playwright().start()
+                browser = await AsyncNewBrowser(pw, headless=True)
+                context = await browser.new_context()
+                page = await context.new_page()
+
+                async def _close_cf() -> None:
+                    with suppress(Exception):
+                        await context.close()
+                    with suppress(Exception):
+                        await browser.close()
+                    with suppress(Exception):
+                        await pw.stop()
+
+                return page, _close_cf
+            except Exception as exc:
+                logger.debug("Camoufox launcher unavailable (%s); falling back to Playwright", exc)
+
+        # Tier 3: Standard Playwright with stealth args
         if not _PLAYWRIGHT_AVAILABLE or async_playwright is None:
             raise RuntimeError("No supported browser backend is available")
 
         playwright = await async_playwright().start()
-        browser = await playwright.chromium.launch(headless=True)
-        context = await browser.new_context()
+        browser = await playwright.chromium.launch(
+            headless=True,
+            args=["--disable-blink-features=AutomationControlled"],
+        )
+        context = await browser.new_context(
+            viewport={"width": 1280, "height": 800},
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        )
         page = await context.new_page()
 
         async def _close() -> None:

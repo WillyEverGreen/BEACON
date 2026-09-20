@@ -22,7 +22,10 @@ from typing import Any
 import pytest
 import pytest_asyncio  # noqa: F401
 
+pytestmark = [pytest.mark.integration, pytest.mark.slow]
+
 # ── Path plumbing ─────────────────────────────────────────────────────────────
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 

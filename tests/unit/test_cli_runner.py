@@ -38,9 +38,11 @@ async def test_run_cli_fail_on_threshold(tmp_path):
         "confidence_score": 0.9,
     }
     
-    with patch("scripts.run_detailed_audit_cli.run_audit", return_value=mock_result):
+    with patch("scripts.run_detailed_audit_cli.run_audit", new_callable=AsyncMock) as mock_audit:
+        mock_audit.return_value = mock_result
         exit_code = await _run_cli(args)
         assert exit_code == 4
+
 
 @pytest.mark.asyncio
 async def test_run_cli_passes_above_threshold(tmp_path):
@@ -76,6 +78,8 @@ async def test_run_cli_passes_above_threshold(tmp_path):
         "confidence_score": 0.9,
     }
     
-    with patch("scripts.run_detailed_audit_cli.run_audit", return_value=mock_result):
+    with patch("scripts.run_detailed_audit_cli.run_audit", new_callable=AsyncMock) as mock_audit:
+        mock_audit.return_value = mock_result
         exit_code = await _run_cli(args)
         assert exit_code == 0
+

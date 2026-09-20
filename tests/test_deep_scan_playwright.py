@@ -192,7 +192,7 @@ class StrategicResult:
     notes: str = ""
     error: Optional[str] = None
 
-async def test_strategic_site(site_data: dict, semaphore) -> StrategicResult:
+async def _run_strategic_site(site_data: dict, semaphore) -> StrategicResult:
     """Test one strategic site with both Fast and Deep scans (RAG enabled)."""
     async with semaphore:
         result = StrategicResult(
@@ -334,8 +334,9 @@ async def main():
     
     for i, site_data in enumerate(STRATEGIC_SITES, 1):
         print(f"\n[{i}/10] Queuing: {site_data['name']}")
-        task = test_strategic_site(site_data, semaphore)
+        task = _run_strategic_site(site_data, semaphore)
         tasks.append(task)
+
     
     results = await asyncio.gather(*tasks)
     

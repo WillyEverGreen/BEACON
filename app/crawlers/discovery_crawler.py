@@ -23,6 +23,7 @@ from app.crawlers.common import (
     should_skip_href,
 )
 from app.crawlers.models import CrawledURL
+from app.crawlers.topology import AdaptiveTopologyTracker
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,7 @@ class DiscoveryCrawler:
         self.concurrency = int(concurrency if concurrency is not None else cfg["default_concurrency"])
         self.timeout_seconds = float(timeout_seconds if timeout_seconds is not None else cfg["timeout_seconds"])
         self.default_priority = float(cfg["default_priority"])
+        self.topology_tracker = AdaptiveTopologyTracker()
 
         self.visited: set[str] = set()
         self.queue: asyncio.Queue[tuple[str, int, Optional[str]]] = asyncio.Queue()
@@ -109,10 +111,32 @@ class DiscoveryCrawler:
             ]
 
             level_results = await asyncio.gather(*fetch_tasks, return_exceptions=True)
-            for (parent_fetch_url, parent_normalized, parent_depth), links_result in zip(fetch_targets, level_results):
-                if isinstance(links_result, Exception):
-                    logger.warning("Discovery link extraction failed for %s: %s", parent_fetch_url, links_result)
+            for (parent_fetch_url, parent_normalized, parent_depth), fetch_res in zip(fetch_targets, level_results):
+                if isinstance(fetch_res, Exception):
+                    logger.warning("Discovery link extraction failed for %s: %s", parent_fetch_url, fetch_res)
                     continue
+
+                links_result, html = fetch_res
+                if html:
+                    fp, is_new, should_sample = self.topology_tracker.evaluate_page(
+                        parent_normalized,
+                        html,
+                        unexplored_frontier_urls=[p[0] for p in pending],
+                    )
+                    for r in results:
+                        if r.url == parent_normalized:
+                            r.metadata["template_id"] = fp.dom_hash
+                            r.metadata["landmarks"] = list(fp.landmarks)
+                            r.metadata["should_audit"] = should_sample
+                            break
+
+                if self.topology_tracker.should_terminate_crawl():
+                    logger.info(
+                        "Discovery early stopping triggered (%s) at %d pages",
+                        self.topology_tracker.stop_reason,
+                        len(results),
+                    )
+                    break
 
                 child_depth = parent_depth + 1
                 if child_depth > self.max_depth:
@@ -125,6 +149,9 @@ class DiscoveryCrawler:
                     enqueued.add(normalized_child)
                     pending.append((normalized_child, child_depth, parent_normalized))
 
+            if self.topology_tracker.should_terminate_crawl():
+                break
+
         return results[: self.max_pages]
 
     async def _fetch_links(
@@ -134,12 +161,12 @@ class DiscoveryCrawler:
         *,
         semaphore: asyncio.Semaphore,
         disallow_set: frozenset[str],
-    ) -> list[str]:
+    ) -> tuple[list[str], Optional[str]]:
         async with semaphore:
             html = await self._fetch_html(url)
 
         if not html:
-            return []
+            return [], None
 
         links: list[str] = []
         for href in extract_anchor_hrefs(html):
@@ -164,7 +191,7 @@ class DiscoveryCrawler:
             links.append(normalized)
 
         deduped = sorted(set(links))
-        return deduped
+        return deduped, html
 
     async def _fetch_html(self, url: str) -> Optional[str]:
         if _CRAWL4AI_AVAILABLE and AsyncWebCrawler is not None:
