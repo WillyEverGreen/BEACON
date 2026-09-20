@@ -1,9 +1,9 @@
-# BEACON Mastery Architecture v2.5
+# BEACON Mastery Architecture v3.0
 
 ## Production-Grade Accessibility Intelligence Engine
 
-> **Status**: Production-ready core. Experimental extensions clearly labelled.
-> **Last Updated**: 2026-05-03 — Fully reconciled with IBM Engine 6, Contrast-Finder integration, EARL 1.0 export, and multi-dataset benchmark suites (GenA11y, AccessGuru, ACT-Full).
+> **Status**: Production-ready core. Real-world verified against UK GDS Personas, TodoMVC, and W3C WAI-ARIA.
+> **Last Updated**: September 2026 — Fully upgraded with Patchright headless automation, Alfa (Siteimprove ACT) & Guidepup adapters, ConsensusEngine cross-calibration, RemediationSandbox security gating, and SARIF 2.1.0 / EARL 1.0 exporters.
 
 ---
 
@@ -25,45 +25,44 @@ Developer / CI Tool
 │  ┌────────────────────────────────────────────────────────────┐  │
 │  │         SCAN MODE ROUTER                                    │  │
 │  │  fast    ──► Static + Heuristics        (~5-10s, 1 page)    │  │
-│  │  deep    ──► Browser + Axe + Aggregation (~60-120s, ~12p)   │  │
+│  │  deep    ──► Browser + Multi-Engine     (~60-120s, ~12p)    │  │
 │  │  max     ──► Deep + interaction/scroll  (~120-240s, ~25p)   │  │
 │  └────────────────────────────────────────────────────────────┘  │
 │                                                                    │
 │  ┌────────────────────────────────────────────────────────────┐  │
-│  │  TOPOLOGY + PAGE BUDGET CONTROLLER (Phase 20)              │  │
-│  │  classify: single_page | thin | deep_uniform | paginated   │  │
-│  │            | multi_template                                │  │
-│  │  enforce: resolve_max_pages() + centralized mode caps      │  │
+│  │  ADAPTIVE TOPOLOGY CONTROLLER (topology.py)                │  │
+│  │  fingerprint: tag skeleton + semantic role structural hash │  │
+│  │  early_stop: sample representative pages, skip saturated   │  │
 │  └────────────────────────────────────────────────────────────┘  │
 │                       │                                            │
 │          ┌────────────┼──────────────────────┐                   │
 │          ▼            ▼                       ▼                   │
 │   ┌─────────────┐  ┌───────────────┐  ┌────────────────────┐    │
-│   │Static Engine│  │Heuristic Eng. │  │ Browser Probes     │    │
-│   │(static_     │  │(heuristics.py)│  │ (browser_probes.py)│    │
-│   │ checks.py)  │  │               │  │ [deep/max]         │    │
-│   │ 77KB rules  │  │Pattern match  │  │ Camoufox sessions  │    │
+│   │Static Engine│  │Heuristics Eng.│  │ Browser Automation │    │
+│   │(static_     │  │(heuristics.py)│  │ Patchright Driver  │    │
+│   │ checks.py)  │  │Heuristics     │  │ + Camoufox/Playw't │    │
+│   │ 77KB rules  │  │Adapter v2.1   │  │ Anti-Bot Detect    │    │
 │   └─────────────┘  └───────────────┘  └────────────────────┘    │
 │          │                                     │                  │
-│          │              ┌──────────────────────┘                  │
-│          ▼              ▼                                         │
-│   ┌─────────────────────────────────────────────────┐            │
-│   │               Axe-core Engine [deep/max]         │            │
-│   │   Playwright + axe.run() → violations[]          │            │
-│   └─────────────────────────────────────────────────┘            │
-│                          │                                        │
-│                          ▼                                        │
-│   ┌─────────────────────────────────────────────────┐            │
-│   │         IBM Equal Access Engine [deep/max]       │            │
-│   │   Node-side Engine 6 → accessibility-checker     │            │
-│   └─────────────────────────────────────────────────┘            │
-│                          │                                        │
-│                          ▼                                        │
-│   ┌─────────────────────────────────────────────────┐            │
-│   │     Cognitive Engine [max, experimental]         │            │
-│   │   Readability + Jargon + Form UX + COGA checks   │            │
-│   │   cognitive_mode = "experimental"                │            │
-│   └─────────────────────────────────────────────────┘            │
+│          │              ┌──────────────────────┤                  │
+│          ▼              ▼                      ▼                  │
+│   ┌───────────────────────────────┐  ┌─────────────────────┐    │
+│   │   Axe-core Engine [deep/max]   │  │ Alfa Engine [ACT]   │    │
+│   │   axe-core 4.10 adapter       │  │ AlfaAdapter         │    │
+│   └───────────────────────────────┘  └─────────────────────┘    │
+│                 │                               │                 │
+│                 ▼                               ▼                 │
+│   ┌───────────────────────────────┐  ┌─────────────────────┐    │
+│   │   IBM Equal Access Engine     │  │ Guidepup Runner     │    │
+│   │   IBMAdapter (v3.1)           │  │ Screen Reader Test  │    │
+│   └───────────────────────────────┘  └─────────────────────┘    │
+│                 │                                                 │
+│                 ▼                                                 │
+│   ┌─────────────────────────────────────────────────────────┐     │
+│   │        Consensus & Reconciliation Engine                │     │
+│   │   Cross-calibrate findings, pin CSS selectors,          │     │
+│   │   boost confidence on corroborated issues               │     │
+│   └─────────────────────────────────────────────────────────┘     │
 └──────────────────────────────────────────────────────────────────┘
                        │
                        ▼

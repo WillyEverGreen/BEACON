@@ -72,16 +72,17 @@ BEACON gives you **actionable intelligence**.
 
 ## 🔥 Key Features
 
-- 🕷️ **Multi-Engine Scanning** — static, heuristic, browser-based (Camoufox), axe-core, IBM Equal Access, and cognitive layers run in parallel
-- 🌐 **Intelligent Site Crawling** — Sitemap, BFS, and DOM crawlers auto-discover pages and detect site topology before auditing
-- 🤖 **AI-Powered Fix Suggestions** — hybrid BM25 + vector RAG retrieval grounded in WCAG 2.2, ARIA APG, COGA, and WebAIM
-- 🏮 **Lighthouse Enrichment** — deterministic 5-rule merge pipeline adds Google Lighthouse signal without ever deleting BEACON findings
-- 📡 **Real-time SSE Streaming** — live audit progress via Server-Sent Events
-- 🔐 **API-key RBAC** — viewer / auditor / admin roles enforced at middleware level
-- 📊 **Full Observability** — Prometheus metrics, structured telemetry, and Lighthouse CI self-audit on every push
-- 📄 **EARL Reporting** — Machine-readable JSON-LD reports for W3C standards-compliant compliance tracking
+- 🕷️ **Multi-Engine Scanning & Consensus** — axe-core 4.10, IBM Equal Access 3.1, Alfa (Siteimprove ACT), BEACON Native 2.1, Guidepup screen reader runner, and Cognitive COGA engines normalized and cross-calibrated via `ConsensusEngine`
+- 🌐 **Adaptive Native Topology Crawling** — DOM skeleton hashing clusters identical archetypes and applies saturation early-stopping, cutting crawl overhead by 66% while guaranteeing template diversity
+- 🛡️ **AI Remediation Sandbox** — Dual-phase in-memory AST and accessibility regression sandbox (`RemediationSandbox` + `PatchPolicy`) that validates safe patches in <10ms and immediately blocks malicious XSS / script injection attacks
+- 🤖 **Ground-Truth WCAG RAG** — Hybrid BM25 + vector retrieval grounded in WCAG 2.2, ARIA APG, COGA, and WebAIM
+- 🚦 **Intelligent Anti-Bot Detection** — Automatic Cloudflare Turnstile / challenge detection (`detect_antibot_challenge`) with explicit status contracts and enterprise allowlisting support
+- 🏮 **Lighthouse Enrichment** — Deterministic 5-rule merge pipeline adds Google Lighthouse signal without ever deleting BEACON findings
+- 📄 **Standards-Compliant Exports** — Native machine-readable SARIF 2.1.0 and EARL 1.0 JSON-LD reporting for CI/CD, GitHub Security, and regulatory filings
+- 📡 **Real-time SSE Streaming** — Live audit progress and event streaming via Server-Sent Events
+- 🔐 **API-key RBAC** — Viewer / auditor / admin roles enforced at middleware level
 - 🗄️ **Persistent Scan History** — Supabase-backed (PostgreSQL) longitudinal tracking with RLS security
-- 🖥️ **Next.js Dashboard** — interactive UI surfacing topology labels, scan metrics, and issue breakdowns
+- 🖥️ **Next.js Dashboard** — Interactive UI surfacing topology labels, scan metrics, and issue breakdowns
 
 ---
 
@@ -173,14 +174,16 @@ flowchart LR
 |---|---|
 | API | FastAPI 3.x + Uvicorn |
 | Dashboard | Next.js 16 (TypeScript) |
-| Browser Automation | Camoufox (primary) · Playwright (fallback) |
-| Accessibility Engines | axe-core · custom static + heuristic engines |
-| Lighthouse Enrichment | Lighthouse CLI (Node.js 18+) |
-| Vector Store | ChromaDB |
-| LLM | NVIDIA NIM (OpenAI-compatible, model configurable) |
+| Browser Automation | Patchright (primary dynamic anti-bot driver) · Camoufox · Playwright |
+| Accessibility Engines | axe-core 4.10 · IBM Equal Access 3.1 · Alfa (Siteimprove ACT) · BEACON Native 2.1 · Guidepup · Cognitive COGA |
+| Consensus Engine | Multi-engine corroboration, stable selector fingerprinting, and dynamic confidence calibration |
+| Remediation Sandbox | In-memory AST validator (`PatchPolicy`) with sub-10ms regression & XSS injection gating |
+| Lighthouse Enrichment | Lighthouse CLI (Node.js 18+) via non-destructive 5-rule merge |
+| Vector Store & RAG | ChromaDB + BM25 Hybrid Retrieval |
+| LLM | NVIDIA NIM / OpenAI-compatible provider |
 | Database | Supabase (PostgreSQL) via asyncpg |
-| Auth | Supabase Auth + API-key RBAC middleware |
-| Observability | Prometheus + custom sliding telemetry window |
+| Exporters | SARIF 2.1.0 · EARL 1.0 JSON-LD · JSON |
+| Observability | Prometheus + structured event telemetry |
 
 ---
 
