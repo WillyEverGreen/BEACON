@@ -22,7 +22,7 @@ class HeuristicsAdapter(BaseAuditAdapter):
         wcag_sc = str(raw_issue.get("wcag_criterion") or "")
         wcag_level = str(raw_issue.get("wcag_level") or "AA").upper()
 
-        selector = str(raw_issue.get("selector") or "body")
+        selector = str(raw_issue.get("selector") or raw_issue.get("element") or "body")
         selector_fp = stable_selector_fingerprint(selector)
         html_snippet = str(raw_issue.get("html_snippet") or raw_issue.get("element_html") or "")
         message = str(raw_issue.get("message") or raw_issue.get("description") or "")
