@@ -5,14 +5,31 @@ function IconChevron({ className, up }: { className?: string; up?: boolean }) {
   return (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{up ? <polyline points="18 15 12 9 6 15"/> : <polyline points="6 9 12 15 18 9"/>}</svg>);
 }
 function IconSearch({ className }: { className?: string }) {
-  return (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>);
+  return (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>);
+}
+function IconRocket({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
+      <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
+      <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
+      <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
+    </svg>
+  );
+}
+function IconWrench({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+    </svg>
+  );
 }
 
 const DOCS = [
   {
     id: "getting-started",
     title: "Getting Started",
-    icon: "🚀",
+    icon: IconRocket,
     sections: [
       {
         q: "What is BEACON?",
@@ -27,7 +44,7 @@ const DOCS = [
   {
     id: "scanning",
     title: "Scans & Scoring",
-    icon: "🔍",
+    icon: IconSearch,
     sections: [
       {
         q: "What does a scan check?",
@@ -46,7 +63,7 @@ const DOCS = [
   {
     id: "issues",
     title: "Issues & Fixes",
-    icon: "🔧",
+    icon: IconWrench,
     sections: [
       {
         q: "How do I see what's wrong?",
@@ -68,7 +85,7 @@ function AccordionSection({ q, a }: { q: string; a: string }) {
         className="w-full text-left py-3 flex items-center justify-between gap-3 hover:text-[var(--beacon-primary)] transition"
         onClick={() => setOpen(!open)}
       >
-        <span className="text-sm font-medium">{q}</span>
+        <span className="text-sm font-bold text-[var(--beacon-text)]">{q}</span>
         <IconChevron className="w-4 h-4 text-[var(--beacon-text-muted)] shrink-0" up={open} />
       </button>
       {open && (
@@ -76,13 +93,13 @@ function AccordionSection({ q, a }: { q: string; a: string }) {
           {a.split("\n").map((line, i) =>
             line.trim() === "" ? <div key={i} className="h-2" /> :
             line.match(/^[A-Z\s/]+:/) || line.endsWith(":") ? (
-              <p key={i} className="text-xs font-medium text-[var(--beacon-primary)] uppercase tracking-[0.06em] mt-3 mb-1">{line}</p>
+              <p key={i} className="text-xs font-bold text-[var(--beacon-primary)] uppercase tracking-[0.06em] mt-3 mb-1">{line}</p>
             ) : line.startsWith("•") || line.startsWith("·") ? (
-              <p key={i} className="text-xs text-[var(--beacon-text-muted)] leading-relaxed pl-3">{line}</p>
+              <p key={i} className="text-xs font-medium text-[var(--beacon-text-soft)] leading-relaxed pl-3">{line}</p>
             ) : line.match(/^\s+(GET|POST|WS|DELETE)/) ? (
-              <p key={i} className="text-xs font-mono text-[var(--beacon-text-muted)] leading-relaxed pl-4">{line}</p>
+              <p key={i} className="text-xs font-mono font-bold text-[var(--beacon-text)] leading-relaxed pl-4">{line}</p>
             ) : (
-              <p key={i} className="text-xs text-[var(--beacon-text-muted)] leading-relaxed">{line}</p>
+              <p key={i} className="text-xs font-medium text-[var(--beacon-text-soft)] leading-relaxed">{line}</p>
             )
           )}
         </div>
@@ -107,8 +124,8 @@ export default function HelpPage() {
   return (
     <div className="animate-fade-in max-w-4xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-medium tracking-[-0.02em]">Help &amp; Documentation</h1>
-        <p className="text-[var(--beacon-text-muted)] text-sm mt-1">Everything you need to use BEACON effectively</p>
+        <h1 className="text-3xl font-extrabold tracking-[-0.02em] text-[var(--beacon-text)]">Help &amp; Documentation</h1>
+        <p className="text-[var(--beacon-text-muted)] font-medium text-sm mt-1">Everything you need to use BEACON effectively</p>
       </div>
 
       {/* Search */}
@@ -126,8 +143,8 @@ export default function HelpPage() {
       <div className="flex gap-6">
         {/* Sidebar nav */}
         {!search && (
-          <div className="w-44 shrink-0">
-            <div className="space-y-0.5 sticky top-4">
+          <div className="w-48 shrink-0">
+            <div className="space-y-1 sticky top-4">
               {DOCS.map(section => (
                 <button
                   key={section.id}
@@ -135,14 +152,14 @@ export default function HelpPage() {
                     setActiveSection(section.id);
                     document.getElementById(section.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
                   }}
-                  className={`w-full text-left px-3 py-2 rounded text-xs flex items-center gap-2 transition ${
+                  className={`w-full text-left px-3 py-2 rounded-md text-xs font-bold flex items-center gap-2.5 transition ${
                     activeSection === section.id
-                      ? "bg-[var(--beacon-primary)]/10 text-[var(--beacon-primary)]"
+                      ? "bg-[var(--beacon-primary)] text-black shadow-[2px_2px_0px_#000]"
                       : "text-[var(--beacon-text-muted)] hover:text-[var(--beacon-text)] hover:bg-[var(--beacon-surface)]"
                   }`}
                 >
-                  <span>{section.icon}</span>
-                  {section.title}
+                  <section.icon className="w-3.5 h-3.5 shrink-0" />
+                  <span>{section.title}</span>
                 </button>
               ))}
             </div>
@@ -152,11 +169,11 @@ export default function HelpPage() {
         {/* Content */}
         <div className="flex-1 space-y-5">
           {filtered.map(section => (
-            <div key={section.id} id={section.id} className="glass-card p-5">
+            <div key={section.id} id={section.id} className="glass-card p-6">
               <div className="flex items-center gap-3 mb-4">
-                <span className="text-xl">{section.icon}</span>
-                <h2 className="text-sm font-medium uppercase tracking-[0.1em]">{section.title}</h2>
-                <span className="text-xs text-[var(--beacon-text-muted)] ml-auto">{section.sections.length} articles</span>
+                <section.icon className="w-5 h-5 text-[var(--beacon-primary)] shrink-0" />
+                <h2 className="text-sm font-extrabold uppercase tracking-[0.1em] text-[var(--beacon-text)]">{section.title}</h2>
+                <span className="text-xs font-bold text-[var(--beacon-text-muted)] ml-auto">{section.sections.length} articles</span>
               </div>
               <div>
                 {section.sections.map((s, i) => (

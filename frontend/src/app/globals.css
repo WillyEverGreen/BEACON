@@ -1,6 +1,9 @@
 @import url("https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800&f[]=satoshi@400,500,700&display=swap");
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+@variant dark (&:where(.dark, .dark *));
+
 /* ────────────────────────────────────────────────────────────────
    BEACON Design System  v2.1  (production-ready)
    Landing page : warm yellow neo-brutalism
@@ -47,20 +50,21 @@ body {
   --beacon-sidebar-bg: #0A0A0B;
   --beacon-surface: #FFFFFF;
   --beacon-card-bg: #FFFFFF;
-  --beacon-border: #000000;
+  --beacon-border: #18181B;
+  --beacon-border-subtle: #71717A;
   --beacon-primary: #E8A838;
-  --beacon-primary-dim: rgba(232, 168, 56, 0.12);
-  --beacon-text: #000000;
-  --beacon-text-soft: #1a1a1a;
-  --beacon-text-muted: #555555;
-  --beacon-success: #22c55e;
-  --beacon-warning: #E8A838;
-  --beacon-error: #E84855;
+  --beacon-primary-dim: rgba(232, 168, 56, 0.15);
+  --beacon-text: #09090B;
+  --beacon-text-soft: #18181B;
+  --beacon-text-muted: #52525B;
+  --beacon-success: #16a34a;
+  --beacon-warning: #d97706;
+  --beacon-error: #dc2626;
 
-  /* Hard brutalism box shadow for cards */
-  --beacon-card-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
-  --beacon-card-hover: 6px 6px 0px 0px rgba(0,0,0,1);
-  --beacon-btn-shadow: 2px 2px 0px 0px rgba(0,0,0,1);
+  /* Crisp defined card shadows */
+  --beacon-card-shadow: 2px 2px 0px 0px rgba(24, 24, 27, 0.08);
+  --beacon-card-hover: 3px 3px 0px 0px rgba(24, 24, 27, 0.14);
+  --beacon-btn-shadow: 1px 1px 0px 0px rgba(24, 24, 27, 0.1);
 }
 
 /* ── Dark Mode (Glassmorphism) ────────────────────────────────── */
@@ -69,15 +73,16 @@ body {
   --beacon-sidebar-bg: #0A0A0B;
   --beacon-surface: #111113;
   --beacon-card-bg: #141416;
-  --beacon-border: #2A2A2E;
+  --beacon-border: #3F3F46;
+  --beacon-border-subtle: #27272A;
   --beacon-primary: #E8A838;
-  --beacon-primary-dim: rgba(232, 168, 56, 0.12);
-  --beacon-text: #EDEDEF;
-  --beacon-text-soft: #C8C8CC;
-  --beacon-text-muted: #7A7A7E;
-  --beacon-success: #3BD16F;
-  --beacon-warning: #E8A838;
-  --beacon-error: #E84855;
+  --beacon-primary-dim: rgba(232, 168, 56, 0.18);
+  --beacon-text: #F4F4F5;
+  --beacon-text-soft: #E4E4E7;
+  --beacon-text-muted: #A1A1AA;
+  --beacon-success: #4ade80;
+  --beacon-warning: #fbbf24;
+  --beacon-error: #f87171;
 
   /* Soft glassmorphism shadows */
   --beacon-card-shadow: 0px 4px 16px 0px rgba(0, 0, 0, 0.4);
@@ -122,12 +127,9 @@ body {
 .glass-card {
   background: var(--beacon-card-bg);
   border: 1px solid var(--beacon-border);
-  border-radius: 10px;
+  border-radius: 12px;
   box-shadow: var(--beacon-card-shadow);
   transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
-}
-:root:not(.dark) .glass-card {
-  border: 2px solid var(--beacon-border);
 }
 /* Subtle hover lift in dark mode */
 .dark .glass-card:hover {
@@ -238,16 +240,16 @@ body {
   gap: 0.75rem;
   padding: 0.5rem 0.75rem;
   border-radius: 6px;
-  color: #7A7A7E;
+  color: #D4D4D8;
   text-decoration: none;
   font-size: 0.8125rem;
-  font-weight: 500;
+  font-weight: 600;
   transition: background 0.15s ease, color 0.15s ease;
   position: relative;
 }
 .sidebar-link:hover {
-  background: rgba(255,255,255,0.05);
-  color: #EDEDEF;
+  background: rgba(255,255,255,0.08);
+  color: #FFFFFF;
 }
 .sidebar-link.active {
   background: rgba(232,168,56,0.12);
@@ -269,24 +271,96 @@ body {
 .severity-badge {
   display: inline-flex;
   align-items: center;
-  padding: 0.125rem 0.5rem;
-  border-radius: 3px;
-  font-size: 0.625rem;
-  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
 }
 
-:root:not(.dark) .severity-badge   { border-width: 1px; color: #000; box-shadow: 1px 1px 0px #000; }
-:root:not(.dark) .severity-critical { background: #fca5a5; border-color: #000; }
-:root:not(.dark) .severity-serious  { background: #fcd34d; border-color: #000; }
-:root:not(.dark) .severity-moderate { background: #fde68a; border-color: #000; }
-:root:not(.dark) .severity-minor    { background: #86efac; border-color: #000; }
+:root:not(.dark) .severity-badge   { border-width: 1px; }
+:root:not(.dark) .severity-critical { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+:root:not(.dark) .severity-serious  { background: #ffedd5; color: #9a3412; border-color: #fdba74; }
+:root:not(.dark) .severity-moderate { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+:root:not(.dark) .severity-minor    { background: #dcfce7; color: #166534; border-color: #86efac; }
 
 .dark .severity-critical { background: rgba(232,72,85,0.15);  color: #E84855; border: 1px solid rgba(232,72,85,0.3); }
 .dark .severity-serious  { background: rgba(232,125,62,0.15); color: #E87D3E; border: 1px solid rgba(232,125,62,0.3); }
 .dark .severity-moderate { background: rgba(232,168,56,0.15); color: #E8A838; border: 1px solid rgba(232,168,56,0.3); }
 .dark .severity-minor    { background: rgba(59,209,111,0.15); color: #3BD16F; border: 1px solid rgba(59,209,111,0.3); }
+
+/* ── Verification & Status Badges ──────────────────────────────── */
+.badge-verified {
+  background: #dcfce7;
+  color: #14532d;
+  border: 1px solid #86efac;
+  font-weight: 700;
+  border-radius: 6px;
+}
+.dark .badge-verified {
+  background: rgba(22, 163, 74, 0.15);
+  color: #86efac;
+  border-color: rgba(74, 222, 128, 0.3);
+}
+
+.badge-needs-review {
+  background: #fef3c7;
+  color: #78350f;
+  border: 1px solid #fcd34d;
+  font-weight: 700;
+  border-radius: 6px;
+}
+.dark .badge-needs-review {
+  background: rgba(217, 119, 6, 0.15);
+  color: #fde047;
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+.badge-low-confidence {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  font-weight: 700;
+  border-radius: 6px;
+}
+.dark .badge-low-confidence {
+  background: rgba(100, 116, 139, 0.15);
+  color: #cbd5e1;
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+/* ── Degraded Scan Banner ──────────────────────────────────────── */
+.banner-degraded {
+  background: #fef3c7;
+  color: #78350f;
+  border: 1px solid #d97706;
+  border-radius: 10px;
+}
+:root:not(.dark) .banner-degraded {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+.dark .banner-degraded {
+  background: rgba(120, 53, 15, 0.3);
+  color: #fde68a;
+  border-color: rgba(245, 158, 11, 0.5);
+}
+
+/* ── WCAG Criterion Badge ──────────────────────────────────────── */
+.badge-wcag {
+  background: #fef3c7;
+  color: #78350f;
+  border: 1.5px solid #d97706;
+  font-weight: 800;
+}
+:root:not(.dark) .badge-wcag {
+  box-shadow: 1px 1px 0px #000;
+}
+.dark .badge-wcag {
+  background: rgba(232, 168, 56, 0.18);
+  color: #fcd34d;
+  border-color: rgba(232, 168, 56, 0.4);
+}
 
 /* ── Input ─────────────────────────────────────────────────────── */
 .beacon-input {
@@ -381,9 +455,23 @@ body {
 
 /* ── Focus ring (accessibility) ───────────────────────────────── */
 :focus-visible {
-  outline: 2px solid var(--beacon-primary);
-  outline-offset: 2px;
-  border-radius: 4px;
+  outline: 2px solid var(--beacon-border);
+  outline-offset: 1px;
+  border-radius: 6px;
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(110%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+.animate-slide-in-right {
+  animation: slide-in-right 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* ── Utility / polish ─────────────────────────────────────────── */

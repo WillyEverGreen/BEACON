@@ -142,14 +142,21 @@ class TestStructuralRuleSuppression:
         assert telemetry["suppression_rate"] >= 0.0
 
     def test_production_profile_in_adaptive_profiles(self):
-        """Production profile should use adaptive thresholding."""
+        """Production profile should use adaptive thresholding.
+
+        Effective threshold for uncalibrated visual-type rules:
+          - adaptive base: 0.75 (visual rule_type)
+          - trust-aware guard: min_conf = min(0.75, 0.45) = 0.45
+            because default trust_score (0.50) >= TRUST_TIERS['trusted'] (0.35)
+          - effective drop threshold: 0.45
+          - test uses confidence=0.40 to guarantee the drop
+        """
         issues = [
-            _issue("visual-check", confidence=0.70, rule_type="visual"),
+            _issue("visual-check", confidence=0.40, rule_type="visual"),
         ]
         kept, telemetry = _apply_precision_profile(issues, "production")
 
-        # visual rule_type needs 0.75 confidence in adaptive profiles
-        # 0.70 < 0.75 → should be dropped
+        # confidence 0.40 < effective threshold 0.45 → should be dropped
         assert telemetry["dropped_low_confidence"] >= 1
         assert telemetry["estimated_precision_floor"] == 0.95
 

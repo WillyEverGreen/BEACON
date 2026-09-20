@@ -6,7 +6,7 @@ import asyncio
 import json
 import logging
 import time
-from fastapi import APIRouter, HTTPException, Query, Header
+from fastapi import APIRouter, HTTPException, Query, Header, Depends
 from fastapi.responses import StreamingResponse
 from typing import Optional
 from app.models import (
@@ -15,7 +15,7 @@ from app.models import (
 )
 from app.services.audit_runner import get_audit_runtime_health, run_audit
 from app.services.feedback import record_feedback, get_feedback_stats
-from app.security.jwt_utils import extract_user_id_from_jwt
+from app.security.jwt_utils import extract_user_id_from_jwt, get_current_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +100,7 @@ def _build_explain_payload(result: dict) -> dict:
 async def audit_url(
     request: AuditRequest,
     explain: bool = Query(default=False, description="Include explainability payload in response"),
-    x_supabase_token: Optional[str] = Header(None, alias="X-Supabase-Token"),
+    user_id: Optional[str] = Depends(get_current_user_id),
 ):
     """
     Run accessibility audit on a URL.
@@ -111,10 +111,6 @@ async def audit_url(
     Returns enriched issues with confidence scores, grouped by domain, and a markdown report.
     """
     try:
-        user_id = extract_user_id_from_jwt(x_supabase_token)
-        if user_id is None and x_supabase_token:
-            logger.warning("Supabase token provided but user_id extraction failed")
-        
         _enforce_backpressure(request.scan_mode.value)
         result = await run_audit(
             url=request.url,
@@ -265,7 +261,10 @@ async def get_enrichment(audit_id: str):
 
 
 @router.post("/stream")
-async def audit_stream(request: AuditRequest):
+async def audit_stream(
+    request: AuditRequest,
+    user_id: Optional[str] = Depends(get_current_user_id),
+):
     """
     SSE streaming audit endpoint.
     Streams real-time progress events as the audit executes:
@@ -294,6 +293,7 @@ async def audit_stream(request: AuditRequest):
                 scan_mode=request.scan_mode.value,
                 checks=request.checks,
                 max_pages=request.max_pages,
+                user_id=user_id,
             )
             elapsed = round(time.time() - start, 2)
 

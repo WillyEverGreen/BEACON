@@ -393,7 +393,7 @@ export default function Home() {
             <p className="font-cabinet text-lg font-bold">Developers</p>
             <p className="mt-3 text-zinc-300">Documentation</p>
             <p className="text-zinc-300">GitHub</p>
-            <p className="text-zinc-300">Featherless AI</p>
+            <p className="text-zinc-300">NVIDIA NIM</p>
           </div>
           <div>
             <p className="font-cabinet text-lg font-bold">Follow</p>

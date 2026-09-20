@@ -225,6 +225,7 @@ class DOMCrawler:
         for handle in route_targets:
             if interaction_count >= self.interaction_budget_per_page or len(discovered) >= cap:
                 break
+            pre_click_url = page.url
             clicked = await self._safe_click(handle)
             if not clicked:
                 continue
@@ -243,6 +244,16 @@ class DOMCrawler:
             new_links_discovered += added
             if added > 0:
                 exploration_quality["new_states"] += 1
+
+            if page.url != pre_click_url:
+                try:
+                    await page.go_back(wait_until="domcontentloaded", timeout=5000)
+                except Exception:
+                    with suppress(Exception):
+                        await page.goto(seed_url, wait_until="domcontentloaded", timeout=5000)
+                with suppress(Exception):
+                    await page.wait_for_load_state("networkidle", timeout=self.network_idle_timeout_ms)
+
             if interaction_count >= self.early_stop_min_interactions and new_links_discovered == 0:
                 return
 
@@ -341,13 +352,34 @@ class DOMCrawler:
         hrefs = await self._extract_links_from_page(page, html)
         added = 0
 
+        current_url = page.url
+        if current_url:
+            normalized_current = normalize_url(current_url)
+            if (
+                is_same_origin(normalized_current, base_origin)
+                and not has_binary_extension(normalized_current)
+                and normalized_current not in discovered
+            ):
+                discovered[normalized_current] = CrawledURL(
+                    url=normalized_current,
+                    source="dom",
+                    depth=0,
+                    discovered_from=normalize_url(seed_url),
+                    state=state_label,
+                    priority=self.default_priority,
+                    metadata={"dom_hash": dom_hash, "is_spa_route": True},
+                )
+                added += 1
+
+        base_resolve_url = current_url if current_url else seed_url
+
         for href in hrefs:
             if len(discovered) >= cap:
                 break
             if should_skip_href(href):
                 continue
 
-            absolute = resolve_url(seed_url, href)
+            absolute = resolve_url(base_resolve_url, href)
             normalized = normalize_url(absolute)
             if should_skip_href(normalized):
                 continue
@@ -434,7 +466,8 @@ class DOMCrawler:
         return candidates
 
     async def _prepare_page(self, page: Any, url: str) -> None:
-        await page.goto(url, wait_until="domcontentloaded")
+        # Add explicit timeout to prevent hanging on slow/protected pages
+        await page.goto(url, wait_until="domcontentloaded", timeout=int(self.page_timeout_seconds * 1000))
 
         try:
             await page.wait_for_load_state("networkidle", timeout=self.network_idle_timeout_ms)
@@ -504,7 +537,10 @@ class DOMCrawler:
             return page, _close
 
         if _CAMOUFOX_AVAILABLE and AsyncNewBrowser is not None:
-            browser = await AsyncNewBrowser(headless=True)
+            if not _PLAYWRIGHT_AVAILABLE or async_playwright is None:
+                raise RuntimeError("Playwright is required for Camoufox")
+            playwright = await async_playwright().start()
+            browser = await AsyncNewBrowser(playwright, headless=True)
             context = await browser.new_context()
             page = await context.new_page()
 
@@ -513,6 +549,8 @@ class DOMCrawler:
                     await context.close()
                 with suppress(Exception):
                     await browser.close()
+                with suppress(Exception):
+                    await playwright.stop()
 
             return page, _close
 

@@ -14,9 +14,9 @@ import time
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, HTTPException, Header, Depends
 from pydantic import BaseModel
-from app.security.jwt_utils import extract_user_id_from_jwt
+from app.security.jwt_utils import extract_user_id_from_jwt, get_current_user_id
 
 from app.audit.failure_taxonomy import normalize_failure
 from app.audit.scan_mode_runner import run_scan_mode_audit
@@ -49,9 +49,15 @@ _legacy_bootstrap_done = False
 _legacy_bootstrap_lock = threading.Lock()
 
 
-def _resolve_site_scan_page_budget(scan_mode: str) -> int:
+def _resolve_site_scan_page_budget(scan_mode: str, user_id: Optional[str] = None) -> int:
+    from app.db.repository import get_user_usage_limits
     mode = (scan_mode or "deep").lower()
-    return resolve_max_pages(mode, has_sitemap=False)
+    mode_ceiling = resolve_max_pages(mode, has_sitemap=False)
+    
+    user_limits = get_user_usage_limits(user_id) if user_id else {}
+    user_max = user_limits.get("max_pages", 10)
+    
+    return min(mode_ceiling, user_max)
 
 
 def _extract_page_issue_occurrences(site_payload: dict) -> list[dict]:
@@ -167,6 +173,15 @@ def _normalize_site_scan_result(site_payload: dict, scan_mode: str, elapsed_seco
         or site_result.get("degraded_mode")
         or site_payload.get("sla_truncated")
     )
+    partial_engine_coverage = bool(
+        site_payload.get("partial_engine_coverage")
+        or site_result.get("partial_engine_coverage")
+    )
+    audit_run_id = (
+        site_payload.get("audit_run_id")
+        or site_result.get("audit_run_id")
+        or ""
+    )
 
     top_degraded = site_payload.get("top_degraded_causes", [])
     degraded_reason = normalize_failure(top_degraded[0].get("reason")).value if isinstance(top_degraded, list) and top_degraded and isinstance(top_degraded[0], dict) and top_degraded[0].get("reason") else None
@@ -198,6 +213,9 @@ def _normalize_site_scan_result(site_payload: dict, scan_mode: str, elapsed_seco
     trust_warnings = []
     if degraded_mode:
         trust_warnings.append("site_scan_degraded_or_truncated")
+    if partial_engine_coverage and not degraded_mode:
+        # Partial coverage without full degradation: engines ran but not all completed.
+        trust_warnings.append("partial_engine_coverage")
     if pages_scanned <= 1:
         trust_warnings.append("single_page_coverage")
 
@@ -243,6 +261,8 @@ def _normalize_site_scan_result(site_payload: dict, scan_mode: str, elapsed_seco
         "scan_time_seconds": round(float(elapsed_seconds), 2),
         "engines_used": engines_used,
         "degraded_mode": degraded_mode,
+        "partial_engine_coverage": partial_engine_coverage,
+        "audit_run_id": audit_run_id,
         "degraded_reason": normalize_failure(degraded_reason).value if degraded_reason else None,
         "skipped_components": [],
         "degradation_reason": degraded_reason,
@@ -510,11 +530,9 @@ class ScanStart(BaseModel):
 @router.post("/projects/")
 async def create_project(
     data: ProjectCreate,
-    x_supabase_token: Optional[str] = Header(None, alias="X-Supabase-Token"),
+    user_id: Optional[str] = Depends(get_current_user_id),
 ):
     _ensure_legacy_bootstrap()
-    user_id = extract_user_id_from_jwt(x_supabase_token)
-
     pid = str(uuid.uuid4())[:8]
     project = {
         "id": pid,
@@ -527,47 +545,52 @@ async def create_project(
         "total_issues": 0,
         "user_id": user_id,
     }
-    return upsert_project_record(project)
+    return upsert_project_record(project, user_id=user_id)
 
 
 @router.get("/projects/")
-async def get_projects():
+async def get_projects(user_id: Optional[str] = Depends(get_current_user_id)):
     _ensure_legacy_bootstrap()
-
     _repair_invalid_completed_scans()
 
     changed = False
-    projects = list_project_records()
+    projects = list_project_records(user_id=user_id)
     for project in projects:
         changed = _recompute_project_summary(project["id"]) or changed
 
     if changed:
-        projects = list_project_records()
+        projects = list_project_records(user_id=user_id)
 
     return sorted(projects, key=lambda project: project.get("created_at", ""), reverse=True)
 
 
 @router.get("/projects/{pid}")
-async def get_project(pid: str):
+async def get_project(
+    pid: str,
+    user_id: Optional[str] = Depends(get_current_user_id),
+):
     _ensure_legacy_bootstrap()
 
-    project = get_project_record(pid)
+    project = get_project_record(pid, user_id=user_id)
     if not project:
-        raise HTTPException(404, "Project not found")
+        raise HTTPException(404, "Project not found or access denied")
 
     if _recompute_project_summary(pid):
-        project = get_project_record(pid)
+        project = get_project_record(pid, user_id=user_id)
 
     return project
 
 
 @router.delete("/projects/{pid}")
-async def delete_project(pid: str):
+async def delete_project(
+    pid: str,
+    user_id: Optional[str] = Depends(get_current_user_id),
+):
     _ensure_legacy_bootstrap()
 
-    deleted = delete_project_record(pid)
+    deleted = delete_project_record(pid, user_id=user_id)
     if not deleted:
-        raise HTTPException(404, "Project not found")
+        raise HTTPException(404, "Project not found or access denied")
 
     return {"status": "deleted"}
 
@@ -575,14 +598,13 @@ async def delete_project(pid: str):
 @router.post("/scans/")
 async def start_scan(
     data: ScanStart,
-    x_supabase_token: Optional[str] = Header(None, alias="X-Supabase-Token"),
+    user_id: Optional[str] = Depends(get_current_user_id),
 ):
     _ensure_legacy_bootstrap()
-    user_id = extract_user_id_from_jwt(x_supabase_token)
 
-    project = get_project_record(data.project_id)
+    project = get_project_record(data.project_id, user_id=user_id)
     if not project:
-        raise HTTPException(404, "Project not found")
+        raise HTTPException(404, "Project not found or access denied")
 
     _repair_invalid_completed_scans(project_id=data.project_id)
     _expire_stale_scans(project_id=data.project_id)
@@ -658,7 +680,7 @@ async def start_scan(
                 site_payload = await run_scan_mode_audit(
                     seed_url=scan_url,
                     scan_mode=scan_mode,
-                    max_pages=_resolve_site_scan_page_budget(scan_mode),
+                    max_pages=_resolve_site_scan_page_budget(scan_mode, user_id),
                 )
                 elapsed = time.perf_counter() - started
                 result = _normalize_site_scan_result(site_payload, scan_mode, elapsed)
@@ -676,6 +698,7 @@ async def start_scan(
                             enable_enrichment=False,
                             use_cache=False,
                             user_id=user_id,
+                            is_internal=True,
                         )
                         direct_issue_count = int(direct_result.get("total_issues") or 0)
                         if direct_issue_count > site_issue_count:
@@ -745,6 +768,8 @@ async def start_scan(
             trust_payload["site_failure_profile"] = result.get("site_failure_profile", {})
             scan_record["trust"] = trust_payload
             scan_record["degraded_mode"] = result.get("degraded_mode", False)
+            scan_record["partial_engine_coverage"] = result.get("partial_engine_coverage", False)
+            scan_record["audit_run_id"] = result.get("audit_run_id", "")
             scan_record["degraded_reason"] = result.get("degraded_reason")
             scan_record["skipped_components"] = result.get("skipped_components", [])
             scan_record["degradation_reason"] = result.get("degradation_reason")
@@ -846,7 +871,7 @@ async def start_scan(
                 if "429" in err_str or "insufficient_quota" in err_str or "limit" in err_str:
                     ai_summary = (
                         "[AI ERROR]: API credit limit reached. "
-                        f"Please check your Featherless AI billing. Raw error: {exc}"
+                        f"Please check your NVIDIA NIM API billing. Raw error: {exc}"
                     )
                 elif "401" in err_str:
                     ai_summary = f"[AI ERROR]: Authentication failure. Raw error: {exc}"

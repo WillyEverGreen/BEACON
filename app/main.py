@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 
 from app.config import settings
+from app.core.env_validator import validate_or_exit
 from app.db.base import init_db
 from app.db.repository import get_audit_history
 from app.models import HealthResponse
@@ -28,11 +29,18 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """App startup/shutdown lifecycle."""
-    logger.info("Accessibility Intelligence Engine starting")
+    logger.info("=" * 70)
+    logger.info("BEACON - Accessibility Intelligence Engine")
+    logger.info("=" * 70)
+    
+    # Validate environment configuration
+    validate_or_exit()
+    
     logger.info(f"Supabase Project: {settings.supabase_url}")
     logger.info(f"LLM Model: {settings.llm_model}")
     logger.info(f"Embedding Model: {settings.embedding_model}")
     logger.info(f"Vector Store: {settings.vector_store}")
+    logger.info(f"Environment: {settings.environment}")
 
     bootstrap_auth_store()
 
@@ -62,17 +70,50 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# ── Middleware Stack (order matters - first added = outermost) ───────
 
+# 1. Error handling middleware (outermost - catches all errors)
+from app.middleware.error_handler import error_handler_middleware
+app.middleware("http")(error_handler_middleware)
+
+# 2. Security headers (add security headers to all responses)
+from app.middleware.security import SecurityHeadersMiddleware
+app.add_middleware(SecurityHeadersMiddleware)
+
+# 3. Request size limit (block oversized requests early)
+from app.middleware.security import RequestSizeLimitMiddleware
+app.add_middleware(RequestSizeLimitMiddleware, max_size_mb=10)
+
+# 4. CORS (configure before other middleware that might block)
+from app.middleware.security import configure_cors
+configure_cors(app)
+
+# 5. Rate limiting (prevent abuse)
+from app.middleware.security import RateLimitMiddleware
+import os
+rate_limit_enabled = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
+if rate_limit_enabled:
+    requests_per_minute = int(os.getenv("RATE_LIMIT_PER_MINUTE", "60"))
+    requests_per_hour = int(os.getenv("RATE_LIMIT_PER_HOUR", "1000"))
+    app.add_middleware(
+        RateLimitMiddleware,
+        requests_per_minute=requests_per_minute,
+        requests_per_hour=requests_per_hour
+    )
+    logger.info(f"Rate limiting enabled: {requests_per_minute}/min, {requests_per_hour}/hr")
+else:
+    logger.warning("Rate limiting is DISABLED")
+
+# 6. Request logging (log all requests with timing)
+from app.middleware.logging_middleware import RequestLoggingMiddleware
+app.add_middleware(RequestLoggingMiddleware)
+
+# 7. Authentication (verify API keys)
 if bool(getattr(settings, "auth_enabled", True)):
     app.add_middleware(APIKeyMiddleware)
+    logger.info("API key authentication enabled")
+else:
+    logger.warning("API key authentication is DISABLED")
 
 # Routers
 # Canonical versioned API surface.

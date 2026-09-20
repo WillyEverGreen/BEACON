@@ -168,6 +168,7 @@ async def _full_engine_page_auditor(url: str, scan_mode: str, page_context: Page
         enable_enrichment=False,
         use_cache=False,
         run_id=run_id or None,
+        is_internal=True,
     )
 
     scan_time_seconds = float(result.get("scan_time_seconds", 0.0) or 0.0)

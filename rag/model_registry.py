@@ -87,3 +87,9 @@ _bm25_cache: dict[str, Any] = {}
 def get_bm25_cache() -> dict[str, Any]:
     """Get the shared BM25 index cache."""
     return _bm25_cache
+
+def invalidate_bm25_cache() -> None:
+    """Clear the shared BM25 index cache (used after ingestion)."""
+    global _bm25_cache
+    _bm25_cache.clear()
+    logger.info("BM25 cache invalidated.")

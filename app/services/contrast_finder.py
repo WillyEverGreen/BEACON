@@ -1,5 +1,9 @@
 import colorsys
+import logging
 import re
+
+logger = logging.getLogger(__name__)
+
 
 def hex_to_rgb(hex_color: str) -> tuple:
     """Convert hex string (#RRGGBB or #RGB) to (r, g, b) tuple 0-255."""
@@ -41,18 +45,21 @@ def find_accessible_color(fg_hex: str, bg_hex: str, target_ratio: float = 4.5) -
     try:
         fg_rgb = hex_to_rgb(fg_hex)
         bg_rgb = hex_to_rgb(bg_hex)
-        print(f"DEBUG: fg_rgb={fg_rgb}, bg_rgb={bg_rgb}")
+        logger.debug(f"Color conversion: fg_rgb={fg_rgb}, bg_rgb={bg_rgb}")
     except Exception as e:
-        print(f"DEBUG: Error parsing hex: {e}")
+        logger.warning(f"Error parsing hex colors (fg={fg_hex}, bg={bg_hex}): {e}")
         return fg_hex
 
     bg_lum = get_relative_luminance(*bg_rgb)
     fg_lum = get_relative_luminance(*fg_rgb)
-    print(f"DEBUG: fg_lum={fg_lum}, bg_lum={bg_lum}, ratio={get_contrast_ratio(fg_lum, bg_lum)}")
+    current_ratio = get_contrast_ratio(fg_lum, bg_lum)
+    logger.debug(f"Luminance values: fg={fg_lum:.3f}, bg={bg_lum:.3f}, ratio={current_ratio:.2f}")
     
     fg_h, fg_l, fg_s = colorsys.rgb_to_hls(fg_rgb[0]/255, fg_rgb[1]/255, fg_rgb[2]/255)
-    print(f"DEBUG: HSL=({fg_h}, {fg_l}, {fg_s})")
-    if get_contrast_ratio(fg_lum, bg_lum) >= target_ratio:
+    logger.debug(f"HSL values: hue={fg_h:.3f}, lightness={fg_l:.3f}, saturation={fg_s:.3f}")
+    
+    if current_ratio >= target_ratio:
+        logger.debug(f"Current color already meets target ratio {target_ratio}")
         return fg_hex
 
     # We need to change lightness. Should we go lighter or darker?
@@ -63,6 +70,7 @@ def find_accessible_color(fg_hex: str, bg_hex: str, target_ratio: float = 4.5) -
     # Usually we want to move AWAY from the background luminance
     
     direction = 1 if bg_lum < 0.5 else -1
+    logger.debug(f"Adjusting lightness in direction: {'lighter' if direction > 0 else 'darker'}")
     
     # Iterative search (100 steps)
     best_hex = fg_hex
@@ -97,6 +105,6 @@ def find_accessible_color(fg_hex: str, bg_hex: str, target_ratio: float = 4.5) -
 
 if __name__ == "__main__":
     # Test cases
-    print(f"White on White: {find_accessible_color('#FFFFFF', '#FFFFFF')}") # Should be a dark gray
-    print(f"Light Gray on White: {find_accessible_color('#CCCCCC', '#FFFFFF')}") # Should be darker
-    print(f"Dark Gray on Black: {find_accessible_color('#333333', '#000000')}") # Should be lighter
+    logger.info(f"White on White: {find_accessible_color('#FFFFFF', '#FFFFFF')}") # Should be a dark gray
+    logger.info(f"Light Gray on White: {find_accessible_color('#CCCCCC', '#FFFFFF')}") # Should be darker
+    logger.info(f"Dark Gray on Black: {find_accessible_color('#333333', '#000000')}") # Should be lighter

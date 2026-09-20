@@ -50,10 +50,12 @@ def test_cache_get_expired(monkeypatch):
     """Entry with timestamp far in the past should be treated as expired."""
     clear_lighthouse_cache()
     import app.services.lighthouse_runner as mod
+    import time
 
     key = _cache_key("https://expired.com", "10.x", "v1")
-    # Store with a very old timestamp (epoch 0)
-    mod._LH_CACHE[key] = ({"url": "https://expired.com"}, 0.0)
+    # Store with a timestamp far in the past relative to current monotonic time
+    expired_time = time.monotonic() - (mod.LIGHTHOUSE_CACHE_TTL_SECONDS + 10)
+    mod._LH_CACHE[key] = ({"url": "https://expired.com"}, expired_time)
 
     result = _cache_get(key)
     assert result is None  # expired

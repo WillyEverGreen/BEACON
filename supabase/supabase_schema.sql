@@ -139,6 +139,7 @@ CREATE TABLE IF NOT EXISTS usage_limits (
     plan TEXT DEFAULT 'free',
     audits_this_month INTEGER DEFAULT 0,
     pages_per_audit INTEGER DEFAULT 10,
+    ai_budget_per_audit INTEGER DEFAULT 5,
     last_reset_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

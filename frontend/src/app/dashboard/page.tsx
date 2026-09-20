@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import api, { toUserFacingError } from "@/lib/api";
 import Link from "next/link";
 
@@ -73,6 +74,47 @@ function IconTrash({ className }: { className?: string }) {
     </svg>
   );
 }
+function IconShield({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  );
+}
+function IconAlertTriangle({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+      <line x1="12" y1="9" x2="12" y2="13" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  );
+}
+function IconCheckCircle({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+      <polyline points="22 4 12 14.01 9 11.01" />
+    </svg>
+  );
+}
+function IconX({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
 
 export default function AllProjectsPage() {
   const [projects, setProjects] = useState<any[]>([]);
@@ -87,6 +129,9 @@ export default function AllProjectsPage() {
   const [creating, setCreating] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const successTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     loadProjects();
@@ -107,8 +152,15 @@ export default function AllProjectsPage() {
     }
     successTimerRef.current = setTimeout(() => {
       setSuccessMessage(null);
-    }, 4000);
+    }, 60_000);
   }
+
+  /* ── apiError auto-dismiss: 60 seconds ───────────────────────── */
+  useEffect(() => {
+    if (!apiError) return;
+    const t = setTimeout(() => setApiError(null), 60_000);
+    return () => clearTimeout(t);
+  }, [apiError]);
 
   async function loadProjects() {
     try {
@@ -123,17 +175,49 @@ export default function AllProjectsPage() {
     }
   }
 
+  function normalizeUrl(raw: string): string {
+    const trimmed = raw.trim();
+    if (!trimmed) return "";
+    if (/^https?:\/\//i.test(trimmed)) {
+      return trimmed;
+    }
+    return `https://${trimmed}`;
+  }
+
+  function isValidUrl(urlString: string): boolean {
+    const trimmed = urlString.trim();
+    if (!trimmed) return false;
+    try {
+      const normalized = normalizeUrl(trimmed);
+      const url = new URL(normalized);
+      const isHttp = url.protocol === "http:" || url.protocol === "https:";
+      const hasHost = url.hostname.length > 0 && (url.hostname.includes(".") || url.hostname === "localhost");
+      return isHttp && hasHost;
+    } catch {
+      return false;
+    }
+  }
+
   async function createProject() {
     if (!newName.trim() || !newUrl.trim()) return;
+    
+    const normalizedUrl = normalizeUrl(newUrl.trim());
+    if (!isValidUrl(normalizedUrl)) {
+      setApiError({
+        message: "Please enter a valid website domain or URL (e.g. sai-folio.vercel.app or https://example.com)",
+        retryable: false
+      });
+      return;
+    }
+    
     const name = newName.trim();
-    const url = newUrl.trim();
     setCreating(true);
     try {
-      const created = await api.createProject({ name, url });
+      const created = await api.createProject({ name, url: normalizedUrl });
       const optimisticProject = {
         id: created?.id || `local-${Date.now()}`,
         name: created?.name || name,
-        url: created?.url || url,
+        url: created?.url || normalizedUrl,
         latest_score: created?.latest_score ?? null,
         total_issues: created?.total_issues ?? 0,
         last_scan_at: created?.last_scan_at ?? null,
@@ -218,52 +302,116 @@ export default function AllProjectsPage() {
         <button
           onClick={() => setShowNewForm(!showNewForm)}
           className="btn-primary"
+          data-testid="new-project-btn"
         >
           <IconPlus className="w-4 h-4" /> New Project
         </button>
       </div>
 
-      {apiError && (
-        <div className="glass-card p-4 mb-6 border-l-[6px] border-l-[var(--beacon-error)]">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <p className="text-sm font-semibold text-[var(--beacon-text)]">
-              {apiError.message}
-            </p>
-            {apiError.retryable && (
-              <button onClick={loadProjects} className="btn-secondary text-xs">
-                Retry
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {successMessage && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="glass-card p-4 mb-6 border-l-[6px] border-l-[var(--beacon-success)]"
+      {/* ── Floating Toast Portal ──────────────────────────────── */}
+      {mounted && createPortal(
+        <aside
+          aria-label="Notifications"
+          style={{ position: "fixed", bottom: "24px", right: "24px", zIndex: 99999, display: "flex", flexDirection: "column", gap: "12px", maxWidth: "420px", width: "calc(100vw - 3rem)", pointerEvents: "none" }}
         >
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <p className="text-sm font-semibold text-[var(--beacon-text)]">
-              {successMessage}
-            </p>
-            <button
-              onClick={() => setSuccessMessage(null)}
-              className="btn-secondary text-xs"
+          {successMessage && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="pointer-events-auto w-full bg-[var(--beacon-surface)] text-[var(--beacon-text)] p-4 rounded-xl border-2 border-[var(--beacon-border)] shadow-[5px_5px_0px_#000] animate-slide-in-right flex items-start justify-between gap-3 border-l-8 border-l-[var(--beacon-success)]"
             >
-              Dismiss
-            </button>
-          </div>
-        </div>
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-[var(--beacon-success)]/15 border border-[var(--beacon-success)]/30 flex items-center justify-center shrink-0 text-[var(--beacon-success)] mt-0.5">
+                  <IconCheckCircle className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-[var(--beacon-success)]">
+                    Success
+                  </h4>
+                  <p className="text-xs font-bold text-[var(--beacon-text)] mt-0.5 leading-snug">
+                    {successMessage}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSuccessMessage(null)}
+                aria-label="Close notification"
+                className="w-7 h-7 rounded-md border border-[var(--beacon-border)] flex items-center justify-center text-[var(--beacon-text-muted)] hover:text-[var(--beacon-text)] hover:bg-[var(--beacon-bg)] transition-colors shrink-0"
+              >
+                <IconX className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {apiError && !showNewForm && (
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="pointer-events-auto w-full bg-[var(--beacon-surface)] text-[var(--beacon-text)] p-4 rounded-xl border-2 border-[var(--beacon-border)] shadow-[5px_5px_0px_#000] animate-slide-in-right flex items-start justify-between gap-3 border-l-8 border-l-[var(--beacon-error)]"
+            >
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-red-500/15 border border-red-500/30 flex items-center justify-center shrink-0 text-[var(--beacon-error)] mt-0.5">
+                  <IconAlertTriangle className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-[var(--beacon-error)]">
+                    API Error
+                  </h4>
+                  <p className="text-xs font-bold text-[var(--beacon-text)] mt-0.5 leading-snug break-words">
+                    {apiError.message}
+                  </p>
+                  {apiError.retryable && (
+                    <button
+                      onClick={loadProjects}
+                      className="mt-2 text-xs font-black uppercase tracking-wider px-2.5 py-1 rounded bg-[var(--beacon-bg)] border border-[var(--beacon-border)] hover:bg-[var(--beacon-card-bg)] text-[var(--beacon-text)] transition-colors inline-block"
+                    >
+                      Retry
+                    </button>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => setApiError(null)}
+                aria-label="Close notification"
+                className="w-7 h-7 rounded-md border border-[var(--beacon-border)] flex items-center justify-center text-[var(--beacon-text-muted)] hover:text-[var(--beacon-text)] hover:bg-[var(--beacon-bg)] transition-colors shrink-0"
+              >
+                <IconX className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </aside>,
+        document.body
       )}
 
       {/* New Project Form */}
       {showNewForm && (
-        <div className="glass-card p-6 mb-8 animate-fade-in">
-          <h3 className="text-sm font-bold uppercase tracking-[0.15em] mb-5">
-            Create New Project
-          </h3>
+        <div className="glass-card p-6 mb-8 animate-fade-in border-2 border-[var(--beacon-border)] shadow-[4px_4px_0px_#000]" data-testid="new-project-form">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="text-sm font-bold uppercase tracking-[0.15em]">
+              Create New Project
+            </h3>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--beacon-primary)] bg-[var(--beacon-primary)]/10 px-2 py-0.5 rounded">
+              Ready to Audit
+            </span>
+          </div>
+
+          {/* Form-scoped error card */}
+          {apiError && (
+            <div className="mb-5 p-3.5 rounded-lg border-2 border-[var(--beacon-error)] bg-red-500/10 text-red-700 dark:text-red-300 text-xs font-semibold flex items-center justify-between gap-4 shadow-[2px_2px_0px_#000]">
+              <div className="flex items-center gap-2.5">
+                <IconAlertTriangle className="w-4 h-4 shrink-0 text-[var(--beacon-error)]" />
+                <span>{apiError.message}</span>
+              </div>
+              <button
+                onClick={() => setApiError(null)}
+                aria-label="Close alert"
+                className="w-6 h-6 rounded border border-[var(--beacon-error)]/40 flex items-center justify-center text-[var(--beacon-error)] hover:bg-red-500/20 transition-colors shrink-0"
+              >
+                <IconX className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
             <div>
               <label className="text-xs text-[var(--beacon-text-muted)] font-bold uppercase tracking-[0.1em] block mb-2">
@@ -275,6 +423,7 @@ export default function AllProjectsPage() {
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="Product Landing Page"
                 className="beacon-input w-full font-medium"
+                data-testid="project-name-input"
                 autoFocus
               />
             </div>
@@ -283,24 +432,49 @@ export default function AllProjectsPage() {
                 Website URL
               </label>
               <input
-                type="url"
+                type="text"
                 value={newUrl}
                 onChange={(e) => setNewUrl(e.target.value)}
                 placeholder="https://example.com"
                 className="beacon-input w-full font-medium"
+                data-testid="project-url-input"
               />
+              {newUrl.trim() && (
+                <p className="text-[11px] font-medium text-[var(--beacon-text-muted)] mt-1.5 flex items-center gap-1.5">
+                  <IconGlobe className="w-3.5 h-3.5 text-[var(--beacon-primary)] shrink-0" />
+                  Will be scanned as: <span className="font-mono text-[var(--beacon-text)] font-bold">{normalizeUrl(newUrl)}</span>
+                </p>
+              )}
             </div>
           </div>
+
+          {/* Cloudflare & Bot Protection Warning Card */}
+          <div className="p-4 rounded-lg border-2 border-amber-500/60 bg-amber-100 dark:bg-amber-950/40 text-xs mb-5 flex items-start gap-3 shadow-[2px_2px_0px_#000]">
+            <IconShield className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <span className="font-black uppercase tracking-wider text-amber-950 dark:text-amber-300 block text-[11px]">
+                Cloudflare &amp; Bot Protection Notice
+              </span>
+              <p className="text-amber-900 dark:text-amber-100 font-medium leading-relaxed text-xs">
+                BEACON automated crawlers cannot audit sites behind active Cloudflare Turnstile, CAPTCHAs, or anti-bot challenge walls. Please ensure your target website is publicly accessible.
+              </p>
+            </div>
+          </div>
+
           <div className="flex gap-3">
             <button
               onClick={createProject}
-              disabled={creating || !newName.trim() || !newUrl.trim()}
+              disabled={creating || !newName.trim() || !isValidUrl(newUrl)}
               className="btn-primary"
+              data-testid="create-project-submit-btn"
             >
-              {creating ? "Creating..." : "Launch Project"}
+              {creating ? "Launching..." : "Launch Project"}
             </button>
             <button
-              onClick={() => setShowNewForm(false)}
+              onClick={() => {
+                setShowNewForm(false);
+                setApiError(null);
+              }}
               className="btn-secondary"
             >
               Cancel
@@ -323,6 +497,7 @@ export default function AllProjectsPage() {
           <button
             onClick={() => setShowNewForm(true)}
             className="btn-primary py-3 px-6 text-sm"
+            data-testid="create-first-project-btn"
           >
             <IconPlus className="w-[18px] h-[18px]" /> Create First Project
           </button>
@@ -331,12 +506,13 @@ export default function AllProjectsPage() {
 
       {/* Project Grid */}
       {projects.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" data-testid="project-grid">
           {projects.map((project) => (
             <Link
               key={project.id}
               href={`/dashboard/${project.id}`}
               className="glass-card flex flex-col hover:-translate-y-1 transition-all duration-200 group"
+              data-testid="project-card"
             >
               <div className="p-6 flex-1 flex flex-col">
                 {/* Score & Name header */}

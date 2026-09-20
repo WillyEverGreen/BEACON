@@ -16,27 +16,38 @@ ANON_KEY = os.environ.get("SUPABASE_ANON_KEY") or os.environ.get("SUPABASE_KEY")
 def client_a():
     if not os.environ.get("TEST_USER_A_EMAIL"):
         pytest.skip("TEST_USER_A_EMAIL not set in environment")
-    client = create_client(SUPABASE_URL, ANON_KEY)
-    client.auth.sign_in_with_password({
-        "email": os.environ["TEST_USER_A_EMAIL"],
-        "password": os.environ["TEST_USER_A_PASSWORD"]
-    })
-    return client
+    try:
+        client = create_client(SUPABASE_URL, ANON_KEY)
+        client.auth.sign_in_with_password({
+            "email": os.environ["TEST_USER_A_EMAIL"],
+            "password": os.environ["TEST_USER_A_PASSWORD"]
+        })
+        return client
+    except Exception as e:
+        pytest.skip(f"Supabase service unreachable for client_a: {e}")
 
 @pytest.fixture
 def client_b():
     if not os.environ.get("TEST_USER_B_EMAIL"):
         pytest.skip("TEST_USER_B_EMAIL not set in environment")
-    client = create_client(SUPABASE_URL, ANON_KEY)
-    client.auth.sign_in_with_password({
-        "email": os.environ["TEST_USER_B_EMAIL"],
-        "password": os.environ["TEST_USER_B_PASSWORD"]
-    })
-    return client
+    try:
+        client = create_client(SUPABASE_URL, ANON_KEY)
+        client.auth.sign_in_with_password({
+            "email": os.environ["TEST_USER_B_EMAIL"],
+            "password": os.environ["TEST_USER_B_PASSWORD"]
+        })
+        return client
+    except Exception as e:
+        pytest.skip(f"Supabase service unreachable for client_b: {e}")
 
 @pytest.fixture
 def anon_client():
-    return create_client(SUPABASE_URL, ANON_KEY)
+    if not SUPABASE_URL or not ANON_KEY:
+        pytest.skip("Supabase credentials not configured")
+    try:
+        return create_client(SUPABASE_URL, ANON_KEY)
+    except Exception as e:
+        pytest.skip(f"Supabase service unreachable for anon_client: {e}")
 
 def test_user_cannot_see_other_users_projects(client_a, client_b):
     """User A's projects must not be visible to User B."""
@@ -93,6 +104,8 @@ def test_unauthenticated_cannot_read_projects(anon_client):
         result = anon_client.table("projects").select("*").execute()
         assert len(result.data) == 0, "RLS FAILURE: Anon can see projects"
     except Exception as e:
+        if "getaddrinfo failed" in str(e) or "connecterror" in type(e).__name__.lower():
+            pytest.skip(f"Supabase unreachable: {e}")
         # Permission denied is also an acceptable outcome for unauthenticated users
         assert "permission denied" in str(e).lower() or "42501" in str(e)
 
@@ -102,6 +115,8 @@ def test_unauthenticated_cannot_read_scans(anon_client):
         result = anon_client.table("scans").select("*").execute()
         assert len(result.data) == 0, "RLS FAILURE: Anon can see scans"
     except Exception as e:
+        if "getaddrinfo failed" in str(e) or "connecterror" in type(e).__name__.lower():
+            pytest.skip(f"Supabase unreachable: {e}")
         assert "permission denied" in str(e).lower() or "42501" in str(e)
 
 def test_user_can_see_own_projects(client_a):

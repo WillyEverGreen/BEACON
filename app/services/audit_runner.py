@@ -51,7 +51,7 @@ from app.services.page_cache import (
 from app.services.prioritizer import build_scoring_summary, prioritize_issues
 from app.services.aggregator import aggregate_issues
 from app.services.rule_calibrator import get_rule_trust_entry, get_rule_trust_score
-from app.db.repository import persist_audit_payload, persist_enrichment_payload
+from app.db.repository import persist_audit_payload, persist_enrichment_payload, get_user_usage_limits
 from app.observability.alerts import evaluate_audit_alerts, notify_llm_failure
 from app.observability.telemetry import record_audit_event
 from app.security.url_validator import URLValidationError, validate_public_url
@@ -1263,6 +1263,7 @@ async def run_audit(
     run_id: Optional[str] = None,
     enable_ibm: bool = True,
     user_id: Optional[str] = None,
+    is_internal: bool = False,
 ) -> dict:
     """
     Run the full accessibility audit pipeline.
@@ -1282,11 +1283,17 @@ async def run_audit(
     start_time = time.time()
     raw_scan_mode = scan_mode
     is_minimal_mode = str(raw_scan_mode or "").strip().lower() == "minimal"
+    # Unique per-run ID for unambiguous log correlation. Prevents two concurrent
+    # runs on the same URL from producing interleaved log entries that can't be
+    # disentangled after the fact.
+    import uuid as _uuid_mod
+    audit_uuid = str(_uuid_mod.uuid4())[:8]  # short prefix is enough for log disambiguation
+    logger.info("[%s] run_audit START url=%s mode=%s", audit_uuid, url, scan_mode)
     try:
         scan_mode = normalize_scan_mode(scan_mode)
     except ValueError:
         scan_mode = "fast"
-    effective_run_id = str(run_id or "").strip()
+    effective_run_id = str(run_id or audit_uuid).strip()
 
     try:
         url = validate_public_url(url)
@@ -1323,12 +1330,14 @@ async def run_audit(
             "pages_audited": 0,
             # Phase 20: unreachable sites MUST report degraded.
             "degraded_mode": True,
+            "partial_engine_coverage": False,
+            "audit_run_id": audit_uuid,
             "degraded_reason": _reason,
             # E2 contract: always present regardless of failure path.
             "http_client": "curl_cffi/chrome",
             "browser_engine": "camoufox/firefox",
         }
-        logger.warning("URL validation failure — degraded: url=%s reason=%s", url, _reason)
+        logger.warning("URL validation failure -- degraded: url=%s reason=%s audit_run_id=%s", url, _reason, audit_uuid)
         return _finalize_result(failure, status="failed", user_id=user_id)
     
     # ── Step 0a: Check URL Cache ───────────────────────────────
@@ -1349,6 +1358,11 @@ async def run_audit(
     degradation_reason = None
     skipped_components = []
 
+    # ── Step 0b: Fetch Plan Limits ─────────────────────────────
+    user_limits = get_user_usage_limits(user_id) if user_id else get_user_usage_limits("")
+    effective_ai_budget = min(max_enrich_issues, user_limits.get("ai_budget", 5))
+    effective_max_pages = min(max_pages if max_pages else 100, user_limits.get("max_pages", 10))
+
     def _mark_degraded(reason_code: str, message: Optional[str] = None) -> None:
         nonlocal degraded_mode, degraded_reason, degradation_reason
         normalized_reason = normalize_failure(reason_code)
@@ -1359,10 +1373,11 @@ async def run_audit(
             degradation_reason = message or _degradation_reason_message(normalized_reason)
 
     # ── Step 0b: Global Backpressure Guard ─────────────────────
-    _active_audits += 1
-    if _active_audits > _MAX_CONCURRENT_AUDITS:
-        if scan_mode in {"deep", "max"}:
-            logger.warning(f"⚠️ Backpressure active ({_active_audits} audits). Auto-degrading to fast mode.")
+    if not is_internal:
+        _active_audits += 1
+        if _active_audits > _MAX_CONCURRENT_AUDITS:
+            if scan_mode in {"deep", "max"}:
+                logger.warning(f"⚠️ Backpressure active ({_active_audits} audits). Auto-degrading to fast mode.")
             scan_mode = "fast"
             _mark_degraded("extraction_failure", "System under heavy load. Auto-degraded to fast mode.")
             skipped_components.extend(["browser_probes", "axe-core", "cognitive"])
@@ -1599,6 +1614,7 @@ async def run_audit(
                 "pages_discovered": 1,
                 "pages_audited": 1,
                 "degraded_mode": True,
+                "partial_engine_coverage": True,
                 # Phase 20: degraded_reason must always be a non-empty string.
                 "degraded_reason": (
                     normalize_failure(degraded_reason).value
@@ -1757,15 +1773,26 @@ async def run_audit(
             skipped_components = [s for s in skipped_components if s != "ibm"]
 
         # If deep scan requested but browser engines did not execute, mark degraded.
+        # Only include engines that were actually *requested* for this run, not just
+        # "everything possible in this mode" — disabled-by-config (enable_ibm=False)
+        # is intentional, not a failure, and must not trip this check.
         if scan_mode in {"deep", "max"}:
-            used_set = set(engines_used)
-            if "browser-probe" not in used_set and "axe-core" not in used_set:
+            required_engines = ["browser-probe", "axe-core"]
+            # IBM is only required if it was actively requested (enabled and not blocked)
+            if enable_ibm and degraded_reason not in {"blocked_request", "bot_wall", "rate_limited"}:
+                required_engines.append("ibm")
+
+            missing_engines = [eng for eng in required_engines if eng not in engines_used]
+            if missing_engines:
                 _mark_degraded(
                     "extraction_failure",
-                    "Deep/max scan requested, but browser engines did not execute. Results are based on static HTML analysis only.",
+                    f"Deep/max scan requested, but some browser engines failed to execute ({', '.join(missing_engines)}). Results are based on partial analysis.",
                 )
-                skipped_components.extend(["browser_probes", "axe-core"])
-                logger.warning("%s scan degraded to static-only path (no browser engines executed).", scan_mode.upper())
+                for eng in missing_engines:
+                    comp = "browser_probes" if eng == "browser-probe" else eng
+                    if comp not in skipped_components:
+                        skipped_components.append(comp)
+                logger.info("[%s] %s scan degraded: missing engines %s", audit_uuid, scan_mode.upper(), missing_engines)
 
         ttfi_ms = int((time.time() - start_time) * 1000)
 
@@ -1912,11 +1939,11 @@ async def run_audit(
         audit_id = str(uuid.uuid4())
         enrichment_status = "complete"
         enrichment_meta: dict[str, Any] = {}
-        llm_fire_budget = max(0, int(LLM_FIRE_BUDGET_PER_AUDIT or 0))
+        llm_fire_budget = max(0, int(effective_ai_budget or 0))
         selected_for_enrichment, enrichment_budget_meta = _select_llm_enrichment_candidates(
             scored_issues,
             budget=llm_fire_budget,
-            max_enrich_issues=max_enrich_issues,
+            max_enrich_issues=effective_ai_budget,
         )
         enrichment_meta["budget"] = enrichment_budget_meta
 
@@ -2268,6 +2295,8 @@ async def run_audit(
             "expected_score_after_fix": round(expected_score_after_fix, 1) if isinstance(expected_score_after_fix, (int, float)) else None,
             "score_improvement": round(score_improvement, 1) if isinstance(score_improvement, (int, float)) else None,
             "degraded_mode": degraded_mode,
+            "partial_engine_coverage": len(skipped_components) > 0,
+            "audit_run_id": audit_uuid,
             "degraded_reason": normalize_failure(degraded_reason).value if degraded_reason else None,
             "skipped_components": list(set(skipped_components)),
             "degradation_reason": degradation_reason,
@@ -2364,7 +2393,8 @@ async def run_audit(
 
 
     finally:
-        _active_audits = max(0, _active_audits - 1)
+        if not is_internal:
+            _active_audits = max(0, _active_audits - 1)
 
 
 def _calculate_score(issues: list[dict], degraded_mode: bool = False) -> tuple[float, dict]:

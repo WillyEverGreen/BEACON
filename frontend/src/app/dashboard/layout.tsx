@@ -83,7 +83,7 @@ export default function DashboardLayout({
                   <span className="text-sm font-black tracking-[0.22em] uppercase text-white block leading-none">
                     BEACON
                   </span>
-                  <span className="text-[9px] font-bold tracking-[0.15em] uppercase text-white/30 block mt-0.5">
+                  <span className="text-[9px] font-bold tracking-[0.15em] uppercase text-white/70 block mt-0.5">
                     Accessibility AI
                   </span>
                 </div>
@@ -92,7 +92,7 @@ export default function DashboardLayout({
 
             {/* Main nav */}
             <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-              <p className="text-[9px] font-extrabold tracking-[0.2em] uppercase text-white/20 px-2 pt-1 pb-2">
+              <p className="text-[9px] font-extrabold tracking-[0.2em] uppercase text-white/60 px-2 pt-1 pb-2">
                 Navigation
               </p>
               {navItems.map((item) => (
@@ -111,7 +111,7 @@ export default function DashboardLayout({
                 <div className="h-px bg-[#1E1E22]" />
               </div>
 
-              <p className="text-[9px] font-extrabold tracking-[0.2em] uppercase text-white/20 px-2 pt-1 pb-2">
+              <p className="text-[9px] font-extrabold tracking-[0.2em] uppercase text-white/60 px-2 pt-1 pb-2">
                 General
               </p>
               {bottomNavItems.map((item) => (
@@ -130,10 +130,10 @@ export default function DashboardLayout({
             <div className="px-4 py-3 border-t border-[#1E1E22]">
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <p className="text-[9px] text-white/30 uppercase tracking-[0.15em] font-bold leading-none">
+                  <p className="text-[9px] text-white/70 uppercase tracking-[0.15em] font-bold leading-none">
                     v2.1.0
                   </p>
-                  <p className="text-[9px] text-white/20 uppercase tracking-[0.1em] font-medium mt-0.5">
+                  <p className="text-[9px] text-white/60 uppercase tracking-[0.1em] font-medium mt-0.5">
                     Production
                   </p>
                 </div>
@@ -143,7 +143,7 @@ export default function DashboardLayout({
           </aside>
 
           {/* ── Main content ─────────────────────────────────── */}
-          <main className="flex-1 ml-[15rem] min-h-screen w-full relative beacon-layout-wrapper">
+          <main className="flex-1 ml-[15rem] min-h-screen w-full beacon-layout-wrapper">
             <div className="p-6 md:p-8 mx-auto w-full max-w-7xl pb-20">
               {children}
             </div>

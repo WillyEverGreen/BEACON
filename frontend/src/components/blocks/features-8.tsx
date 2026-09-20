@@ -82,7 +82,7 @@ export function Features() {
                                         <Sparkles className="m-auto size-5 text-[#ffe17c]" strokeWidth={1.5} />
                                     </div>
                                     <div className="space-y-2">
-                                        <h2 className="text-lg font-extrabold font-cabinet text-white transition">Featherless AI Fixes</h2>
+                                        <h2 className="text-lg font-extrabold font-cabinet text-white transition">NVIDIA NIM AI Fixes</h2>
                                         <p className="text-sm font-medium text-zinc-400">Context-aware AI generates optimized ARIA labels, semantic HTML, and contrast-compliant CSS.</p>
                                     </div>
                                 </div>

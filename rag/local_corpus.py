@@ -1,7 +1,11 @@
 # local_corpus.py
 import json
 import hashlib
+import logging
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
 
 def process_local_corpus(corpus_dir: str = "../corpus/wcag-aaa-web-design"):
     """
@@ -13,10 +17,10 @@ def process_local_corpus(corpus_dir: str = "../corpus/wcag-aaa-web-design"):
     extracted_docs = []
 
     if not corpus_path.exists():
-        print(f"Local corpus directory {corpus_path} not found. Skipping local corpus.")
+        logger.info(f"Local corpus directory {corpus_path} not found. Skipping local corpus.")
         return extracted_docs
 
-    print(f"Ingesting local corpus from {corpus_path}")
+    logger.info(f"Ingesting local corpus from {corpus_path}")
     for filepath in corpus_path.rglob("*"):
         if filepath.is_file() and filepath.suffix in [".md", ".json", ".html", ".css", ".js"]:
             try:
@@ -34,6 +38,6 @@ def process_local_corpus(corpus_dir: str = "../corpus/wcag-aaa-web-design"):
                     "title": rel_path
                 })
             except Exception as e:
-                print(f"Failed to read {filepath}: {e}")
+                logger.error(f"Failed to read {filepath}: {e}")
                 
     return extracted_docs

@@ -214,6 +214,25 @@ CRAWL_ADAPTIVE_STRATEGY = {
 LLM_FIRE_BUDGET_PER_AUDIT = 5
 AUDIT_CONCURRENCY_LIMIT = 4
 
+# ── Monetization & Plan Tiers ──────────────────────────────────
+PLAN_TIERS = {
+    "free": {
+        "max_pages": 10,
+        "ai_budget": 5,
+        "concurrency": 2,
+    },
+    "pro": {
+        "max_pages": 50,
+        "ai_budget": 25,
+        "concurrency": 5,
+    },
+    "enterprise": {
+        "max_pages": 200,
+        "ai_budget": 100,
+        "concurrency": 10,
+    }
+}
+
 
 # ── Site Crawl Runtime Limits (Phase 6) ───────────────────────
 # These keys are read directly by the Phase 6 crawler orchestration layer.
@@ -755,6 +774,13 @@ class Settings(BaseSettings):
     )
 
     schema_version: str = "3.1"
+    
+    # Environment (development, staging, production)
+    environment: str = Field(
+        default="development",
+        validation_alias="ENVIRONMENT",
+        description="Deployment environment: development, staging, or production"
+    )
 
     # LLM Configuration (NVIDIA NIM, Featherless, or OpenAI)
     llm_api_key: str = Field(
@@ -822,9 +848,21 @@ class Settings(BaseSettings):
     # API authentication
     auth_enabled: bool = True
     auth_key_store_path: str = "./app/data/api_keys.json"
-    bootstrap_viewer_api_key: str = "beacon-viewer-dev"
-    bootstrap_auditor_api_key: str = "beacon-auditor-dev"
-    bootstrap_admin_api_key: str = "beacon-admin-dev"
+    bootstrap_viewer_api_key: str = Field(
+        default="",
+        validation_alias="BOOTSTRAP_VIEWER_API_KEY",
+        description="API key for viewer role - MUST be set via environment variable"
+    )
+    bootstrap_auditor_api_key: str = Field(
+        default="",
+        validation_alias="BOOTSTRAP_AUDITOR_API_KEY",
+        description="API key for auditor role - MUST be set via environment variable"
+    )
+    bootstrap_admin_api_key: str = Field(
+        default="",
+        validation_alias="BOOTSTRAP_ADMIN_API_KEY",
+        description="API key for admin role - MUST be set via environment variable"
+    )
 
     # Feature flags
     beacon_ai_enabled: bool = False

@@ -5,6 +5,9 @@ Run once: python app/data/_seed_trust_registry.py
 import json
 from collections import Counter
 from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
 
 ACT_RESULTS = Path("evaluation/retest_act_latest.json")
 OUTPUT = Path("app/data/rule_trust_registry.json")
@@ -69,22 +72,22 @@ def main():
     total_tp = sum(rule_tp.values())
     total_fp = sum(rule_fp.values())
     total_fn = sum(rule_fn.values())
-    print(f"Total rules analyzed: {len(all_rules)}")
-    print(f"Total TP={total_tp} FP={total_fp} FN={total_fn}")
+    logger.info(f"Total rules analyzed: {len(all_rules)}")
+    logger.info(f"Total TP={total_tp} FP={total_fp} FN={total_fn}")
     overall_prec = total_tp / (total_tp + total_fp) if (total_tp + total_fp) > 0 else 0
     overall_rec = total_tp / (total_tp + total_fn) if (total_tp + total_fn) > 0 else 0
-    print(f"Overall Precision={overall_prec:.4f}  Recall={overall_rec:.4f}")
-    print()
+    logger.info(f"Overall Precision={overall_prec:.4f}  Recall={overall_rec:.4f}")
+    logger.info()
     for r in sorted(registry, key=lambda x: registry[x]["trust_score"]):
         m = registry[r]
-        print(
+        logger.info(
             f"  {r:35s} P={m['precision_score']:.3f} R={m['recall_score']:.3f} "
             f"T={m['trust_score']:.3f} [{m['verdict']:>10s}]"
         )
 
     with OUTPUT.open("w", encoding="utf-8") as f:
         json.dump(registry, f, indent=2)
-    print(f"\nSaved: {OUTPUT}")
+    logger.info(f"\nSaved: {OUTPUT}")
 
 
 if __name__ == "__main__":

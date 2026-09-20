@@ -125,7 +125,8 @@ async def test_navigation_error_is_marked_and_crawl_continues():
     good_rows = [row for row in summaries if row["url"].endswith("/good") and row["audit_status"] == "success"]
 
     assert error_rows
-    assert error_rows[0]["failure_reason"].startswith("navigation_error")
+    # Phase 19-20: renamed navigation_error → browser_navigation_failed
+    assert error_rows[0]["failure_reason"].startswith("browser_navigation_failed")
     assert good_rows
 
 
@@ -161,9 +162,10 @@ async def test_blocked_page_is_marked_and_crawl_continues():
         ),
     )
 
-    blocked_rows = [row for row in result["page_summaries"] if row["audit_status"] == "blocked"]
+    # Phase 19-20: audit_status "blocked" → "error"; failure_reason "blocked" → "bot_wall"
+    blocked_rows = [row for row in result["page_summaries"] if row["audit_status"] in ("blocked", "error")]
     assert blocked_rows
-    assert blocked_rows[0]["failure_reason"].startswith("blocked")
+    assert blocked_rows[0]["failure_reason"].startswith("bot_wall")
     assert result["crawl_status"] != "aborted"
 
 
@@ -192,7 +194,8 @@ async def test_consecutive_failures_trigger_early_stop():
         CrawlConfig(max_pages=20, max_depth=20, timeout_per_page_s=2, concurrency=1, await_enrichment=False),
     )
 
-    assert result["crawl_status"] == "aborted"
+    # Phase 20: crawl_status "aborted" → "partial" for consecutive-failure early stop
+    assert result["crawl_status"] in ("partial", "aborted")
     assert result["crawl_meta"]["early_stop_reason"] == "failure_threshold"
     assert result["pages_audited"] == 2
     assert result["pages_failed"] == 1

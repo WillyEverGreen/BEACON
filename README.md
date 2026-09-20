@@ -8,7 +8,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-3.x-009688.svg)](https://fastapi.tiangolo.com/)
-[![Next.js](https://img.shields.io/badge/Next.js-15-black.svg)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black.svg)](https://nextjs.org/)
 [![WCAG 2.2](https://img.shields.io/badge/WCAG-2.2%20A%2FAA-brightgreen.svg)](https://www.w3.org/TR/WCAG22/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![ACT F1](https://img.shields.io/badge/ACT%20F1-1.00-success.svg)](#act-benchmark)
@@ -172,12 +172,12 @@ flowchart LR
 | Layer | Technology |
 |---|---|
 | API | FastAPI 3.x + Uvicorn |
-| Dashboard | Next.js 15 (TypeScript) |
+| Dashboard | Next.js 16 (TypeScript) |
 | Browser Automation | Camoufox (primary) · Playwright (fallback) |
 | Accessibility Engines | axe-core · custom static + heuristic engines |
 | Lighthouse Enrichment | Lighthouse CLI (Node.js 18+) |
 | Vector Store | ChromaDB |
-| LLM | Featherless API (model configurable) |
+| LLM | NVIDIA NIM (OpenAI-compatible, model configurable) |
 | Database | Supabase (PostgreSQL) via asyncpg |
 | Auth | Supabase Auth + API-key RBAC middleware |
 | Observability | Prometheus + custom sliding telemetry window |

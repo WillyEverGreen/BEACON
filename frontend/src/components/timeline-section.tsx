@@ -28,7 +28,7 @@ const timelineData = [
   },
   {
     id: 3,
-    title: "Featherless AI Fixes",
+    title: "NVIDIA NIM AI Fixes",
     date: "Step 3",
     content: "Real-time AI suggestions providing optimized code snippets for remediation.",
     category: "Remediation",

@@ -5,28 +5,6 @@ import os
 # 1. SETUP MOCKS BEFORE ANY IMPORTS
 test_auth_path = os.path.abspath("auth_store_test_temp.json")
 
-# Mock settings
-mock_settings = MagicMock()
-mock_settings.auth_enabled = True
-mock_settings.bootstrap_viewer_api_key = "test-viewer-key"
-mock_settings.bootstrap_auditor_api_key = "test-auditor-key"
-mock_settings.bootstrap_admin_api_key = "test-admin-key"
-mock_settings.auth_key_store_path = test_auth_path
-mock_settings.vector_store = "mock"
-mock_settings.llm_model = "mock"
-mock_settings.embedding_model = "mock"
-mock_settings.supabase_url = "https://mock.supabase.co"
-mock_settings.supabase_key = "mock-key"
-mock_settings.cors_origins = ["*"]
-mock_settings.backend_log_level = "INFO"
-mock_settings.schema_version = "3.1"
-
-# Inject into sys.modules to prevent real imports
-mock_config = MagicMock()
-mock_config.settings = mock_settings
-sys.modules['app.config'] = mock_config
-
-# Mock heavy modules
 mock_heavy = [
     'sentence_transformers',
     'app.services.vector_store',
@@ -38,6 +16,33 @@ mock_heavy = [
     'app.observability.logging_setup',
     'app.observability.telemetry'
 ]
+
+_saved_sys_modules = {
+    mod: sys.modules.get(mod)
+    for mod in ['app.config', *mock_heavy, 'app.main', 'app.security.auth']
+}
+
+# Mock settings
+mock_settings = MagicMock()
+mock_settings.auth_enabled = True
+mock_settings.bootstrap_viewer_api_key = "test-viewer-key"
+mock_settings.bootstrap_auditor_api_key = "test-auditor-key"
+mock_settings.bootstrap_admin_api_key = "beacon_admin_key"
+mock_settings.auth_key_store_path = test_auth_path
+mock_settings.vector_store = "mock"
+mock_settings.llm_model = "mock"
+mock_settings.embedding_model = "mock"
+mock_settings.supabase_url = "https://mock.supabase.co"
+mock_settings.supabase_key = "mock-key"
+mock_settings.cors_origins = ["*"]
+mock_settings.backend_log_level = "INFO"
+mock_settings.schema_version = "3.1"
+
+# Inject into sys.modules to prevent real imports during this test file
+mock_config = MagicMock()
+mock_config.settings = mock_settings
+sys.modules['app.config'] = mock_config
+
 for mod in mock_heavy:
     sys.modules[mod] = MagicMock()
 
@@ -80,15 +85,20 @@ def test_health_ready_schema():
             assert response.status_code == 200
             assert response.json()["status"] == "ready"
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def cleanup(request):
-    """Cleanup temp file."""
+    """Cleanup temp file and restore sys.modules."""
     def remove_temp():
         if os.path.exists(test_auth_path):
             try:
                 os.remove(test_auth_path)
             except:
                 pass
+        for mod, orig in _saved_sys_modules.items():
+            if orig is None:
+                sys.modules.pop(mod, None)
+            else:
+                sys.modules[mod] = orig
     request.addfinalizer(remove_temp)
 
 if __name__ == "__main__":

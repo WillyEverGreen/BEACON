@@ -553,6 +553,13 @@ async def _run_cli(args: argparse.Namespace) -> int:
             )
             return 3
 
+    if args.fail_on_threshold is not None:
+        if calibrated_score < float(args.fail_on_threshold):
+            print(
+                f"Fail condition met: calibrated_score={calibrated_score:.1f} < fail_on_threshold={args.fail_on_threshold:.1f}"
+            )
+            return 4
+
     return 0
 
 
@@ -591,6 +598,12 @@ def _build_parser() -> argparse.ArgumentParser:
         type=float,
         default=None,
         help="Exit non-zero if confidence_score is below this threshold",
+    )
+    parser.add_argument(
+        "--fail-on-threshold",
+        type=float,
+        default=None,
+        help="Exit non-zero (exit code 4) if the calibrated accessibility score drops below this threshold value",
     )
     return parser
 

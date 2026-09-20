@@ -4552,3 +4552,302 @@ class StaticChecker:
         )
         
         return issues
+
+    # -- WCAG 4.1.1: Parsing / Duplicate IDs ----------------------------------
+
+    def check_duplicate_ids(self) -> list[dict]:
+        """
+        WCAG SC 4.1.1 (Parsing): IDs must be unique within a page.
+
+        Duplicate IDs break AT label resolution because aria-labelledby,
+        aria-describedby, htmlFor, and anchor links all resolve the *first*
+        matching ID and silently ignore the rest.
+        """
+        issues = []
+
+        id_map: dict[str, list] = {}
+        for elem in self.soup.find_all(True):
+            raw_id = str(elem.get("id") or "").strip()
+            if not raw_id:
+                continue
+            if self._is_hidden_for_static(elem):
+                continue
+            id_map.setdefault(raw_id, []).append(elem)
+
+        if not id_map:
+            self._track_rule_activity("duplicate-ids", elements_checked=0, violations_found=0)
+            return issues
+
+        # IDs referenced by aria-* pointing attributes get upgraded to critical
+        referenced_ids: set[str] = set()
+        for elem in self.soup.find_all(True):
+            for attr in ("aria-labelledby", "aria-describedby", "aria-controls", "aria-owns"):
+                val = str(elem.get(attr) or "").strip()
+                if val:
+                    referenced_ids.update(val.split())
+
+        total_checked = len(id_map)
+        violations = 0
+
+        for dup_id, elements in id_map.items():
+            if len(elements) < 2:
+                continue
+
+            is_at_referenced = dup_id in referenced_ids
+            severity = "critical" if is_at_referenced else "serious"
+
+            # Report once per extra occurrence (elements[0] is the "owner")
+            for duplicate_elem in elements[1:]:
+                selector = _css_selector(duplicate_elem)
+                at_note = (
+                    " This ID is referenced by aria-labelledby/aria-describedby "
+                    "-- AT will resolve the wrong element."
+                    if is_at_referenced else ""
+                )
+                issues.append(_issue(
+                    self.url,
+                    "duplicate-id",
+                    "violation",
+                    severity,
+                    selector,
+                    _snippet(duplicate_elem),
+                    (
+                        "Duplicate id=\"{}\" found on <{}> "
+                        "({} elements share this ID).{}"
+                    ).format(dup_id, duplicate_elem.name, len(elements), at_note),
+                    "4.1.1",
+                    "A",
+                    "aria",
+                    (
+                        "Make id=\"{}\" unique. Each id must appear at most once "
+                        "per document. Use class attributes for shared styling."
+                    ).format(dup_id),
+                    fix_effort="low",
+                ))
+                violations += 1
+
+        self._track_rule_activity(
+            "duplicate-ids",
+            elements_checked=total_checked,
+            violations_found=violations,
+            confidence_bucket="high" if violations else None,
+            sample_violations=["id=\"{}\""  .format(i)
+                               for i in list(id_map.keys())[:5] if len(id_map[i]) >= 2],
+        )
+
+        return issues
+
+    # -- WCAG 2.1.1: Keyboard Accessibility (static heuristics) --------------
+
+    def check_keyboard_hints(self) -> list[dict]:
+        """
+        WCAG SC 2.1.1 (Keyboard): All functionality must be operable by keyboard.
+
+        Six static signals detectable from HTML alone:
+          1. tabindex="-1" on inherently focusable elements (removed from tab order)
+          2. Mouse-only event handlers on non-interactive elements (no KB equiv)
+          3. Explicit keyboard event suppression (onkeydown="return false")
+          4. inline outline:none on focusable elements (focus ring removed)
+          5. role="button" without tabindex (unreachable via Tab)
+          6. onclick + tabindex on div/span without role (no AT affordance)
+        """
+        import re as _re
+        issues = []
+        checked = 0
+        violations = 0
+
+        FOCUSABLE_TAGS = {"a", "button", "input", "select", "textarea"}
+        NON_INTERACTIVE_TAGS = {"div", "span", "li", "td", "tr", "section", "article", "p"}
+        MOUSE_ONLY_ATTRS = {"onclick", "onmousedown", "onmouseup", "onmouseover", "ondblclick"}
+        KEYBOARD_ATTRS = {"onkeydown", "onkeyup", "onkeypress"}
+
+        # Signal 1: tabindex="-1" on inherently focusable elements
+        for elem in self.soup.find_all(list(FOCUSABLE_TAGS)):
+            if self._is_hidden_for_static(elem):
+                continue
+            checked += 1
+            if str(elem.get("tabindex", "")).strip() == "-1":
+                selector = _css_selector(elem)
+                elem_text = (elem.get_text(" ", strip=True) or "")[:60]
+                issues.append(_issue(
+                    self.url,
+                    "keyboard-tabindex-negative",
+                    "violation",
+                    "serious",
+                    selector,
+                    _snippet(elem),
+                    (
+                        "<{}> has tabindex=\"-1\" which removes it from the keyboard "
+                        "tab order. Keyboard users cannot reach this element unless "
+                        "focus is programmatically managed.{}"
+                    ).format(elem.name, " Content: \"{}\"".format(elem_text) if elem_text else ""),
+                    "2.1.1",
+                    "A",
+                    "keyboard",
+                    "Remove tabindex=\"-1\" or ensure JS programmatically moves focus at the right time.",
+                    fix_effort="medium",
+                ))
+                violations += 1
+
+        # Signal 2: mouse-only handlers on non-interactive elements
+        for elem in self.soup.find_all(list(NON_INTERACTIVE_TAGS)):
+            if self._is_hidden_for_static(elem):
+                continue
+            checked += 1
+            has_mouse = any(elem.has_attr(a) for a in MOUSE_ONLY_ATTRS)
+            if not has_mouse:
+                continue
+            has_keyboard = any(elem.has_attr(a) for a in KEYBOARD_ATTRS)
+            has_role = bool(str(elem.get("role", "")).strip())
+            has_tabindex = elem.has_attr("tabindex")
+            elem_text = (elem.get_text(" ", strip=True) or "").strip()
+            # Only flag visible, interactive-looking surfaces with no keyboard path
+            if not elem_text or has_keyboard or (has_role and has_tabindex):
+                continue
+            selector = _css_selector(elem)
+            mouse_attrs = [a for a in sorted(MOUSE_ONLY_ATTRS) if elem.has_attr(a)]
+            issues.append(_issue(
+                self.url,
+                "keyboard-mouse-only-handler",
+                "violation",
+                "critical",
+                selector,
+                _snippet(elem),
+                (
+                    "<{}> has mouse-only event handler(s) ({}) with no keyboard "
+                    "equivalent (no onkeydown/onkeyup, no role, no tabindex). "
+                    "Content: \"{}\"."
+                ).format(elem.name, ", ".join(mouse_attrs), elem_text[:60]),
+                "2.1.1",
+                "A",
+                "keyboard",
+                "Add onkeydown/onkeyup for Enter/Space, role=\"button\", and tabindex=\"0\".",
+                fix_effort="medium",
+            ))
+            violations += 1
+
+        # Signal 3: explicit keyboard event suppression
+        for attr in ("onkeydown", "onkeypress"):
+            for elem in self.soup.find_all(attrs={attr: True}):
+                if self._is_hidden_for_static(elem):
+                    continue
+                checked += 1
+                val = str(elem.get(attr, "")).strip().lower()
+                if any(p in val for p in ("return false", "event.preventdefault", "e.preventdefault")):
+                    selector = _css_selector(elem)
+                    issues.append(_issue(
+                        self.url,
+                        "keyboard-event-suppressed",
+                        "violation",
+                        "serious",
+                        selector,
+                        _snippet(elem),
+                        (
+                            "<{}> has {}=\"{}\" which explicitly suppresses keyboard events. "
+                            "Keyboard users may be unable to interact."
+                        ).format(elem.name, attr, val[:80]),
+                        "2.1.1",
+                        "A",
+                        "keyboard",
+                        "Remove blanket keyboard suppression; only prevent specific keys when necessary.",
+                        fix_effort="medium",
+                    ))
+                    violations += 1
+
+        # Signal 4: inline outline:none on focusable elements
+        outline_re = _re.compile(r"outline\s*:\s*(?:none|0)", _re.I)
+        for elem in self.soup.find_all(list(FOCUSABLE_TAGS)):
+            if self._is_hidden_for_static(elem):
+                continue
+            style = str(elem.get("style", "")).strip()
+            if not style:
+                continue
+            checked += 1
+            if outline_re.search(style):
+                selector = _css_selector(elem)
+                issues.append(_issue(
+                    self.url,
+                    "keyboard-focus-invisible",
+                    "needs-review",
+                    "moderate",
+                    selector,
+                    _snippet(elem),
+                    (
+                        "<{}> has inline style 'outline: none' which removes the visible "
+                        "focus indicator. Keyboard users cannot see where focus is."
+                    ).format(elem.name),
+                    "2.1.1",
+                    "A",
+                    "keyboard",
+                    "Remove outline:none. Use :focus-visible CSS for custom focus styles.",
+                    fix_effort="low",
+                ))
+                violations += 1
+
+        # Signal 5: role="button" without tabindex on non-native elements
+        for elem in self.soup.find_all(attrs={"role": "button"}):
+            if self._is_hidden_for_static(elem):
+                continue
+            if elem.name in FOCUSABLE_TAGS:
+                continue
+            checked += 1
+            if not elem.has_attr("tabindex"):
+                selector = _css_selector(elem)
+                elem_text = (elem.get_text(" ", strip=True) or "")[:60]
+                issues.append(_issue(
+                    self.url,
+                    "keyboard-role-button-no-tabindex",
+                    "violation",
+                    "serious",
+                    selector,
+                    _snippet(elem),
+                    (
+                        "<{} role=\"button\"> is missing tabindex=\"0\". "
+                        "Without tabindex, keyboard users cannot Tab to this element.{}"
+                    ).format(elem.name, " Content: \"{}\"".format(elem_text) if elem_text else ""),
+                    "2.1.1",
+                    "A",
+                    "keyboard",
+                    "Add tabindex=\"0\" and ensure Enter/Space key handlers activate the element.",
+                    fix_effort="low",
+                ))
+                violations += 1
+
+        # Signal 6: onclick + tabindex on div/span without role
+        for elem in self.soup.find_all(["div", "span"]):
+            if self._is_hidden_for_static(elem):
+                continue
+            if not (elem.has_attr("onclick") and elem.has_attr("tabindex")):
+                continue
+            if str(elem.get("role", "")).strip():
+                continue
+            checked += 1
+            selector = _css_selector(elem)
+            elem_text = (elem.get_text(" ", strip=True) or "")[:60]
+            issues.append(_issue(
+                self.url,
+                "keyboard-div-onclick-no-role",
+                "violation",
+                "moderate",
+                selector,
+                _snippet(elem),
+                (
+                    "<{}> has onclick and tabindex but no role. "
+                    "Screen readers announce it as generic content with no interactive affordance.{}"
+                ).format(elem.name, " Content: \"{}\"".format(elem_text) if elem_text else ""),
+                "2.1.1",
+                "A",
+                "keyboard",
+                "Add role=\"button\" and Enter/Space key handlers.",
+                fix_effort="low",
+            ))
+            violations += 1
+
+        self._track_rule_activity(
+            "keyboard-2.1.1",
+            elements_checked=checked,
+            violations_found=violations,
+            confidence_bucket="high" if violations else None,
+        )
+
+        return issues

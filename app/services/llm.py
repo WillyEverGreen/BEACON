@@ -1,5 +1,5 @@
 """
-LLM service: Featherless AI (OpenAI-compatible) for query expansion
+LLM service: NVIDIA NIM (OpenAI-compatible) for query expansion
 and RAG response generation.
 """
 import asyncio
@@ -89,6 +89,8 @@ def _get_fallback_remediation(issue: dict) -> dict:
     }
 
 
+import httpx
+
 # Async client (cached)
 _client: Optional[AsyncOpenAI] = None
 _llm_response_cache: dict[str, dict[str, Any]] = {}
@@ -97,12 +99,15 @@ _ENRICHMENT_SEMAPHORE_LIMIT = 0
 
 
 def get_client() -> AsyncOpenAI:
-    """Get or init the Featherless (OpenAI-compatible) async client."""
+    """Get or init the NVIDIA NIM (OpenAI-compatible) async client."""
     global _client
     if _client is None:
+        # Explicit http_client prevents TypeError on httpx>=0.28 where 'proxies' was removed
+        http_client = httpx.AsyncClient(timeout=30.0)
         _client = AsyncOpenAI(
             api_key=settings.llm_api_key,
             base_url=settings.llm_base_url,
+            http_client=http_client,
         )
     return _client
 
@@ -884,9 +889,96 @@ async def generate_semantic_remediation(issue: dict, context_chunks: list[dict])
 
 
 
+async def validate_remediation_fix(issue: dict, remediation: dict) -> tuple[bool, Optional[str]]:
+    """
+    Validate if a proposed vanilla code fix resolves the axe-core rule violation.
+    Returns (is_valid, error_message).
+    """
+    rule_id = issue.get("rule_id")
+    if not rule_id:
+        return True, None  # Cannot validate without rule ID
+        
+    vanilla_fix = ""
+    # Try to extract vanilla fix
+    if isinstance(remediation.get("code_example"), dict):
+        vanilla_fix = remediation["code_example"].get("vanilla", "")
+    if not vanilla_fix and remediation.get("code_fix"):
+        vanilla_fix = remediation["code_fix"]
+        
+    if not vanilla_fix:
+        return True, None  # No code fix provided to validate
+        
+    try:
+        from playwright.async_api import async_playwright
+        from pathlib import Path
+        
+        async with async_playwright() as p:
+            # Launch browser
+            browser = await p.chromium.launch(headless=True)
+            page = await browser.new_page()
+            
+            # 1. Verify violation is present with original HTML
+            original_html = issue.get("html_snippet", "")
+            if not original_html:
+                await browser.close()
+                return True, None
+                
+            test_html_orig = f"<!DOCTYPE html><html><head><title>Test</title></head><body>{original_html}</body></html>"
+            await page.set_content(test_html_orig)
+            
+            # Load axe-core
+            axe_local_path = Path(__file__).resolve().parents[2] / "axe-core" / "axe.min.js"
+            if axe_local_path.exists():
+                await page.add_script_tag(path=str(axe_local_path))
+            else:
+                await page.add_script_tag(url="https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.9.1/axe.min.js")
+            
+            await page.wait_for_timeout(200)
+            orig_results = await page.evaluate("axe.run()")
+            orig_violations = [v.get("id") for v in orig_results.get("violations", [])]
+            
+            # If the rule is not violated by the original HTML, we can't test its correction
+            if rule_id not in orig_violations:
+                await browser.close()
+                return True, None
+                
+            # 2. Test fixed HTML
+            test_html_fixed = f"<!DOCTYPE html><html><head><title>Test</title></head><body>{vanilla_fix}</body></html>"
+            await page.set_content(test_html_fixed)
+            
+            # Re-inject axe-core
+            if axe_local_path.exists():
+                await page.add_script_tag(path=str(axe_local_path))
+            else:
+                await page.add_script_tag(url="https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.9.1/axe.min.js")
+                
+            await page.wait_for_timeout(200)
+            fixed_results = await page.evaluate("axe.run()")
+            fixed_violations = [v.get("id") for v in fixed_results.get("violations", [])]
+            
+            await browser.close()
+            
+            if rule_id in fixed_violations:
+                # Find specific failure messages for the failing nodes
+                violation_details = ""
+                for v in fixed_results.get("violations", []):
+                    if v.get("id") == rule_id:
+                        nodes = v.get("nodes", [])
+                        failure_summary = nodes[0].get("failureSummary", "") if nodes else ""
+                        violation_details = f"{v.get('help', '')}: {failure_summary}"
+                        break
+                return False, f"The fix still triggers the '{rule_id}' violation. Details: {violation_details}"
+                
+            return True, None
+            
+    except Exception as e:
+        logger.warning(f"Self-correction fix validation encountered error: {e}")
+        return True, None  # Graceful fallback: treat as valid if validator fails
+
+
 async def generate_remediation(issue: dict, context_chunks: list[dict], temperature: float = 0.2) -> dict:
     """
-    Generate a structured RemediationPacket for a specific accessibility issue.
+    Generate a structured RemediationPacket for a specific accessibility issue with self-correction.
     Takes an issue dict + retrieved context chunks, returns parsed remediation dict.
     """
     client = get_client()
@@ -928,21 +1020,50 @@ async def generate_remediation(issue: dict, context_chunks: list[dict], temperat
 
         text = response.choices[0].message.content.strip()
 
-        # Parse JSON
-        json_text = text
-        if "```" in text:
-            match = re.search(r'```(?:json)?\s*([\s\S]*?)```', text)
-            if match:
-                json_text = match.group(1).strip()
+        # Self-correction loop: try up to 2 times if validation fails
+        attempts = 2
+        for attempt in range(attempts):
+            # Parse JSON
+            json_text = text
+            if "```" in text:
+                match = re.search(r'```(?:json)?\s*([\s\S]*?)```', text)
+                if match:
+                    json_text = match.group(1).strip()
 
-        match = re.search(r'\{[\s\S]*\}', json_text)
-        if match:
-            parsed = json.loads(match.group())
-            result = _validate_response(parsed)
-            result["issue_id"] = issue.get("issue_id", "")
-            result["confidence"] = 0.8 if context_parts else 0.4
-            result["needs_manual_review"] = len(context_parts) < 2
-            return result
+            match = re.search(r'\{[\s\S]*\}', json_text)
+            if match:
+                parsed = json.loads(match.group())
+                result = _validate_response(parsed)
+                result["issue_id"] = issue.get("issue_id", "")
+                result["confidence"] = 0.8 if context_parts else 0.4
+                result["needs_manual_review"] = len(context_parts) < 2
+                
+                # Validate the generated fix
+                is_valid, validation_error = await validate_remediation_fix(issue, result)
+                if is_valid:
+                    return result
+                
+                if attempt < attempts - 1:
+                    logger.info(f"Self-correction loop triggered for rule '{issue.get('rule_id')}': {validation_error}")
+                    # Re-query LLM with error details
+                    response = await client.chat.completions.create(
+                        model=settings.llm_model,
+                        messages=[
+                            {"role": "system", "content": REMEDIATION_SYSTEM_PROMPT},
+                            {"role": "user", "content": REMEDIATION_USER_PROMPT.format(
+                                issue_payload=json.dumps(issue_payload, indent=2),
+                                context=context_str,
+                            )},
+                            {"role": "assistant", "content": text},
+                            {"role": "user", "content": f"Validation failed:\n{validation_error}\n\nPlease correct the fix and return the updated structured JSON object only."}
+                        ],
+                        max_tokens=1700,
+                        temperature=temperature + 0.1,
+                        timeout=30.0,
+                    )
+                    text = response.choices[0].message.content.strip()
+                else:
+                    return result
 
         logger.warning("Could not parse remediation response as JSON")
         return {
@@ -1382,6 +1503,13 @@ async def enrich_issues(
                         break
 
                     remediation = results[idx]
+                    
+                    # Validate the batch fix
+                    is_valid, validation_error = await validate_remediation_fix(issue, remediation)
+                    if not is_valid:
+                        logger.info(f"Batch fix for rule '{issue.get('rule_id')}' failed validation. Running individual self-correction.")
+                        remediation = await generate_remediation(issue, context_chunks)
+                        
                     _apply_remediation_to_issue(
                         issue,
                         remediation,

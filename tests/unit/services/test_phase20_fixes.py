@@ -574,3 +574,32 @@ def test_topology_result_pages_not_exceed_resolve_max_pages():
     # Also verify slice does not lose all pages (regression guard)
     assert len(auditable) >= 1, "Ceiling slice must retain at least 1 auditable URL"
 
+
+@pytest.mark.asyncio
+async def test_bot_wall_preflight_check_aborts():
+    """Verify that CrawlerOrchestrator._check_bot_wall raises a ValueError
+    when the seed URL is detected to be protected by a bot wall (e.g. Cloudflare).
+    """
+    from unittest.mock import AsyncMock, patch
+    from app.crawlers.orchestrator import CrawlerOrchestrator
+    
+    orchestrator = CrawlerOrchestrator()
+    
+    # We mock AsyncSession's get to return a simulated Cloudflare block response
+    mock_response = AsyncMock()
+    mock_response.status_code = 403
+    mock_response.headers = {"server": "cloudflare", "cf-ray": "some-ray-id"}
+    mock_response.text = "Error 1020: Access Denied"
+    
+    # Mocking the AsyncSession context manager
+    mock_session = AsyncMock()
+    mock_session.get.return_value = mock_response
+    mock_session.__aenter__.return_value = mock_session
+    
+    with patch("curl_cffi.requests.AsyncSession", return_value=mock_session):
+        with pytest.raises(ValueError) as excinfo:
+            await orchestrator.discover_urls("https://protected.example.com", "fast", 10)
+            
+        assert "protected by bot protection" in str(excinfo.value)
+
+

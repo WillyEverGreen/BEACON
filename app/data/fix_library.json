@@ -2118,8 +2118,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 27,
-    "successful_fixes": 27,
+    "times_used": 31,
+    "successful_fixes": 31,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -2143,8 +2143,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 14,
-    "successful_fixes": 14,
+    "times_used": 15,
+    "successful_fixes": 15,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -2184,8 +2184,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 3,
-    "successful_fixes": 3,
+    "times_used": 7,
+    "successful_fixes": 7,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -2209,8 +2209,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 13,
-    "successful_fixes": 13,
+    "times_used": 14,
+    "successful_fixes": 14,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -2234,8 +2234,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 13,
-    "successful_fixes": 13,
+    "times_used": 14,
+    "successful_fixes": 14,
     "confidence": 0.9,
     "validated": true,
     "validation_reason": "All inputs have label associations"
@@ -2432,8 +2432,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 8,
-    "successful_fixes": 8,
+    "times_used": 10,
+    "successful_fixes": 10,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -2548,8 +2548,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 10,
-    "successful_fixes": 10,
+    "times_used": 12,
+    "successful_fixes": 12,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -2598,8 +2598,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 15,
-    "successful_fixes": 15,
+    "times_used": 16,
+    "successful_fixes": 16,
     "confidence": 0.9,
     "validated": true,
     "validation_reason": "Heading hierarchy is correct"
@@ -2673,8 +2673,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 17,
-    "successful_fixes": 17,
+    "times_used": 19,
+    "successful_fixes": 19,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -2723,8 +2723,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 16,
-    "successful_fixes": 16,
+    "times_used": 17,
+    "successful_fixes": 17,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -2748,8 +2748,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 24,
-    "successful_fixes": 24,
+    "times_used": 26,
+    "successful_fixes": 26,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -2773,8 +2773,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 19,
-    "successful_fixes": 19,
+    "times_used": 20,
+    "successful_fixes": 20,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -2848,8 +2848,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 22,
-    "successful_fixes": 22,
+    "times_used": 23,
+    "successful_fixes": 23,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -2873,8 +2873,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 24,
-    "successful_fixes": 24,
+    "times_used": 27,
+    "successful_fixes": 27,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -2898,8 +2898,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 22,
-    "successful_fixes": 22,
+    "times_used": 24,
+    "successful_fixes": 24,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -2923,8 +2923,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 25,
-    "successful_fixes": 25,
+    "times_used": 28,
+    "successful_fixes": 28,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -2973,8 +2973,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 14,
-    "successful_fixes": 14,
+    "times_used": 15,
+    "successful_fixes": 15,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -3089,8 +3089,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 19,
-    "successful_fixes": 19,
+    "times_used": 20,
+    "successful_fixes": 20,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -3139,8 +3139,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 15,
-    "successful_fixes": 15,
+    "times_used": 16,
+    "successful_fixes": 16,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -3221,8 +3221,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 3,
-    "successful_fixes": 3,
+    "times_used": 4,
+    "successful_fixes": 4,
     "confidence": 0.7,
     "validated": true,
     "validation_reason": "Image removed (valid remediation)"
@@ -3296,8 +3296,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 2,
-    "successful_fixes": 2,
+    "times_used": 3,
+    "successful_fixes": 3,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -3412,8 +3412,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 25,
-    "successful_fixes": 25,
+    "times_used": 31,
+    "successful_fixes": 31,
     "confidence": 0.85,
     "validated": true,
     "validation_reason": "All links have descriptive text"
@@ -3512,8 +3512,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 14,
-    "successful_fixes": 14,
+    "times_used": 15,
+    "successful_fixes": 15,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -3644,8 +3644,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 13,
-    "successful_fixes": 13,
+    "times_used": 14,
+    "successful_fixes": 14,
     "confidence": 0.9,
     "validated": true,
     "validation_reason": "Heading hierarchy is correct"
@@ -3669,8 +3669,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 7,
-    "successful_fixes": 7,
+    "times_used": 8,
+    "successful_fixes": 8,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -3719,8 +3719,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 20,
-    "successful_fixes": 20,
+    "times_used": 23,
+    "successful_fixes": 23,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -3926,8 +3926,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 5,
-    "successful_fixes": 5,
+    "times_used": 6,
+    "successful_fixes": 6,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -4313,8 +4313,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 4,
-    "successful_fixes": 4,
+    "times_used": 5,
+    "successful_fixes": 5,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -4395,8 +4395,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 3,
-    "successful_fixes": 3,
+    "times_used": 4,
+    "successful_fixes": 4,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -4846,8 +4846,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 3,
-    "successful_fixes": 3,
+    "times_used": 4,
+    "successful_fixes": 4,
     "confidence": 0.9,
     "validated": true,
     "validation_reason": "All inputs have label associations"
@@ -5461,8 +5461,90 @@
       },
       "practical_assets": []
     },
-    "times_used": 1,
-    "successful_fixes": 1,
+    "times_used": 2,
+    "successful_fixes": 2,
+    "confidence": 0.6,
+    "validated": true,
+    "validation_reason": "Structural change detected (generic check)"
+  },
+  "18e75830dc8a72fb61ca58df2f8ed20c4929b094e80c31d448e5a9e5fb4f87cc": {
+    "rule_id": "meaningful-sequence-mismatch",
+    "normalized_pattern": "",
+    "remediation_data": {
+      "structured_fix": {
+        "explanation": "The HTML structure does not follow a logical reading sequence, making it difficult for screen readers and other assistive technologies to interpret the content.",
+        "fix_steps": [
+          "Review the HTML structure and ensure that the DOM order matches the visual order.",
+          "Check for any CSS styles that may be reordering content in ways that break the reading sequence.",
+          "Validate the HTML structure using a screen reader or other assistive technology to ensure that the content is read in a logical order."
+        ],
+        "code_example": {
+          "vanilla": "<div>\n  <h1>Main Heading</h1>\n  <p>This is a paragraph of text.</p>\n  <img src=\"image.jpg\" alt=\"An image\">\n</div>",
+          "react": "import React from 'react';\n\nfunction MyComponent() {\n  return (\n    <div>\n      <h1>Main Heading</h1>\n      <p>This is a paragraph of text.</p>\n      <img src=\"image.jpg\" alt=\"An image\"/>\n    </div>\n  );\n}",
+          "vue": "<template>\n  <div>\n    <h1>Main Heading</h1>\n    <p>This is a paragraph of text.</p>\n    <img src=\"image.jpg\" alt=\"An image\">\n  </div>\n</template>",
+          "angular": "<div>\n  <h1>Main Heading</h1>\n  <p>This is a paragraph of text.</p>\n  <img src=\"image.jpg\" alt=\"An image\">\n</div>"
+        },
+        "impact": "Users who rely on screen readers or other assistive technologies may have difficulty interpreting the content, as the HTML structure does not follow a logical reading sequence.",
+        "wcag_reference": "1.3.2 Meaningful Sequence"
+      },
+      "explanation": {
+        "what_is_broken": "The HTML structure does not follow a logical reading sequence, making it difficult for screen readers and other assistive technologies to interpret the content.",
+        "impact": "Users who rely on screen readers or other assistive technologies may have difficulty interpreting the content, as the HTML structure does not follow a logical reading sequence.",
+        "wcag_sc": "1.3.2 Meaningful Sequence",
+        "intent": "",
+        "verification": "Review the HTML structure and ensure that the DOM order matches the visual order.\nCheck for any CSS styles that may be reordering content in ways that break the reading sequence.\nValidate the HTML structure using a screen reader or other assistive technology to ensure that the content is read in a logical order."
+      },
+      "fixes": {
+        "vanilla": "<div>\n  <h1>Main Heading</h1>\n  <p>This is a paragraph of text.</p>\n  <img src=\"image.jpg\" alt=\"An image\">\n</div>",
+        "react": "import React from 'react';\n\nfunction MyComponent() {\n  return (\n    <div>\n      <h1>Main Heading</h1>\n      <p>This is a paragraph of text.</p>\n      <img src=\"image.jpg\" alt=\"An image\"/>\n    </div>\n  );\n}",
+        "vue": "<template>\n  <div>\n    <h1>Main Heading</h1>\n    <p>This is a paragraph of text.</p>\n    <img src=\"image.jpg\" alt=\"An image\">\n  </div>\n</template>",
+        "angular": "<div>\n  <h1>Main Heading</h1>\n  <p>This is a paragraph of text.</p>\n  <img src=\"image.jpg\" alt=\"An image\">\n</div>"
+      },
+      "practical_assets": []
+    },
+    "times_used": 3,
+    "successful_fixes": 3,
+    "confidence": 0.6,
+    "validated": true,
+    "validation_reason": "Structural change detected (generic check)"
+  },
+  "eb2aa1152c9d267ddae21481f0f8d5084dc81a38cc60455e8466e5386e17e46e": {
+    "rule_id": "invalid-lang",
+    "normalized_pattern": "",
+    "remediation_data": {
+      "structured_fix": {
+        "explanation": "The lang attribute is missing or invalid, which can cause screen readers to misinterpret the language of the content.",
+        "fix_steps": [
+          "Add the lang attribute to the HTML element with a valid language code.",
+          "Verify that the language code is correct and matches the language of the content.",
+          "Test the page with a screen reader to ensure it announces the language correctly."
+        ],
+        "code_example": {
+          "vanilla": "<html lang=\"en\">...</html>",
+          "react": "<html lang={lang}>...</html> // assuming lang is a variable with the language code",
+          "vue": "<html :lang=\"lang\">...</html> // assuming lang is a variable with the language code",
+          "angular": "<html [lang]=\"lang\">...</html> // assuming lang is a variable with the language code"
+        },
+        "impact": "Users who rely on screen readers may experience difficulties navigating the page or understanding the content.",
+        "wcag_reference": "WCAG 2.2 Level AAA: 3.1.1 Language of Page"
+      },
+      "explanation": {
+        "what_is_broken": "The lang attribute is missing or invalid, which can cause screen readers to misinterpret the language of the content.",
+        "impact": "Users who rely on screen readers may experience difficulties navigating the page or understanding the content.",
+        "wcag_sc": "WCAG 2.2 Level AAA: 3.1.1 Language of Page",
+        "intent": "",
+        "verification": "Add the lang attribute to the HTML element with a valid language code.\nVerify that the language code is correct and matches the language of the content.\nTest the page with a screen reader to ensure it announces the language correctly."
+      },
+      "fixes": {
+        "vanilla": "<html lang=\"en\">...</html>",
+        "react": "<html lang={lang}>...</html> // assuming lang is a variable with the language code",
+        "vue": "<html :lang=\"lang\">...</html> // assuming lang is a variable with the language code",
+        "angular": "<html [lang]=\"lang\">...</html> // assuming lang is a variable with the language code"
+      },
+      "practical_assets": []
+    },
+    "times_used": 4,
+    "successful_fixes": 4,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"

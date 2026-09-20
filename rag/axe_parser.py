@@ -1,12 +1,15 @@
 # axe_parser.py
 import json
 from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
 
 def parse_axe_rules(rules_path="../axe-core/lib/rules"):
     chunks = []
     path = Path(rules_path)
     if not path.exists():
-        print(f"Axe rules path {rules_path} not found. Skipping axe parser.")
+        logger.info(f"Axe rules path {rules_path} not found. Skipping axe parser.")
         return chunks
         
     for f in path.glob("*.json"):

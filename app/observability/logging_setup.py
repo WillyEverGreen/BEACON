@@ -1,62 +1,44 @@
-"""Application logging setup with structured daily-rotated logs."""
+"""
+Application logging setup with structured daily-rotated logs.
+
+This module provides backward compatibility with the new centralized logging system.
+"""
 
 from __future__ import annotations
 
-import json
 import logging
-from datetime import datetime, timezone
-from logging.handlers import TimedRotatingFileHandler
-from pathlib import Path
+import os
 
 from app.config import settings
-
-
-class JsonLogFormatter(logging.Formatter):
-    """Emit one JSON object per log entry for machine-readable logs."""
-
-    def format(self, record: logging.LogRecord) -> str:
-        payload = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "level": record.levelname,
-            "logger": record.name,
-            "message": record.getMessage(),
-        }
-        if record.exc_info:
-            payload["exc_info"] = self.formatException(record.exc_info)
-        return json.dumps(payload, ensure_ascii=False)
+from app.core.logging_config import setup_logging
 
 
 def configure_logging() -> None:
-    """Configure console + rotating file log handlers once."""
+    """
+    Configure console + rotating file log handlers once.
+    
+    This function now delegates to the centralized logging configuration
+    while maintaining backward compatibility.
+    """
     root = logging.getLogger()
     if getattr(root, "_beacon_logging_configured", False):
         return
-
+    
+    # Get configuration from settings
     level_name = str(getattr(settings, "backend_log_level", "INFO")).upper()
-    level = getattr(logging, level_name, logging.INFO)
-
-    logs_dir = Path(getattr(settings, "logs_dir", "./logs"))
-    logs_dir.mkdir(parents=True, exist_ok=True)
-    app_log_path = logs_dir / str(getattr(settings, "app_log_filename", "app.log"))
-
-    root.setLevel(level)
-    root.handlers.clear()
-
-    stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(level)
-    stream_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
-
-    rotating_handler = TimedRotatingFileHandler(
-        app_log_path,
-        when="midnight",
-        interval=1,
-        backupCount=30,
-        encoding="utf-8",
-        utc=True,
+    logs_dir = str(getattr(settings, "logs_dir", "./logs"))
+    
+    # Determine log format based on environment
+    environment = os.getenv("ENVIRONMENT", "development").lower()
+    log_format = "json" if environment in ("production", "staging") else "text"
+    
+    # Setup centralized logging
+    setup_logging(
+        log_level=level_name,
+        log_format=log_format,
+        logs_dir=logs_dir,
+        app_name="beacon"
     )
-    rotating_handler.setLevel(level)
-    rotating_handler.setFormatter(JsonLogFormatter())
-
-    root.addHandler(stream_handler)
-    root.addHandler(rotating_handler)
-    setattr(root, "_beacon_logging_configured", True)
+    
+    # Mark as configured
+    root._beacon_logging_configured = True  # type: ignore

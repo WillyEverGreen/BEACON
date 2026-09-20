@@ -152,18 +152,70 @@ def _apply_scan_record(record: DashboardScanRecord, payload: dict[str, Any]) -> 
     record.completed_at = _from_iso(payload.get("completed_at"))
 
 
+import json
+import logging
+
+logger = logging.getLogger(__name__)
+
 from app.db.supabase_client import get_supabase
 
-def list_projects() -> list[dict[str, Any]]:
-    sb = get_supabase()
-    res = sb.table("projects").select("*").order("created_at", desc=True).execute()
-    return res.data if res.data else []
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
+LOCAL_PROJECTS_FILE = os.path.join(DATA_DIR, "projects.json")
+LOCAL_SCANS_FILE = os.path.join(DATA_DIR, "scans.json")
 
 
-def get_project(project_id: str) -> dict[str, Any] | None:
-    sb = get_supabase()
-    res = sb.table("projects").select("*").eq("id", project_id).maybe_single().execute()
-    return res.data if res.data else None
+def _read_local_json(filepath: str) -> dict[str, Any]:
+    try:
+        if os.path.exists(filepath):
+            with open(filepath, "r", encoding="utf-8") as f:
+                payload = json.load(f)
+                if isinstance(payload, dict):
+                    return payload
+    except Exception as e:
+        logger.warning("Failed to read local json %s: %s", filepath, e)
+    return {}
+
+
+def _write_local_json(filepath: str, data: dict[str, Any]) -> None:
+    try:
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, default=str)
+    except Exception as e:
+        logger.warning("Failed to write local json %s: %s", filepath, e)
+
+
+def list_projects(user_id: Optional[str] = None) -> list[dict[str, Any]]:
+    try:
+        sb = get_supabase()
+        query = sb.table("projects").select("*")
+        if user_id:
+            query = query.eq("user_id", user_id)
+        res = query.order("created_at", desc=True).execute()
+        return res.data if res.data else []
+    except Exception as e:
+        logger.info("Supabase unavailable (%s), reading projects from local storage", e)
+        items = list(_read_local_json(LOCAL_PROJECTS_FILE).values())
+        if user_id:
+            items = [p for p in items if p.get("user_id") == user_id]
+        return sorted(items, key=lambda x: str(x.get("created_at") or ""), reverse=True)
+
+
+def get_project(project_id: str, user_id: Optional[str] = None) -> dict[str, Any] | None:
+    try:
+        sb = get_supabase()
+        query = sb.table("projects").select("*").eq("id", project_id)
+        if user_id:
+            query = query.eq("user_id", user_id)
+        res = query.maybe_single().execute()
+        return res.data if res.data else None
+    except Exception as e:
+        logger.info("Supabase unavailable (%s), reading project from local storage", e)
+        items = _read_local_json(LOCAL_PROJECTS_FILE)
+        proj = items.get(project_id)
+        if proj and user_id and proj.get("user_id") != user_id:
+            return None
+        return proj
 
 
 def upsert_project(project: dict[str, Any], user_id: Optional[str] = None) -> dict[str, Any]:
@@ -177,31 +229,78 @@ def upsert_project(project: dict[str, Any], user_id: Optional[str] = None) -> di
         if os.environ.get("ENVIRONMENT") == "production":
             raise ValueError("user_id is required in production")
 
-    sb = get_supabase()
-    res = sb.table("projects").upsert(project).execute()
-    return res.data[0] if res.data else {}
-
-
-def delete_project(project_id: str) -> bool:
-    sb = get_supabase()
-    res = sb.table("projects").delete().eq("id", project_id).execute()
-    return len(res.data) > 0 if res.data else True
-
-
-def list_scans(project_id: str | None = None) -> list[dict[str, Any]]:
-    sb = get_supabase()
-    query = sb.table("scans").select("*")
-    if project_id:
-        query = query.eq("project_id", project_id)
+    try:
+        sb = get_supabase()
+        res = sb.table("projects").upsert(project).execute()
+        if res.data:
+            return res.data[0]
+    except Exception as e:
+        logger.info("Supabase unavailable (%s), saving project to local storage", e)
     
-    res = query.order("created_at", desc=True).execute()
-    return res.data if res.data else []
+    items = _read_local_json(LOCAL_PROJECTS_FILE)
+    items[project_id] = project
+    _write_local_json(LOCAL_PROJECTS_FILE, items)
+    return project
 
 
-def get_scan(scan_id: str) -> dict[str, Any] | None:
-    sb = get_supabase()
-    res = sb.table("scans").select("*").eq("id", scan_id).maybe_single().execute()
-    return res.data if res.data else None
+def delete_project(project_id: str, user_id: Optional[str] = None) -> bool:
+    deleted = False
+    try:
+        sb = get_supabase()
+        query = sb.table("projects").delete().eq("id", project_id)
+        if user_id:
+            query = query.eq("user_id", user_id)
+        res = query.execute()
+        deleted = len(res.data) > 0 if res.data else True
+    except Exception as e:
+        logger.info("Supabase unavailable (%s), deleting project from local storage", e)
+    
+    items = _read_local_json(LOCAL_PROJECTS_FILE)
+    if project_id in items:
+        if user_id and items[project_id].get("user_id") != user_id:
+            return False
+        del items[project_id]
+        _write_local_json(LOCAL_PROJECTS_FILE, items)
+        deleted = True
+    return deleted
+
+
+def list_scans(project_id: str | None = None, user_id: Optional[str] = None) -> list[dict[str, Any]]:
+    try:
+        sb = get_supabase()
+        query = sb.table("scans").select("*")
+        if project_id:
+            query = query.eq("project_id", project_id)
+        if user_id:
+            query = query.eq("user_id", user_id)
+        
+        res = query.order("created_at", desc=True).execute()
+        return res.data if res.data else []
+    except Exception as e:
+        logger.info("Supabase unavailable (%s), reading scans from local storage", e)
+        items = list(_read_local_json(LOCAL_SCANS_FILE).values())
+        if project_id:
+            items = [s for s in items if s.get("project_id") == project_id]
+        if user_id:
+            items = [s for s in items if s.get("user_id") == user_id]
+        return sorted(items, key=lambda x: str(x.get("created_at") or ""), reverse=True)
+
+
+def get_scan(scan_id: str, user_id: Optional[str] = None) -> dict[str, Any] | None:
+    try:
+        sb = get_supabase()
+        query = sb.table("scans").select("*").eq("id", scan_id)
+        if user_id:
+            query = query.eq("user_id", user_id)
+        res = query.maybe_single().execute()
+        return res.data if res.data else None
+    except Exception as e:
+        logger.info("Supabase unavailable (%s), reading scan from local storage", e)
+        items = _read_local_json(LOCAL_SCANS_FILE)
+        scan = items.get(scan_id)
+        if scan and user_id and scan.get("user_id") != user_id:
+            return None
+        return scan
 
 
 def upsert_scan(scan: dict[str, Any], user_id: Optional[str] = None) -> dict[str, Any]:
@@ -215,13 +314,33 @@ def upsert_scan(scan: dict[str, Any], user_id: Optional[str] = None) -> dict[str
         if os.environ.get("ENVIRONMENT") == "production":
             raise ValueError("user_id is required in production")
 
-    sb = get_supabase()
-    # Handle nested objects/lists by ensuring they are serializable (Supabase SDK does this)
-    res = sb.table("scans").upsert(scan).execute()
-    return res.data[0] if res.data else {}
+    try:
+        sb = get_supabase()
+        res = sb.table("scans").upsert(scan).execute()
+        if res.data:
+            return res.data[0]
+    except Exception as e:
+        logger.info("Supabase unavailable (%s), saving scan to local storage", e)
+
+    items = _read_local_json(LOCAL_SCANS_FILE)
+    items[scan_id] = scan
+    _write_local_json(LOCAL_SCANS_FILE, items)
+    return scan
 
 
 def delete_scans_for_project(project_id: str) -> int:
-    sb = get_supabase()
-    res = sb.table("scans").delete().eq("project_id", project_id).execute()
-    return len(res.data) if res.data else 0
+    count = 0
+    try:
+        sb = get_supabase()
+        res = sb.table("scans").delete().eq("project_id", project_id).execute()
+        count = len(res.data) if res.data else 0
+    except Exception as e:
+        logger.info("Supabase unavailable (%s), deleting scans from local storage", e)
+    
+    items = _read_local_json(LOCAL_SCANS_FILE)
+    remaining = {k: v for k, v in items.items() if v.get("project_id") != project_id}
+    local_count = len(items) - len(remaining)
+    if local_count > 0:
+        _write_local_json(LOCAL_SCANS_FILE, remaining)
+        count = max(count, local_count)
+    return count

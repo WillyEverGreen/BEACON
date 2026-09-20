@@ -232,6 +232,7 @@ phase*_triage.md
 
 # -- Cleanup artifacts --------------------------------------------------------
 cleanup_dead_files.bat
+scratch/
 
 # -- Camoufox browser binary cache --------------------------------------------
 .camoufox/
@@ -255,3 +256,35 @@ evaluation/retest_act_latest.json
 results/
 data/raw/
 *out*.txt
+
+# ============================================================================
+# Environment variables (CRITICAL - Never commit!)
+# ============================================================================
+.env
+.env.local
+.env.production
+.env.production.local
+.env.development.local
+.env.test.local
+frontend/.env
+frontend/.env.local
+frontend/.env.production
+frontend/.env.production.local
+
+# Vercel
+.vercel
+
+# API keys and secrets (backup protection)
+**/api_keys.json
+**/*secret*
+**/*credentials*
+
+# Frontend build cache / artifacts (never commit these)
+frontend/tsconfig.tsbuildinfo
+frontend/tsc_errors.txt
+frontend/test-results/
+frontend/.superdesign/
+
+# Phase run artifacts (runtime outputs — move to evaluation/results/ instead)
+phase*_results.json
+phase*_triage.md

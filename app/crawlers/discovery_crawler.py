@@ -170,7 +170,11 @@ class DiscoveryCrawler:
         if _CRAWL4AI_AVAILABLE and AsyncWebCrawler is not None:
             try:
                 async with AsyncWebCrawler() as crawler:
-                    result = await crawler.arun(url=url)
+                    # Wrap in wait_for to prevent indefinite hangs if playwright gets stuck
+                    result = await asyncio.wait_for(
+                        crawler.arun(url=url),
+                        timeout=self.timeout_seconds
+                    )
                 html = self._extract_html_from_crawl4ai_result(result)
                 if html:
                     return html

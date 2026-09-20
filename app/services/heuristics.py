@@ -280,7 +280,7 @@ class HeuristicAnalyzer:
         return issues
 
     def check_keyboard_trap_corroboration(self) -> list[dict]:
-        """Corroborate static keyboard trap patterns from focus handlers and clipped text regions."""
+        """Corroborate static keyboard trap patterns from focus handlers, positive tabindex, and clickable elements."""
         issues = []
 
         for el in self.soup.find_all(attrs={"onblur": True}):
@@ -340,6 +340,50 @@ class HeuristicAnalyzer:
                 "Use keyboard-accessible scroll behavior or avoid clipping interactive/content regions.",
                 fix_effort="low",
             ))
+
+        # Check for positive tabindex (disrupts natural focus flow)
+        for el in self.soup.find_all(attrs={"tabindex": True}):
+            try:
+                val = int(str(el.get("tabindex")).strip())
+                if val > 0:
+                    issues.append(_make_issue(
+                        self.url,
+                        "tabindex",
+                        "violation",
+                        "moderate",
+                        _css_selector(el),
+                        _snippet(el, 240),
+                        f"Positive tabindex='{val}' changes the default tab order, which can cause keyboard navigation confusion.",
+                        "2.1.1",
+                        "A",
+                        "keyboard",
+                        "Remove positive tabindex. Use tabindex='0' to make elements focusable in natural DOM order.",
+                        fix_effort="low",
+                    ))
+            except ValueError:
+                pass
+
+        # Check for interactive click elements missing focus capabilities
+        for el in self.soup.find_all(True):
+            if not isinstance(el, Tag):
+                continue
+            if el.name in {"a", "button", "input", "select", "textarea", "iframe", "object"}:
+                continue
+            if el.has_attr("onclick") and not el.has_attr("tabindex"):
+                issues.append(_make_issue(
+                    self.url,
+                    "keyboard-focusable",
+                    "violation",
+                    "serious",
+                    _css_selector(el),
+                    _snippet(el, 240),
+                    f"Element <{el.name}> has a click handler but is not keyboard focusable (missing tabindex).",
+                    "2.1.1",
+                    "A",
+                    "keyboard",
+                    "Add tabindex='0' and an appropriate ARIA role to make the element keyboard accessible.",
+                    fix_effort="low",
+                ))
 
         return issues
 

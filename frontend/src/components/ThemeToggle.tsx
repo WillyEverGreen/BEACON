@@ -1,6 +1,6 @@
 "use client";
 
-import { useTheme } from "next-themes";
+import { useTheme } from "./ThemeProvider";
 import { useEffect, useState } from "react";
 
 function MoonIcon({ className }: { className?: string }) {

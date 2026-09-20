@@ -42,8 +42,34 @@ class CrawlerOrchestrator:
         self.discovery_factory = discovery_factory or (lambda **kwargs: DiscoveryCrawler(**kwargs))
         self.dom_crawler = dom_crawler or DOMCrawler()
 
+    async def _check_bot_wall(self, url: str) -> None:
+        """Perform a preflight fetch to check if the seed URL is protected by a bot wall."""
+        from curl_cffi.requests import AsyncSession
+        from app.services.audit_runner import stable_request_headers
+        from app.audit.failure_taxonomy import normalize_failure, DegradedReason
+        
+        headers = stable_request_headers(url, attempt_index=0)
+        try:
+            async with AsyncSession(impersonate="chrome", headers=headers, allow_redirects=True) as client:
+                response = await client.get(url, timeout=5.0)
+            status_code = int(response.status_code)
+            header_map = {str(k).lower(): str(v) for k, v in dict(response.headers or {}).items()}
+            
+            # Use failure taxonomy to normalize response status and headers
+            reason = normalize_failure(response.text if hasattr(response, "text") else "", http_status=status_code, headers=header_map).value
+            if reason == DegradedReason.BOT_WALL.value:
+                raise ValueError("This site is protected by bot protection (e.g. Cloudflare or a CAPTCHA challenge). BEACON cannot scan protected sites to prevent mindless requests.")
+        except ValueError:
+            raise
+        except Exception as e:
+            # Connectivity/network errors are ignored during preflight so the crawler can still attempt
+            logger.debug("Preflight bot wall check exception for %s: %s", url, e)
+
     async def discover_urls(self, seed_url: str, scan_mode: str, max_pages: int) -> list[str]:
         """Discover and prioritize URLs for the requested scan mode."""
+        # 1. Run bot wall preflight check
+        await self._check_bot_wall(seed_url)
+
         mode_key = scan_mode.lower()
         mode_cfg = SCAN_MODES.get(mode_key)
         if mode_cfg is None:

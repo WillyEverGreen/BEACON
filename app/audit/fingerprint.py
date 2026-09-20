@@ -28,6 +28,9 @@ def _looks_dynamic_token(token: str) -> bool:
     if len(lowered) >= 10 and re.search(r"[a-z]", lowered) and re.search(r"\d", lowered):
         return True
 
+    if lowered.endswith("-"):
+        return True
+
     return False
 
 
@@ -46,6 +49,10 @@ def stable_selector_fingerprint(selector: str) -> str:
     raw = (selector or "").strip().lower()
     if not raw:
         return ""
+
+    # Pre-strip Tailwind JIT escaped brackets (e.g. -\\[...\\] or -\\[...)
+    raw = re.sub(r"\\[^\s.#>+~]*\[[^\]]*\]", "", raw)
+    raw = re.sub(r"\\[^\s.#>+~]*", "", raw)
 
     normalized = re.sub(r":nth-(?:child|of-type)\(\s*\d+\s*\)", "", raw)
     normalized = re.sub(r"\[(id|class)=['\"]?([^'\"\]]+)['\"]?\]", _normalize_attr_selector, normalized)

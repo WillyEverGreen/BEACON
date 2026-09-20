@@ -204,3 +204,24 @@ def persist_lighthouse_enrichment(scan_id: str, enrichment_block: dict[str, Any]
             "persist_lighthouse_enrichment failed for scan_id=%s", scan_id
         )
 
+def get_user_usage_limits(user_id: str) -> dict[str, Any]:
+    """Fetch plan-based limits for a user. Defaults to 'free' if not found."""
+    if not user_id:
+        from app.config import PLAN_TIERS
+        return PLAN_TIERS["free"]
+
+    try:
+        sb = get_supabase()
+        res = sb.table("usage_limits").select("*").eq("user_id", user_id).maybe_single().execute()
+        if res.data:
+            return {
+                "plan": res.data.get("plan", "free"),
+                "max_pages": res.data.get("pages_per_audit", 10),
+                "ai_budget": res.data.get("ai_budget_per_audit", 5),
+            }
+    except Exception:
+        pass
+    
+    from app.config import PLAN_TIERS
+    return PLAN_TIERS["free"]
+

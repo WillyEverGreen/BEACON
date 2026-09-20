@@ -520,6 +520,7 @@ class SiteCrawlOrchestrator:
                 early_stop_reason=early_stop_reason,
                 pages_failed=pages_failed,
                 queue_remaining=session.has_pending,
+                pages_succeeded=len(page_results),
             )
 
             site_failure_profile = _build_site_failure_profile(page_results)
@@ -1006,7 +1007,19 @@ def _build_site_failure_profile(page_results: list[dict[str, Any]]) -> dict[str,
     }
 
 
-def _derive_crawl_status(*, early_stop_reason: str | None, pages_failed: int, queue_remaining: bool) -> str:
+def _derive_crawl_status(
+    *,
+    early_stop_reason: str | None,
+    pages_failed: int,
+    queue_remaining: bool,
+    pages_succeeded: int = 0,
+) -> str:
+    if pages_succeeded > 0 and (
+        early_stop_reason in {"failure_threshold", "global_timeout"}
+        or str(early_stop_reason or "").startswith("non_recoverable:")
+    ):
+        return "partial"
+
     if early_stop_reason in {"failure_threshold", "global_timeout"}:
         return "aborted"
     if str(early_stop_reason or "").startswith("non_recoverable:"):

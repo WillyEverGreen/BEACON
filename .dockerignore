@@ -1,0 +1,101 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Environment files (NEVER include in Docker image)
+.env
+.env.*
+*.env
+frontend/.env*
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info
+.eggs
+dist
+build
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# Testing
+.pytest_cache
+.coverage
+htmlcov/
+.tox/
+tests/
+evaluation/
+scratch/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Documentation
+docs/
+*.md
+LICENSE
+CONTRIBUTING.md
+
+# Frontend (deployed separately to Vercel)
+frontend/
+node_modules/
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+chroma_db/
+
+# Output files
+results/
+feedback_data/
+*.json
+!app/data/*.json
+!requirements.txt
+!package*.json
+
+# Scripts (not needed in production)
+scripts/
+manual_migration.py
+
+# MacOS
+.DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Vercel
+.vercel
+vercel.json
+
+# Backup files
+*.bak
+*.backup
+*~

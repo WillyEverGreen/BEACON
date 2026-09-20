@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any
 
 from app.audit.fingerprint import stable_selector_fingerprint
 from app.config import IMPACT_SUMMARIES
 from app.services.prioritizer import build_scoring_summary
+
+logger = logging.getLogger(__name__)
 
 
 _SEVERITY_ORDER = {

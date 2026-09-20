@@ -71,40 +71,18 @@ rule coverage metrics
 
 You passed Phase 2, but here’s what comes next:
 
-🌐 1. SMART CRAWLING (BIG UPGRADE)
+🌐 1. SMART CRAWLING (BIG UPGRADE) — **[IMPLEMENTED]** ✅
+- Full site crawling with multi-engine discovery (Sitemap + BFS + DOM SPA Crawler)
+- Detects site topology (single_page, thin, deep_uniform, paginated, multi_template)
+- Gives site-level intelligence
 
-Right now:
+⚡ 2. ADAPTIVE SCAN MODES — **[IMPLEMENTED]** ✅
+- Adaptive budgets, timeouts, and page selection based on classified topology
+- Saves time + improves reliability
 
-mostly single-page audits
-
-Future:
-
-crawl full site
-detect page types:
-homepage
-forms
-product pages
-
-👉 Gives site-level intelligence
-
-⚡ 2. ADAPTIVE SCAN MODES
-
-Instead of fixed modes:
-
-simple site → fast mode  
-complex SPA → deep mode
-
-👉 Saves time + improves reliability
-
-🧠 3. FAILURE PREDICTION
-
-Before scanning:
-
-predict if site will:
-timeout
-block requests
-
-👉 Adjust strategy beforehand
+🧠 3. FAILURE PREDICTION — **[IMPLEMENTED]** ✅
+- Lightweight preflight checks test connection health before crawler execution
+- Predicts and handles early blocks (e.g. Cloudflare walls) and timeouts
 
 📦 4. CACHING INTELLIGENCE
 reuse results across pages
@@ -112,16 +90,6 @@ avoid re-scanning identical components
 
 👉 Massive speed boost
 
-🔍 5. DEEP ERROR ANALYSIS
-
-Instead of:
-
-network_error
-
-Do:
-
-blocked by Cloudflare
-JS crash
-CSP restriction
-
-👉 Helps debugging + product quality
+🔍 5. DEEP ERROR ANALYSIS — **[IMPLEMENTED]** ✅
+- Explicit status and taxonomy classification mapping blocks (bot_wall), timeouts, CSP injections, and page loading states.
+- Helps debugging + product quality

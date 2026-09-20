@@ -1,5 +1,6 @@
 from typing import Optional
 import logging
+from fastapi import Header
 
 logger = logging.getLogger(__name__)
 
@@ -38,3 +39,14 @@ def extract_user_id_from_jwt(supabase_token: Optional[str]) -> Optional[str]:
     except Exception as e:
         logger.warning(f"Failed to extract user_id from JWT: {e}")
         return None
+
+async def get_current_user_id(
+    authorization: Optional[str] = Header(None),
+    x_supabase_token: Optional[str] = Header(None, alias="X-Supabase-Token")
+) -> Optional[str]:
+    """
+    FastAPI dependency to extract user_id from various auth headers.
+    Prioritizes X-Supabase-Token, falls back to Authorization: Bearer.
+    """
+    token = x_supabase_token or authorization
+    return extract_user_id_from_jwt(token)

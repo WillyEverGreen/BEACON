@@ -134,7 +134,7 @@ Developer / CI Tool
 │  CrossEncoder reranker (ms-marco-MiniLM-L-6-v2)                  │
 │  └─ MAX_CONTEXT_CHUNKS = 5  ← hard cap                           │
 │                                                                    │
-│  LLM: Featherless AI → Qwen/Qwen2.5-Coder-32B-Instruct           │
+│  LLM: NVIDIA NIM → Llama 3.1 70B / Qwen2.5-Coder-32B-Instruct    │
 │  ├─ Batched by WCAG criterion (60-80% cost reduction)             │
 │  ├─ AccessGuru-style multimodal prompt patterns (NEW)              │
 │  └─ Async enrichment: report returns instantly, AI streams later  │
@@ -467,7 +467,7 @@ Artifact: `evaluation/site_archetype_validation_results.json`
 
 ## 🛡️ 8. LLM Fallback & Degradation Strategy
 
-When Featherless AI is unreachable:
+When the NVIDIA NIM LLM endpoint is unreachable:
 
 1. **Fix Cache** checked first — previously-validated LLM fixes are reused (85% success gate)
 2. **Rule-Based Fallback** (`RULE_BASED_FALLBACK_FIXES`) — 10 hand-written static remediation packets for the most common rules (missing-alt, missing-label, color-contrast, etc.)
@@ -503,7 +503,7 @@ The report is **never empty** during LLM outage. Each issue is tagged with `_enr
 | :------------------ | :----------------------------------------------------------------------------------------------- |
 | Language            | Python 3.11+                                                                                     |
 | API Framework       | FastAPI + Pydantic v2                                                                            |
-| LLM                 | Featherless AI → Qwen2.5-Coder-32B-Instruct                                                      |
+| LLM                 | NVIDIA NIM → Llama 3.1 70B (OpenAI-compatible)                                                   |
 | Embedding           | sentence-transformers `all-MiniLM-L6-v2`                                                         |
 | Reranker            | `cross-encoder/ms-marco-MiniLM-L-6-v2`                                                           |
 | Vector Store        | ChromaDB (HNSW, cosine, 25,346 chunks)                                                           |
