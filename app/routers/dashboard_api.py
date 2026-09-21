@@ -14,7 +14,7 @@ import time
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Header, Depends
+from fastapi import APIRouter, HTTPException, Header, Depends, Response
 from pydantic import BaseModel
 from app.security.jwt_utils import extract_user_id_from_jwt, get_current_user_id
 
@@ -948,3 +948,101 @@ async def get_scan_progress(pid: str, sid: str):
         "score": scan.get("score"),
         "total_issues": scan.get("total_issues", 0),
     }
+
+
+def _issue_dict_to_finding(issue: dict):
+    from app.models.contracts import Finding
+    confidence_sources = issue.get("confidence_sources") or []
+    return Finding(
+        id=str(issue.get("id") or issue.get("issue_id") or uuid.uuid4().hex[:8]),
+        rule_id=str(issue.get("rule_id") or issue.get("description") or "a11y-violation"),
+        engine=str(issue.get("engine") or (confidence_sources[0] if confidence_sources else "beacon")),
+        engine_version="3.0.0",
+        rule_version="3.0.0",
+        beacon_version="3.0.0",
+        wcag_criterion=str(issue.get("wcag_criterion") or ""),
+        wcag_level=str(issue.get("wcag_level") or "AA"),
+        severity=str(issue.get("severity") or "serious").lower(),
+        selector=str(issue.get("selector") or issue.get("target_element") or "body"),
+        selector_fingerprint=str(issue.get("selector_fingerprint") or ""),
+        html_snippet=str(issue.get("html_snippet") or ""),
+        message=str(issue.get("description") or issue.get("message") or ""),
+        evidence=issue.get("evidence") or {},
+        confidence=float(issue.get("confidence") or 0.85),
+        agreement_count=int(issue.get("agreement_count") or len(confidence_sources) or 1),
+        participating_engines=issue.get("participating_engines") or confidence_sources or ["beacon"],
+        act_rule_id=issue.get("act_rule_id"),
+        act_adjudicated=bool(issue.get("act_adjudicated") or False),
+    )
+
+
+@router.get("/scans/{pid}/{sid}/export/{fmt}")
+async def export_scan_report(pid: str, sid: str, fmt: str):
+    """
+    Export scan findings to standards-compliant formats:
+    - 'sarif': OASIS SARIF 2.1.0 JSON (GitHub Code Scanning)
+    - 'earl': W3C EARL 1.0 JSON-LD (EU EAA / ADA regulatory compliance)
+    - 'markdown': Formatted markdown report
+    - 'json': Raw normalized findings payload
+    """
+    _ensure_legacy_bootstrap()
+    scan = get_scan_record(sid)
+    if not scan:
+        raise HTTPException(404, "Scan not found")
+
+    url = scan.get("url") or "https://scan.target"
+    issues = scan.get("issues") or []
+    normalized_format = fmt.lower().strip()
+
+    if normalized_format == "sarif":
+        from app.audit.exporters.sarif_exporter import export_to_sarif
+        findings = [_issue_dict_to_finding(issue) for issue in issues]
+        sarif_data = export_to_sarif(findings, target_url=url, tool_version="3.0.0")
+        return Response(
+            content=json.dumps(sarif_data, indent=2),
+            media_type="application/sarif+json",
+            headers={"Content-Disposition": f'attachment; filename="beacon-scan-{sid}.sarif"'},
+        )
+
+    elif normalized_format in {"earl", "jsonld", "json-ld"}:
+        from app.audit.exporters.earl_exporter import export_to_earl
+        findings = [_issue_dict_to_finding(issue) for issue in issues]
+        earl_data = export_to_earl(findings, target_url=url, tool_version="3.0.0")
+        return Response(
+            content=json.dumps(earl_data, indent=2),
+            media_type="application/ld+json",
+            headers={"Content-Disposition": f'attachment; filename="beacon-scan-{sid}.earl.jsonld"'},
+        )
+
+    elif normalized_format in {"markdown", "md"}:
+        report_text = scan.get("markdown_report")
+        if not report_text:
+            from app.services.report import generate_markdown_report
+            report_text = generate_markdown_report(
+                url=url,
+                scan_mode=scan.get("scan_mode", "fast"),
+                score=float(scan.get("score") or 0.0),
+                issues=issues,
+                groups=scan.get("groups", []),
+                prioritized_issues=scan.get("priority_ranking", []),
+                scan_time=float(scan.get("scan_time_seconds") or 0.0),
+                engines_used=scan.get("engines_used", []),
+            )
+        return Response(
+            content=report_text,
+            media_type="text/markdown; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="beacon-scan-{sid}.md"'},
+        )
+
+    elif normalized_format == "json":
+        return Response(
+            content=json.dumps(scan, indent=2, default=str),
+            media_type="application/json",
+            headers={"Content-Disposition": f'attachment; filename="beacon-scan-{sid}.json"'},
+        )
+    else:
+        raise HTTPException(
+            400,
+            f"Unsupported export format: '{fmt}'. Supported formats: sarif, earl, markdown, json.",
+        )
+

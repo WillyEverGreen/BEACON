@@ -131,10 +131,11 @@ export default function DashboardLayout({
               <div className="flex items-center justify-between gap-2">
                 <div>
                   <p className="text-[9px] text-white/70 uppercase tracking-[0.15em] font-bold leading-none">
-                    v2.1.0
+                    v3.0.0
                   </p>
-                  <p className="text-[9px] text-white/60 uppercase tracking-[0.1em] font-medium mt-0.5">
-                    Production
+                  <p className="text-[9px] text-emerald-400 uppercase tracking-[0.1em] font-bold mt-0.5 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse" />
+                    Verified
                   </p>
                 </div>
                 <ThemeToggle />

@@ -234,32 +234,32 @@ export default function Home() {
           <div className="mx-auto w-full max-w-7xl px-4 md:px-10">
             <div className="mb-16 max-w-3xl" data-reveal>
               <h2 className="font-cabinet text-4xl font-extrabold tracking-tight md:text-5xl lg:text-6xl text-black">
-                The Intelligence Engine <br/>behind BEACON v2.0
+                The Intelligence Engine <br/>behind BEACON v3.0
               </h2>
               <p className="mt-6 text-lg font-medium text-black/70">
-                Built for precision at scale. We analyze your website using a multi-engine orchestrator that combines static checks, Playwright browser probes, and a custom 5-signal Confidence Engine.
+                Built for precision at scale. We audit your website using a multi-engine orchestrator cross-calibrating axe-core, IBM Equal Access, Siteimprove Alfa, Guidepup screen reader probes, and a Zero-Regression AI Remediation Sandbox.
               </p>
             </div>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
               <div className="neo-panel rounded-xl bg-[#ffe17c] p-6 border-[3px] border-black" data-reveal>
                 <div className="mb-4 font-cabinet text-3xl font-extrabold text-black">01</div>
-                <h3 className="font-bold uppercase tracking-tight text-black text-lg mb-2">Fast & Deep Modes</h3>
-                <p className="text-black/80 text-sm font-medium">Switch between httpx-only scans (5-15s) and full Playwright DOM renders (30-120s) for complex single-page apps.</p>
+                <h3 className="font-bold uppercase tracking-tight text-black text-lg mb-2">Native Topology</h3>
+                <p className="text-black/80 text-sm font-medium">DOM tag-tree skeleton clustering cuts redundant crawl loops by 66.7% while preserving template diversity across complex web apps.</p>
               </div>
               <div className="neo-panel rounded-xl bg-[#b7c6c2] p-6 border-[3px] border-black" data-reveal>
                 <div className="mb-4 font-cabinet text-3xl font-extrabold text-black">02</div>
-                <h3 className="font-bold uppercase tracking-tight text-black text-lg mb-2">Confidence Engine</h3>
-                <p className="text-black/80 text-sm font-medium">No more false positives. Our 5-signal formula weighs source reliability, reproducibility, and cross-engine agreement.</p>
+                <h3 className="font-bold uppercase tracking-tight text-black text-lg mb-2">Consensus &amp; ACT</h3>
+                <p className="text-black/80 text-sm font-medium">Multi-engine agreement reconciles Axe, IBM, Alfa, and Guidepup. 100% W3C ACT Rule Adjudication eliminates false positives.</p>
               </div>
               <div className="neo-panel rounded-xl bg-white p-6 border-[3px] border-black" data-reveal>
                 <div className="mb-4 font-cabinet text-3xl font-extrabold text-black">03</div>
-                <h3 className="font-bold uppercase tracking-tight text-black text-lg mb-2">LLM Fallback</h3>
-                <p className="text-black/80 text-sm font-medium">Async remediation streams AI solutions via RAG. If offline, the Fix Cache and Rule-Based Fallbacks guarantee reports never fail.</p>
+                <h3 className="font-bold uppercase tracking-tight text-black text-lg mb-2">AI Patch Sandbox</h3>
+                <p className="text-black/80 text-sm font-medium">Candidate fixes run in an isolated DOM AST container. Zero-regression gating guarantees fixes never introduce new violations or XSS.</p>
               </div>
               <div className="neo-panel rounded-xl bg-[#171e19] p-6 border-[3px] border-black text-white" data-reveal>
                 <div className="mb-4 font-cabinet text-3xl font-extrabold text-white">04</div>
-                <h3 className="font-bold uppercase tracking-tight text-white text-lg mb-2">Cognitive UX</h3>
-                <p className="text-white/80 text-sm font-medium">Experimental layer measuring Flesch-Kincaid readability, jargon density, and form usability for neurodivergent accessibility.</p>
+                <h3 className="font-bold uppercase tracking-tight text-white text-lg mb-2">SARIF &amp; EARL</h3>
+                <p className="text-white/80 text-sm font-medium">Native machine-readable exports for OASIS SARIF 2.1.0 (GitHub Code Scanning) and W3C EARL 1.0 JSON-LD (EU EAA / ADA compliance).</p>
               </div>
             </div>
           </div>

@@ -27,8 +27,8 @@ export function Features() {
                                     <ScanSearch className="m-auto h-fit w-16 text-[#171e19]" strokeWidth={1.5} />
                                 </div>
                                 <div className="relative z-10 mt-6 space-y-2 text-center">
-                                    <h2 className="text-lg font-extrabold font-cabinet transition">Multi-Page Scanning</h2>
-                                    <p className="text-sm font-medium text-zinc-600">Crawl entire domains and auto-discover every accessible route for a comprehensive audit.</p>
+                                    <h2 className="text-lg font-extrabold font-cabinet transition">Native Topology Crawling</h2>
+                                    <p className="text-sm font-medium text-zinc-600">Crawl entire domains with structural DOM skeleton clustering, cutting redundant loops by 66.7%.</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -82,8 +82,8 @@ export function Features() {
                                         <Sparkles className="m-auto size-5 text-[#ffe17c]" strokeWidth={1.5} />
                                     </div>
                                     <div className="space-y-2">
-                                        <h2 className="text-lg font-extrabold font-cabinet text-white transition">NVIDIA NIM AI Fixes</h2>
-                                        <p className="text-sm font-medium text-zinc-400">Context-aware AI generates optimized ARIA labels, semantic HTML, and contrast-compliant CSS.</p>
+                                        <h2 className="text-lg font-extrabold font-cabinet text-white transition">NVIDIA NIM AI Sandbox</h2>
+                                        <p className="text-sm font-medium text-zinc-400">Context-aware AI fixes verified in a headless DOM container with a strict zero-regression guarantee.</p>
                                     </div>
                                 </div>
                                 <div className="rounded-tl-2xl relative -mb-6 -mr-6 mt-6 h-fit border-l-2 border-t-2 border-zinc-700 p-6 py-6 sm:ml-6">

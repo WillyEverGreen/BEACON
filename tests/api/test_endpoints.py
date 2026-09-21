@@ -59,3 +59,53 @@ def test_health_ready_schema():
             response = client.get("/health/ready")
             assert response.status_code == 200
             assert response.json()["status"] == "ready"
+
+
+def test_export_scan_sarif_and_earl():
+    """Verify SARIF and EARL export endpoints format output correctly."""
+    mock_scan = {
+        "id": "testscan1",
+        "project_id": "proj1",
+        "url": "https://example.com",
+        "status": "completed",
+        "score": 92,
+        "issues": [
+            {
+                "id": "iss-1",
+                "rule_id": "image-alt",
+                "engine": "axe",
+                "wcag_criterion": "1.1.1",
+                "wcag_level": "A",
+                "severity": "critical",
+                "selector": "img#hero",
+                "html_snippet": "<img id='hero'>",
+                "description": "Image missing alt attribute",
+                "confidence": 0.95,
+                "confidence_sources": ["axe", "heuristics"],
+                "act_rule_id": "23a2a8",
+                "act_adjudicated": True,
+            }
+        ]
+    }
+    with patch.object(settings, "auth_enabled", False):
+        with patch("app.routers.dashboard_api.get_scan_record", return_value=mock_scan):
+            # SARIF
+            resp_sarif = client.get("/v1/api/scans/proj1/testscan1/export/sarif")
+            assert resp_sarif.status_code == 200
+            assert "application/sarif+json" in resp_sarif.headers.get("content-type", "")
+            sarif_json = resp_sarif.json()
+            assert sarif_json["version"] == "2.1.0"
+            assert len(sarif_json["runs"][0]["results"]) == 1
+
+            # EARL
+            resp_earl = client.get("/v1/api/scans/proj1/testscan1/export/earl")
+            assert resp_earl.status_code == 200
+            assert "application/ld+json" in resp_earl.headers.get("content-type", "")
+            earl_json = resp_earl.json()
+            assert "@graph" in earl_json
+
+            # Markdown
+            resp_md = client.get("/v1/api/scans/proj1/testscan1/export/markdown")
+            assert resp_md.status_code == 200
+            assert "Accessibility Audit Report" in resp_md.text
+

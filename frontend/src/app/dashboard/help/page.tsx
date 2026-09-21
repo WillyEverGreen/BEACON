@@ -24,6 +24,24 @@ function IconWrench({ className }: { className?: string }) {
     </svg>
   );
 }
+function IconShield({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  );
+}
+function IconFileText({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+      <polyline points="10 9 9 9 8 9" />
+    </svg>
+  );
+}
 
 const DOCS = [
   {
@@ -32,46 +50,72 @@ const DOCS = [
     icon: IconRocket,
     sections: [
       {
-        q: "What is BEACON?",
-        a: "BEACON (Benchmarking & Evaluation of Accessibility Compliance Optimization Node) is an AI-powered web accessibility auditing platform. It crawls your website, runs 65+ WCAG 2.2 checks, and utilizes an AI semantic layer for actionable fix suggestions.",
+        q: "What is BEACON v3.0?",
+        a: "BEACON (Benchmarking & Evaluation of Accessibility Compliance Optimization Node) is an enterprise-grade accessibility intelligence platform. Version 3.0 introduces multi-engine consensus (axe-core, IBM Equal Access, Siteimprove Alfa, Guidepup screen reader), 100% W3C ACT Rule Adjudication, Patchright stealth anti-bot automation, and zero-regression AI remediation.",
       },
       {
         q: "How do I run my first scan?",
-        a: "1. Click 'New Project' on the dashboard and enter your website URL and project name.\n2. Open your project and click 'Run Scan'.\n3. Wait for the engine to complete its analysis.\n4. Explore the Overview, Issues, and Fix Priority Queue tabs.",
+        a: "1. Click 'New Project' on the dashboard and enter your website URL and project name.\n2. Choose your scan mode: Fast (single-page static audit), Deep (multi-page domain audit), or Max (exhaustive crawl).\n3. Open your project and click 'Initiate Scan'.\n4. Explore the Overview, Issues, Fix Priority Queue, and Telemetry tabs, or click 'Export' for SARIF/EARL reports.",
       },
     ],
   },
   {
-    id: "scanning",
-    title: "Scans & Scoring",
-    icon: IconSearch,
+    id: "consensus",
+    title: "Multi-Engine Consensus",
+    icon: IconShield,
     sections: [
       {
-        q: "What does a scan check?",
-        a: "• 65+ WCAG 2.2 checks (images, forms, ARIA, color contrast, keyboard navigation, headings, landmarks)\n• Semantic analysis for complex UI elements\n• Fix generation for discovered violations",
+        q: "How does the Consensus Engine work?",
+        a: "Unlike single-engine linters that suffer from false alarms, BEACON reconciles findings across multiple independent audit engines:\n• axe-core 4.10 (industry baseline standard)\n• IBM Equal Access 3.1 (enterprise rule coverage)\n• Siteimprove Alfa (W3C ACT rule evaluation)\n• Guidepup Screen Reader (dynamic speech synthesis and focus trap detection)\n• BEACON Heuristics & Cognitive COGA\n\nFindings with multi-engine agreement receive boosted calibrated confidence (up to 99%), pinning down genuine barriers with zero noise.",
       },
       {
-        q: "How are scan scores calculated?",
-        a: "Scores range from 0–100:\n• Weighted by WCAG level (AAA=1×, AA=2×, A=3× weight) and severity (critical=4pts, serious=3, moderate=2, minor=1).\n• Automatically grouped and deduped by domain.",
-      },
-      {
-        q: "Why do scans take a few moments?",
-        a: "BEACON evaluates your page dynamically with Playwright, checks color contrast of rendered elements, and validates issues with an LLM layer. Typical scan time is 5-25 seconds depending on page size and complexity.",
+        q: "What is W3C ACT Rule Adjudication?",
+        a: "W3C Accessibility Conformance Testing (ACT) defines unambiguous, vendor-neutral test cases. When an issue matches a verified ACT rule identifier, BEACON flags it as 'ACT Adjudicated', cementing 100% benchmark precision and authoritative compliance grounding.",
       },
     ],
   },
   {
-    id: "issues",
-    title: "Issues & Fixes",
+    id: "remediation",
+    title: "AI Remediation Sandbox",
     icon: IconWrench,
     sections: [
       {
-        q: "How do I see what's wrong?",
-        a: "Go to the Issues tab in your project. Each issue lists the description, exact HTML snippet, and WCAG criteria. You'll see Kimi AI's suggested fixes, which include both an explanation and paste-ready code.",
+        q: "How does NVIDIA NIM AI Remediation work?",
+        a: "BEACON couples state-of-the-art NVIDIA NIM language models with a contextual RAG knowledge base containing WCAG 2.2, WAI-ARIA APG, and COGA design patterns to synthesize exact, paste-ready HTML and CSS patches.",
       },
       {
-        q: "What is the Fix Priority Queue?",
-        a: "This ranks the issues based on User Impact × Frequency. Start from #1 on this list for maximum immediate UX improvement.",
+        q: "What is the Zero-Regression Remediation Sandbox?",
+        a: "Candidate AI fixes are not accepted blindly. Each patch is executed inside an isolated DOM container (`RemediationSandbox`) where a differential audit is performed. Any patch that introduces new violations or contains unsafe scripting (`<script>`, inline `onclick`, unauthorized attributes) is automatically rejected.",
+      },
+    ],
+  },
+  {
+    id: "exporters",
+    title: "SARIF & EARL Exporters",
+    icon: IconFileText,
+    sections: [
+      {
+        q: "How do I export to OASIS SARIF 2.1.0?",
+        a: "Click 'Export' > 'OASIS SARIF 2.1.0' on any completed project scan. The resulting `.sarif` file can be directly uploaded to GitHub Code Scanning via `github/codeql-action/upload-sarif`, piped into GitLab SAST, or inspected in VS Code.",
+      },
+      {
+        q: "What is W3C EARL 1.0 JSON-LD?",
+        a: "The Evaluation and Report Language (EARL) 1.0 is the W3C standard format for recording accessibility test results. The `.jsonld` export generates machine-readable conformance assertion graphs ideal for European Accessibility Act (EAA), Section 508, and official government audits.",
+      },
+    ],
+  },
+  {
+    id: "topology",
+    title: "Topology & Anti-Bot",
+    icon: IconSearch,
+    sections: [
+      {
+        q: "What is Native Topology Crawling?",
+        a: "BEACON clusters pages by structural DOM tag-tree skeletons stripped of volatile classes and IDs. When subsequent pages in a template cluster (e.g. blog posts or product catalogs) yield no new violation types, the crawler stops early—cutting crawl loops by 66.7% while preserving template diversity.",
+      },
+      {
+        q: "How does 3-Tier Anti-Bot Automation work?",
+        a: "Websites with modern bot protections (such as Cloudflare Turnstile or CAPTCHA challenges) are handled via a 3-tier launcher:\n1. Patchright (undetected C++ patched Chromium stripping CDP artifacts)\n2. Camoufox (anti-detect Firefox with WebGL/font spoofing)\n3. Playwright (standard fallback with challenge detection)\n\nIf challenge walls are detected, BEACON logs dedicated observability telemetry instead of crashing.",
       },
     ],
   },

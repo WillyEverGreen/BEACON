@@ -448,15 +448,16 @@ export default function AllProjectsPage() {
             </div>
           </div>
 
-          {/* Cloudflare & Bot Protection Warning Card */}
-          <div className="p-4 rounded-lg border-2 border-amber-500/60 bg-amber-100 dark:bg-amber-950/40 text-xs mb-5 flex items-start gap-3 shadow-[2px_2px_0px_#000]">
-            <IconShield className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          {/* 3-Tier Anti-Bot & Headless Browser Automation Notice */}
+          <div className="p-4 rounded-lg border-2 border-emerald-500/60 bg-emerald-50 dark:bg-emerald-950/30 text-xs mb-5 flex items-start gap-3 shadow-[2px_2px_0px_#000]">
+            <IconShield className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
             <div className="space-y-0.5">
-              <span className="font-black uppercase tracking-wider text-amber-950 dark:text-amber-300 block text-[11px]">
-                Cloudflare &amp; Bot Protection Notice
+              <span className="font-black uppercase tracking-wider text-emerald-950 dark:text-emerald-300 block text-[11px] flex items-center gap-2">
+                Stealth Anti-Bot &amp; Headless Automation
+                <span className="text-[9px] bg-emerald-600 text-white px-1.5 py-0.2 rounded font-black tracking-wider uppercase">v3.0</span>
               </span>
-              <p className="text-amber-900 dark:text-amber-100 font-medium leading-relaxed text-xs">
-                BEACON automated crawlers cannot audit sites behind active Cloudflare Turnstile, CAPTCHAs, or anti-bot challenge walls. Please ensure your target website is publicly accessible.
+              <p className="text-emerald-900 dark:text-emerald-100 font-medium leading-relaxed text-xs">
+                BEACON v3.0 features a 3-tier resilient browser pipeline (Patchright C++ patched Chromium, Camoufox, and Playwright fallback). Sites protected by Cloudflare Turnstile or challenge walls are automatically evaluated with stealth evasion and graceful fallback telemetry.
               </p>
             </div>
           </div>
