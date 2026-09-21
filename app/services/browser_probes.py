@@ -659,6 +659,11 @@ class BrowserProber:
             logger.warning("Playwright not available — skipping browser probes")
             return [], None, {"error": "playwright_unavailable"}
 
+        from app.core.async_proactor import run_subprocess_safe
+        return await run_subprocess_safe(self._run_all_impl, scan_mode=scan_mode)
+
+    async def _run_all_impl(self, scan_mode: str = "deep") -> tuple[list[dict], Optional[str], dict]:
+
         issues = []
         rendered_html = None
         metadata = {

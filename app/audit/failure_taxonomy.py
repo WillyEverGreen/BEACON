@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from enum import Enum
 from typing import Any, Final, Mapping
 
@@ -60,40 +61,47 @@ def _extract_status(raw: Any, http_status: int | None) -> int | None:
         return http_status
     if isinstance(raw, int):
         return raw
+    text = _text(raw)
+    match = re.search(r"\b([45]\d\d)\b", text)
+    if match:
+        try:
+            return int(match.group(1))
+        except ValueError:
+            pass
     return None
 
 
 def _is_captcha_signature(raw: Any, headers: Mapping[str, Any] | None = None) -> bool:
-    text = _text(raw)
+    text = _text(raw).lower()
     header_map = _headers_lower(headers)
-    combined = " ".join(
-        [
-            text,
-            header_map.get("server", ""),
-            header_map.get("cf-ray", ""),
-            header_map.get("x-datadome", ""),
-            header_map.get("x-akamai-session-info", ""),
-            header_map.get("x-amz-cf-id", ""),
-        ]
-    ).lower()
-    tokens = (
+    
+    # Body text tokens that unambiguously indicate a challenge or bot block
+    body_tokens = (
         "captcha",
         "security check",
-        "challenge",
+        "challenge-platform",
+        "cf-chl",
         "turnstile",
         "are you human",
         "are you a robot",
         "bot protection",
-        "cf-chl",
-        "cloudflare",
-        "datadome",
-        "akamai",
         "access denied",
-        "forbidden",
-        "status code 403",
-        "http status 403",
+        "please wait... | cloudflare",
+        "checking your browser",
+        "attention required! | cloudflare",
     )
-    return any(token in combined for token in tokens)
+    if any(token in text for token in body_tokens):
+        return True
+
+    # Header-specific challenge indicators
+    if header_map.get("cf-mitigated") == "challenge":
+        return True
+    if "challenge" in header_map.get("cf-chl-bypass", ""):
+        return True
+    if header_map.get("x-datadome-response"):
+        return True
+
+    return False
 
 
 def _has_csp_block_header(headers: Mapping[str, Any] | None = None) -> bool:
@@ -184,16 +192,16 @@ def _is_timeout(raw: Any) -> bool:
 def _is_extraction_error(raw: Any) -> bool:
     text = _text(raw)
     tokens = (
-        "parse",
-        "parser",
-        "lxml",
+        "extraction_failed",
+        "extraction_failure",
+        "dom_parse_error",
+        "failed to parse dom",
+        "dom parse error",
+        "parse_error",
+        "lxml.etree",
         "beautifulsoup",
-        "dom",
-        "html",
-        "selector",
-        "snapshot",
-        "extraction",
-        "content",
+        "extraction error",
+        "content_extraction_failed",
     )
     return any(token in text for token in tokens)
 

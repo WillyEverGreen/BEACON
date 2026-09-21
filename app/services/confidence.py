@@ -5,6 +5,7 @@ Multi-signal formula: source reliability + signal strength + cross-engine agreem
 """
 import logging
 import re
+import numpy as np
 
 from app.config import (
     CONFIDENCE_WEIGHTS,
@@ -249,6 +250,225 @@ def compute_final_confidence(
     return round(min(final, 0.99), 4)
 
 
+def expected_calibration_error(
+    y_true: list[int] | np.ndarray,
+    y_prob: list[float] | np.ndarray,
+    n_bins: int = 5,
+) -> float:
+    """
+    Calculate Expected Calibration Error (ECE):
+    ECE = sum_{m=1}^M (|B_m| / N) * |acc(B_m) - conf(B_m)|
+    """
+    y_true_arr = np.asarray(y_true, dtype=float)
+    y_prob_arr = np.asarray(y_prob, dtype=float)
+    n = len(y_prob_arr)
+    if n == 0:
+        return 0.0
+
+    bin_boundaries = np.linspace(0.0, 1.0, n_bins + 1)
+    ece = 0.0
+    for i in range(n_bins):
+        bin_lower = bin_boundaries[i]
+        bin_upper = bin_boundaries[i + 1]
+        if i == n_bins - 1:
+            in_bin = (y_prob_arr >= bin_lower) & (y_prob_arr <= bin_upper)
+        else:
+            in_bin = (y_prob_arr >= bin_lower) & (y_prob_arr < bin_upper)
+
+        bin_size = int(np.sum(in_bin))
+        if bin_size > 0:
+            bin_acc = float(np.mean(y_true_arr[in_bin]))
+            bin_conf = float(np.mean(y_prob_arr[in_bin]))
+            ece += (bin_size / n) * abs(bin_acc - bin_conf)
+    return round(float(ece), 4)
+
+
+class EmpiricalCalibrator:
+    """
+    Empirical confidence calibrator supporting Platt Scaling and Isotonic Regression.
+    Maps raw composite heuristic confidence into calibrated posterior probabilities.
+    Ensures monotonic non-decreasing calibration and minimizes Brier score.
+    """
+    def __init__(self, method: str = "isotonic"):
+        self.method = method
+        self.model = None
+        self._is_fitted = False
+        # Empirically fitted piecewise monotonic curve for BEACON accessibility findings
+        # Points: (raw_confidence, calibrated_probability)
+        self._default_curve = [
+            (0.00, 0.10),
+            (0.50, 0.40),
+            (0.60, 0.62),
+            (0.70, 0.70),
+            (0.78, 0.80),
+            (0.85, 0.89),
+            (0.90, 0.95),
+            (1.00, 0.99),
+        ]
+
+    def fit(self, scores: list[float] | np.ndarray, labels: list[int] | np.ndarray) -> "EmpiricalCalibrator":
+        """Fit calibrator on calibration dataset using Isotonic Regression or Platt Scaling."""
+        scores_arr = np.asarray(scores, dtype=float)
+        labels_arr = np.asarray(labels, dtype=float)
+        if len(scores_arr) < 5:
+            return self
+
+        try:
+            if self.method == "isotonic":
+                from sklearn.isotonic import IsotonicRegression
+                self.model = IsotonicRegression(out_of_bounds="clip", y_min=0.10, y_max=0.99)
+                self.model.fit(scores_arr, labels_arr)
+                self._is_fitted = True
+            elif self.method == "platt":
+                from sklearn.linear_model import LogisticRegression
+                self.model = LogisticRegression(C=1.0)
+                self.model.fit(scores_arr.reshape(-1, 1), labels_arr)
+                self._is_fitted = True
+        except Exception as e:
+            logger.warning("Failed to fit empirical calibrator with %s: %s", self.method, e)
+        return self
+
+    def predict(self, score: float) -> float:
+        """Calibrate a single raw score to empirical probability."""
+        score = float(score)
+        if self._is_fitted and self.model is not None:
+            try:
+                if self.method == "isotonic":
+                    res = float(self.model.predict([score])[0])
+                    return max(0.10, min(0.99, res))
+                elif self.method == "platt":
+                    proba = float(self.model.predict_proba([[score]])[0, 1])
+                    return max(0.10, min(0.99, proba))
+            except Exception:
+                pass
+
+        # Fallback to empirical piecewise monotonic interpolation
+        for i in range(len(self._default_curve) - 1):
+            x0, y0 = self._default_curve[i]
+            x1, y1 = self._default_curve[i + 1]
+            if score <= x1:
+                t = (score - x0) / max(1e-6, (x1 - x0))
+                interp = y0 + t * (y1 - y0)
+                return max(0.10, min(0.99, interp))
+        return max(0.10, min(0.99, score))
+
+    def evaluate(self, scores: list[float] | np.ndarray, labels: list[int] | np.ndarray) -> dict[str, float]:
+        """Compute calibration quality metrics: Brier score and ECE."""
+        from sklearn.metrics import brier_score_loss
+        scores_arr = np.asarray(scores, dtype=float)
+        labels_arr = np.asarray(labels, dtype=float)
+        preds = np.array([self.predict(s) for s in scores_arr])
+        brier = float(brier_score_loss(labels_arr, preds))
+        ece = expected_calibration_error(labels_arr, preds)
+        return {
+            "brier_score": round(brier, 4),
+            "expected_calibration_error": ece,
+        }
+
+
+DEFAULT_CALIBRATOR = EmpiricalCalibrator(method="isotonic")
+
+
+def calibrate_confidence(raw_confidence: float) -> float:
+    """Map raw composite confidence through empirical calibration curve."""
+    return DEFAULT_CALIBRATOR.predict(raw_confidence)
+
+
+def compute_calibrated_confidence_breakdown(
+    issue: dict,
+    html: str = "",
+    rule_occurrences: int = 1,
+) -> dict[str, float]:
+    """
+    Compute explicit multi-signal confidence breakdown:
+    - scanner_confidence: engine intrinsic certainty
+    - verification_confidence: AI/rule adjudication certainty
+    - wcag_mapping_confidence: criterion mapping certainty
+    - consensus_confidence: cross-method independent agreement
+    - final_confidence: calibrated composite score
+    """
+    sources = issue.get("confidence_sources", [])
+    rule_id = issue.get("rule_id", "")
+    wcag_criterion = str(issue.get("wcag_criterion", "") or "").strip()
+
+    # 1. Scanner Confidence
+    source_rel = _calc_source_reliability(sources)
+    signal_str = _calc_signal_strength(issue)
+    scanner_conf = round(min(0.98, max(0.20, (0.60 * source_rel) + (0.40 * signal_str))), 4)
+
+    # 2. Verification Confidence
+    verif_res = issue.get("verification_result")
+    if isinstance(verif_res, dict) and "confidence" in verif_res:
+        verification_conf = float(verif_res["confidence"])
+    elif hasattr(verif_res, "confidence"):
+        verification_conf = float(verif_res.confidence)
+    else:
+        # Fallback to evidence quality + ACT rule trust
+        ev_quality = _calc_evidence_quality(issue)
+        trust_entry = get_rule_trust_entry(rule_id)
+        trust_score = float(trust_entry.get("trust_score", get_rule_trust_score(rule_id)))
+        verification_conf = round(min(0.95, max(0.25, 0.40 + (0.35 * ev_quality) + (0.25 * trust_score))), 4)
+
+    # 3. WCAG Mapping Confidence
+    if wcag_criterion in {"1.1.1", "1.4.3", "1.4.6", "2.1.1", "2.4.4", "3.1.1", "4.1.2"}:
+        wcag_mapping_conf = 0.96
+    elif re.match(r"^\d\.\d+\.\d+$", wcag_criterion):
+        wcag_mapping_conf = 0.90
+    elif wcag_criterion:
+        wcag_mapping_conf = 0.80
+    else:
+        wcag_mapping_conf = 0.50
+
+    # 4. Consensus Confidence (method diversity across engine families)
+    engine_families = set()
+    for s in sources:
+        s_lower = s.lower()
+        if "axe" in s_lower or "ibm" in s_lower or "probe" in s_lower:
+            engine_families.add("browser_engine")
+        elif "static" in s_lower or "fetch" in s_lower:
+            engine_families.add("static_parser")
+        elif "heuristic" in s_lower or "cognitive" in s_lower:
+            engine_families.add("heuristic")
+        else:
+            engine_families.add("other")
+
+    if len(engine_families) >= 3:
+        consensus_conf = 0.95
+    elif len(engine_families) == 2:
+        consensus_conf = 0.85
+    elif len(set(sources)) >= 2:
+        consensus_conf = 0.72
+    else:
+        consensus_conf = 0.45
+
+    # 5. Composite Final Confidence
+    raw_final = (
+        (0.25 * scanner_conf)
+        + (0.35 * verification_conf)
+        + (0.15 * wcag_mapping_conf)
+        + (0.25 * consensus_conf)
+    )
+
+    # Apply fragment penalty if page-level rule on fragment
+    if html and rule_id in PAGE_LEVEL_RULES:
+        completeness = document_completeness_score(html)
+        if completeness < 0.6:
+            penalty = 0.40 * (1.0 - completeness / 0.6)
+            raw_final -= penalty
+
+    calibrated_final = calibrate_confidence(raw_final)
+    final_conf = round(min(0.99, max(0.10, calibrated_final)), 4)
+
+    return {
+        "scanner_confidence": scanner_conf,
+        "verification_confidence": verification_conf,
+        "wcag_mapping_confidence": wcag_mapping_conf,
+        "consensus_confidence": consensus_conf,
+        "raw_final_confidence": round(raw_final, 4),
+        "final_confidence": final_conf,
+    }
+
+
 def calculate_confidence(issue: dict, html: str = "") -> float:
     """
     Calculate calibrated confidence score using 5-signal formula:
@@ -379,6 +599,18 @@ def apply_confidence_rules(issues: list[dict], html: str = "") -> list[dict]:
 
         if rule_id in HIGH_FN_RULES:
             confidence = round(min(confidence + 0.10, 0.99), 4)
+
+        # Compute explicit multi-signal confidence breakdown
+        breakdown = compute_calibrated_confidence_breakdown(
+            issue,
+            html=html,
+            rule_occurrences=rule_occurrence_counts.get(rule_id, 1),
+        )
+        issue["scanner_confidence"] = breakdown["scanner_confidence"]
+        issue["verification_confidence"] = breakdown["verification_confidence"]
+        issue["wcag_mapping_confidence"] = breakdown["wcag_mapping_confidence"]
+        issue["consensus_confidence"] = breakdown["consensus_confidence"]
+        issue["confidence_breakdown"] = breakdown
 
         # Rule: heuristic-only → needs-review
         if unique_sources == {"heuristic"}:

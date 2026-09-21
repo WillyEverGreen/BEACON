@@ -1,0 +1,47 @@
+[
+  {
+    "id": "coga-clear-language",
+    "name": "Use Clear and Understandable Language",
+    "framework": "COGA",
+    "document_type": "cognitive_guideline",
+    "topic": "clear-language",
+    "wcag_sc": ["3.1.3", "3.1.4", "3.1.5"],
+    "summary": "Use plain language and avoid unexplained jargon, acronyms, or idioms.",
+    "objectives": [
+      "Keep sentences concise and structured logically.",
+      "Expand acronyms upon first use.",
+      "Explain industry or technical terms with clear definitions."
+    ],
+    "source": "W3C Making Content Usable for Cognitive and Learning Disabilities"
+  },
+  {
+    "id": "coga-clear-cta",
+    "name": "Make Interactive Controls Clear and Predictable",
+    "framework": "COGA",
+    "document_type": "cognitive_guideline",
+    "topic": "cta-clarity",
+    "wcag_sc": ["2.4.4", "3.2.1", "3.2.2"],
+    "summary": "Ensure calls to action clearly describe what will happen when activated.",
+    "objectives": [
+      "Avoid vague CTA labels like 'Click Here' or 'Proceed' without clear context.",
+      "Use recognizable visual indicators for interactive controls.",
+      "Ensure consistent layout and placement for action buttons across pages."
+    ],
+    "source": "W3C Making Content Usable for Cognitive and Learning Disabilities"
+  },
+  {
+    "id": "coga-form-error-prevention",
+    "name": "Help Users Avoid and Correct Mistakes",
+    "framework": "COGA",
+    "document_type": "cognitive_guideline",
+    "topic": "form-usability",
+    "wcag_sc": ["3.3.1", "3.3.2", "3.3.3", "3.3.4"],
+    "summary": "Provide explicit form labels, instructions, and error descriptions with concrete solutions.",
+    "objectives": [
+      "Label each input clearly and keep the label visible during input.",
+      "Provide step-by-step progress indicators for multi-step forms.",
+      "Describe errors in plain language directly adjacent to the input field."
+    ],
+    "source": "W3C Making Content Usable for Cognitive and Learning Disabilities"
+  }
+]

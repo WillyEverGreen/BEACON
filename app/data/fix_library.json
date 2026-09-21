@@ -2184,8 +2184,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 7,
-    "successful_fixes": 7,
+    "times_used": 8,
+    "successful_fixes": 8,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -2673,8 +2673,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 19,
-    "successful_fixes": 19,
+    "times_used": 20,
+    "successful_fixes": 20,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -2873,8 +2873,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 27,
-    "successful_fixes": 27,
+    "times_used": 30,
+    "successful_fixes": 30,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -2898,8 +2898,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 24,
-    "successful_fixes": 24,
+    "times_used": 26,
+    "successful_fixes": 26,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -2923,8 +2923,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 28,
-    "successful_fixes": 28,
+    "times_used": 30,
+    "successful_fixes": 30,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -3296,8 +3296,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 3,
-    "successful_fixes": 3,
+    "times_used": 4,
+    "successful_fixes": 4,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -3412,8 +3412,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 31,
-    "successful_fixes": 31,
+    "times_used": 32,
+    "successful_fixes": 32,
     "confidence": 0.85,
     "validated": true,
     "validation_reason": "All links have descriptive text"
@@ -3719,8 +3719,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 23,
-    "successful_fixes": 23,
+    "times_used": 26,
+    "successful_fixes": 26,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -4042,8 +4042,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 5,
-    "successful_fixes": 5,
+    "times_used": 6,
+    "successful_fixes": 6,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"

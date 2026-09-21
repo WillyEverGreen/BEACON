@@ -41,7 +41,8 @@ from app.services.normalizer import normalize_all
 from app.services.ibm_checker import run_ibm_scan_url
 from app.services.dedup_engine import deduplicate, proximity_dedup
 from app.services.confidence import apply_confidence_rules
-from app.services.grouper import group_issues
+from app.services.grouper import group_issues, cluster_root_causes
+from app.services.adjudicator import adjudicate_issues
 from app.services.report import generate_markdown_report
 from app.services.cognitive_checks import CognitiveAnalyzer
 from app.services.llm import enrich_issues
@@ -1690,6 +1691,25 @@ async def run_audit(
                 logger.error(f"Heuristic checks failed: {e}")
                 return [], "heuristic", {"executed": False}
 
+        async def _run_axe_impl():
+            stage_timeout = max(8.0, min(20.0, (float(browser_timeout_ms) / 1000.0) + 2.0))
+            page_goto_timeout = max(7000, min(18000, int(browser_timeout_ms) - 3000))
+            # Circuit breaker & backpressure guard (25s max wait)
+            async with asyncio.timeout(stage_timeout):
+                async with _browser_semaphore:
+                    from playwright.async_api import async_playwright
+                    async with async_playwright() as p:
+                        browser = await p.chromium.launch(headless=True)
+                        context = await browser.new_context(bypass_csp=True)
+                        page = await context.new_page()
+                        try:
+                            await page.goto(url, timeout=page_goto_timeout, wait_until="domcontentloaded")
+                            v = await _run_axe_core_via_playwright(page)
+                            return v, "axe-core", {"executed": True}
+                        finally:
+                            await context.close()
+                            await browser.close()
+
         async def run_axe():
             if scan_mode not in {"deep", "max"}:
                 return [], "axe-core", {"executed": False}
@@ -1700,23 +1720,8 @@ async def run_audit(
                 if not _PLAYWRIGHT_AVAILABLE:
                     return [], "axe-core", {"executed": False}
                 try:
-                    stage_timeout = max(8.0, min(20.0, (float(browser_timeout_ms) / 1000.0) + 2.0))
-                    page_goto_timeout = max(7000, min(18000, int(browser_timeout_ms) - 3000))
-                    # Circuit breaker & backpressure guard (25s max wait)
-                    async with asyncio.timeout(stage_timeout):
-                        async with _browser_semaphore:
-                            from playwright.async_api import async_playwright
-                            async with async_playwright() as p:
-                                browser = await p.chromium.launch(headless=True)
-                                context = await browser.new_context(bypass_csp=True)
-                                page = await context.new_page()
-                                try:
-                                    await page.goto(url, timeout=page_goto_timeout, wait_until="domcontentloaded")
-                                    v = await _run_axe_core_via_playwright(page)
-                                    return v, "axe-core", {"executed": True}
-                                finally:
-                                    await context.close()
-                                    await browser.close()
+                    from app.core.async_proactor import run_subprocess_safe
+                    return await run_subprocess_safe(_run_axe_impl)
                 except TimeoutError:
                     logger.warning("axe-core timed out (blocked by semaphore or page load).")
                     return [], "axe-core", {"executed": False}
@@ -1834,14 +1839,39 @@ async def run_audit(
         except Exception as e:
             logger.warning("Proximity dedup failed (non-fatal): %s", e)
 
-        # Apply confidence scoring
+        # ── Step 3.5: Context Adjudication & False Positive Gate ─────
+        # Evaluate scanner detections against concrete DOM context and retrieved standards
         try:
-            scored_issues = apply_confidence_rules(deduped_issues, html)
+            verified_failures, verified_passes, needs_review_adj = await adjudicate_issues(
+                deduped_issues,
+                html=html or "",
+                max_adjudications=min(20, max(5, int(effective_ai_budget or 10))),
+            )
+            adjudicated_issues = verified_failures + needs_review_adj
+            if verified_passes:
+                logger.info(f"Adjudication gate suppressed {len(verified_passes)} context-verified false positives")
+        except Exception as exc:
+            logger.warning(f"Adjudication layer skipped due to error: {exc}")
+            adjudicated_issues = list(deduped_issues)
+
+        # ── Step 3.75: Root-Cause Clustering ────────────────────────
+        # Consolidate overlapping structural detections (e.g. 5 landmark rules) into single primary findings
+        clustered_issues, secondary_clustered = cluster_root_causes(adjudicated_issues)
+        if secondary_clustered:
+            logger.info(
+                f"Root-cause clustering: consolidated {len(secondary_clustered)} secondary findings "
+                f"into primary structural issues"
+            )
+
+        # ── Step 3.85: Multi-Signal Calibrated Confidence Scoring ───
+        # Now has verification_result, root-cause groups, and cross-method diversity
+        try:
+            scored_issues = apply_confidence_rules(clustered_issues, html)
         except Exception as e:
             logger.error("Confidence scoring failed: %s", e)
             _mark_degraded("extraction_failure", _degradation_reason_message("extraction_failure", "confidence"))
             skipped_components.append("confidence")
-            scored_issues = list(deduped_issues)
+            scored_issues = list(clustered_issues)
 
         # Enforce hybrid corroboration metadata for critical under-detected rules.
         hybrid_telemetry: dict[str, Any] = {
@@ -1926,9 +1956,9 @@ async def run_audit(
             }
         else:
             scored_issues, compression_telemetry = aggregate_issues(scored_issues)
-        # ── Step 4.5: Prioritize issues (NEW) ────────────────────────
-        # Keep `scored_issues` as the canonical reported issue set. Priority lists
-        # are projections for triage and should not replace the reported findings.
+
+        # ── Step 4.5: Prioritize issues & calculate scoring summary ─
+        # Calculated strictly on verified, root-cause clustered, calibrated findings
         _, priority_ranking = prioritize_issues(scored_issues)
         scoring_summary = build_scoring_summary(scored_issues, degraded_mode=degraded_mode)
 

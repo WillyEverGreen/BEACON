@@ -4072,30 +4072,70 @@ class StaticChecker:
     # ── Skip Navigation ────────────────────────────────────────
 
     def check_skip_nav(self) -> list[dict]:
+        """
+        WCAG 2.4.1 Bypass Blocks (Level A):
+        A mechanism must be available to bypass repeated blocks of content.
+        
+        Decision tree:
+        1. Are there repeated navigation/header blocks?
+           - If not (e.g. single-section page, minimal nav <=3 links, landing/utility view), PASS.
+        2. If repeated blocks exist, is there a bypass mechanism?
+           - Skip link targeting main content -> PASS (Technique G1).
+           - ARIA landmark <main> or role='main' -> PASS (Technique ARIA11).
+           - Primary heading (<h1>) demarcating main content -> PASS (Technique H69 / G140).
+        3. Only flag violation if repeated blocks exist AND no bypass mechanism exists.
+        """
         issues = []
         body = self.soup.find("body")
-        if body:
-            first_links = body.find_all("a", limit=5)
-            has_skip = False
-            for link in first_links:
-                href = link.get("href", "")
-                text = link.get_text(strip=True).lower()
-                if href.startswith("#") and ("skip" in text or "main" in text or "content" in text):
-                    has_skip = True
-                    break
-            # Only flag if the page has a nav AND >3 links before main content.
-            # Single-section pages or minimal test fixtures don't need skip links.
-            nav = self.soup.find("nav")
-            if not has_skip and nav:
-                nav_links = nav.find_all("a")
-                if len(nav_links) > 3:
-                    issues.append(_issue(
-                        self.url, "missing-skip-link", "violation", "moderate",
-                        "<body>", "<body>",
-                        "Page with navigation lacks a 'skip to main content' link as the first focusable element.",
-                        "2.4.1", "A", "navigation",
-                        'Add <a href="#main-content" class="skip-link">Skip to main content</a> as the first element in <body>.'
-                    ))
+        if not body:
+            return issues
+
+        # Step 1: Detect whether repeated navigation/header blocks actually exist
+        nav = self.soup.find("nav") or self.soup.find(attrs={"role": "navigation"})
+        header = self.soup.find("header") or self.soup.find(attrs={"role": "banner"})
+        nav_links = nav.find_all("a") if nav else []
+
+        has_repeated_blocks = (bool(nav) and len(nav_links) > 3) or bool(header)
+        if not has_repeated_blocks:
+            # Single-section pages, minimal test fixtures, or pages without repetitive navigation do not require bypass blocks
+            return issues
+
+        # Step 2: Check available bypass mechanisms
+        # (a) Skip link in initial focusable links
+        first_links = body.find_all("a", limit=8)
+        has_skip = False
+        for link in first_links:
+            href = str(link.get("href", "")).strip()
+            text = link.get_text(strip=True).lower()
+            title = str(link.get("title", "")).lower()
+            if href.startswith("#") and any(k in (text + " " + title) for k in ("skip", "main", "content", "navigation")):
+                has_skip = True
+                break
+
+        if has_skip:
+            return issues
+
+        # (b) ARIA main landmark mechanism
+        has_main_landmark = bool(
+            self.soup.find("main") or self.soup.find(attrs={"role": "main"})
+        )
+        if has_main_landmark:
+            return issues
+
+        # (c) Heading outline bypass mechanism (h1 introducing content)
+        has_primary_heading = bool(self.soup.find("h1"))
+        if has_primary_heading and len(nav_links) <= 6:
+            # Assistive technologies can jump directly to h1 to bypass smaller navigation blocks
+            return issues
+
+        # Step 3: Repeated blocks exist and zero bypass mechanisms found
+        issues.append(_issue(
+            self.url, "missing-skip-link", "violation", "moderate",
+            "<body>", "<body>",
+            "Page with repeated navigation lacks a bypass mechanism (skip link, main landmark, or primary heading).",
+            "2.4.1", "A", "navigation",
+            'Add <a href="#main-content" class="skip-link">Skip to main content</a> as the first element in <body>, or add a <main> landmark.'
+        ))
         return issues
 
     # ── Color Contrast (inline styles) ─────────────────────────

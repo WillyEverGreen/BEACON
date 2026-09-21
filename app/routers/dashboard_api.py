@@ -228,6 +228,9 @@ def _normalize_site_scan_result(site_payload: dict, scan_mode: str, elapsed_seco
             "heuristic": True,
             "browser": bool(engines_policy.get("playwright")),
             "axe": bool(engines_policy.get("axe")),
+            "ibm": "ibm" in engines_used or any("ibm" in str(e).lower() for e in engines_used),
+            "cognitive": bool(engines_policy.get("cognitive")) or "cognitive" in engines_used,
+            "lighthouse": "lighthouse" in engines_used,
         },
         "calibration_warnings": trust_warnings,
         "audit_completeness": "partial" if degraded_mode else "full",
@@ -849,8 +852,9 @@ async def start_scan(
                         f"Top problems: {', '.join(top_issues)}."
                     )
 
+                    ai_model = getattr(settings, "llm_model", "meta/llama-3.2-11b-vision-instruct")
                     response = await client.chat.completions.create(
-                        model=settings.featherless_model,
+                        model=ai_model,
                         messages=[
                             {"role": "system", "content": "You are the BEACON AI engine."},
                             {"role": "user", "content": prompt},
@@ -968,7 +972,13 @@ def _issue_dict_to_finding(issue: dict):
         html_snippet=str(issue.get("html_snippet") or ""),
         message=str(issue.get("description") or issue.get("message") or ""),
         evidence=issue.get("evidence") or {},
+        group_id=str(issue.get("group_id") or ""),
         confidence=float(issue.get("confidence") or 0.85),
+        scanner_confidence=float(issue.get("scanner_confidence") or issue.get("confidence") or 0.85),
+        verification_confidence=float(issue.get("verification_confidence") or 0.85),
+        wcag_mapping_confidence=float(issue.get("wcag_mapping_confidence") or 0.90),
+        consensus_confidence=float(issue.get("consensus_confidence") or 0.80),
+        confidence_breakdown=issue.get("confidence_breakdown") or {},
         agreement_count=int(issue.get("agreement_count") or len(confidence_sources) or 1),
         participating_engines=issue.get("participating_engines") or confidence_sources or ["beacon"],
         act_rule_id=issue.get("act_rule_id"),

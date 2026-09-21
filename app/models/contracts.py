@@ -57,7 +57,13 @@ class Finding:
     html_snippet: str
     message: str
     evidence: Dict[str, Any] = field(default_factory=dict)
-    confidence: float = 0.5             # Calibrated BEACON confidence [0.0 - 1.0]
+    group_id: str = ""
+    scanner_confidence: float = 0.5
+    verification_confidence: float = 0.5
+    wcag_mapping_confidence: float = 0.5
+    consensus_confidence: float = 0.5
+    confidence_breakdown: Dict[str, float] = field(default_factory=dict)
+    confidence: float = 0.5             # Calibrated BEACON final confidence [0.0 - 1.0]
     agreement_count: int = 1
     participating_engines: List[str] = field(default_factory=list)
     act_rule_id: Optional[str] = None
@@ -69,6 +75,7 @@ class Finding:
         return {
             "id": self.id,
             "rule_id": self.rule_id,
+            "group_id": self.group_id,
             "engine": self.engine,
             "engine_version": self.engine_version,
             "rule_version": self.rule_version,
@@ -82,6 +89,17 @@ class Finding:
             "message": self.message,
             "evidence": self.evidence,
             "confidence": round(self.confidence, 4),
+            "scanner_confidence": round(self.scanner_confidence, 4),
+            "verification_confidence": round(self.verification_confidence, 4),
+            "wcag_mapping_confidence": round(self.wcag_mapping_confidence, 4),
+            "consensus_confidence": round(self.consensus_confidence, 4),
+            "confidence_breakdown": self.confidence_breakdown or {
+                "scanner_confidence": round(self.scanner_confidence, 4),
+                "verification_confidence": round(self.verification_confidence, 4),
+                "wcag_mapping_confidence": round(self.wcag_mapping_confidence, 4),
+                "consensus_confidence": round(self.consensus_confidence, 4),
+                "final_confidence": round(self.confidence, 4),
+            },
             "agreement_count": self.agreement_count,
             "participating_engines": self.participating_engines,
             "act_rule_id": self.act_rule_id,
@@ -97,12 +115,30 @@ class PatchResult:
     original_html: str
     patched_html: str
     patch_accepted: bool
+    static_validation_passed: bool = False
+    runtime_validation: str = "not_run"
+    visual_validation: str = "not_run"
     rejection_reason: Optional[str] = None
     violations_before_count: int = 0
     violations_after_count: int = 0
     new_violations_introduced: int = 0
     syntax_valid: bool = True
     execution_time_ms: float = 0.0
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "finding_id": self.finding_id,
+            "patch_accepted": self.patch_accepted,
+            "static_validation_passed": self.static_validation_passed,
+            "runtime_validation": self.runtime_validation,
+            "visual_validation": self.visual_validation,
+            "rejection_reason": self.rejection_reason,
+            "violations_before_count": self.violations_before_count,
+            "violations_after_count": self.violations_after_count,
+            "new_violations_introduced": self.new_violations_introduced,
+            "syntax_valid": self.syntax_valid,
+            "execution_time_ms": self.execution_time_ms,
+        }
 
 
 class FindingNormalizer(Protocol):

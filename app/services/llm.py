@@ -16,29 +16,30 @@ from app.services.fix_cache import get_cache_key, get_cached_fix, store_fix
 logger = logging.getLogger(__name__)
 
 # ── Rule-Based Fallback Fixes ─────────────────────────────────────
-# Used when Featherless/LLM is completely unreachable.
+# Used when LLM is completely unreachable.
 # These are NOT LLM-generated — they are static, hand-written remediation
-# for the top-15 most common rule IDs. This ensures the report is never
-# empty even during total LLM outage.
+# templates for common rule IDs.
+# NOTE: Fallback fixes provide remediation guidance only; they do NOT
+# constitute an independent verification or compliance verdict.
 RULE_BASED_FALLBACK_FIXES: dict[str, dict] = {
     "missing-alt": {
-        "explanation": {"what_is_broken": "This image has no alt attribute.", "impact": "Screen reader users cannot perceive the image content.", "wcag_sc": "1.1.1 Non-text Content", "intent": "All non-text content must have a text alternative.", "verification": "Inspect the <img> element and confirm alt attribute exists and is descriptive."},
+        "explanation": {"what_is_broken": "This image lacks an alt attribute.", "impact": "Screen reader users cannot perceive what the image conveys or whether it is decorative.", "wcag_sc": "1.1.1 Non-text Content", "intent": "All non-text content must have a programmatic text alternative or empty alt if decorative.", "verification": "Inspect the <img> element. Add descriptive text for informative images or alt='' for decorative images."},
         "fixes": {"vanilla": '<img src="..." alt="Descriptive text about the image">', "react": '<img src={src} alt="Descriptive text" />', "vue": '<img :src="src" alt="Descriptive text" />', "angular": '<img [src]="src" alt="Descriptive text">'},
     },
     "empty-alt": {
-        "explanation": {"what_is_broken": "This image has an empty alt attribute but appears to be meaningful.", "impact": "Screen readers skip this image entirely.", "wcag_sc": "1.1.1 Non-text Content", "intent": "Meaningful images must have descriptive alt text.", "verification": "If the image conveys information, add descriptive alt text."},
+        "explanation": {"what_is_broken": "This image has an empty alt attribute (alt='').", "impact": "Screen readers skip this image entirely. If the image conveys meaning, that information is lost.", "wcag_sc": "1.1.1 Non-text Content", "intent": "Meaningful images require descriptive alt text; purely decorative images must use alt=''.", "verification": "Determine if the image is informative or decorative. If informative, replace empty alt with descriptive text."},
         "fixes": {"vanilla": '<img src="..." alt="Description of what this image shows">', "react": '<img src={src} alt="Description" />', "vue": '<img :src="src" alt="Description" />', "angular": '<img [src]="src" alt="Description">'},
     },
     "missing-label": {
-        "explanation": {"what_is_broken": "This form input has no associated label.", "impact": "Screen reader users don't know what to enter.", "wcag_sc": "1.3.1 Info and Relationships", "intent": "Form controls must have programmatic labels.", "verification": "Check that a <label for='id'> matches the input's id attribute."},
+        "explanation": {"what_is_broken": "This form input has no detected programmatic label association.", "impact": "Screen reader users cannot determine the expected input or purpose of the control.", "wcag_sc": "1.3.1 Info and Relationships", "intent": "Form controls must have an accessible name via associated <label>, aria-label, or aria-labelledby.", "verification": "Check that a <label for='id'>, wrapping <label>, or aria-label is present."},
         "fixes": {"vanilla": '<label for="inputId">Field name</label><input id="inputId">', "react": '<label htmlFor="inputId">Field name</label><input id="inputId" />', "vue": '<label for="inputId">Field name</label><input id="inputId" />', "angular": '<label for="inputId">Field name</label><input id="inputId">'},
     },
     "color-contrast": {
-        "explanation": {"what_is_broken": "Text does not have enough contrast against its background.", "impact": "Low-vision users cannot read this text.", "wcag_sc": "1.4.3 Contrast (Minimum)", "intent": "Text must have at least 4.5:1 contrast ratio (3:1 for large text).", "verification": "Use a contrast checker tool to verify the foreground/background ratio."},
+        "explanation": {"what_is_broken": "Text may not have enough contrast against its background.", "impact": "Low-vision users cannot read this text.", "wcag_sc": "1.4.3 Contrast (Minimum)", "intent": "Text must have at least 4.5:1 contrast ratio (3:1 for large text).", "verification": "Use a contrast checker tool to verify the foreground/background ratio."},
         "fixes": {"vanilla": "Increase text color darkness or lighten background to meet 4.5:1 ratio.", "react": "Use a CSS variable or theme token with sufficient contrast.", "vue": "Use a CSS variable or theme token with sufficient contrast.", "angular": "Use a CSS variable or theme token with sufficient contrast."},
     },
     "empty-link": {
-        "explanation": {"what_is_broken": "This link has no visible or accessible text.", "impact": "Screen users hear 'link' with no description of where it goes.", "wcag_sc": "2.4.4 Link Purpose", "intent": "Every link must have discernible text.", "verification": "Add text content or aria-label to the anchor element."},
+        "explanation": {"what_is_broken": "This link has no visible or accessible text.", "impact": "Screen reader users hear 'link' without knowing its destination.", "wcag_sc": "2.4.4 Link Purpose", "intent": "Every link must have discernible text or accessible name.", "verification": "Add text content or aria-label to the anchor element."},
         "fixes": {"vanilla": '<a href="...">Descriptive link text</a>', "react": '<a href={url}>Descriptive link text</a>', "vue": '<a :href="url">Descriptive link text</a>', "angular": '<a [href]="url">Descriptive link text</a>'},
     },
     "button-no-name": {
@@ -58,33 +59,40 @@ RULE_BASED_FALLBACK_FIXES: dict[str, dict] = {
         "fixes": {"vanilla": "Change the heading level to follow sequential order.", "react": "Ensure heading levels are sequential in the component tree.", "vue": "Ensure heading levels are sequential in the component tree.", "angular": "Ensure heading levels are sequential in the component tree."},
     },
     "generic-link-text": {
-        "explanation": {"what_is_broken": "Link text is generic ('click here', 'read more').", "impact": "Screen reader users navigating by links cannot understand link destinations.", "wcag_sc": "2.4.4 Link Purpose", "intent": "Link text must describe its destination or function.", "verification": "Read the link text in isolation — does it make sense?"},
+        "explanation": {"what_is_broken": "Link text is generic ('click here', 'read more').", "impact": "If context is not programmatically determinable, screen reader users cannot understand destination.", "wcag_sc": "2.4.4 Link Purpose", "intent": "Link purpose should be clear from link text alone or programmatically determined context.", "verification": "Check if enclosing sentence or preceding heading clarifies destination. If not, make link text descriptive."},
         "fixes": {"vanilla": "Replace 'click here' with descriptive text like 'View pricing plans'.", "react": "Use descriptive children text in the Link component.", "vue": "Use descriptive text in the router-link.", "angular": "Use descriptive text in the routerLink."},
     },
 }
 
 
 def _get_fallback_remediation(issue: dict) -> dict:
-    """Return a static rule-based fix when LLM is unreachable."""
+    """Return a static rule-based fix when LLM is unreachable.
+    
+    NOTE: Fallback remediation is a safety net; it never claims compliance verification.
+    """
     rule_id = issue.get("rule_id", "")
     fallback = RULE_BASED_FALLBACK_FIXES.get(rule_id)
     if fallback:
         return {
             **fallback,
             "issue_id": issue.get("issue_id", ""),
-            "confidence": 0.6,
+            "confidence": 0.50,
             "needs_manual_review": True,
+            "is_verified": False,
+            "compliance_verdict": "unadjudicated_fallback",
             "practical_assets": [],
             "_fallback": True,
         }
     # Generic fallback for unknown rules
     return {
         "issue_id": issue.get("issue_id", ""),
-        "explanation": f"Rule '{rule_id}' violation detected. Refer to WCAG criterion {issue.get('wcag_criterion', '')} for guidance.",
+        "explanation": f"Rule '{rule_id}' concern detected. Refer to WCAG criterion {issue.get('wcag_criterion', '')} for guidance.",
         "fixes": {},
         "practical_assets": [],
-        "confidence": 0.0,
+        "confidence": 0.30,
         "needs_manual_review": True,
+        "is_verified": False,
+        "compliance_verdict": "unadjudicated_fallback",
         "_fallback": True,
     }
 
@@ -730,11 +738,11 @@ Return only the JSON array of structured fixes, one per input issue.
 """
 
 REMEDIATION_SYSTEM_PROMPT = """You are an expert web accessibility remediation engine.
-Given one accessibility issue and retrieved WCAG/ARIA context, return a strict JSON object.
+Given an accessibility finding with its DOM context and retrieved WCAG/ARIA standards, return a strict JSON object.
 
 The output MUST use this exact schema:
 {
-    "explanation": "Plain-English explanation of what is broken",
+    "explanation": "Plain-English explanation of what is broken or what requires enhancement",
     "fix_steps": [
         "Concrete step 1",
         "Concrete step 2",
@@ -750,11 +758,13 @@ The output MUST use this exact schema:
     "wcag_reference": "WCAG success criterion reference"
 }
 
-Rules:
-1. Use only evidence from the issue payload and retrieved context.
-2. Never hallucinate standards or unsupported behavior.
-3. Keep language clear for developers and non-specialists.
-4. Return valid JSON only; no markdown or commentary."""
+Evidence Contract Rules:
+1. Do not assume the scanner's initial assertion is a fatal violation without examining the provided DOM context.
+2. Use only evidence from the issue payload, surrounding DOM context, and retrieved standards.
+3. Never hallucinate standards, attributes, or unsupported behavior.
+4. If surrounding context already clarifies the element, suggest clean programmatic best practices rather than claiming an outright failure.
+5. Keep language clear for developers and non-specialists.
+6. Return valid JSON only; no markdown or commentary."""
 
 
 REMEDIATION_USER_PROMPT = """STRUCTURED ISSUE INPUT (JSON):
@@ -1038,8 +1048,37 @@ async def generate_remediation(issue: dict, context_chunks: list[dict], temperat
                 result["confidence"] = 0.8 if context_parts else 0.4
                 result["needs_manual_review"] = len(context_parts) < 2
                 
-                # Validate the generated fix
-                is_valid, validation_error = await validate_remediation_fix(issue, result)
+                # Validate the generated fix using in-memory differential RemediationSandbox
+                from app.services.remediation_sandbox import RemediationSandbox
+                sandbox = RemediationSandbox()
+                vanilla_patch = ""
+                fixes_obj = result.get("fixes")
+                if isinstance(fixes_obj, dict):
+                    vanilla_patch = fixes_obj.get("vanilla", "")
+                if not vanilla_patch and result.get("code_fix"):
+                    vanilla_patch = result.get("code_fix", "")
+
+                is_valid = True
+                validation_error = None
+
+                if vanilla_patch:
+                    patch_res = sandbox.evaluate_patch(
+                        finding_id=issue.get("issue_id", "issue"),
+                        original_snippet=issue.get("html_snippet", ""),
+                        candidate_patch=vanilla_patch,
+                        target_rule_id=issue.get("rule_id"),
+                    )
+                    result["sandbox_validation"] = patch_res.to_dict()
+                    if not patch_res.patch_accepted:
+                        is_valid = False
+                        validation_error = patch_res.rejection_reason or "Sandbox static differential audit failed."
+                    else:
+                        result["is_verified"] = True
+                        result["compliance_verdict"] = "verified_remediation"
+                else:
+                    # Fallback validation check
+                    is_valid, validation_error = await validate_remediation_fix(issue, result)
+
                 if is_valid:
                     return result
                 

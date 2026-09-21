@@ -3,7 +3,7 @@ Pydantic request/response models for the Accessibility Intelligence Engine.
 Extended schemas for multi-engine auditing, RAG remediation, feedback, and error handling.
 """
 from pydantic import BaseModel, Field, field_validator
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 from enum import Enum
 
 from app.security.url_validator import URLValidationError, validate_public_url
@@ -130,6 +130,32 @@ class RetrievedSource(BaseModel):
     relevance_score: float
 
 
+class ConfidenceBreakdown(BaseModel):
+    """Calibrated multi-signal confidence breakdown."""
+    scanner_confidence: float = Field(default=0.5, description="Initial scanner certainty [0.0 - 1.0]")
+    verification_confidence: float = Field(default=0.5, description="AI adjudication certainty [0.0 - 1.0]")
+    wcag_mapping_confidence: float = Field(default=0.5, description="WCAG SC mapping certainty [0.0 - 1.0]")
+    consensus_confidence: float = Field(default=0.5, description="Cross-engine/method agreement certainty [0.0 - 1.0]")
+    final_confidence: float = Field(default=0.5, description="Calibrated final confidence [0.0 - 1.0]")
+
+
+class VerificationResult(BaseModel):
+    """Structured verdict from independent AI/context adjudication."""
+    verdict: Literal["pass", "fail", "needs_review"] = Field(
+        default="needs_review",
+        description="Whether DOM evidence proves WCAG failure, pass, or requires review"
+    )
+    confidence: float = Field(default=0.5, description="Adjudication confidence [0.0 - 1.0]")
+    wcag_applicable: bool = Field(default=True, description="Whether the mapped WCAG criterion applies in this context")
+    wcag_criterion: Optional[str] = Field(default=None, description="Corrected or confirmed WCAG criterion, e.g. '2.4.4'")
+    evidence_for: list[str] = Field(default_factory=list, description="Concrete evidence points supporting failure")
+    evidence_against: list[str] = Field(default_factory=list, description="Concrete evidence points supporting compliance/pass")
+    missing_evidence: list[str] = Field(default_factory=list, description="Ambiguous or missing signals requiring review")
+    reasoning_summary: str = Field(default="", description="Structured reasoning for the verdict")
+    user_impact: str = Field(default="", description="Real user impact in this specific context")
+    recommended_action: str = Field(default="", description="Recommended action or verification step")
+
+
 class AuditIssue(BaseModel):
     """Extended issue schema with full metadata for multi-engine auditing."""
     # ── Identity ──
@@ -149,7 +175,13 @@ class AuditIssue(BaseModel):
     category: str = Field(default="", description="html | keyboard | forms | color | images | aria | media | cognitive")
 
     # ── Confidence ──
-    confidence: float = Field(default=1.0, description="0.0 – 1.0")
+    confidence: float = Field(default=0.5, description="Calibrated final confidence [0.0 – 1.0]")
+    scanner_confidence: float = Field(default=0.5, description="Scanner engine certainty [0.0 - 1.0]")
+    verification_confidence: float = Field(default=0.5, description="AI adjudication certainty [0.0 - 1.0]")
+    wcag_mapping_confidence: float = Field(default=0.5, description="Success criterion mapping certainty [0.0 - 1.0]")
+    consensus_confidence: float = Field(default=0.5, description="Cross-engine/method agreement certainty [0.0 - 1.0]")
+    confidence_breakdown: Optional[ConfidenceBreakdown] = None
+    verification_result: Optional[VerificationResult] = None
     confidence_sources: list[str] = Field(default_factory=list, description="e.g. ['axe-core', 'heuristic']")
     confidence_reason: str = Field(default="", description="Human-readable reason for the confidence score")
     needs_manual_review: bool = Field(default=False, description="True if confidence < 0.6")
@@ -184,9 +216,12 @@ class AuditIssue(BaseModel):
     )
     fix_effort: str = Field(default="medium", description="low | medium | high")
 
-    # ── Grouping ──
+    # ── Grouping & Clustering ──
     group_id: str = Field(default="", description="Groups related issues")
     domain: str = Field(default="", description="navigation | forms | content | media | structure | cognitive")
+    root_cause_id: str = Field(default="", description="Primary root-cause cluster ID if grouped")
+    is_root_cause_primary: bool = Field(default=True, description="True if primary representative of clustered issue")
+    contributing_rules: list[str] = Field(default_factory=list, description="Rules contributing to this root-cause cluster")
 
     # ── Evidence ──
     evidence: dict = Field(default_factory=dict, description="Screenshots, computed styles, ARIA tree")

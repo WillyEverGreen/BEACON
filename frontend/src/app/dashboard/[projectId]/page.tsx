@@ -1638,13 +1638,14 @@ export default function ProjectDetailPage() {
                     </span>
                     <div className="flex flex-wrap gap-2">
                       {[
-                        ["axe-core 4.10", !!enginesCoverage.axe || (latestScan.engines_used || []).includes("axe")],
+                        ["axe-core 4.10", !!enginesCoverage.axe || (latestScan.engines_used || []).some((e: string) => e.toLowerCase().includes("axe"))],
                         ["IBM Equal Access 3.1", !!enginesCoverage.ibm || (latestScan.engines_used || []).some((e: string) => e.toLowerCase().includes("ibm"))],
+                        ["Browser Dynamic Probes", !!enginesCoverage.browser || (latestScan.engines_used || []).some((e: string) => e.toLowerCase().includes("probe") || e.toLowerCase().includes("browser"))],
+                        ["BEACON Static & Heuristics", true],
+                        ["Cognitive COGA", !!enginesCoverage.cognitive || (latestScan.engines_used || []).some((e: string) => e.toLowerCase().includes("cognitive")) || (latestScan.cognitive_scores != null)],
+                        ["Lighthouse Hybrid", !!enginesCoverage.lighthouse || (latestScan.engines_used || []).some((e: string) => e.toLowerCase().includes("lighthouse"))],
                         ["Alfa (Siteimprove ACT)", !!enginesCoverage.alfa || (latestScan.engines_used || []).some((e: string) => e.toLowerCase().includes("alfa"))],
                         ["Guidepup Screen Reader", !!enginesCoverage.guidepup || (latestScan.engines_used || []).some((e: string) => e.toLowerCase().includes("guidepup"))],
-                        ["BEACON Heuristics", true],
-                        ["Cognitive COGA", !!enginesCoverage.cognitive || (latestScan.cognitive_scores != null)],
-                        ["Lighthouse Hybrid", !!enginesCoverage.lighthouse || (latestScan.engines_used || []).includes("lighthouse")],
                       ].map(([label, enabled]) => (
                         <span
                           key={String(label)}

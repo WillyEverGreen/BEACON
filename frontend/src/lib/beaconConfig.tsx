@@ -31,17 +31,30 @@ export function BeaconConfigProvider({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     let active = true;
-    axios.get("/api/beacon/config")
-      .then((res) => {
-        if (active && res.data && typeof res.data.aiEnabled === "boolean") {
-          setAiEnabled(res.data.aiEnabled);
-        }
-      })
-      .catch((err) => {
-        console.warn("Failed to fetch dynamic beacon config, falling back to local defaults:", err);
-      });
+    let retryTimer: NodeJS.Timeout;
+
+    const fetchConfig = (isRetry = false) => {
+      axios
+        .get("/api/beacon/config")
+        .then((res) => {
+          if (active && res.data && typeof res.data.aiEnabled === "boolean") {
+            setAiEnabled(res.data.aiEnabled);
+          }
+        })
+        .catch((err) => {
+          if (!isRetry && active) {
+            retryTimer = setTimeout(() => fetchConfig(true), 2500);
+          } else {
+            console.debug("Backend config fetch deferred, using local defaults:", err?.message || err);
+          }
+        });
+    };
+
+    fetchConfig();
+
     return () => {
       active = false;
+      if (retryTimer) clearTimeout(retryTimer);
     };
   }, []);
 

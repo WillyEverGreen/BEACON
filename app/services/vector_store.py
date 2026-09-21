@@ -1,6 +1,11 @@
 """
-Vector store using numpy-based cosine similarity (pure Python, no C++ deps).
-Persists to disk as JSON + numpy arrays.
+BEACON Lightweight Vector Store Architecture.
+
+Pure Python, zero-dependency embedding & vector similarity engine.
+- Vector search: NumPy-based normalized cosine similarity (dot product on normalized embeddings).
+- Metadata store: JSON metadata serialization.
+- Disk persistence: metadata.json + embeddings.npy.
+- Rationale: High performance, zero C++ build dependencies, predictable memory footprint.
 """
 import json
 import logging

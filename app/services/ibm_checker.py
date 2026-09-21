@@ -86,13 +86,7 @@ def parse_ibm_report(report: dict[str, Any], *, page_url: str) -> list[dict[str,
     return findings
 
 
-async def run_ibm_scan_url(url: str, *, timeout_seconds: float = 90.0) -> list[dict[str, Any]]:
-    """Run IBM Equal Access for a URL or file:// URI."""
-    script_path = _ibm_script_path()
-    if not script_path.exists():
-        logger.warning("IBM scan script missing at %s", script_path)
-        return []
-
+async def _run_ibm_subprocess(url: str, script_path: Path, timeout_seconds: float) -> list[dict[str, Any]]:
     cmd = ["node", str(script_path), str(url)]
     try:
         proc = await asyncio.create_subprocess_exec(
@@ -123,6 +117,17 @@ async def run_ibm_scan_url(url: str, *, timeout_seconds: float = 90.0) -> list[d
         return []
 
     return parse_ibm_report(payload, page_url=url)
+
+
+async def run_ibm_scan_url(url: str, *, timeout_seconds: float = 90.0) -> list[dict[str, Any]]:
+    """Run IBM Equal Access for a URL or file:// URI."""
+    script_path = _ibm_script_path()
+    if not script_path.exists():
+        logger.warning("IBM scan script missing at %s", script_path)
+        return []
+
+    from app.core.async_proactor import run_subprocess_safe
+    return await run_subprocess_safe(_run_ibm_subprocess, url, script_path, timeout_seconds)
 
 
 async def run_ibm_scan_file(file_path: str | Path, *, timeout_seconds: float = 90.0) -> list[dict[str, Any]]:

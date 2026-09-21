@@ -1,7 +1,19 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { ScanSearch, Eye, Sparkles, LayoutDashboard, Code2 } from "lucide-react";
-import RadialOrbitalTimeline from "@/components/ui/radial-orbital-timeline";
+
+const RadialOrbitalTimeline = dynamic(
+  () => import("@/components/ui/radial-orbital-timeline"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-[800px] flex flex-col items-center justify-center bg-[#171e19] overflow-hidden rounded-3xl border-2 border-black">
+        <div className="text-white/60 text-lg">Loading timeline...</div>
+      </div>
+    ),
+  }
+);
 
 const timelineData = [
   {

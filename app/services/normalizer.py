@@ -171,6 +171,15 @@ def _make_issue_id(url: str, selector: str, rule_id: str) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
+def _initial_scanner_confidence(rule_id: str, default_conf: float = 0.85) -> float:
+    """Determine initial scanner engine confidence based on rule determinism vs context sensitivity."""
+    if rule_id in {"image-alt", "input-image-alt", "button-name", "html-has-lang", "html-lang-valid", "document-title"}:
+        return 0.92
+    if rule_id in {"region", "landmark-one-main", "landmark-roles", "link-name", "bypass", "label"}:
+        return 0.72
+    return default_conf
+
+
 def normalize_axe_results(axe_violations: list[dict], url: str) -> list[dict]:
     """
     Convert axe-core violation results into unified AuditIssue dicts.
@@ -208,7 +217,8 @@ def normalize_axe_results(axe_violations: list[dict], url: str) -> list[dict]:
                 "wcag_criterion": wcag_info[0],
                 "wcag_level": wcag_info[1],
                 "category": category,
-                "confidence": 0.9,
+                "confidence": _initial_scanner_confidence(rule_id, 0.88),
+                "scanner_confidence": _initial_scanner_confidence(rule_id, 0.88),
                 "confidence_sources": ["axe-core"],
                 "needs_manual_review": False,
                 "description": desc,
@@ -243,7 +253,8 @@ def normalize_axe_results(axe_violations: list[dict], url: str) -> list[dict]:
                 "wcag_criterion": wcag_info[0],
                 "wcag_level": wcag_info[1],
                 "category": category,
-                "confidence": 0.9,
+                "confidence": _initial_scanner_confidence(rule_id, 0.88),
+                "scanner_confidence": _initial_scanner_confidence(rule_id, 0.88),
                 "confidence_sources": ["axe-core"],
                 "needs_manual_review": False,
                 "description": violation.get("description", ""),
@@ -331,7 +342,8 @@ def normalize_ibm_results(ibm_issues: list[dict], url: str) -> list[dict]:
                 "wcag_criterion": wcag_criterion,
                 "wcag_level": wcag_level,
                 "category": category,
-                "confidence": 0.85,
+                "confidence": _initial_scanner_confidence(rule_id, 0.85),
+                "scanner_confidence": _initial_scanner_confidence(rule_id, 0.85),
                 "confidence_sources": ["ibm"],
                 "needs_manual_review": False,
                 "description": message,

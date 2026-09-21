@@ -1,0 +1,82 @@
+[
+  {
+    "id": "apg-landmark-regions",
+    "name": "Landmark Regions Pattern",
+    "framework": "ARIA_APG",
+    "document_type": "design_pattern",
+    "topic": "landmarks",
+    "role": "main",
+    "wcag_sc": ["1.3.1", "2.4.1"],
+    "summary": "Landmark roles identify the organization and structure of a web page by classifying regions into navigation, main, banner, and contentinfo.",
+    "rules": [
+      "All perceivable content should be contained in a landmark region.",
+      "A page should contain only one primary main landmark representing the central topic.",
+      "If a page includes more than one instance of the same landmark role, each must have a unique accessible label (aria-label or aria-labelledby)."
+    ],
+    "source": "W3C ARIA Authoring Practices Guide (APG)"
+  },
+  {
+    "id": "apg-navigation",
+    "name": "Navigation Landmark Pattern",
+    "framework": "ARIA_APG",
+    "document_type": "design_pattern",
+    "topic": "navigation",
+    "role": "navigation",
+    "wcag_sc": ["1.3.1", "2.4.4"],
+    "summary": "A navigation landmark designates a major navigational block of links.",
+    "rules": [
+      "Use <nav> or role='navigation' for major site navigation blocks.",
+      "When multiple nav landmarks exist (e.g. main nav and pagination), provide distinct aria-labels.",
+      "Link text inside navigation landmarks should be distinct or have programmatically associated context."
+    ],
+    "source": "W3C ARIA Authoring Practices Guide (APG)"
+  },
+  {
+    "id": "apg-button",
+    "name": "Button Pattern",
+    "framework": "ARIA_APG",
+    "document_type": "design_pattern",
+    "topic": "buttons",
+    "role": "button",
+    "wcag_sc": ["4.1.2", "2.1.1"],
+    "summary": "A button is a widget that enables users to trigger an action or event.",
+    "rules": [
+      "A button must have an accessible name derived from visible text or aria-label.",
+      "A button must be operable via both Enter and Space keys.",
+      "Do not use generic div or span elements for buttons when native <button> elements can be used."
+    ],
+    "source": "W3C ARIA Authoring Practices Guide (APG)"
+  },
+  {
+    "id": "apg-dialog-modal",
+    "name": "Dialog (Modal) Pattern",
+    "framework": "ARIA_APG",
+    "document_type": "design_pattern",
+    "topic": "modals",
+    "role": "dialog",
+    "wcag_sc": ["2.1.2", "2.4.3", "4.1.2"],
+    "summary": "A dialog is a window overlaid on the primary page content, requiring user interaction.",
+    "rules": [
+      "A modal dialog must contain role='dialog' and aria-modal='true'.",
+      "Focus must be trapped inside the modal while it is active.",
+      "Pressing Escape must dismiss the dialog and restore focus to the triggering element."
+    ],
+    "source": "W3C ARIA Authoring Practices Guide (APG)"
+  },
+  {
+    "id": "apg-links",
+    "name": "Link Pattern & Context",
+    "framework": "ARIA_APG",
+    "document_type": "design_pattern",
+    "topic": "links",
+    "role": "link",
+    "wcag_sc": ["2.4.4", "4.1.2"],
+    "summary": "Links provide interactive navigation to an external or in-page resource.",
+    "rules": [
+      "Links can determine their purpose either from link text alone or together with programmatically determined context (enclosing sentence, parent paragraph, or preceding heading).",
+      "Generic link phrases ('learn more', 'read more') satisfy WCAG 2.4.4 if the enclosing sentence or preceding heading clearly establishes the destination.",
+      "When links navigate to new windows or non-HTML files, provide programmatic indicators."
+    ],
+    "source": "W3C ARIA Authoring Practices Guide (APG)"
+  }
+]

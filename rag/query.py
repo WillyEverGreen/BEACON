@@ -8,7 +8,7 @@ logger = logging.getLogger("rag-query")
 # ── Named Constants ───────────────────────────────────────────
 RRF_K = 60
 NOISE_GUARD_MIN_WORD_LEN = 3
-CONFIDENCE_CONSENSUS_THRESHOLD = 0.25
+CONFIDENCE_CONSENSUS_THRESHOLD = 0.40
 LOW_CONFIDENCE_CHUNK_LIMIT = 1
 MAX_CONTEXT_CHUNKS = 5          # Hard cap: prevents latency/cost/hallucination from over-long prompts
 CHROMA_PERSIST_DIR = "./chroma_db"

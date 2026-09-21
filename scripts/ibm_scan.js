@@ -12,6 +12,12 @@ async function main() {
     const result = await checker.getCompliance(target, "IBM_Accessibility");
     const report = result && result.report ? result.report : { results: [] };
     process.stdout.write(JSON.stringify(report));
+    try {
+      if (typeof checker.close === "function") {
+        await checker.close();
+      }
+    } catch (_) {}
+    process.exit(0);
   } catch (error) {
     const message = error && error.message ? error.message : String(error);
     process.stderr.write(message + "\n");
