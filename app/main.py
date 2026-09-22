@@ -46,6 +46,18 @@ async def lifespan(app: FastAPI):
 
     bootstrap_auth_store()
 
+    # Probe Supabase connectivity to prime the circuit breaker early
+    try:
+        from app.db.supabase_client import get_supabase, record_supabase_failure, record_supabase_success
+        sb = get_supabase()
+        _ = sb.table("projects").select("id").limit(1).execute()
+        record_supabase_success()
+        logger.info("Supabase connection active.")
+    except Exception as exc:
+        from app.db.supabase_client import record_supabase_failure
+        record_supabase_failure()
+        logger.info("Supabase unavailable at startup (%s), using local storage fallback.", exc)
+
     chunks_count = get_chunks_count()
     if chunks_count == 0:
         logger.info("Vector store is empty. Run POST /ingest to populate it.")
