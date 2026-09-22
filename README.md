@@ -1,3 +1,13 @@
+---
+title: BEACON Accessibility Engine
+emoji: 🔦
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 8000
+pinned: false
+---
+
 # 🔦 BEACON — Accessibility Intelligence Engine
 
 <div align="center">
