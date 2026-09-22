@@ -564,18 +564,21 @@ async def create_project(
 
 @router.get("/projects/")
 async def get_projects(user_id: str | None = Depends(get_current_user_id)):
-    _ensure_legacy_bootstrap()
-    _repair_invalid_completed_scans()
+    def _fetch():
+        _ensure_legacy_bootstrap()
+        _repair_invalid_completed_scans()
 
-    changed = False
-    projects = list_project_records(user_id=user_id)
-    for project in projects:
-        changed = _recompute_project_summary(project["id"]) or changed
-
-    if changed:
+        changed = False
         projects = list_project_records(user_id=user_id)
+        for project in projects:
+            changed = _recompute_project_summary(project["id"]) or changed
 
-    return sorted(projects, key=lambda project: project.get("created_at", ""), reverse=True)
+        if changed:
+            projects = list_project_records(user_id=user_id)
+
+        return sorted(projects, key=lambda project: project.get("created_at", ""), reverse=True)
+
+    return await asyncio.to_thread(_fetch)
 
 
 @router.get("/projects/{pid}")
@@ -583,16 +586,19 @@ async def get_project(
     pid: str,
     user_id: str | None = Depends(get_current_user_id),
 ):
-    _ensure_legacy_bootstrap()
+    def _fetch_one():
+        _ensure_legacy_bootstrap()
 
-    project = get_project_record(pid, user_id=user_id)
-    if not project:
-        raise HTTPException(404, "Project not found or access denied")
-
-    if _recompute_project_summary(pid):
         project = get_project_record(pid, user_id=user_id)
+        if not project:
+            raise HTTPException(404, "Project not found or access denied")
 
-    return project
+        if _recompute_project_summary(pid):
+            project = get_project_record(pid, user_id=user_id)
+
+        return project
+
+    return await asyncio.to_thread(_fetch_one)
 
 
 @router.delete("/projects/{pid}")
