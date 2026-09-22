@@ -126,7 +126,10 @@ export function toUserFacingError(error: unknown): { message: string; retryable:
       message = data?.error || data?.detail || "Requested resource not found.";
       retryable = false;
     } else if (status === 502) {
-      message = data?.error || "BEACON backend is offline. Please start the backend server on port 8000 (`py -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload`).";
+      const isCloud = typeof window !== "undefined" && !window.location.hostname.includes("localhost") && window.location.hostname !== "127.0.0.1";
+      message = data?.error || (isCloud
+        ? "BEACON backend is waking up or temporarily unreachable. Cloud instances (e.g. Render free tier) spin down when idle and take ~30–60 seconds to cold boot. Please wait a moment and retry."
+        : "BEACON backend is offline. Please start the backend server on port 8000 (`py -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload`).");
       retryable = true;
     } else if (status && status >= 500) {
       message = data?.error || data?.detail || "Server error occurred. Please try again later.";

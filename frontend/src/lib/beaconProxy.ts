@@ -132,9 +132,12 @@ export async function proxyToBeacon(request: Request, options: ProxyOptions): Pr
     });
   } catch (error: unknown) {
     console.error("proxyToBeacon failed:", error);
+    const isCloud = process.env.NODE_ENV === "production" || !!process.env.VERCEL;
     return NextResponse.json(
       {
-        error: "BEACON backend is offline or unreachable. Ensure the backend server is running on port 8000 (`py -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload`).",
+        error: isCloud
+          ? "BEACON backend is waking up or temporarily unreachable. Cloud instances (e.g. Render free tier) spin down when idle and take ~30–60 seconds to cold boot. Please wait a moment and retry."
+          : "BEACON backend is offline or unreachable. Ensure the backend server is running on port 8000 (`py -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload`).",
         details: error instanceof Error ? error.message : String(error),
       },
       { status: 502 }

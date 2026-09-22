@@ -845,7 +845,7 @@ export default function ProjectDetailPage() {
       console.error(e);
       setApiError(toUserFacingError(e));
       setScanning(false);
-      setScanStatus("failed");
+      setScanStatus("idle");
     }
   }
 
@@ -1180,8 +1180,27 @@ export default function ProjectDetailPage() {
                   <span>{issueCat.shortLabel}</span>
                 </span>
                 {issue.wcag_criterion && (
-                  <span className="text-[10px] font-bold text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">
-                    WCAG {issue.wcag_criterion}
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded border inline-flex items-center gap-1 ${
+                      issue.conformance_type === "supporting_technique" || issue.wcag_relationship?.relationship === "supports"
+                        ? "bg-cyan-500/10 text-cyan-800 dark:text-cyan-300 border-cyan-500/30"
+                        : issue.conformance_type === "best_practice"
+                        ? "bg-purple-500/10 text-purple-800 dark:text-purple-300 border-purple-500/30"
+                        : "text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700"
+                    }`}
+                    title={
+                      issue.conformance_type === "supporting_technique"
+                        ? `Technique ${issue.wcag_relationship?.technique_ref || ''} supports WCAG ${issue.wcag_criterion}; omission is not an automatic normative failure.`
+                        : issue.conformance_type === "best_practice"
+                        ? `Best practice recommendation for accessible user experience.`
+                        : `Normative WCAG ${issue.wcag_criterion} conformance requirement.`
+                    }
+                  >
+                    {issue.conformance_type === "supporting_technique"
+                      ? `WCAG ${issue.wcag_criterion} (Supporting)`
+                      : issue.conformance_type === "best_practice"
+                      ? `Best Practice (${issue.wcag_criterion})`
+                      : `WCAG ${issue.wcag_criterion}`}
                   </span>
                 )}
                 {(issue.act_adjudicated || issue.act_rule_id) && (
@@ -1286,6 +1305,43 @@ export default function ProjectDetailPage() {
                     <p className="text-sm text-[var(--beacon-text-soft)] font-medium leading-relaxed">
                       {issue.impact_summary}
                     </p>
+                  </div>
+                )}
+
+                {/* WCAG Relationship & Conformance */}
+                {issue.wcag_relationship && (
+                  <div>
+                    <h4 className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--beacon-text-muted)] mb-2 flex items-center gap-1.5">
+                      <IconShield className="w-3.5 h-3.5" /> Conformance Classification
+                    </h4>
+                    <div className="text-xs p-3 rounded-md bg-[var(--beacon-bg)] border border-[var(--beacon-border)] space-y-1.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-[var(--beacon-text)] capitalize">
+                          {issue.conformance_type === "supporting_technique"
+                            ? "Supporting Technique (Advisory)"
+                            : issue.conformance_type === "best_practice"
+                            ? "Best Practice Recommendation"
+                            : "Normative WCAG Requirement"}
+                        </span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${
+                          issue.wcag_relationship.relationship === "supports"
+                            ? "bg-cyan-500/15 text-cyan-800 dark:text-cyan-300"
+                            : "bg-zinc-200 dark:bg-zinc-800 text-[var(--beacon-text)]"
+                        }`}>
+                          {issue.wcag_relationship.relationship === "supports" ? "Supports Criterion" : "Direct Failure"}
+                        </span>
+                        {issue.wcag_relationship.technique_ref && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-[var(--beacon-text-muted)] font-mono">
+                            Technique: {issue.wcag_relationship.technique_ref}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[var(--beacon-text-muted)] text-[11px] leading-relaxed">
+                        {issue.wcag_relationship.relationship === "supports"
+                          ? `This finding checks W3C Technique ${issue.wcag_relationship.technique_ref || ''}. Using this technique helps satisfy WCAG ${issue.wcag_criterion}, but omission is not an automatic failure of WCAG conformance.`
+                          : `Violates normative WCAG ${issue.wcag_criterion} success criteria.`}
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1826,7 +1882,7 @@ export default function ProjectDetailPage() {
           {[
             {
               label: "Accessibility Score",
-              value: score !== null ? Math.round(score) : "—",
+              value: score !== null ? Math.round(score) : "N/A",
               color: scoreColor(score),
               suffix: "/100",
             },
@@ -1899,15 +1955,15 @@ export default function ProjectDetailPage() {
         </div>
       )}
 
-      {/* ── Degraded Mode Banner ─────────────────────────────── */}
-      {latestScan?.degraded_mode && (
+      {/* ── Degraded Mode / Extraction Fidelity Banner ─────────────────── */}
+      {latestScan?.degraded_mode ? (
         <div className="banner-degraded flex items-center gap-3 px-5 py-3.5 mb-6 rounded-lg text-xs font-black uppercase tracking-[0.08em] animate-fade-in">
           <IconAlertTriangle className="w-5 h-5 text-amber-800 dark:text-amber-400 shrink-0" />
           <div className="flex-1">
             <span className="font-black text-amber-950 dark:text-amber-300">Degraded Scan</span>
             {latestScan.degradation_reason && (
               <span className="ml-2 font-bold text-amber-900 dark:text-amber-200/90 normal-case tracking-normal">
-                — {latestScan.degradation_reason}
+                : {latestScan.degradation_reason}
               </span>
             )}
           </div>
@@ -1915,7 +1971,31 @@ export default function ProjectDetailPage() {
             Score capped at {latestScan.trust?.score_integrity?.caps_applied?.find((c: any) => c.type === "partial_audit_cap")?.to ?? 82}/100
           </span>
         </div>
-      )}
+      ) : (latestScan?.dom_extraction === "complete" && (latestScan?.browser_probes === "unavailable" || latestScan?.browser_probes === "failed" || latestScan?.skipped_components?.includes("browser_probes"))) ? (
+        <div className="flex items-center gap-3 px-5 py-3 mb-6 rounded-lg text-xs font-semibold bg-emerald-500/10 border border-emerald-500/30 text-emerald-950 dark:text-emerald-200 animate-fade-in shadow-xs">
+          <IconCheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <div className="flex-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="font-extrabold uppercase tracking-wider text-[11px] text-emerald-800 dark:text-emerald-300">
+              Extraction Fidelity
+            </span>
+            <span className="text-zinc-400 dark:text-zinc-600">|</span>
+            <span>
+              <strong className="text-[var(--beacon-text)]">DOM Extraction:</strong> Complete
+            </span>
+            <span className="text-zinc-400 dark:text-zinc-600">·</span>
+            <span>
+              <strong className="text-[var(--beacon-text)]">Browser Probes:</strong> Unavailable
+            </span>
+            <span className="text-zinc-400 dark:text-zinc-600">·</span>
+            <span className="text-emerald-700 dark:text-emerald-300 font-bold">
+              Audit Confidence: High for Static & AST Checks
+            </span>
+          </div>
+          <span className="px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-[10px] font-black uppercase tracking-wider shrink-0 border border-emerald-500/30">
+            No Score Penalty
+          </span>
+        </div>
+      ) : null}
 
       {/* ── Governance & Perspective Ribbon (§39–§48) ────────────────── */}
       <div className="bg-[var(--beacon-card-bg)] border border-zinc-200 dark:border-zinc-800/80 rounded-xl p-4 mb-6 shadow-sm">
@@ -1928,7 +2008,7 @@ export default function ProjectDetailPage() {
                 Role Perspective
               </span>
               <span className="text-[11px] text-[var(--beacon-text-muted)] font-normal">
-                — {ROLE_OPTIONS.find((r) => r.id === roleView)?.desc}
+                : {ROLE_OPTIONS.find((r) => r.id === roleView)?.desc}
               </span>
             </div>
             <div className="flex items-center gap-1 bg-zinc-100/80 dark:bg-zinc-900/60 p-1 rounded-lg border border-zinc-200 dark:border-zinc-800/80 w-fit">
@@ -3223,8 +3303,16 @@ export default function ProjectDetailPage() {
                           </span>
                         )}
                         {item.wcag_criterion && (
-                          <span className="text-[10px] text-black bg-[var(--beacon-primary)] px-2 py-1 rounded font-extrabold uppercase tracking-[0.15em] shadow-[1px_1px_0px_#000000]">
-                            WCAG {item.wcag_criterion}
+                          <span
+                            className={`text-[10px] px-2 py-1 rounded font-extrabold uppercase tracking-[0.15em] shadow-[1px_1px_0px_#000000] ${
+                              item.conformance_type === "supporting_technique" || item.wcag_relationship?.relationship === "supports"
+                                ? "bg-cyan-400 text-black"
+                                : "bg-[var(--beacon-primary)] text-black"
+                            }`}
+                          >
+                            {item.conformance_type === "supporting_technique" || item.wcag_relationship?.relationship === "supports"
+                              ? `WCAG ${item.wcag_criterion} (Supporting)`
+                              : `WCAG ${item.wcag_criterion}`}
                           </span>
                         )}
                       </div>

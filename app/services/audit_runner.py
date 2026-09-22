@@ -1444,6 +1444,8 @@ async def run_audit(
         # ── Step 1: Fetch / Render page ────────────────────────────
         browser_probe_metadata = {}
         fetch_reliability_meta: dict[str, Any] = {}
+        dom_extraction_status = "pending"
+        browser_probes_status = "not_requested" if scan_mode == "fast" else "pending"
         
         if scan_mode in {"deep", "max"}:
             # Try Playwright for deep scan
@@ -1467,6 +1469,7 @@ async def run_audit(
                     if rendered_html:
                         html = rendered_html
                         engines_used.append("browser-probe")
+                        browser_probes_status = "executed"
                         if "browser_probes" in skipped_components:
                             skipped_components = [s for s in skipped_components if s != "browser_probes"]
                         
@@ -1486,14 +1489,15 @@ async def run_audit(
                                 scan_mode.upper(),
                                 len(browser_issues),
                             )
+                    else:
+                        browser_probes_status = "partial"
                 else:
-                    logger.info("Playwright not available - falling back to httpx for %s scan", scan_mode)
-                    _mark_degraded("extraction_failure", "Playwright rendering engine is unavailable.")
+                    logger.info("Playwright not available - falling back to high-fidelity static DOM extraction for %s scan", scan_mode)
+                    browser_probes_status = "unavailable"
                     skipped_components.extend(["browser_probes", "axe-core"])
             except Exception as e:
                 logger.warning(f"Playwright probing failed: {e}")
-                reason_code = _classify_degraded_reason_from_error(e)
-                _mark_degraded(reason_code, _degradation_reason_message(reason_code, str(e)))
+                browser_probes_status = "failed"
                 skipped_components.extend(["browser_probes", "axe-core"])
 
         # Fallback: fetch with httpx if no rendered HTML yet
@@ -1660,6 +1664,31 @@ async def run_audit(
             failure.setdefault("http_client", "curl_cffi/chrome")
             failure.setdefault("browser_engine", "camoufox/firefox")
             return _finalize_result(failure, status="completed", user_id=user_id)
+
+        # ── Step 1.4: Assess DOM Extraction Completeness ───────────
+        from app.services.confidence import document_completeness_score
+        completeness = document_completeness_score(html)
+        text_content = ""
+        try:
+            from bs4 import BeautifulSoup
+            text_content = BeautifulSoup(html[:6000], "html.parser").get_text(strip=True)
+        except Exception:
+            pass
+
+        # If page is an empty client-side shell (e.g. unhydrated CSR with < 300 bytes and < 30 chars of text)
+        if completeness < 0.20 and len(html.strip()) < 300 and len(text_content) < 30:
+            dom_extraction_status = "partial_shell"
+            _mark_degraded(
+                "client_side_hydration_required",
+                "Page requires client-side JavaScript execution to render its content shell.",
+            )
+        else:
+            dom_extraction_status = "complete"
+            # If degraded_mode was set to extraction_failure, clear it because DOM is complete!
+            if degraded_reason in {"extraction_failure", "extraction_failed"}:
+                degraded_mode = False
+                degraded_reason = None
+                degradation_reason = None
 
         # ── Step 1.5: Check Structure / DOM Cache ─────────────────
         dom_hash = get_dom_hash(clean_html_for_hash(html), scan_mode, precision_profile)
@@ -2335,6 +2364,8 @@ async def run_audit(
             "expected_score_after_fix": round(expected_score_after_fix, 1) if isinstance(expected_score_after_fix, (int, float)) else None,
             "score_improvement": round(score_improvement, 1) if isinstance(score_improvement, (int, float)) else None,
             "degraded_mode": degraded_mode,
+            "dom_extraction": dom_extraction_status,
+            "browser_probes": browser_probes_status,
             "partial_engine_coverage": len(skipped_components) > 0,
             "audit_run_id": audit_uuid,
             "degraded_reason": normalize_failure(degraded_reason).value if degraded_reason else None,

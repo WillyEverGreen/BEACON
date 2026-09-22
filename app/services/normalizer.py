@@ -5,7 +5,7 @@ into a unified AuditIssue schema.
 import hashlib
 import logging
 
-from app.config import RULE_DOMAIN_MAP
+from app.config import IMPACT_SUMMARIES, RULE_DOMAIN_MAP, get_wcag_relationship
 from app.services.engine_manifest import get_engine_manifest
 
 logger = logging.getLogger(__name__)
@@ -541,6 +541,22 @@ def _apply_axe_ibm_corroboration(issues: list[dict]) -> None:
             issue["evidence"] = evidence
 
 
+def _enrich_wcag_and_impact(issue: dict) -> None:
+    """Attach explicit WCAG relationship metadata and human impact summary to an issue."""
+    rule_id = str(issue.get("rule_id", "") or "").strip()
+    raw_id = str(issue.get("raw_rule_id", "") or "").strip()
+    crit = str(issue.get("wcag_criterion", "") or "").strip()
+    level = str(issue.get("wcag_level", "A") or "A").strip()
+    
+    wcag_rel = get_wcag_relationship(rule_id or raw_id, default_criterion=crit, default_level=level)
+    issue["wcag_relationship"] = wcag_rel
+    issue["conformance_type"] = wcag_rel.get("conformance_type", "normative")
+    issue["wcag_display"] = wcag_rel.get("display", f"WCAG {crit}" if crit else "Best Practice")
+    
+    if not issue.get("impact_summary"):
+        issue["impact_summary"] = IMPACT_SUMMARIES.get(rule_id, IMPACT_SUMMARIES.get(raw_id, IMPACT_SUMMARIES["_default"]))
+
+
 def normalize_all(
     static_issues: list[dict],
     heuristic_issues: list[dict],
@@ -561,6 +577,10 @@ def normalize_all(
     all_issues.extend(normalize_ibm_results(ibm_issues or [], url))
 
     _apply_axe_ibm_corroboration(all_issues)
+
+    # Attach WCAG relationships and rich impact summaries to all findings
+    for issue in all_issues:
+        _enrich_wcag_and_impact(issue)
 
     logger.info(
         f"Normalized {len(all_issues)} total issues: "

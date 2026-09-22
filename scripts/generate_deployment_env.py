@@ -34,7 +34,7 @@ def main():
     print("-" * 75)
     render_env = f"""ENVIRONMENT=production
 NVIDIA_API_KEY=<your-nvidia-nim-api-key>
-LLM_MODEL=meta/llama-3.1-70b-instruct
+LLM_MODEL=meta/llama-3.2-11b-vision-instruct
 LLM_BASE_URL=https://integrate.api.nvidia.com/v1
 SUPABASE_URL=<your-supabase-url>
 SUPABASE_KEY=<your-supabase-service-role-or-anon-key>

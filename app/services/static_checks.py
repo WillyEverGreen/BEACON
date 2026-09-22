@@ -167,11 +167,98 @@ def _issue(url: str, rule_id: str, issue_type: str, severity: str,
         "suggested_fix": suggested_fix,
         "code_fix": "",
         "fix_effort": fix_effort,
-        "group_id": "",
         "domain": "",
         "evidence": {},
         "reproducibility": "",
     }
+
+
+def _find_unwrapped_nav_cluster(soup: BeautifulSoup) -> Tag | None:
+    """
+    Search for a real navigation-like container (links grouped together)
+    that is NOT inside a <nav> or element with role="navigation".
+    """
+    nav_pattern = re.compile(r"(nav|menu|navbar|site-links|header-links|links|navigation)", re.IGNORECASE)
+    
+    # 1. Target candidate containers by semantic classes / IDs
+    candidates = soup.find_all(lambda tag: tag.name in {"div", "ul", "ol", "section", "header"} and (
+        nav_pattern.search(" ".join(tag.get("class", [])) if isinstance(tag.get("class"), list) else str(tag.get("class", "")))
+        or nav_pattern.search(str(tag.get("id", "")))
+    ))
+    
+    for candidate in candidates:
+        if candidate.find_parent("nav") or candidate.find_parent(attrs={"role": re.compile(r"(^|\s)navigation(\s|$)", re.IGNORECASE)}):
+            continue
+        links = [a for a in candidate.find_all("a", href=True) if not a.find_parent("nav")]
+        if len(links) >= 2:
+            return candidate
+
+    # 2. Check for any <ul> or <ol> outside <nav> with >= 2 links
+    lists = soup.find_all(["ul", "ol"])
+    for lst in lists:
+        if lst.find_parent("nav") or lst.find_parent(attrs={"role": re.compile(r"(^|\s)navigation(\s|$)", re.IGNORECASE)}):
+            continue
+        links = lst.find_all("a", href=True)
+        if len(links) >= 2:
+            return lst
+
+    # 3. Check for any container with >= 2 grouped anchor links
+    all_links = [a for a in soup.find_all("a", href=True) if not a.find_parent("nav")]
+    if len(all_links) >= 2:
+        parent = all_links[0].parent
+        while parent and parent.name not in {"body", "html", "[document]"}:
+            contained = [a for a in parent.find_all("a", href=True)]
+            if 2 <= len(contained) <= 15:
+                return parent
+            parent = parent.parent
+        if all_links[0].parent and all_links[0].parent.name not in {"body", "html", "[document]"}:
+            return all_links[0].parent
+
+    return None
+
+
+def _find_unwrapped_main_cluster(soup: BeautifulSoup) -> Tag | None:
+    """Find the primary content container when <main> is missing."""
+    main_pattern = re.compile(r"(content|main|page-body|container|app|root)", re.IGNORECASE)
+    candidates = soup.find_all(lambda tag: tag.name in {"div", "section", "article"} and (
+        main_pattern.search(" ".join(tag.get("class", [])) if isinstance(tag.get("class"), list) else str(tag.get("class", "")))
+        or main_pattern.search(str(tag.get("id", "")))
+    ))
+    for c in candidates:
+        if c.find_parent("main") or c.find_parent(attrs={"role": "main"}):
+            continue
+        if len(c.get_text(strip=True)) > 40:
+            return c
+    sec = soup.find(["article", "section"])
+    if sec and not sec.find_parent("main"):
+        return sec
+    return None
+
+
+def _find_unwrapped_header_cluster(soup: BeautifulSoup) -> Tag | None:
+    """Find top-level branding/header container when <header> is missing."""
+    header_pattern = re.compile(r"(header|banner|topbar|branding|site-header)", re.IGNORECASE)
+    candidates = soup.find_all(lambda tag: tag.name in {"div", "section"} and (
+        header_pattern.search(" ".join(tag.get("class", [])) if isinstance(tag.get("class"), list) else str(tag.get("class", "")))
+        or header_pattern.search(str(tag.get("id", "")))
+    ))
+    for c in candidates:
+        if not c.find_parent(["header", "footer", "main"]):
+            return c
+    return None
+
+
+def _find_unwrapped_footer_cluster(soup: BeautifulSoup) -> Tag | None:
+    """Find footer/copyright container when <footer> is missing."""
+    footer_pattern = re.compile(r"(footer|bottom|copyright|colophon|site-footer)", re.IGNORECASE)
+    candidates = soup.find_all(lambda tag: tag.name in {"div", "section"} and (
+        footer_pattern.search(" ".join(tag.get("class", [])) if isinstance(tag.get("class"), list) else str(tag.get("class", "")))
+        or footer_pattern.search(str(tag.get("id", "")))
+    ))
+    for c in candidates:
+        if not c.find_parent(["footer"]):
+            return c
+    return None
 
 
 class StaticChecker:
@@ -673,47 +760,75 @@ class StaticChecker:
         missing_landmark_samples: list[str] = []
 
         if not has_main and not shell_skip_primary_landmarks:
+            main_cluster = _find_unwrapped_main_cluster(self.soup)
+            target_el = _css_selector(main_cluster) if main_cluster else "<body>"
+            target_snip = _snippet(main_cluster) if main_cluster else "<body>"
+
             issues.append(_issue(
-                self.url, "no-main-landmark", "violation", "critical" if high_signal_missing_main else "moderate",
-                "<body>", "<body>",
-                "Page has no <main> landmark. Screen reader users rely on landmarks to navigate.",
-                "1.3.1", "A", "html",
-                "Wrap main content in a <main> element."
+                self.url, "no-main-landmark", "best-practice", "critical" if high_signal_missing_main else "moderate",
+                target_el, target_snip,
+                "Main page content is not enclosed in a <main> landmark.",
+                "1.3.1", "A", "structure",
+                "Wrap main content in a <main> element so assistive technology users can navigate directly to primary content."
             ))
             no_main_samples.append("missing visible main landmark")
             if has_nav:
                 issues.append(_issue(
-                    self.url, "missing-landmark", "violation", "critical",
-                    "<body>", "<body>",
+                    self.url, "missing-landmark", "best-practice", "critical",
+                    target_el, target_snip,
                     "Navigation landmark is present but the page has no main landmark.",
-                    "1.3.1", "A", "html",
+                    "1.3.1", "A", "structure",
                     "Add a single visible <main> landmark so assistive technology users can jump to primary content."
                 ))
                 missing_landmark_samples.append("navigation present without main landmark")
-        if not has_nav and not shell_skip_primary_landmarks:
+
+        # 2. Navigation Landmark Check (Evidence-driven: Only emit if the page has >= 2 navigation links)
+        all_visible_links = [a for a in self.soup.find_all("a", href=True) if self._is_visible_for_static(a)]
+        if not has_nav and not shell_skip_primary_landmarks and len(all_visible_links) >= 2:
+            nav_cluster = _find_unwrapped_nav_cluster(self.soup)
+            if nav_cluster:
+                target_el = _css_selector(nav_cluster)
+                target_snip = _snippet(nav_cluster)
+            else:
+                first_parent = all_visible_links[0].parent
+                target_el = _css_selector(first_parent) if first_parent else "<body>"
+                target_snip = _snippet(first_parent) if first_parent else "<body>"
+
             issues.append(_issue(
                 self.url, "no-nav-landmark", "best-practice", "minor",
-                "<body>", "<body>",
-                "Page has no <nav> landmark for navigation.",
-                "1.3.1", "A", "html",
-                "Wrap navigation links in a <nav> element."
+                target_el, target_snip,
+                "Navigation content is not exposed through a <nav> landmark.",
+                "1.3.1", "A", "structure",
+                "Wrap navigation links in a <nav aria-label=\"Primary Navigation\"> element."
             ))
+
+        # 3. Header Landmark Check
         if not has_header and not shell_skip_primary_landmarks:
-            issues.append(_issue(
-                self.url, "no-header-landmark", "best-practice", "minor",
-                "<body>", "<body>",
-                "Page has no <header> landmark.",
-                "1.3.1", "A", "html",
-                "Add a <header> element for the site banner area."
-            ))
+            header_cluster = _find_unwrapped_header_cluster(self.soup)
+            if header_cluster:
+                target_el = _css_selector(header_cluster)
+                target_snip = _snippet(header_cluster)
+                issues.append(_issue(
+                    self.url, "no-header-landmark", "best-practice", "minor",
+                    target_el, target_snip,
+                    "Site header and top banner content is not enclosed in a <header> landmark.",
+                    "1.3.1", "A", "structure",
+                    "Add a <header> element or role=\"banner\" for the site banner area."
+                ))
+
+        # 4. Footer Landmark Check
         if not has_footer and not shell_skip_primary_landmarks:
-            issues.append(_issue(
-                self.url, "no-footer-landmark", "best-practice", "minor",
-                "<body>", "<body>",
-                "Page has no <footer> landmark.",
-                "1.3.1", "A", "html",
-                "Add a <footer> element for site-wide footer content."
-            ))
+            footer_cluster = _find_unwrapped_footer_cluster(self.soup)
+            if footer_cluster:
+                target_el = _css_selector(footer_cluster)
+                target_snip = _snippet(footer_cluster)
+                issues.append(_issue(
+                    self.url, "no-footer-landmark", "best-practice", "minor",
+                    target_el, target_snip,
+                    "Site footer content is not enclosed in a <footer> landmark.",
+                    "1.3.1", "A", "structure",
+                    "Add a <footer> element or role=\"contentinfo\" for site-wide footer content."
+                ))
 
         # Group 2 deterministic landmark-role checks.
         landmark_roles_checked = 2

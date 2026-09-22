@@ -111,7 +111,7 @@ const DOCS = [
     sections: [
       {
         q: "What is Native Topology Crawling?",
-        a: "BEACON clusters pages by structural DOM tag-tree skeletons stripped of volatile classes and IDs. When subsequent pages in a template cluster (e.g. blog posts or product catalogs) yield no new violation types, the crawler stops early—cutting crawl loops by 66.7% while preserving template diversity.",
+        a: "BEACON clusters pages by structural DOM tag-tree skeletons stripped of volatile classes and IDs. When subsequent pages in a template cluster (e.g. blog posts or product catalogs) yield no new violation types, the crawler stops early, cutting crawl loops by 66.7% while preserving template diversity.",
       },
       {
         q: "How does 3-Tier Anti-Bot Automation work?",

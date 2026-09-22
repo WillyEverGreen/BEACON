@@ -3,7 +3,7 @@ Configuration settings loaded from .env file.
 Includes scan mode definitions and quality gate thresholds.
 """
 from enum import Enum
-from typing import Final
+from typing import Any, Final
 
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -759,9 +759,223 @@ IMPACT_SUMMARIES = {
     "svg-no-accessible-name": "Blind users cannot perceive SVG graphics without an accessible name.",
     "svg-accessible-name": "Blind users cannot perceive SVG graphics without an accessible name.",
     "heading-skip": "Screen reader users may miss content sections when heading levels are skipped.",
-    "link-purpose": "Users cannot determine where a link goes without reading surrounding context.",
-    "_default": "This issue may create a barrier for users with disabilities.",
+    "no-nav-landmark": "Screen reader users may have fewer navigation landmarks available for quickly locating and navigating the site's primary navigation.",
+    "no-main-landmark": "Assistive technology users cannot use landmark shortcuts to skip header and navigation bars directly to the primary content.",
+    "no-header-landmark": "Screen reader users lose a dedicated banner landmark for identifying site identity and top-level controls.",
+    "no-footer-landmark": "Users relying on landmark navigation cannot jump directly to supplementary footer links, copyright, and legal information.",
+    "missing-landmark": "Navigation is present without a corresponding main content landmark, leaving page structure incomplete for assistive technology.",
+    "landmark-one-main": "Pages should have a single main landmark so assistive technology users can reliably jump to primary content.",
+    "region": "Content sections without landmark or region roles are harder for screen reader users to discover and navigate efficiently.",
+    "_default": "This issue may create an accessibility barrier or reduce structural clarity for assistive technology users.",
 }
+
+# ── WCAG Relationship & Conformance Classification ─────────────────
+# Distinguishes strict normative failures from supporting techniques and best practices.
+
+RULE_WCAG_RELATIONSHIPS: dict[str, dict[str, Any]] = {
+    # Structural & Landmark Supporting Techniques (non-failing by themselves)
+    "no-nav-landmark": {
+        "criterion": "1.3.1",
+        "level": "A",
+        "conformance_type": "supporting_technique",
+        "relationship": "supports",
+        "direct_failure": False,
+        "technique_ref": "H97, ARIA11",
+        "display": "WCAG 1.3.1 (Supporting Technique)",
+    },
+    "no-header-landmark": {
+        "criterion": "1.3.1",
+        "level": "A",
+        "conformance_type": "supporting_technique",
+        "relationship": "supports",
+        "direct_failure": False,
+        "technique_ref": "ARIA11",
+        "display": "WCAG 1.3.1 (Supporting Technique)",
+    },
+    "no-footer-landmark": {
+        "criterion": "1.3.1",
+        "level": "A",
+        "conformance_type": "supporting_technique",
+        "relationship": "supports",
+        "direct_failure": False,
+        "technique_ref": "ARIA11",
+        "display": "WCAG 1.3.1 (Supporting Technique)",
+    },
+    "no-main-landmark": {
+        "criterion": "1.3.1",
+        "level": "A",
+        "conformance_type": "supporting_technique",
+        "relationship": "supports",
+        "direct_failure": False,
+        "technique_ref": "H97, ARIA11",
+        "display": "WCAG 1.3.1 (Supporting Technique)",
+    },
+    "missing-landmark": {
+        "criterion": "1.3.1",
+        "level": "A",
+        "conformance_type": "supporting_technique",
+        "relationship": "supports",
+        "direct_failure": False,
+        "technique_ref": "ARIA11",
+        "display": "WCAG 1.3.1 (Supporting Technique)",
+    },
+    "landmark-one-main": {
+        "criterion": "1.3.1",
+        "level": "A",
+        "conformance_type": "best_practice",
+        "relationship": "best_practice",
+        "direct_failure": False,
+        "technique_ref": "ARIA11",
+        "display": "Best Practice (ARIA Landmark)",
+    },
+    "region": {
+        "criterion": "1.3.1",
+        "level": "A",
+        "conformance_type": "best_practice",
+        "relationship": "best_practice",
+        "direct_failure": False,
+        "technique_ref": "ARIA11",
+        "display": "Best Practice (ARIA Landmark)",
+    },
+    "skip-link": {
+        "criterion": "2.4.1",
+        "level": "A",
+        "conformance_type": "supporting_technique",
+        "relationship": "supports",
+        "direct_failure": False,
+        "technique_ref": "G1",
+        "display": "WCAG 2.4.1 (Supporting Technique)",
+    },
+    "heading-skip": {
+        "criterion": "1.3.1",
+        "level": "A",
+        "conformance_type": "best_practice",
+        "relationship": "advisory",
+        "direct_failure": False,
+        "technique_ref": "G141",
+        "display": "WCAG 1.3.1 (Advisory / Best Practice)",
+    },
+    "heading-order": {
+        "criterion": "1.3.1",
+        "level": "A",
+        "conformance_type": "best_practice",
+        "relationship": "advisory",
+        "direct_failure": False,
+        "technique_ref": "G141",
+        "display": "WCAG 1.3.1 (Advisory / Best Practice)",
+    },
+    # Direct Normative Violations
+    "missing-alt": {
+        "criterion": "1.1.1",
+        "level": "A",
+        "conformance_type": "normative",
+        "relationship": "fails",
+        "direct_failure": True,
+        "technique_ref": "F65",
+        "display": "WCAG 1.1.1 (Normative Violation)",
+    },
+    "image-alt": {
+        "criterion": "1.1.1",
+        "level": "A",
+        "conformance_type": "normative",
+        "relationship": "fails",
+        "direct_failure": True,
+        "technique_ref": "F65",
+        "display": "WCAG 1.1.1 (Normative Violation)",
+    },
+    "missing-label": {
+        "criterion": "1.3.1",
+        "level": "A",
+        "conformance_type": "normative",
+        "relationship": "fails",
+        "direct_failure": True,
+        "technique_ref": "F68",
+        "display": "WCAG 1.3.1 (Normative Violation)",
+    },
+    "label": {
+        "criterion": "1.3.1",
+        "level": "A",
+        "conformance_type": "normative",
+        "relationship": "fails",
+        "direct_failure": True,
+        "technique_ref": "F68",
+        "display": "WCAG 1.3.1 (Normative Violation)",
+    },
+    "button-name": {
+        "criterion": "4.1.2",
+        "level": "A",
+        "conformance_type": "normative",
+        "relationship": "fails",
+        "direct_failure": True,
+        "technique_ref": "F96",
+        "display": "WCAG 4.1.2 (Normative Violation)",
+    },
+    "link-name": {
+        "criterion": "2.4.4",
+        "level": "A",
+        "conformance_type": "normative",
+        "relationship": "fails",
+        "direct_failure": True,
+        "technique_ref": "F89",
+        "display": "WCAG 2.4.4 (Normative Violation)",
+    },
+    "empty-link": {
+        "criterion": "2.4.4",
+        "level": "A",
+        "conformance_type": "normative",
+        "relationship": "fails",
+        "direct_failure": True,
+        "technique_ref": "F89",
+        "display": "WCAG 2.4.4 (Normative Violation)",
+    },
+    "color-contrast": {
+        "criterion": "1.4.3",
+        "level": "AA",
+        "conformance_type": "normative",
+        "relationship": "fails",
+        "direct_failure": True,
+        "technique_ref": "G18",
+        "display": "WCAG 1.4.3 (Normative Violation)",
+    },
+    "no-lang": {
+        "criterion": "3.1.1",
+        "level": "A",
+        "conformance_type": "normative",
+        "relationship": "fails",
+        "direct_failure": True,
+        "technique_ref": "H57",
+        "display": "WCAG 3.1.1 (Normative Violation)",
+    },
+    "no-title": {
+        "criterion": "2.4.2",
+        "level": "A",
+        "conformance_type": "normative",
+        "relationship": "fails",
+        "direct_failure": True,
+        "technique_ref": "F25",
+        "display": "WCAG 2.4.2 (Normative Violation)",
+    },
+}
+
+
+def get_wcag_relationship(rule_id: str, default_criterion: str = "", default_level: str = "A") -> dict[str, Any]:
+    """Return explicit WCAG relationship metadata for a given rule_id."""
+    clean = str(rule_id or "").strip()
+    if clean in RULE_WCAG_RELATIONSHIPS:
+        return dict(RULE_WCAG_RELATIONSHIPS[clean])
+    
+    # Generic fallback based on defaults
+    crit = default_criterion or "1.3.1"
+    return {
+        "criterion": crit,
+        "level": default_level or "A",
+        "conformance_type": "normative",
+        "relationship": "fails",
+        "direct_failure": True,
+        "technique_ref": "",
+        "display": f"WCAG {crit} (Normative Violation)",
+    }
+
 
 
 class Settings(BaseSettings):
@@ -787,7 +1001,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("LLM_API_KEY", "NVIDIA_API_KEY", "FEATHERLESS_API_KEY"),
     )
     llm_model: str = Field(
-        default="meta/llama-3.1-70b-instruct",
+        default="meta/llama-3.2-11b-vision-instruct",
         validation_alias=AliasChoices("LLM_MODEL", "FEATHERLESS_MODEL"),
     )
     llm_base_url: str = Field(
