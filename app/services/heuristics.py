@@ -4,9 +4,15 @@ Alt text quality, vague link/button text, weak error messages, label clarity.
 """
 import logging
 import re
-from typing import Optional
+
 from bs4 import BeautifulSoup, Tag
-from app.services.static_checks import _css_selector, _snippet, _KNOWN_ROLES, _KNOWN_ARIA_ATTRIBUTES
+
+from app.services.static_checks import (
+    _KNOWN_ARIA_ATTRIBUTES,
+    _KNOWN_ROLES,
+    _css_selector,
+    _snippet,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -25,27 +31,27 @@ VAGUE_BUTTON_PATTERNS = {
 }
 
 GENERIC_ALT_PATTERNS = [
-    re.compile(r'^image\d*$', re.I),
-    re.compile(r'^photo\d*$', re.I),
-    re.compile(r'^img[\s_-]?\d*$', re.I),
-    re.compile(r'^pic(ture)?\d*$', re.I),
-    re.compile(r'^untitled\d*$', re.I),
-    re.compile(r'^placeholder\d*$', re.I),
-    re.compile(r'^\w+\.(jpg|jpeg|png|gif|webp|svg|bmp)$', re.I),  # filename as alt
-    re.compile(r'^DSC_?\d+$', re.I),  # camera filenames
-    re.compile(r'^IMG_?\d+$', re.I),
-    re.compile(r'^screenshot', re.I),
+    re.compile(r'^image\d*$', re.IGNORECASE),
+    re.compile(r'^photo\d*$', re.IGNORECASE),
+    re.compile(r'^img[\s_-]?\d*$', re.IGNORECASE),
+    re.compile(r'^pic(ture)?\d*$', re.IGNORECASE),
+    re.compile(r'^untitled\d*$', re.IGNORECASE),
+    re.compile(r'^placeholder\d*$', re.IGNORECASE),
+    re.compile(r'^\w+\.(jpg|jpeg|png|gif|webp|svg|bmp)$', re.IGNORECASE),  # filename as alt
+    re.compile(r'^DSC_?\d+$', re.IGNORECASE),  # camera filenames
+    re.compile(r'^IMG_?\d+$', re.IGNORECASE),
+    re.compile(r'^screenshot', re.IGNORECASE),
     re.compile(r'^\s*$'),  # whitespace-only
 ]
 
 WEAK_ERROR_PATTERNS = [
-    re.compile(r'^error\.?$', re.I),
-    re.compile(r'^invalid\.?$', re.I),
-    re.compile(r'^required\.?$', re.I),
-    re.compile(r'^wrong\.?$', re.I),
-    re.compile(r'^invalid input\.?$', re.I),
-    re.compile(r'^please fix\.?$', re.I),
-    re.compile(r'^check this field\.?$', re.I),
+    re.compile(r'^error\.?$', re.IGNORECASE),
+    re.compile(r'^invalid\.?$', re.IGNORECASE),
+    re.compile(r'^required\.?$', re.IGNORECASE),
+    re.compile(r'^wrong\.?$', re.IGNORECASE),
+    re.compile(r'^invalid input\.?$', re.IGNORECASE),
+    re.compile(r'^please fix\.?$', re.IGNORECASE),
+    re.compile(r'^check this field\.?$', re.IGNORECASE),
 ]
 
 
@@ -289,8 +295,8 @@ class HeuristicAnalyzer:
             onkeydown = str(el.get("onkeydown") or "")
             combined = f"{onblur} {onfocus} {onkeydown}"
 
-            loops_focus = bool(re.search(r"(focus|movefocus|setfocus)", onblur, re.I))
-            trap_signal = bool(re.search(r"(trap|keydown|ctrl|escape|tab)", combined, re.I))
+            loops_focus = bool(re.search(r"(focus|movefocus|setfocus)", onblur, re.IGNORECASE))
+            trap_signal = bool(re.search(r"(trap|keydown|ctrl|escape|tab)", combined, re.IGNORECASE))
             if not loops_focus or not trap_signal:
                 continue
 
@@ -501,7 +507,7 @@ class HeuristicAnalyzer:
         issues = []
 
         def _hidden(node: Tag) -> bool:
-            current: Optional[Tag] = node
+            current: Tag | None = node
             while isinstance(current, Tag):
                 if str(current.get("aria-hidden") or "").strip().lower() == "true":
                     return True
@@ -516,21 +522,21 @@ class HeuristicAnalyzer:
         visible_main.extend(
             [
                 n
-                for n in self.soup.find_all(attrs={"role": re.compile(r"(^|\s)main(\s|$)", re.I)})
+                for n in self.soup.find_all(attrs={"role": re.compile(r"(^|\s)main(\s|$)", re.IGNORECASE)})
                 if not _hidden(n)
             ]
         )
         visible_main.extend(
             [
                 n
-                for n in self.soup.find_all(attrs={"id": re.compile(r"(^|[-_\s])main($|[-_\s])", re.I)})
+                for n in self.soup.find_all(attrs={"id": re.compile(r"(^|[-_\s])main($|[-_\s])", re.IGNORECASE)})
                 if not _hidden(n)
             ]
         )
         visible_main.extend(
             [
                 n
-                for n in self.soup.find_all(class_=re.compile(r"(^|\s)main(\s|$)", re.I))
+                for n in self.soup.find_all(class_=re.compile(r"(^|\s)main(\s|$)", re.IGNORECASE))
                 if not _hidden(n)
             ]
         )
@@ -538,7 +544,7 @@ class HeuristicAnalyzer:
         visible_nav.extend(
             [
                 n
-                for n in self.soup.find_all(attrs={"role": re.compile(r"(^|\s)navigation(\s|$)", re.I)})
+                for n in self.soup.find_all(attrs={"role": re.compile(r"(^|\s)navigation(\s|$)", re.IGNORECASE)})
                 if not _hidden(n)
             ]
         )
@@ -721,7 +727,7 @@ class HeuristicAnalyzer:
         """Detect weak/generic error messages."""
         issues = []
         error_selectors = [
-            {"class_": re.compile(r'error|invalid|alert|warning', re.I)},
+            {"class_": re.compile(r'error|invalid|alert|warning', re.IGNORECASE)},
             {"role": "alert"},
         ]
         for selector in error_selectors:
@@ -764,10 +770,10 @@ class HeuristicAnalyzer:
         """Check for instructions relying on sensory characteristics."""
         issues = []
         sensory_patterns = [
-            re.compile(r'click the (red|blue|green|yellow|orange|purple) button', re.I),
-            re.compile(r'(above|below|left|right) (button|link|section|image)', re.I),
-            re.compile(r'the (round|square|circular|triangular) (icon|button)', re.I),
-            re.compile(r'see the (image|figure|diagram) (above|below|on the left|on the right)', re.I),
+            re.compile(r'click the (red|blue|green|yellow|orange|purple) button', re.IGNORECASE),
+            re.compile(r'(above|below|left|right) (button|link|section|image)', re.IGNORECASE),
+            re.compile(r'the (round|square|circular|triangular) (icon|button)', re.IGNORECASE),
+            re.compile(r'see the (image|figure|diagram) (above|below|on the left|on the right)', re.IGNORECASE),
         ]
 
         body = self.soup.find("body")

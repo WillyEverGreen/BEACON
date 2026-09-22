@@ -4,14 +4,12 @@ Unit tests for the deduplication engine.
 Tests MD5 exact-match dedup, Jaccard trigram near-duplicate detection,
 and edge cases like empty lists and all-duplicate inputs.
 """
-import sys
 import os
-import pytest
+import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "rag")))
 
-from dedup import md5, trigrams, jaccard, dedup, JACCARD_THRESHOLD
-
+from dedup import dedup, jaccard, md5, trigrams
 
 # ── MD5 Hashing ───────────────────────────────────────────────
 

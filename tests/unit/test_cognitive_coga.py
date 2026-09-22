@@ -1,5 +1,6 @@
 from app.services.cognitive_checks import CognitiveAnalyzer
 
+
 def test_cognitive_rules_have_coga_pattern_refs():
     # Construct HTML to trigger all 7 cognitive rules
     html = """

@@ -18,9 +18,8 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.abspath("."))
 
-from app.services.static_checks import StaticChecker
 from app.services.heuristics import HeuristicAnalyzer
-
+from app.services.static_checks import StaticChecker
 
 ARCHETYPE_CASES = [
     {

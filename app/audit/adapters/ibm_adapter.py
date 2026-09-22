@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from app.audit.adapters.base import BaseAuditAdapter
 from app.audit.fingerprint import stable_selector_fingerprint
@@ -15,7 +15,7 @@ class IBMAdapter(BaseAuditAdapter):
     def __init__(self, engine_version: str = "3.1.60", rule_version: str = "3.1.60") -> None:
         super().__init__(name="ibm_equal_access", engine_version=engine_version, rule_version=rule_version)
 
-    def normalize(self, raw_issue: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Finding:
+    def normalize(self, raw_issue: dict[str, Any], context: dict[str, Any] | None = None) -> Finding:
         """Convert an IBM Equal Access report item into a canonical Finding."""
         rule_id = str(raw_issue.get("ruleId") or raw_issue.get("rule_id") or "ibm-rule")
         level = str(raw_issue.get("value") or raw_issue.get("level") or "violation").lower()

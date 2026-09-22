@@ -10,12 +10,12 @@ import logging
 from collections import Counter
 from datetime import date
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 _REGISTRY_PATH = Path(__file__).resolve().parents[1] / "data" / "rule_trust_registry.json"
-_REGISTRY_CACHE: Optional[dict[str, dict]] = None
+_REGISTRY_CACHE: dict[str, dict] | None = None
 _REGISTRY_CACHE_MTIME: float = 0.0
 
 # ── Default trust score for unknown rules ───────────────────────────

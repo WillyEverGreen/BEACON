@@ -6,10 +6,10 @@ scan modes, and other user-provided data to prevent injection attacks
 and ensure data integrity.
 """
 
-import re
 import logging
-from typing import Optional, List, Set
+import re
 from urllib.parse import urlparse
+
 from pydantic import BaseModel, Field, validator
 
 from app.models.errors import ValidationError
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 ALLOWED_SCHEMES = {"http", "https"}
 
 # Blocked domains (example - add malicious/test domains)
-BLOCKED_DOMAINS: Set[str] = {
+BLOCKED_DOMAINS: set[str] = {
     "localhost",
     "127.0.0.1",
     "0.0.0.0",
@@ -76,7 +76,7 @@ def validate_url(url: str, allow_local: bool = False) -> str:
         parsed = urlparse(url)
     except Exception as exc:
         raise ValidationError(
-            f"Invalid URL format: {str(exc)}",
+            f"Invalid URL format: {exc!s}",
             field="url"
         )
     
@@ -136,10 +136,10 @@ def validate_url(url: str, allow_local: bool = False) -> str:
 
 
 def validate_url_list(
-    urls: List[str],
+    urls: list[str],
     max_count: int = 100,
     allow_local: bool = False
-) -> List[str]:
+) -> list[str]:
     """
     Validate a list of URLs.
     
@@ -236,7 +236,7 @@ def validate_string(
     field_name: str,
     min_length: int = 1,
     max_length: int = 1000,
-    pattern: Optional[str] = None,
+    pattern: str | None = None,
     allow_empty: bool = False
 ) -> str:
     """
@@ -355,7 +355,7 @@ class AuditRequestValidator(BaseModel):
     
     url: str = Field(..., description="URL to audit")
     scan_mode: str = Field("comprehensive", description="Scan mode")
-    max_pages: Optional[int] = Field(None, ge=1, le=1000, description="Max pages to scan")
+    max_pages: int | None = Field(None, ge=1, le=1000, description="Max pages to scan")
     include_screenshots: bool = Field(False, description="Include screenshots")
     
     @validator("url")
@@ -377,9 +377,9 @@ class AuditRequestValidator(BaseModel):
 class BulkAuditRequestValidator(BaseModel):
     """Validator for bulk audit request payloads."""
     
-    urls: List[str] = Field(..., min_items=1, max_items=100, description="URLs to audit")
+    urls: list[str] = Field(..., min_items=1, max_items=100, description="URLs to audit")
     scan_mode: str = Field("comprehensive", description="Scan mode")
-    max_pages: Optional[int] = Field(None, ge=1, le=100, description="Max pages per site")
+    max_pages: int | None = Field(None, ge=1, le=100, description="Max pages per site")
     
     @validator("urls")
     def validate_urls_field(cls, v):

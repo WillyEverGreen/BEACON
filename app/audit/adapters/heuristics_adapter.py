@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from app.audit.adapters.base import BaseAuditAdapter
 from app.audit.fingerprint import stable_selector_fingerprint
@@ -15,7 +15,7 @@ class HeuristicsAdapter(BaseAuditAdapter):
     def __init__(self, rule_version: str = "2.1.0") -> None:
         super().__init__(name="beacon_heuristics", engine_version="2.1.0", rule_version=rule_version)
 
-    def normalize(self, raw_issue: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Finding:
+    def normalize(self, raw_issue: dict[str, Any], context: dict[str, Any] | None = None) -> Finding:
         """Convert a BEACON native issue dictionary into a canonical Finding."""
         rule_id = str(raw_issue.get("rule_id") or raw_issue.get("issue_type") or "heuristic-rule")
         severity = str(raw_issue.get("severity") or "moderate").lower()

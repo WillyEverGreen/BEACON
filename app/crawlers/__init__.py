@@ -5,11 +5,11 @@ cycles during application bootstrap.
 """
 
 __all__ = [
-    "DiscoveryCrawler",
     "CrawlConfig",
-    "CrawlerOrchestrator",
     "CrawledURL",
+    "CrawlerOrchestrator",
     "DOMCrawler",
+    "DiscoveryCrawler",
     "SiteCrawlOrchestrator",
     "SitemapCrawler",
     "SitemapURL",
@@ -24,7 +24,11 @@ def __getattr__(name: str):
         return DiscoveryCrawler
 
     if name in {"CrawlConfig", "SiteCrawlOrchestrator", "crawl_site"}:
-        from app.crawlers.crawl_orchestrator import CrawlConfig, SiteCrawlOrchestrator, crawl_site
+        from app.crawlers.crawl_orchestrator import (
+            CrawlConfig,
+            SiteCrawlOrchestrator,
+            crawl_site,
+        )
 
         return {
             "CrawlConfig": CrawlConfig,

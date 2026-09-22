@@ -1,0 +1,34 @@
+{
+  "baseline_version": "2.2",
+  "historical_versions_supported": ["2.0", "2.1"],
+  "description": "Explicit mappings between historical WCAG 2.0/2.1 standards and current WCAG 2.2 normative baseline per §4.",
+  "mappings": [
+    {
+      "historical_criterion": "4.1.1",
+      "historical_title": "Parsing",
+      "historical_level": "A",
+      "historical_versions": ["2.0", "2.1"],
+      "current_status": "OBSOLETE",
+      "current_equivalent": ["1.3.1", "4.1.2"],
+      "mapping_note": "WCAG 2.2 obsoleted 4.1.1 Parsing. In WCAG 2.2, 4.1.1 is marked obsolete and always satisfied. ID uniqueness and markup hierarchy issues are evaluated under 1.3.1 (Info and Relationships) and 4.1.2 (Name, Role, Value)."
+    },
+    {
+      "historical_criterion": "2.4.7",
+      "historical_title": "Focus Visible",
+      "historical_level": "AA",
+      "historical_versions": ["2.0", "2.1"],
+      "current_status": "ACTIVE_WITH_22_ADDITIONS",
+      "current_equivalent": ["2.4.7", "2.4.11", "2.4.12", "2.4.13"],
+      "mapping_note": "Focus Visible remains active in WCAG 2.2 AA. WCAG 2.2 added 2.4.11 Focus Not Obscured (Minimum, AA), 2.4.12 Focus Not Obscured (Enhanced, AAA), and 2.4.13 Focus Appearance (AAA) to provide quantitative focus visibility criteria."
+    },
+    {
+      "historical_criterion": "2.5.5",
+      "historical_title": "Target Size (Enhanced)",
+      "historical_level": "AAA",
+      "historical_versions": ["2.1"],
+      "current_status": "ACTIVE_WITH_22_ADDITIONS",
+      "current_equivalent": ["2.5.5", "2.5.8"],
+      "mapping_note": "WCAG 2.1 introduced 2.5.5 (44x44px, AAA). WCAG 2.2 added 2.5.8 Target Size (Minimum, AA) requiring 24x24 CSS pixels or sufficient spacing offset."
+    }
+  ]
+}

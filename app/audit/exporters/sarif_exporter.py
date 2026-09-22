@@ -7,23 +7,23 @@ and enterprise DevSecOps pipelines.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from app.models.contracts import Finding
+from typing import Any
 
+from app.models.contracts import Finding
 
 SARIF_SCHEMA_URI = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json"
 BEACON_INFO_URI = "https://github.com/WillyEverGreen/BEACON"
 
 
 def export_to_sarif(
-    findings: List[Finding],
+    findings: list[Finding],
     target_url: str = "https://scan.target",
     tool_version: str = "2.1.0",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Export canonical Findings to standard SARIF 2.1.0 representation."""
-    rules_dict: Dict[str, Dict[str, Any]] = {}
-    rule_id_to_index: Dict[str, int] = {}
-    results: List[Dict[str, Any]] = []
+    rules_dict: dict[str, dict[str, Any]] = {}
+    rule_id_to_index: dict[str, int] = {}
+    results: list[dict[str, Any]] = []
 
     # 1. Build rules index
     for f in findings:
@@ -74,7 +74,7 @@ def export_to_sarif(
 
         rule_idx = rule_id_to_index.get(f.rule_id, 0)
 
-        result_item: Dict[str, Any] = {
+        result_item: dict[str, Any] = {
             "ruleId": f.rule_id,
             "ruleIndex": rule_idx,
             "level": level,
@@ -114,7 +114,7 @@ def export_to_sarif(
         }
         results.append(result_item)
 
-    sarif_doc: Dict[str, Any] = {
+    sarif_doc: dict[str, Any] = {
         "$schema": SARIF_SCHEMA_URI,
         "version": "2.1.0",
         "runs": [

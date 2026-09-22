@@ -5,14 +5,14 @@ Reference: https://www.w3.org/WAI/standards-guidelines/earl/
 """
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 def generate_earl_report(
     url: str, 
-    issues: List[Dict[str, Any]], 
-    metadata: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
+    issues: list[dict[str, Any]], 
+    metadata: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """
     Generate an EARL 1.0 JSON-LD report from audit findings.
     

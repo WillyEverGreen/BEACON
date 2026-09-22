@@ -5,8 +5,9 @@ Parses rendered DOM and checks against the full WCAG checklist.
 import hashlib
 import logging
 import re
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urlsplit, urlunsplit
+
 from bs4 import BeautifulSoup, Tag
 
 from app.audit.failure_taxonomy import normalize_failure
@@ -176,7 +177,7 @@ def _issue(url: str, rule_id: str, issue_type: str, severity: str,
 class StaticChecker:
     """Runs comprehensive static HTML checks against WCAG 2.2."""
 
-    def __init__(self, html: str, url: str, fetch_status: Optional[int] = None, degraded_reason: str = ""):
+    def __init__(self, html: str, url: str, fetch_status: int | None = None, degraded_reason: str = ""):
         self.soup = BeautifulSoup(html, "lxml")
         self.url = url
         self.fetch_status = int(fetch_status) if isinstance(fetch_status, int) else None
@@ -219,8 +220,8 @@ class StaticChecker:
         text_len = len(text)
         script_count = len(self.soup.find_all("script"))
 
-        root_id_patterns = re.compile(r"^(?:__next|root|app|app-root|__nuxt|gatsby-focus-wrapper)$", re.I)
-        root_class_patterns = re.compile(r"(?:\bapp\b|\broot\b|\bshell\b)", re.I)
+        root_id_patterns = re.compile(r"^(?:__next|root|app|app-root|__nuxt|gatsby-focus-wrapper)$", re.IGNORECASE)
+        root_class_patterns = re.compile(r"(?:\bapp\b|\broot\b|\bshell\b)", re.IGNORECASE)
         has_root_id = bool(self.soup.find(attrs={"id": root_id_patterns}))
         has_root_class = bool(self.soup.find(class_=root_class_patterns))
         has_react_marker = bool(self.soup.find(attrs={"data-reactroot": True}))
@@ -322,9 +323,9 @@ class StaticChecker:
         rule_id: str,
         elements_checked: int = 0,
         violations_found: int = 0,
-        confidence_bucket: Optional[str] = None,
-        sample_elements_checked: Optional[list[str]] = None,
-        sample_violations: Optional[list[str]] = None,
+        confidence_bucket: str | None = None,
+        sample_elements_checked: list[str] | None = None,
+        sample_violations: list[str] | None = None,
         count_towards_total: bool = True,
     ) -> None:
         """Track lightweight per-rule activity telemetry for detector coverage debugging."""
@@ -401,7 +402,7 @@ class StaticChecker:
         style = re.sub(r"\s+", "", (style_value or "").lower())
         return "display:none" in style
 
-    def _is_hidden_for_static(self, elem: Optional[Tag]) -> bool:
+    def _is_hidden_for_static(self, elem: Tag | None) -> bool:
         current = elem
         while isinstance(current, Tag):
             if current.has_attr("hidden"):
@@ -414,10 +415,10 @@ class StaticChecker:
             current = parent if isinstance(parent, Tag) else None
         return False
 
-    def _is_visible_for_static(self, elem: Optional[Tag]) -> bool:
+    def _is_visible_for_static(self, elem: Tag | None) -> bool:
         return isinstance(elem, Tag) and not self._is_hidden_for_static(elem)
 
-    def _is_hidden_for_group3(self, elem: Optional[Tag]) -> bool:
+    def _is_hidden_for_group3(self, elem: Tag | None) -> bool:
         current = elem
         while isinstance(current, Tag):
             if str(current.get("aria-hidden") or "").strip().lower() == "true":
@@ -428,7 +429,7 @@ class StaticChecker:
             current = parent if isinstance(parent, Tag) else None
         return False
 
-    def _is_visible_for_group3(self, elem: Optional[Tag]) -> bool:
+    def _is_visible_for_group3(self, elem: Tag | None) -> bool:
         return isinstance(elem, Tag) and not self._is_hidden_for_group3(elem)
 
     def _has_sectioning_context(self, elem: Tag) -> bool:
@@ -439,7 +440,7 @@ class StaticChecker:
             current = current.parent if isinstance(current.parent, Tag) else None
         return False
 
-    def run_all(self, checks: Optional[list[str]] = None) -> list[dict]:
+    def run_all(self, checks: list[str] | None = None) -> list[dict]:
         """Run all check categories. Pass a list to limit which categories run."""
         all_checks = checks or [
             "language", "title", "landmarks", "headings", "images",
@@ -633,17 +634,17 @@ class StaticChecker:
             [n for n in self.soup.find_all("main") if self._is_visible_for_static(n)]
             + [
                 n
-                for n in self.soup.find_all(attrs={"role": re.compile(r"(^|\s)main(\s|$)", re.I)})
+                for n in self.soup.find_all(attrs={"role": re.compile(r"(^|\s)main(\s|$)", re.IGNORECASE)})
                 if self._is_visible_for_static(n)
             ]
             + [
                 n
-                for n in self.soup.find_all(attrs={"id": re.compile(r"(^|[-_\s])main($|[-_\s])", re.I)})
+                for n in self.soup.find_all(attrs={"id": re.compile(r"(^|[-_\s])main($|[-_\s])", re.IGNORECASE)})
                 if self._is_visible_for_static(n)
             ]
             + [
                 n
-                for n in self.soup.find_all(class_=re.compile(r"(^|\s)main(\s|$)", re.I))
+                for n in self.soup.find_all(class_=re.compile(r"(^|\s)main(\s|$)", re.IGNORECASE))
                 if self._is_visible_for_static(n)
             ]
         )
@@ -651,7 +652,7 @@ class StaticChecker:
             [n for n in self.soup.find_all("nav") if self._is_visible_for_static(n)]
             + [
                 n
-                for n in self.soup.find_all(attrs={"role": re.compile(r"(^|\s)navigation(\s|$)", re.I)})
+                for n in self.soup.find_all(attrs={"role": re.compile(r"(^|\s)navigation(\s|$)", re.IGNORECASE)})
                 if self._is_visible_for_static(n)
             ]
         )
@@ -1068,7 +1069,7 @@ class StaticChecker:
         sample_high_violations: list[str] = []
         sample_medium_logs: list[str] = []
 
-        def _to_int(raw: Any) -> Optional[int]:
+        def _to_int(raw: Any) -> int | None:
             try:
                 return int(str(raw).strip())
             except (TypeError, ValueError):
@@ -1204,7 +1205,7 @@ class StaticChecker:
                 r"document\.location\s*\+?=\s*['\"]([^'\"]+)['\"]",
             ]
             for pattern in patterns:
-                match = re.search(pattern, js, re.I)
+                match = re.search(pattern, js, re.IGNORECASE)
                 if match:
                     return match.group(1).strip()
             return ""
@@ -1288,7 +1289,7 @@ class StaticChecker:
                 ))
 
         # Custom link-role controls should carry equivalent purpose semantics.
-        for elem in self.soup.find_all(attrs={"role": re.compile(r"(^|\s)link(\s|$)", re.I)}):
+        for elem in self.soup.find_all(attrs={"role": re.compile(r"(^|\s)link(\s|$)", re.IGNORECASE)}):
             if elem.name == "a":
                 continue
 
@@ -1541,7 +1542,7 @@ class StaticChecker:
                 rule_match = re.search(
                     rf"\.{re.escape(cls_name)}\s*\{{([^}}]+)\}}",
                     style_text,
-                    flags=re.I | re.S,
+                    flags=re.IGNORECASE | re.DOTALL,
                 )
                 if not rule_match:
                     continue
@@ -2136,7 +2137,7 @@ class StaticChecker:
                         fix_effort="medium"
                     ))
 
-        for err_container in self.soup.find_all(class_=re.compile(r'error|invalid|alert', re.I)):
+        for err_container in self.soup.find_all(class_=re.compile(r'error|invalid|alert', re.IGNORECASE)):
             err_id = err_container.get("id")
             if err_id:
                 if not err_container.find_parent("form"):
@@ -2468,7 +2469,7 @@ class StaticChecker:
                 ))
 
         # Dynamic content without aria-live (look for common patterns)
-        for elem in self.soup.find_all(class_=re.compile(r'toast|notification|alert|snackbar|message', re.I)):
+        for elem in self.soup.find_all(class_=re.compile(r'toast|notification|alert|snackbar|message', re.IGNORECASE)):
             if not elem.get("aria-live") and elem.get("role") not in ("alert", "status", "log"):
                 issues.append(_issue(
                     self.url, "no-aria-live", "needs-review", "moderate",
@@ -2576,10 +2577,10 @@ class StaticChecker:
         def _has_transcript_signal(scope: Tag | BeautifulSoup) -> bool:
             return bool(
                 scope.find(attrs={"data-transcript": True})
-                or scope.find(class_=re.compile(r"transcript|caption", re.I))
-                or scope.find(id=re.compile(r"transcript|caption", re.I))
-                or scope.find("a", string=re.compile(r"transcript|captions", re.I))
-                or scope.find("button", string=re.compile(r"transcript|captions", re.I))
+                or scope.find(class_=re.compile(r"transcript|caption", re.IGNORECASE))
+                or scope.find(id=re.compile(r"transcript|caption", re.IGNORECASE))
+                or scope.find("a", string=re.compile(r"transcript|captions", re.IGNORECASE))
+                or scope.find("button", string=re.compile(r"transcript|captions", re.IGNORECASE))
             )
 
         # Autoplay media
@@ -2671,7 +2672,7 @@ class StaticChecker:
         """Flag elements that may have contrast issues based on inline styles."""
         issues = []
         # Look for very small font sizes
-        for elem in self.soup.find_all(style=re.compile(r'font-size\s*:\s*(\d+)', re.I)):
+        for elem in self.soup.find_all(style=re.compile(r'font-size\s*:\s*(\d+)', re.IGNORECASE)):
             style = elem.get("style", "")
             match = re.search(r'font-size\s*:\s*(\d+)', style)
             if match:
@@ -2687,9 +2688,9 @@ class StaticChecker:
                     ))
         return issues
 
-    # ── Keyboard Hints ─────────────────────────────────────────
+    # ── Keyboard Hints (Tabindex) ──────────────────────────────
 
-    def check_keyboard_hints(self) -> list[dict]:
+    def check_positive_tabindex(self) -> list[dict]:
         """Static checks for keyboard accessibility issues."""
         issues = []
         # Positive tabindex
@@ -2754,7 +2755,7 @@ class StaticChecker:
     # ── WCAG 2.2 & ARIA APG & Semantics ────────────────────────
 
     def check_accessible_auth(self) -> list[dict]:
-        """WCAG 3.3.7 Accessible Authentication (Minimum)."""
+        """WCAG 3.3.8 Accessible Authentication (Minimum)."""
         issues = []
         for form in self.soup.find_all("form"):
             password_inputs = form.find_all("input", type="password")
@@ -2764,13 +2765,13 @@ class StaticChecker:
                         self.url, "missing-autocomplete-auth", "violation", "serious",
                         _css_selector(pw), _snippet(pw),
                         "Password input is missing required autocomplete attribute to support password managers (cognitive aid).",
-                        "3.3.7", "AA", "forms",
+                        "3.3.8", "AA", "forms",
                         'Add autocomplete="current-password" or "new-password".'
                     ))
         return issues
 
     def check_redundant_entry(self) -> list[dict]:
-        """WCAG 3.3.9 Redundant Entry."""
+        """WCAG 3.3.7 Redundant Entry."""
         issues = []
         name_groups = {}
         for inp in self.soup.find_all("input"):
@@ -2787,7 +2788,7 @@ class StaticChecker:
                     self.url, "redundant-entry", "needs-review", "moderate",
                     f'input[name="{name}"]', _snippet(inputs[0]),
                     f"Multiple text inputs with the name '{name}'. Check if this requires redundant data entry.",
-                    "3.3.9", "A", "forms",
+                    "3.3.7", "A", "forms",
                     "Provide an option to auto-populate previously entered data (e.g., 'Same as shipping').",
                     fix_effort="high"
                 ))
@@ -3093,8 +3094,8 @@ class StaticChecker:
             onkeydown = str(el.get("onkeydown") or "")
             combined = f"{onblur} {onfocus} {onkeydown}"
 
-            loops_focus = bool(re.search(r"(focus|movefocus|setfocus)", onblur, re.I))
-            trap_signal = bool(re.search(r"(trap|keydown|ctrl|escape|tab)", combined, re.I))
+            loops_focus = bool(re.search(r"(focus|movefocus|setfocus)", onblur, re.IGNORECASE))
+            trap_signal = bool(re.search(r"(trap|keydown|ctrl|escape|tab)", combined, re.IGNORECASE))
             if not loops_focus or not trap_signal:
                 continue
 
@@ -3213,7 +3214,7 @@ class StaticChecker:
             if len(sample_violations) < 5:
                 sample_violations.append(_snippet(el, 220))
 
-        for el in self.soup.find_all(attrs={"role": re.compile(r"(^|\s)button(\s|$)", re.I)}):
+        for el in self.soup.find_all(attrs={"role": re.compile(r"(^|\s)button(\s|$)", re.IGNORECASE)}):
             if not isinstance(el, Tag):
                 continue
             checked += 1
@@ -3638,8 +3639,8 @@ class StaticChecker:
             ls_match_em = re.search(r"letter-spacing\s*:\s*([0-9.]+)em", style)
             ls_match_px = re.search(r"letter-spacing\s*:\s*([0-9.]+)px", style)
 
-            line_height_value: Optional[float] = None
-            letter_spacing_value: Optional[float] = None
+            line_height_value: float | None = None
+            letter_spacing_value: float | None = None
             line_height_low = False
             letter_spacing_low = False
 
@@ -3748,7 +3749,7 @@ class StaticChecker:
             selector = _css_selector(video)
 
             has_captions = bool(
-                video.find("track", {"kind": re.compile(r"captions|subtitles", re.I)})
+                video.find("track", {"kind": re.compile(r"captions|subtitles", re.IGNORECASE)})
             )
 
             duration_raw = video.get("duration")
@@ -3770,19 +3771,19 @@ class StaticChecker:
 
             local_transcript_hint = bool(
                 local_scope.find(attrs={"data-transcript": True})
-                or local_scope.find(class_=re.compile(r"transcript", re.I))
-                or local_scope.find(id=re.compile(r"transcript", re.I))
+                or local_scope.find(class_=re.compile(r"transcript", re.IGNORECASE))
+                or local_scope.find(id=re.compile(r"transcript", re.IGNORECASE))
             )
 
             transcript_link_hint = bool(
-                local_scope.find("a", string=re.compile(r"transcript", re.I))
-                or local_scope.find("button", string=re.compile(r"transcript", re.I))
+                local_scope.find("a", string=re.compile(r"transcript", re.IGNORECASE))
+                or local_scope.find("button", string=re.compile(r"transcript", re.IGNORECASE))
             )
 
             transcript_hint = bool(
                 self.soup.find(attrs={"data-transcript": True})
-                or self.soup.find(class_=re.compile(r"transcript", re.I))
-                or self.soup.find(id=re.compile(r"transcript", re.I))
+                or self.soup.find(class_=re.compile(r"transcript", re.IGNORECASE))
+                or self.soup.find(id=re.compile(r"transcript", re.IGNORECASE))
             )
 
             # Aggregate nearby sibling text blocks to detect transcript-like long-form content.
@@ -3871,7 +3872,7 @@ class StaticChecker:
             parent = region.find_parent()
             if parent:
                 controls = parent.find_all("button")
-                has_stop = any(re.search(r'pause|stop|hide', str(c), re.I) for c in controls)
+                has_stop = any(re.search(r'pause|stop|hide', str(c), re.IGNORECASE) for c in controls)
                 if not has_stop and len(region.get_text()) > 50:
                     issues.append(_issue(
                         self.url, "auto-update-no-control", "needs-review", "moderate",
@@ -4174,8 +4175,8 @@ class StaticChecker:
             if len(text) < 2:
                 continue
             style = elem.get("style", "")
-            color_m = re.search(r'(?<![a-zA-Z-])color\s*:\s*([^;]+)', style, re.I)
-            bg_m = re.search(r'background-color\s*:\s*([^;]+)', style, re.I)
+            color_m = re.search(r'(?<![a-zA-Z-])color\s*:\s*([^;]+)', style, re.IGNORECASE)
+            bg_m = re.search(r'background-color\s*:\s*([^;]+)', style, re.IGNORECASE)
             if not color_m or not bg_m:
                 continue
             fg = _parse_rgb(color_m.group(1))
@@ -4185,8 +4186,8 @@ class StaticChecker:
             contrast = _ratio(_luminance(*fg), _luminance(*bg))
 
             # Detect large text
-            fs_m = re.search(r'font-size\s*:\s*([\d.]+)px', style, re.I)
-            fw_m = re.search(r'font-weight\s*:\s*(bold|\d+)', style, re.I)
+            fs_m = re.search(r'font-size\s*:\s*([\d.]+)px', style, re.IGNORECASE)
+            fw_m = re.search(r'font-weight\s*:\s*(bold|\d+)', style, re.IGNORECASE)
             fs_px = float(fs_m.group(1)) if fs_m else 16.0
             bold = bool(fw_m and (fw_m.group(1) == "bold" or
                                   (fw_m.group(1).isdigit() and int(fw_m.group(1)) >= 700)))
@@ -4219,9 +4220,9 @@ class StaticChecker:
                 issues.append(issue)
         return issues
 
-    # ── Duplicate IDs ──────────────────────────────────────────
+    # ── Duplicate IDs (Basic) ──────────────────────────────────
 
-    def check_duplicate_ids(self) -> list[dict]:
+    def check_duplicate_ids_basic(self) -> list[dict]:
         """
         Flag duplicate id attributes. Duplicate IDs break ARIA references,
         form labels, fragment navigation, and JavaScript queries.
@@ -4450,7 +4451,7 @@ class StaticChecker:
                         fix_effort="low"
                     ))
 
-        for heading in self.soup.find_all(attrs={"role": re.compile(r"(^|\s)heading(\s|$)", re.I)}):
+        for heading in self.soup.find_all(attrs={"role": re.compile(r"(^|\s)heading(\s|$)", re.IGNORECASE)}):
             aria_level = str(heading.get("aria-level") or "").strip()
             text = heading.get_text(" ", strip=True)
             if _is_effectively_empty_text(text):
@@ -4512,8 +4513,8 @@ class StaticChecker:
         issues = []
         
         recaptcha = self.soup.find("div", class_=re.compile(r"g-recaptcha")) or \
-                    self.soup.find("iframe", src=re.compile(r"recaptcha", re.I)) or \
-                    self.soup.find("script", src=re.compile(r"recaptcha/api", re.I))
+                    self.soup.find("iframe", src=re.compile(r"recaptcha", re.IGNORECASE)) or \
+                    self.soup.find("script", src=re.compile(r"recaptcha/api", re.IGNORECASE))
         if recaptcha:
             issues.append(_issue(
                 self.url, "captcha-detected", "needs-review", "moderate",
@@ -4525,8 +4526,8 @@ class StaticChecker:
             ))
 
         hcaptcha = self.soup.find("div", class_=re.compile(r"h-captcha")) or \
-                   self.soup.find("iframe", src=re.compile(r"hcaptcha", re.I)) or \
-                   self.soup.find("script", src=re.compile(r"hcaptcha\.com", re.I))
+                   self.soup.find("iframe", src=re.compile(r"hcaptcha", re.IGNORECASE)) or \
+                   self.soup.find("script", src=re.compile(r"hcaptcha\.com", re.IGNORECASE))
         if hcaptcha:
             issues.append(_issue(
                 self.url, "captcha-detected", "needs-review", "moderate",
@@ -4538,7 +4539,7 @@ class StaticChecker:
             ))
 
         turnstile = self.soup.find("div", class_=re.compile(r"cf-turnstile")) or \
-                    self.soup.find("script", src=re.compile(r"turnstile/v0", re.I))
+                    self.soup.find("script", src=re.compile(r"turnstile/v0", re.IGNORECASE))
         if turnstile:
             issues.append(_issue(
                 self.url, "captcha-detected", "needs-review", "minor",
@@ -4652,16 +4653,16 @@ class StaticChecker:
                     selector,
                     _snippet(duplicate_elem),
                     (
-                        "Duplicate id=\"{}\" found on <{}> "
-                        "({} elements share this ID).{}"
-                    ).format(dup_id, duplicate_elem.name, len(elements), at_note),
+                        f"Duplicate id=\"{dup_id}\" found on <{duplicate_elem.name}> "
+                        f"({len(elements)} elements share this ID).{at_note}"
+                    ),
                     "4.1.1",
                     "A",
                     "aria",
                     (
-                        "Make id=\"{}\" unique. Each id must appear at most once "
+                        f"Make id=\"{dup_id}\" unique. Each id must appear at most once "
                         "per document. Use class attributes for shared styling."
-                    ).format(dup_id),
+                    ),
                     fix_effort="low",
                 ))
                 violations += 1
@@ -4671,7 +4672,7 @@ class StaticChecker:
             elements_checked=total_checked,
             violations_found=violations,
             confidence_bucket="high" if violations else None,
-            sample_violations=["id=\"{}\""  .format(i)
+            sample_violations=[f"id=\"{i}\""  
                                for i in list(id_map.keys())[:5] if len(id_map[i]) >= 2],
         )
 
@@ -4692,9 +4693,9 @@ class StaticChecker:
           6. onclick + tabindex on div/span without role (no AT affordance)
         """
         import re as _re
-        issues = []
-        checked = 0
-        violations = 0
+        issues = list(self.check_positive_tabindex())
+        checked = len(issues)
+        violations = len(issues)
 
         FOCUSABLE_TAGS = {"a", "button", "input", "select", "textarea"}
         NON_INTERACTIVE_TAGS = {"div", "span", "li", "td", "tr", "section", "article", "p"}
@@ -4720,7 +4721,7 @@ class StaticChecker:
                         "<{}> has tabindex=\"-1\" which removes it from the keyboard "
                         "tab order. Keyboard users cannot reach this element unless "
                         "focus is programmatically managed.{}"
-                    ).format(elem.name, " Content: \"{}\"".format(elem_text) if elem_text else ""),
+                    ).format(elem.name, f" Content: \"{elem_text}\"" if elem_text else ""),
                     "2.1.1",
                     "A",
                     "keyboard",
@@ -4783,9 +4784,9 @@ class StaticChecker:
                         selector,
                         _snippet(elem),
                         (
-                            "<{}> has {}=\"{}\" which explicitly suppresses keyboard events. "
+                            f"<{elem.name}> has {attr}=\"{val[:80]}\" which explicitly suppresses keyboard events. "
                             "Keyboard users may be unable to interact."
-                        ).format(elem.name, attr, val[:80]),
+                        ),
                         "2.1.1",
                         "A",
                         "keyboard",
@@ -4795,7 +4796,7 @@ class StaticChecker:
                     violations += 1
 
         # Signal 4: inline outline:none on focusable elements
-        outline_re = _re.compile(r"outline\s*:\s*(?:none|0)", _re.I)
+        outline_re = _re.compile(r"outline\s*:\s*(?:none|0)", _re.IGNORECASE)
         for elem in self.soup.find_all(list(FOCUSABLE_TAGS)):
             if self._is_hidden_for_static(elem):
                 continue
@@ -4813,9 +4814,9 @@ class StaticChecker:
                     selector,
                     _snippet(elem),
                     (
-                        "<{}> has inline style 'outline: none' which removes the visible "
+                        f"<{elem.name}> has inline style 'outline: none' which removes the visible "
                         "focus indicator. Keyboard users cannot see where focus is."
-                    ).format(elem.name),
+                    ),
                     "2.1.1",
                     "A",
                     "keyboard",
@@ -4844,7 +4845,7 @@ class StaticChecker:
                     (
                         "<{} role=\"button\"> is missing tabindex=\"0\". "
                         "Without tabindex, keyboard users cannot Tab to this element.{}"
-                    ).format(elem.name, " Content: \"{}\"".format(elem_text) if elem_text else ""),
+                    ).format(elem.name, f" Content: \"{elem_text}\"" if elem_text else ""),
                     "2.1.1",
                     "A",
                     "keyboard",
@@ -4874,7 +4875,7 @@ class StaticChecker:
                 (
                     "<{}> has onclick and tabindex but no role. "
                     "Screen readers announce it as generic content with no interactive affordance.{}"
-                ).format(elem.name, " Content: \"{}\"".format(elem_text) if elem_text else ""),
+                ).format(elem.name, f" Content: \"{elem_text}\"" if elem_text else ""),
                 "2.1.1",
                 "A",
                 "keyboard",

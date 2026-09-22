@@ -7,11 +7,11 @@ Pure Python, zero-dependency embedding & vector similarity engine.
 - Disk persistence: metadata.json + embeddings.npy.
 - Rationale: High performance, zero C++ build dependencies, predictable memory footprint.
 """
+import hashlib
 import json
 import logging
-import hashlib
 from pathlib import Path
-from typing import Optional
+
 import numpy as np
 
 from app.config import settings
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 STORE_DIR = Path(settings.chroma_persist_dir)
 
 # In-memory store
-_store: Optional[dict] = None
+_store: dict | None = None
 
 
 def _get_store_path() -> Path:
@@ -163,7 +163,7 @@ def upsert_chunks(chunks: list[dict]) -> int:
 def search_similar(
     query: str,
     n_results: int = 15,
-    where_filter: Optional[dict] = None,
+    where_filter: dict | None = None,
 ) -> list[dict]:
     """
     Semantic search: find chunks similar to query using cosine similarity.
@@ -219,20 +219,20 @@ def _apply_filter(metadatas: list[dict], filters: dict) -> list[int]:
     for i, meta in enumerate(metadatas):
         match = True
 
-        if "topic" in filters and filters["topic"]:
+        if filters.get("topic"):
             topic_filter = filters["topic"].lower()
             meta_topic = meta.get("topic", "").lower()
             meta_all_topics = meta.get("all_topics", "").lower()
             if topic_filter not in meta_topic and topic_filter not in meta_all_topics:
                 match = False
 
-        if "level" in filters and filters["level"]:
+        if filters.get("level"):
             if meta.get("level", "").upper() != filters["level"].upper():
                 # Allow empty levels (repo content matches any level filter)
                 if meta.get("level", ""):
                     match = False
 
-        if "chunk_type" in filters and filters["chunk_type"]:
+        if filters.get("chunk_type"):
             if meta.get("chunk_type", "") != filters["chunk_type"]:
                 match = False
 

@@ -1,9 +1,9 @@
 import asyncio
-import os
 import uuid
+
 import pytest
-from app.db.repository import persist_audit_payload, get_audit_history
-from app.config import settings
+
+from app.db.repository import get_audit_history, persist_audit_payload
 
 pytestmark = [pytest.mark.integration]
 

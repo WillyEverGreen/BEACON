@@ -9,7 +9,6 @@ misconfiguration.
 import logging
 import os
 import re
-from typing import List, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +44,7 @@ def is_placeholder_value(value: str) -> bool:
     return False
 
 
-def validate_production_env() -> Tuple[bool, List[str]]:
+def validate_production_env() -> tuple[bool, list[str]]:
     """
     Validate critical environment variables for production deployment.
     

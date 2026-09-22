@@ -1,8 +1,8 @@
-import json
-import asyncio
-from typing import List, Dict, Any
-from playwright.async_api import async_playwright
 import os
+from typing import Any
+
+from playwright.async_api import async_playwright
+
 
 async def run_axe_on_html(html_content: str) -> list:
     """Run axe-core on a given HTML snippet using Playwright."""
@@ -40,7 +40,7 @@ def apply_fix(original_html: str, suggested_fix: str) -> str:
         return original_html
     return suggested_fix
 
-async def evaluate_fix_pass_rate(findings_with_fixes: List[Dict[str, Any]], k: int = 1) -> Dict[str, Any]:
+async def evaluate_fix_pass_rate(findings_with_fixes: list[dict[str, Any]], k: int = 1) -> dict[str, Any]:
     """
     For each finding, apply the suggested fix and re-scan with axe-core.
     Returns pass@k rate — fraction of violations resolved within k attempts.

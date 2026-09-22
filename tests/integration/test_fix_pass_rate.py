@@ -1,7 +1,8 @@
+
 import pytest
-import os
-import json
+
 from evaluation.fix_quality_eval import evaluate_fix_pass_rate
+
 
 @pytest.mark.asyncio
 async def test_fix_pass_rate_k1():
@@ -31,7 +32,7 @@ async def test_semantic_multimodal_screenshot():
     from app.services.llm import generate_semantic_remediation
     
     # Mock issue
-    issue = {
+    _issue = {
         "rule_id": "image-alt",
         "description": "Image is missing alt text",
         "url": "http://example.com",

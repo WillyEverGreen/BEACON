@@ -1,10 +1,10 @@
 """Unit tests for Phase 0 Core Contracts and Normalized Finding Schema."""
 
 import pytest
+
 from app.models.contracts import (
-    AntiBotState,
-    Fingerprint,
     Finding,
+    Fingerprint,
     PatchResult,
 )
 

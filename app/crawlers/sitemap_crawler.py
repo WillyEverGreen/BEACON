@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable
-from typing import Optional
 from urllib.parse import urljoin
 
-from defusedxml import ElementTree as SafeET
 from curl_cffi import AsyncSession
+from defusedxml import ElementTree as SafeET
 
-from app.config import CRAWLER_CONFIG, SITEMAP_MAX_DEPTH, MAX_SITEMAP_DEPTH
+from app.config import CRAWLER_CONFIG, MAX_SITEMAP_DEPTH, SITEMAP_MAX_DEPTH
 from app.crawlers.common import (
     clamp,
     get_origin,
@@ -35,9 +34,9 @@ class SitemapCrawler:
     def __init__(
         self,
         *,
-        timeout_seconds: Optional[float] = None,
-        http_client: Optional[AsyncSession] = None,
-        max_depth: Optional[int] = None,
+        timeout_seconds: float | None = None,
+        http_client: AsyncSession | None = None,
+        max_depth: int | None = None,
     ) -> None:
         cfg = CRAWLER_CONFIG["sitemap"]
         self.timeout_seconds = timeout_seconds or float(cfg["timeout_seconds"])
@@ -47,7 +46,7 @@ class SitemapCrawler:
         self._http_client = http_client
         self.max_depth = max(1, int(max_depth if max_depth is not None else SITEMAP_MAX_DEPTH))
 
-    async def discover(self, base_url: str, max_pages: Optional[int] = None) -> list[SitemapURL]:
+    async def discover(self, base_url: str, max_pages: int | None = None) -> list[SitemapURL]:
         """Discover same-origin URLs via sitemap hierarchy."""
         base_origin = get_origin(base_url)
         requested_cap = self.default_max_pages if max_pages is None else int(max_pages)
@@ -190,9 +189,7 @@ class SitemapCrawler:
                     discovered[normalized] = candidate
                 else:
                     replace = False
-                    if candidate.priority > current.priority:
-                        replace = True
-                    elif candidate.priority == current.priority and candidate.depth < current.depth:
+                    if candidate.priority > current.priority or candidate.priority == current.priority and candidate.depth < current.depth:
                         replace = True
                     if replace:
                         discovered[normalized] = candidate
@@ -209,7 +206,7 @@ class SitemapCrawler:
         ]
 
     @staticmethod
-    def _parse_urlset(root: SafeET.Element) -> Iterable[dict[str, Optional[str]]]:
+    def _parse_urlset(root: SafeET.Element) -> Iterable[dict[str, str | None]]:
         for node in root.findall("{*}url"):
             loc = SitemapCrawler._child_text(node, "loc")
             if not loc:
@@ -222,7 +219,7 @@ class SitemapCrawler:
             }
 
     @staticmethod
-    def _child_text(node: SafeET.Element, child_name: str) -> Optional[str]:
+    def _child_text(node: SafeET.Element, child_name: str) -> str | None:
         for child in node:
             if SitemapCrawler._local_name(child.tag) != child_name:
                 continue
@@ -236,7 +233,7 @@ class SitemapCrawler:
     def _local_name(tag: str) -> str:
         return tag.split("}", 1)[-1] if "}" in tag else tag
 
-    async def _fetch_text(self, url: str) -> Optional[str]:
+    async def _fetch_text(self, url: str) -> str | None:
         try:
             if self._http_client is not None:
                 response = await http_get_with_backoff(

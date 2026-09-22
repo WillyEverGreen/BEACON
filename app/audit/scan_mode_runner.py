@@ -4,21 +4,21 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from typing import Any, Awaitable, Callable, Optional
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from camoufox import AsyncNewBrowser
 from curl_cffi import AsyncSession
 
-from app.audit.models import PageAuditResult, PageContext
 from app.audit.failure_taxonomy import normalize_failure
+from app.audit.models import PageAuditResult, PageContext
 from app.audit.parallel_runner import PageAuditor, SSEEmitter, run_site_audit
+from app.config import AUDIT_PIPELINE_CONFIG, SCAN_MODES, resolve_max_pages
 from app.crawlers.common import http_get_with_backoff, normalize_scan_mode
 from app.crawlers.orchestrator import CrawlerOrchestrator
-from app.config import AUDIT_PIPELINE_CONFIG, resolve_max_pages, SCAN_MODES
 from app.services.heuristics import HeuristicAnalyzer
 from app.services.normalizer import normalize_all
 from app.services.static_checks import StaticChecker
-
 
 JourneySimulator = Callable[[list[str], str, PageContext], Awaitable[dict[str, Any]]]
 
@@ -93,7 +93,7 @@ def _dedupe_urls(urls: list[str]) -> list[str]:
     return deduped
 
 
-async def _emit_optional_event(payload: dict[str, Any], emitter: Optional[SSEEmitter]) -> None:
+async def _emit_optional_event(payload: dict[str, Any], emitter: SSEEmitter | None) -> None:
     if emitter is None:
         return
 
@@ -341,12 +341,12 @@ async def run_scan_mode_audit(
     scan_mode: str,
     max_pages: int,
     *,
-    crawler_orchestrator: Optional[CrawlerOrchestrator] = None,
-    page_context: Optional[PageContext] = None,
-    page_auditor: Optional[PageAuditor] = None,
-    static_only_auditor: Optional[PageAuditor] = None,
-    sse_emitter: Optional[SSEEmitter] = None,
-    journey_simulator: Optional[JourneySimulator] = None,
+    crawler_orchestrator: CrawlerOrchestrator | None = None,
+    page_context: PageContext | None = None,
+    page_auditor: PageAuditor | None = None,
+    static_only_auditor: PageAuditor | None = None,
+    sse_emitter: SSEEmitter | None = None,
+    journey_simulator: JourneySimulator | None = None,
 ) -> dict[str, Any]:
     """Execute full mode-specific site auditing from discovery through aggregation."""
     mode = normalize_scan_mode(scan_mode)

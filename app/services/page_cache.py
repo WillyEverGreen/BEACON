@@ -9,7 +9,6 @@ import logging
 import re
 import time
 from pathlib import Path
-from typing import Optional
 
 from app.config import CACHE_STATS
 
@@ -108,7 +107,7 @@ def get_dom_hash(cleaned_html: str, scan_mode: str, precision_profile: str = "ba
     key = f"{cleaned_html}::{scan_mode}::{precision_profile}"
     return hashlib.sha256(key.encode("utf-8")).hexdigest()
 
-def check_cache(cache_key: str, max_age_seconds: int = 86400, *, tier: str = "page") -> Optional[dict]:
+def check_cache(cache_key: str, max_age_seconds: int = 86400, *, tier: str = "page") -> dict | None:
     """Retrieve result if it exists and is fresh."""
     tier_key = "dom" if tier == "dom" else "page"
 

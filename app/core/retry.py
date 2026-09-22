@@ -6,10 +6,11 @@ that may fail due to temporary issues (network, database, external services).
 """
 
 import asyncio
+import functools
 import logging
 import time
-import functools
-from typing import Callable, TypeVar, Any, Type, Tuple, Optional
+from collections.abc import Callable
+from typing import TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +22,8 @@ def retry_with_backoff(
     base_delay: float = 1.0,
     max_delay: float = 60.0,
     exponential_base: float = 2.0,
-    exceptions: Tuple[Type[Exception], ...] = (Exception,),
-    on_retry: Optional[Callable[[Exception, int], None]] = None
+    exceptions: tuple[type[Exception], ...] = (Exception,),
+    on_retry: Callable[[Exception, int], None] | None = None
 ):
     """
     Decorator that retries a function with exponential backoff.
@@ -177,7 +178,7 @@ async def retry_async(
     func: Callable[..., T],
     *args,
     config: RetryConfig = DATABASE_RETRY,
-    exceptions: Tuple[Type[Exception], ...] = (Exception,),
+    exceptions: tuple[type[Exception], ...] = (Exception,),
     **kwargs
 ) -> T:
     """
@@ -237,7 +238,7 @@ def retry_sync(
     func: Callable[..., T],
     *args,
     config: RetryConfig = DATABASE_RETRY,
-    exceptions: Tuple[Type[Exception], ...] = (Exception,),
+    exceptions: tuple[type[Exception], ...] = (Exception,),
     **kwargs
 ) -> T:
     """

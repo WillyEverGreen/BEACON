@@ -15,7 +15,7 @@ from collections import defaultdict
 from statistics import mean
 from typing import Any
 
-from app.config import TRUST_CALIBRATION, DEGRADED_MODE_MULTIPLIER
+from app.config import DEGRADED_MODE_MULTIPLIER, TRUST_CALIBRATION
 
 logger = logging.getLogger(__name__)
 

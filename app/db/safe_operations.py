@@ -6,10 +6,11 @@ retry logic for transient failures, and consistent error messages.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, TypeVar, Callable
+from collections.abc import Callable
 from functools import wraps
+from typing import Any, TypeVar
 
-from app.core.retry import retry_with_backoff, DATABASE_RETRY
+from app.core.retry import DATABASE_RETRY, retry_with_backoff
 from app.models.errors import DatabaseError, ResourceNotFoundError
 
 logger = logging.getLogger(__name__)
@@ -57,7 +58,7 @@ def safe_db_operation(operation_name: str):
                     exc_info=True
                 )
                 raise DatabaseError(
-                    message=f"Database temporarily unavailable: {str(exc)}",
+                    message=f"Database temporarily unavailable: {exc!s}",
                     operation=operation_name,
                     is_retryable=True,
                     details={"error_type": type(exc).__name__}
@@ -82,7 +83,7 @@ def safe_db_operation(operation_name: str):
 
 
 @safe_db_operation("insert")
-def safe_insert(supabase_client: Any, table: str, data: Dict[str, Any]) -> Dict[str, Any]:
+def safe_insert(supabase_client: Any, table: str, data: dict[str, Any]) -> dict[str, Any]:
     """
     Safely insert a record into a table.
     
@@ -116,7 +117,7 @@ def safe_insert(supabase_client: Any, table: str, data: Dict[str, Any]) -> Dict[
 
 
 @safe_db_operation("upsert")
-def safe_upsert(supabase_client: Any, table: str, data: Dict[str, Any]) -> Dict[str, Any]:
+def safe_upsert(supabase_client: Any, table: str, data: dict[str, Any]) -> dict[str, Any]:
     """
     Safely upsert a record into a table.
     
@@ -154,9 +155,9 @@ def safe_select(
     supabase_client: Any,
     table: str,
     columns: str = "*",
-    filters: Optional[Dict[str, Any]] = None,
-    limit: Optional[int] = None
-) -> List[Dict[str, Any]]:
+    filters: dict[str, Any] | None = None,
+    limit: int | None = None
+) -> list[dict[str, Any]]:
     """
     Safely select records from a table.
     
@@ -197,10 +198,10 @@ def safe_select(
 def safe_select_single(
     supabase_client: Any,
     table: str,
-    filters: Dict[str, Any],
+    filters: dict[str, Any],
     columns: str = "*",
     required: bool = False
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """
     Safely select a single record from a table.
     
@@ -247,9 +248,9 @@ def safe_select_single(
 def safe_update(
     supabase_client: Any,
     table: str,
-    filters: Dict[str, Any],
-    updates: Dict[str, Any]
-) -> List[Dict[str, Any]]:
+    filters: dict[str, Any],
+    updates: dict[str, Any]
+) -> list[dict[str, Any]]:
     """
     Safely update records in a table.
     
@@ -284,7 +285,7 @@ def safe_update(
 def safe_delete(
     supabase_client: Any,
     table: str,
-    filters: Dict[str, Any]
+    filters: dict[str, Any]
 ) -> int:
     """
     Safely delete records from a table.
@@ -318,7 +319,7 @@ def safe_delete(
 def safe_batch_insert(
     supabase_client: Any,
     table: str,
-    records: List[Dict[str, Any]],
+    records: list[dict[str, Any]],
     batch_size: int = 100
 ) -> int:
     """
@@ -355,7 +356,7 @@ def safe_batch_insert(
                 exc_info=True
             )
             raise DatabaseError(
-                message=f"Batch insert failed: {str(exc)}",
+                message=f"Batch insert failed: {exc!s}",
                 operation="batch_insert",
                 is_retryable=False,
                 details={

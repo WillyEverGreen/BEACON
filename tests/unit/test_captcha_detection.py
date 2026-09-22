@@ -1,4 +1,5 @@
 import pytest
+
 from app.services.static_checks import StaticChecker
 
 CAPTCHA_FIXTURES = [

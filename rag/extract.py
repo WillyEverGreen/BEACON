@@ -4,7 +4,6 @@ preserving only the main semantic content for RAG ingestion.
 
 Uses BeautifulSoup with a tag whitelist/blocklist strategy.
 """
-from typing import Optional
 
 from bs4 import BeautifulSoup
 
@@ -49,7 +48,7 @@ def extract_content(html: str) -> str:
         tag.decompose()
 
     # Find the main content root
-    root: Optional[BeautifulSoup] = (
+    root: BeautifulSoup | None = (
         soup.find("main") or soup.find("article") or soup.find("body")
     )
     if not root:

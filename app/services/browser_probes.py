@@ -15,11 +15,21 @@ Playwright is an optional dependency — all probes fail gracefully if unavailab
 import asyncio
 import hashlib
 import logging
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urlparse
 
-from app.audit.dynamic_handling import install_request_interception, resolve_adaptive_timeouts, stable_request_headers
+from app.audit.dynamic_handling import (
+    install_request_interception,
+    resolve_adaptive_timeouts,
+    stable_request_headers,
+)
 from app.audit.failure_taxonomy import classify_failure_reason, normalize_reason
+from app.services.browser_evidence import (
+    analyze_accessible_authentication,
+    analyze_dragging_movements,
+    analyze_focus_obscurance,
+    analyze_target_size,
+)
 from app.services.spa_classifier import classify_spa
 
 logger = logging.getLogger(__name__)
@@ -113,8 +123,8 @@ class BrowserProber:
             resolved_timeout_seconds = max(caller_timeout_seconds, resolved_timeout_seconds)
         self.timeout = resolved_timeout_seconds * 1000
         self.max_retries = max_retries
-        self.detected_framework: Optional[str] = None
-        self.legacy_framework: Optional[str] = None
+        self.detected_framework: str | None = None
+        self.legacy_framework: str | None = None
         self.is_spa: bool = False
         self.last_navigation_failure_reason: str = ""
 
@@ -172,7 +182,7 @@ class BrowserProber:
 
         return ""
 
-    async def _detect_spa_framework(self, page) -> Optional[str]:
+    async def _detect_spa_framework(self, page) -> str | None:
         """Detect likely SPA framework using strict runtime signals first."""
         try:
             detection_result = await page.evaluate("""
@@ -261,7 +271,7 @@ class BrowserProber:
     async def _collect_spa_runtime_signals(
         self,
         page,
-        framework: Optional[str],
+        framework: str | None,
         hydration_waited: bool,
     ) -> dict[str, Any]:
         """Collect runtime SPA signals for the classification layer."""
@@ -403,7 +413,7 @@ class BrowserProber:
 
         return signals
 
-    async def _wait_for_spa_hydration(self, page, framework: Optional[str] = None) -> bool:
+    async def _wait_for_spa_hydration(self, page, framework: str | None = None) -> bool:
         """Wait for SPA framework to complete hydration/mounting."""
         hydration_timeout_ms = int(self.adaptive_timeouts.get("ready_state_timeout_ms", 5000))
         try:
@@ -564,7 +574,7 @@ class BrowserProber:
         self.last_navigation_failure_reason = normalize_reason(last_reason) or "network_error"
         return False
 
-    async def _run_max_exploration(self, page, framework: Optional[str]) -> dict[str, Any]:
+    async def _run_max_exploration(self, page, framework: str | None) -> dict[str, Any]:
         """Run bounded interaction/scroll exploration for max mode and auth-wall fallback."""
         metadata: dict[str, Any] = {
             "interaction_phase_ran": False,
@@ -647,7 +657,7 @@ class BrowserProber:
 
         return metadata
 
-    async def run_all(self, scan_mode: str = "deep") -> tuple[list[dict], Optional[str], dict]:
+    async def run_all(self, scan_mode: str = "deep") -> tuple[list[dict], str | None, dict]:
         """
         Run all browser probes with world-class SPA support.
         
@@ -662,7 +672,7 @@ class BrowserProber:
         from app.core.async_proactor import run_subprocess_safe
         return await run_subprocess_safe(self._run_all_impl, scan_mode=scan_mode)
 
-    async def _run_all_impl(self, scan_mode: str = "deep") -> tuple[list[dict], Optional[str], dict]:
+    async def _run_all_impl(self, scan_mode: str = "deep") -> tuple[list[dict], str | None, dict]:
 
         issues = []
         rendered_html = None
@@ -859,6 +869,8 @@ class BrowserProber:
                     self._probe_focus_trap_detection,  # Production readiness: focus management
                     self._probe_focus_management,       # Phase 9.4: hybrid focus-management probes
                     self._probe_meaningful_sequence,    # Phase 22: Visual vs DOM order (1.3.2)
+                    self._probe_dragging_movements,     # WCAG 2.5.7 Dragging movements (§13)
+                    self._probe_accessible_auth,        # WCAG 3.3.8 Accessible authentication (§14)
                 ]
 
                 probe_timeout_s = float(self.adaptive_timeouts.get("probe_timeout_seconds", 8.0) or 8.0)
@@ -1325,115 +1337,36 @@ class BrowserProber:
             self._check_tree_node(child, issues, depth + 1)
 
     async def _probe_target_size(self, page) -> list[dict]:
-        """WCAG 2.5.8 Target Size Minimum: Ensure interactive targets are at least 24x24px."""
-        issues = []
+        """WCAG 2.5.8 Target Size Minimum (§12): Evaluate rendered target dimensions and spacing exceptions."""
         try:
-            findings = await page.evaluate(
-                """
-                () => {
-                    const results = [];
-                    const interactives = document.querySelectorAll('a[href], button, [role="button"], input[type="submit"], input[type="button"]');
-                    for (const el of Array.from(interactives)) {
-                        const style = window.getComputedStyle(el);
-                        if (style.display === 'none' || style.visibility === 'hidden') continue;
-                        const rect = el.getBoundingClientRect();
-                        if (rect.width > 0 && rect.height > 0) {
-                            if (rect.width < 24 || rect.height < 24) {
-                                results.push({
-                                    tag: el.tagName.toLowerCase(),
-                                    id: el.id ? '#' + el.id : '',
-                                    text: (el.textContent || '').trim().substring(0, 30),
-                                    html: (el.outerHTML || '').slice(0, 150),
-                                    w: rect.width,
-                                    h: rect.height
-                                });
-                            }
-                        }
-                    }
-                    return results.slice(0, 20);
-                }
-                """
-            )
-            for item in findings:
-                selector = item["tag"] + item["id"]
-                issues.append(_make_issue(
-                    self.url, "target-size-minimum", "violation", "moderate",
-                    selector, item["html"],
-                    f"Interactive element is too small ({item['w']}x{item['h']}px). Must be at least 24x24px.",
-                    "2.5.8", "AA", "target",
-                    "Increase the padding, min-width, and min-height of the target to at least 24px.",
-                    evidence={"width": item["w"], "height": item["h"]}
-                ))
+            return await analyze_target_size(page, self.url)
         except Exception as e:
             logger.warning(f"Target size probe error: {e}")
-        return issues
+            return []
 
     async def _probe_focus_obscurance(self, page) -> list[dict]:
-        """WCAG 2.4.11 Focus Obscured (Minimum): Ensure focused elements are not completely hidden by fixed/sticky content."""
-        issues = []
+        """WCAG 2.4.11 / 2.4.12 Focus Obscured (§11): Measure geometric overlap against fixed/sticky overlays."""
         try:
-            interactive_count = await page.evaluate(
-                "() => document.querySelectorAll('a[href], button, input:not([type=\"hidden\"]), select, textarea, [tabindex]:not([tabindex=\"-1\"])').length"
-            )
-            if interactive_count == 0:
-                return issues
-
-            max_tabs = min(interactive_count * 2, 50)
-            obscured_found = 0
-
-            for i in range(max_tabs):
-                await page.keyboard.press("Tab")
-                await page.wait_for_timeout(50)
-                
-                obscured = await page.evaluate("""
-                    () => {
-                        const el = document.activeElement;
-                        if (!el || el === document.body) return null;
-                        
-                        const rect = el.getBoundingClientRect();
-                        if (rect.width === 0 || rect.height === 0) return null;
-                        
-                        const cx = rect.left + rect.width / 2;
-                        const cy = rect.top + rect.height / 2;
-                        
-                        if (cx < 0 || cy < 0 || cx > window.innerWidth || cy > window.innerHeight) {
-                            return null;
-                        }
-                        
-                        const topEl = document.elementFromPoint(cx, cy);
-                        if (!topEl) return null;
-                        
-                        if (topEl !== el && !topEl.contains(el) && !el.contains(topEl)) {
-                            const style = window.getComputedStyle(topEl);
-                            if (style.position === 'fixed' || style.position === 'sticky') {
-                                return {
-                                    tag: el.tagName.toLowerCase(),
-                                    id: el.id ? '#' + el.id : '',
-                                    text: (el.textContent || '').trim().substring(0, 30),
-                                    html: (el.outerHTML || '').slice(0, 150),
-                                    obscuredBy: topEl.tagName.toLowerCase() + (topEl.id ? '#' + topEl.id : '') + '.' + topEl.className
-                                };
-                            }
-                        }
-                        return null;
-                    }
-                """)
-                if obscured:
-                    selector = obscured["tag"] + obscured["id"]
-                    issues.append(_make_issue(
-                        self.url, "focus-obscured", "violation", "serious",
-                        selector, obscured["html"],
-                        f"Focused element is hidden behind a sticky/fixed element ({obscured['obscuredBy']}).",
-                        "2.4.11", "AA", "keyboard",
-                        "Ensure scroll-padding-top is applied or sticky headers don't cover focused elements.",
-                        evidence={"obscured_by": obscured["obscuredBy"]}
-                    ))
-                    obscured_found += 1
-                    if obscured_found >= 5:
-                        break
+            return await analyze_focus_obscurance(page, self.url)
         except Exception as e:
             logger.warning(f"Focus obscurance probe error: {e}")
-        return issues
+            return []
+
+    async def _probe_dragging_movements(self, page) -> list[dict]:
+        """WCAG 2.5.7 Dragging Movements (§13): Detect drag interactions requiring single-pointer alternatives."""
+        try:
+            return await analyze_dragging_movements(page, self.url)
+        except Exception as e:
+            logger.warning(f"Dragging movements probe error: {e}")
+            return []
+
+    async def _probe_accessible_auth(self, page) -> list[dict]:
+        """WCAG 3.3.8 Accessible Authentication (§14): Detect paste-blocking and cognitive burdens."""
+        try:
+            return await analyze_accessible_authentication(page, self.url)
+        except Exception as e:
+            logger.warning(f"Accessible auth probe error: {e}")
+            return []
 
     async def _probe_animation_motion(self, page) -> list[dict]:
         """WCAG 2.3.3 Animation from Interactions: Detect excessive motion that could cause vestibular issues."""

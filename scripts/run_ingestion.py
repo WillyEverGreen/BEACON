@@ -17,8 +17,9 @@ dotenv.load_dotenv = lambda *a, **k: True
 # Add rag to path so imports work
 sys.path.insert(0, os.path.abspath("rag"))
 
-from axe_parser import parse_axe_rules
 from chunk import chunk_document
+
+from axe_parser import parse_axe_rules
 from config import SOURCES
 from crawl import crawl_source
 from dedup import dedup

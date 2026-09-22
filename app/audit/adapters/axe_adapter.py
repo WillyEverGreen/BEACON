@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from app.audit.adapters.base import BaseAuditAdapter
 from app.audit.fingerprint import stable_selector_fingerprint
 from app.models.contracts import Finding
-
 
 _WCAG_TAG_PATTERN = re.compile(r"^wcag(\d)(\d)(\d+)$", re.IGNORECASE)
 _WCAG_LEVEL_PATTERN = re.compile(r"^wcag2(\w+)$", re.IGNORECASE)
@@ -20,7 +19,7 @@ class AxeAdapter(BaseAuditAdapter):
     def __init__(self, engine_version: str = "4.10.2", rule_version: str = "4.10.2") -> None:
         super().__init__(name="axe", engine_version=engine_version, rule_version=rule_version)
 
-    def normalize(self, raw_issue: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Finding:
+    def normalize(self, raw_issue: dict[str, Any], context: dict[str, Any] | None = None) -> Finding:
         """Convert a single node violation from axe-core into a canonical Finding."""
         rule_id = str(raw_issue.get("id") or "unknown-rule")
         impact = str(raw_issue.get("impact") or "minor").lower()
@@ -82,7 +81,7 @@ class AxeAdapter(BaseAuditAdapter):
             act_rule_id=act_id,
         )
 
-    def normalize_all_nodes(self, raw_violation: Dict[str, Any]) -> List[Finding]:
+    def normalize_all_nodes(self, raw_violation: dict[str, Any]) -> list[Finding]:
         """Normalize all offending nodes within an axe violation into individual Findings."""
         nodes = raw_violation.get("nodes") or []
         if not nodes:
@@ -100,7 +99,7 @@ class AxeAdapter(BaseAuditAdapter):
         return mapping.get(impact, "minor")
 
     @staticmethod
-    def _extract_wcag_info(tags: List[str]) -> Tuple[str, str]:
+    def _extract_wcag_info(tags: list[str]) -> tuple[str, str]:
         sc = ""
         level = "AA"
 

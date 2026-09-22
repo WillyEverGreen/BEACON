@@ -5,20 +5,18 @@ Provides structured logging with context injection, JSON formatting for producti
 and request tracing capabilities.
 """
 
+import json
 import logging
 import logging.handlers
 import sys
-import json
-import os
+from contextvars import ContextVar
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
-from contextvars import ContextVar
 
 # Context variables for request tracing
-request_id_ctx: ContextVar[Optional[str]] = ContextVar("request_id", default=None)
-user_id_ctx: ContextVar[Optional[str]] = ContextVar("user_id", default=None)
-audit_id_ctx: ContextVar[Optional[str]] = ContextVar("audit_id", default=None)
+request_id_ctx: ContextVar[str | None] = ContextVar("request_id", default=None)
+user_id_ctx: ContextVar[str | None] = ContextVar("user_id", default=None)
+audit_id_ctx: ContextVar[str | None] = ContextVar("audit_id", default=None)
 
 
 class ContextualFormatter(logging.Formatter):
@@ -81,7 +79,7 @@ class JSONFormatter(logging.Formatter):
 def setup_logging(
     log_level: str = "INFO",
     log_format: str = "text",
-    logs_dir: Optional[str] = None,
+    logs_dir: str | None = None,
     app_name: str = "beacon"
 ) -> None:
     """
@@ -166,9 +164,9 @@ def setup_logging(
 
 
 def set_request_context(
-    request_id: Optional[str] = None,
-    user_id: Optional[str] = None,
-    audit_id: Optional[str] = None
+    request_id: str | None = None,
+    user_id: str | None = None,
+    audit_id: str | None = None
 ) -> None:
     """
     Set contextual information for the current request/operation.

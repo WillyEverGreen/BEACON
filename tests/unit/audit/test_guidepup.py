@@ -1,6 +1,7 @@
 """Unit tests for Phase 5 Guidepup Screen Reader Adapter and Runner."""
 
 import pytest
+
 from app.audit.adapters.guidepup_adapter import GuidepupAdapter
 from app.audit.screen_reader_runner import ScreenReaderAuditRunner
 

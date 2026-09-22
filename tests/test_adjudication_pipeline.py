@@ -1,10 +1,12 @@
 """
 Test suite for BEACON AI Adjudication, Context Extraction, Confidence, and Clustering Pipeline.
 """
-import pytest
+from app.services.adjudicator import _pre_adjudicate_fast_path
+from app.services.confidence import (
+    apply_confidence_rules,
+    compute_calibrated_confidence_breakdown,
+)
 from app.services.dom_context import DOMContextExtractor
-from app.services.adjudicator import _pre_adjudicate_fast_path, adjudicate_issues
-from app.services.confidence import compute_calibrated_confidence_breakdown, apply_confidence_rules
 from app.services.grouper import cluster_root_causes
 from app.services.static_checks import StaticChecker
 

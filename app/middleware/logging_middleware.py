@@ -8,12 +8,13 @@ and injects context into all log messages for the request.
 import logging
 import time
 import uuid
-from typing import Callable
+from collections.abc import Callable
+
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
-from app.core.logging_config import set_request_context, clear_request_context
+from app.core.logging_config import clear_request_context, set_request_context
 
 logger = logging.getLogger(__name__)
 

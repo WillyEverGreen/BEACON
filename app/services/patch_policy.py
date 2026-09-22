@@ -7,9 +7,8 @@ in AI-generated accessibility code fixes.
 from __future__ import annotations
 
 import re
-from typing import List, Tuple
-from bs4 import BeautifulSoup
 
+from bs4 import BeautifulSoup
 
 # Strictly prohibited tag names that must never be introduced in a patch
 FORBIDDEN_TAGS = frozenset({
@@ -33,13 +32,13 @@ class PatchPolicy:
     """Evaluates safety and structural validity of candidate remediation patches."""
 
     @staticmethod
-    def evaluate(original_snippet: str, candidate_patch: str) -> Tuple[bool, List[str]]:
+    def evaluate(original_snippet: str, candidate_patch: str) -> tuple[bool, list[str]]:
         """Validate candidate patch against security and stability policies.
         
         Returns:
             (is_allowed: bool, violation_reasons: List[str])
         """
-        reasons: List[str] = []
+        reasons: list[str] = []
 
         if not candidate_patch or not candidate_patch.strip():
             return False, ["Candidate patch is empty."]

@@ -1,7 +1,8 @@
 """Unit tests for Phase 7 Enterprise Output Layer: SARIF 2.1.0 & W3C EARL 1.0."""
 
 import pytest
-from app.audit.exporters import export_to_sarif, export_to_earl
+
+from app.audit.exporters import export_to_earl, export_to_sarif
 from app.models.contracts import Finding
 
 

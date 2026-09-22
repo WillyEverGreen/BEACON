@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.audit.adapters.base import BaseAuditAdapter
 from app.audit.fingerprint import stable_selector_fingerprint
 from app.models.contracts import Finding
 
-
 # Well-known mapping of Alfa (sia-r*) rules to ACT Rules and WCAG Criteria
-ALFA_ACT_MAP: Dict[str, Dict[str, str]] = {
+ALFA_ACT_MAP: dict[str, dict[str, str]] = {
     "sia-r1": {"act": "23a2a8", "wcag": "1.1.1", "level": "A", "desc": "Image has alternative text"},
     "sia-r2": {"act": "b5c3f8", "wcag": "3.1.1", "level": "A", "desc": "HTML element has lang attribute"},
     "sia-r3": {"act": "bf051a", "wcag": "3.1.1", "level": "A", "desc": "HTML lang attribute is valid"},
@@ -35,7 +34,7 @@ class AlfaAdapter(BaseAuditAdapter):
     def __init__(self, engine_version: str = "0.87.0", rule_version: str = "0.87.0") -> None:
         super().__init__(name="alfa", engine_version=engine_version, rule_version=rule_version)
 
-    def normalize(self, raw_issue: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Finding:
+    def normalize(self, raw_issue: dict[str, Any], context: dict[str, Any] | None = None) -> Finding:
         """Convert a Siteimprove Alfa outcome into a canonical Finding."""
         rule_id = str(raw_issue.get("rule") or raw_issue.get("ruleId") or raw_issue.get("rule_id") or "sia-r0")
         outcome = str(raw_issue.get("outcome") or raw_issue.get("verdict") or "failed").lower()

@@ -2,12 +2,11 @@
 Configuration settings loaded from .env file.
 Includes scan mode definitions and quality gate thresholds.
 """
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import AliasChoices, Field
-from typing import Final
 from enum import Enum
+from typing import Final
 
-
+from pydantic import AliasChoices, Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # ── Quality Gate Constants ──────────────────────────────────────
 

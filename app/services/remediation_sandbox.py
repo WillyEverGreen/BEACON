@@ -8,8 +8,6 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Dict, List, Optional, Set, Tuple
-from bs4 import BeautifulSoup
 
 from app.models.contracts import PatchResult
 from app.services.patch_policy import PatchPolicy
@@ -29,8 +27,8 @@ class RemediationSandbox:
         finding_id: str,
         original_snippet: str,
         candidate_patch: str,
-        surrounding_html: Optional[str] = None,
-        target_rule_id: Optional[str] = None,
+        surrounding_html: str | None = None,
+        target_rule_id: str | None = None,
     ) -> PatchResult:
         """Run policy validation and DOM differential audit on a candidate patch.
         
@@ -103,8 +101,8 @@ class RemediationSandbox:
             )
 
         # Step 4: Analyze violation signatures for resolution and regressions
-        before_rules: Set[str] = {str(i.get("rule_id", "")) for i in before_issues}
-        after_rules: Set[str] = {str(i.get("rule_id", "")) for i in after_issues}
+        before_rules: set[str] = {str(i.get("rule_id", "")) for i in before_issues}
+        after_rules: set[str] = {str(i.get("rule_id", "")) for i in after_issues}
 
         new_rule_regressions = after_rules - before_rules
         new_count = len(new_rule_regressions)

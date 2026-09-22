@@ -13,9 +13,9 @@ Supports adaptive template sampling and frontier-aware low-information-gain stop
 from __future__ import annotations
 
 import hashlib
-from html.parser import HTMLParser
 import logging
-from typing import Any, Dict, List, Optional, Set, Tuple
+from html.parser import HTMLParser
+from typing import Any
 from urllib.parse import urlparse
 
 from app.models.contracts import Fingerprint
@@ -42,16 +42,16 @@ class _MultiSignalParser(HTMLParser):
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=False)
-        self.structural_tags: List[str] = []
-        self.landmarks: Set[str] = set()
-        self.roles: Set[str] = set()
-        self.interactive_counts: Dict[str, int] = {"button": 0, "link": 0, "input": 0}
+        self.structural_tags: list[str] = []
+        self.landmarks: set[str] = set()
+        self.roles: set[str] = set()
+        self.interactive_counts: dict[str, int] = {"button": 0, "link": 0, "input": 0}
         self.form_count = 0
         self.total_chars = 0
         self.text_chars = 0
         self._current_depth = 0
 
-    def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         tag_lower = tag.lower()
         attr_map = {k.lower(): (v or "").strip().lower() for k, v in attrs}
 
@@ -138,19 +138,19 @@ class AdaptiveTopologyTracker:
         self.min_archetypes_before_early_stop = min_archetypes_before_early_stop
 
         # template_id -> list of (url, Fingerprint)
-        self.templates: Dict[str, List[Tuple[str, Fingerprint]]] = {}
+        self.templates: dict[str, list[tuple[str, Fingerprint]]] = {}
         self.consecutive_low_gain = 0
         self.total_evaluated = 0
         self.total_sampled = 0
         self.stopped_early = False
-        self.stop_reason: Optional[str] = None
+        self.stop_reason: str | None = None
 
     def evaluate_page(
         self,
         url: str,
         html: str,
-        unexplored_frontier_urls: Optional[List[str]] = None,
-    ) -> Tuple[Fingerprint, bool, bool]:
+        unexplored_frontier_urls: list[str] | None = None,
+    ) -> tuple[Fingerprint, bool, bool]:
         """Evaluate a page's multi-signal archetype and determine whether to audit it.
 
         Returns:
@@ -210,7 +210,7 @@ class AdaptiveTopologyTracker:
 
         return fp, False, False
 
-    def _is_frontier_diversity_low(self, frontier: Optional[List[str]]) -> bool:
+    def _is_frontier_diversity_low(self, frontier: list[str] | None) -> bool:
         """Returns True if remaining unexplored URLs belong to already-seen path prefixes."""
         if not frontier:
             return True
@@ -233,7 +233,7 @@ class AdaptiveTopologyTracker:
     def should_terminate_crawl(self) -> bool:
         return self.stopped_early
 
-    def get_summary(self) -> Dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         reduction_rate = 0.0
         if self.total_evaluated > 0:
             reduction_rate = (self.total_evaluated - self.total_sampled) / self.total_evaluated

@@ -7,17 +7,18 @@ ErrorResponse format with proper logging and status codes.
 
 import logging
 import traceback
-from typing import Callable
+from collections.abc import Callable
+
 from fastapi import Request, status
-from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi.responses import JSONResponse
 from pydantic import ValidationError as PydanticValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.models.errors import (
     BeaconError,
-    ErrorResponse,
     ErrorDetail,
+    ErrorResponse,
     ValidationErrorDetail,
 )
 
@@ -202,7 +203,7 @@ def handle_internal_error(
     """Handle unexpected internal errors."""
     # Log full exception with stack trace
     logger.error(
-        f"Unhandled exception: {type(exc).__name__}: {str(exc)}",
+        f"Unhandled exception: {type(exc).__name__}: {exc!s}",
         exc_info=True,
         extra={
             "exception_type": type(exc).__name__,
@@ -219,7 +220,7 @@ def handle_internal_error(
         message = "An internal server error occurred. Please try again later."
         details = None
     else:
-        message = f"{type(exc).__name__}: {str(exc)}"
+        message = f"{type(exc).__name__}: {exc!s}"
         details = {
             "traceback": traceback.format_exc().split("\n")
         }

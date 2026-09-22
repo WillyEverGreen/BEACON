@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-from collections import deque
 import logging
-from typing import Optional
+from collections import deque
 from urllib.parse import urlparse
 
 from curl_cffi import AsyncSession
@@ -42,10 +41,10 @@ class DiscoveryCrawler:
 
     def __init__(
         self,
-        max_depth: Optional[int] = None,
-        max_pages: Optional[int] = None,
-        concurrency: Optional[int] = None,
-        timeout_seconds: Optional[float] = None,
+        max_depth: int | None = None,
+        max_pages: int | None = None,
+        concurrency: int | None = None,
+        timeout_seconds: float | None = None,
     ) -> None:
         cfg = CRAWLER_CONFIG["discovery"]
         self.max_depth = int(max_depth if max_depth is not None else cfg["default_max_depth"])
@@ -56,7 +55,7 @@ class DiscoveryCrawler:
         self.topology_tracker = AdaptiveTopologyTracker()
 
         self.visited: set[str] = set()
-        self.queue: asyncio.Queue[tuple[str, int, Optional[str]]] = asyncio.Queue()
+        self.queue: asyncio.Queue[tuple[str, int, str | None]] = asyncio.Queue()
 
     async def crawl(self, seed_url: str, *, disallow_set: frozenset[str] = frozenset()) -> list[CrawledURL]:
         """Discover same-origin URLs from a seed page with bounded traversal."""
@@ -73,7 +72,7 @@ class DiscoveryCrawler:
 
         while pending and len(results) < self.max_pages:
             current_depth = pending[0][1]
-            level_items: list[tuple[str, int, Optional[str]]] = []
+            level_items: list[tuple[str, int, str | None]] = []
 
             while pending and pending[0][1] == current_depth and len(results) < self.max_pages:
                 level_items.append(pending.popleft())
@@ -161,7 +160,7 @@ class DiscoveryCrawler:
         *,
         semaphore: asyncio.Semaphore,
         disallow_set: frozenset[str],
-    ) -> tuple[list[str], Optional[str]]:
+    ) -> tuple[list[str], str | None]:
         async with semaphore:
             html = await self._fetch_html(url)
 
@@ -193,7 +192,7 @@ class DiscoveryCrawler:
         deduped = sorted(set(links))
         return deduped, html
 
-    async def _fetch_html(self, url: str) -> Optional[str]:
+    async def _fetch_html(self, url: str) -> str | None:
         if _CRAWL4AI_AVAILABLE and AsyncWebCrawler is not None:
             try:
                 async with AsyncWebCrawler() as crawler:
@@ -223,7 +222,7 @@ class DiscoveryCrawler:
             return None
 
     @staticmethod
-    def _extract_html_from_crawl4ai_result(result: object) -> Optional[str]:
+    def _extract_html_from_crawl4ai_result(result: object) -> str | None:
         if result is None:
             return None
 

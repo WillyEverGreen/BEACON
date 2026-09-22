@@ -12,9 +12,9 @@ Also tests the anti-overcorrection case: IBM disabled by config (enable_ibm=Fals
 should NOT cause degraded_mode to fire on an otherwise healthy run.
 """
 import asyncio
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # Helpers

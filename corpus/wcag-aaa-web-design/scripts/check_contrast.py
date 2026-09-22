@@ -30,10 +30,9 @@ Exit codes:
     2 = invalid input
 """
 
-import sys
 import json
 import re
-
+import sys
 
 # Maximum file size for input files (1 MB)
 MAX_FILE_SIZE = 1_048_576
@@ -90,7 +89,7 @@ def contrast_ratio(fg_hex: str, bg_hex: str) -> float:
 def suggest_aaa_color(fg_hex: str, bg_hex: str) -> str:
     """Suggest the closest AAA-compliant foreground color by darkening or lightening."""
     bg_rgb = hex_to_rgb(bg_hex)
-    bg_lum = relative_luminance(*bg_rgb)
+    _bg_lum = relative_luminance(*bg_rgb)
 
     # Try darkening the foreground (reducing each channel)
     best = None
@@ -152,7 +151,7 @@ def print_result(result: dict) -> None:
     print(f"\n  {result['name']}")
     print(f"  Foreground: {result['fg']}  Background: {result['bg']}")
     print(f"  Contrast Ratio: {result['ratio']}:1")
-    print(f"  -----------------------------------------------")
+    print("  -----------------------------------------------")
     print(f"  AAA Normal Text (>=7:1)    : {status_aaa_normal}")
     print(f"  AAA Large Text  (>=4.5:1)  : {status_aaa_large}")
     print(f"  AA Normal Text  (>=4.5:1)  : {status_aa_normal}")
@@ -178,9 +177,7 @@ def extract_tokens_from_css(filepath: str) -> list[dict]:
     # Determine background colors
     bg_colors = {}
     for name, value in tokens.items():
-        if "bg" in name and "bg-" not in name:
-            bg_colors["default"] = value
-        elif name == "color-bg":
+        if "bg" in name and "bg-" not in name or name == "color-bg":
             bg_colors["default"] = value
         elif name == "color-bg-alt":
             bg_colors["alt"] = value

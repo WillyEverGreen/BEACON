@@ -5,8 +5,9 @@ This module provides consistent error response formats across all endpoints
 and custom exception classes for different error scenarios.
 """
 
-from typing import Optional, Any, Dict, List
 from datetime import datetime
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -16,8 +17,8 @@ class ErrorDetail(BaseModel):
     """
     code: str = Field(..., description="Machine-readable error code")
     message: str = Field(..., description="Human-readable error message")
-    field: Optional[str] = Field(None, description="Field name for validation errors")
-    details: Optional[Dict[str, Any]] = Field(None, description="Additional error context")
+    field: str | None = Field(None, description="Field name for validation errors")
+    details: dict[str, Any] | None = Field(None, description="Additional error context")
 
 
 class ErrorResponse(BaseModel):
@@ -28,18 +29,18 @@ class ErrorResponse(BaseModel):
     makes it easier for clients to parse and display errors.
     """
     error: ErrorDetail = Field(..., description="Error details")
-    request_id: Optional[str] = Field(None, description="Request ID for tracing")
+    request_id: str | None = Field(None, description="Request ID for tracing")
     timestamp: str = Field(
         default_factory=lambda: datetime.utcnow().isoformat() + "Z",
         description="ISO 8601 timestamp of when the error occurred"
     )
-    path: Optional[str] = Field(None, description="API path that generated the error")
+    path: str | None = Field(None, description="API path that generated the error")
 
 
 class ValidationErrorDetail(BaseModel):
     """Details for validation errors with multiple fields."""
-    errors: List[ErrorDetail] = Field(..., description="List of validation errors")
-    request_id: Optional[str] = Field(None, description="Request ID for tracing")
+    errors: list[ErrorDetail] = Field(..., description="List of validation errors")
+    request_id: str | None = Field(None, description="Request ID for tracing")
     timestamp: str = Field(
         default_factory=lambda: datetime.utcnow().isoformat() + "Z"
     )
@@ -61,7 +62,7 @@ class BeaconError(Exception):
         message: str,
         code: str = "BEACON_ERROR",
         status_code: int = 500,
-        details: Optional[Dict[str, Any]] = None
+        details: dict[str, Any] | None = None
     ):
         self.message = message
         self.code = code
@@ -72,7 +73,7 @@ class BeaconError(Exception):
 
 class ValidationError(BeaconError):
     """Raised when input validation fails."""
-    def __init__(self, message: str, field: Optional[str] = None, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, field: str | None = None, details: dict[str, Any] | None = None):
         super().__init__(
             message=message,
             code="VALIDATION_ERROR",
@@ -83,7 +84,7 @@ class ValidationError(BeaconError):
 
 class AuthenticationError(BeaconError):
     """Raised when authentication fails."""
-    def __init__(self, message: str = "Authentication failed", details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str = "Authentication failed", details: dict[str, Any] | None = None):
         super().__init__(
             message=message,
             code="AUTHENTICATION_ERROR",
@@ -94,7 +95,7 @@ class AuthenticationError(BeaconError):
 
 class AuthorizationError(BeaconError):
     """Raised when user lacks required permissions."""
-    def __init__(self, message: str = "Insufficient permissions", details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str = "Insufficient permissions", details: dict[str, Any] | None = None):
         super().__init__(
             message=message,
             code="AUTHORIZATION_ERROR",
@@ -105,7 +106,7 @@ class AuthorizationError(BeaconError):
 
 class ResourceNotFoundError(BeaconError):
     """Raised when a requested resource doesn't exist."""
-    def __init__(self, resource: str, resource_id: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, resource: str, resource_id: str, details: dict[str, Any] | None = None):
         super().__init__(
             message=f"{resource} not found: {resource_id}",
             code="RESOURCE_NOT_FOUND",
@@ -119,8 +120,8 @@ class RateLimitError(BeaconError):
     def __init__(
         self,
         message: str = "Rate limit exceeded",
-        retry_after: Optional[int] = None,
-        details: Optional[Dict[str, Any]] = None
+        retry_after: int | None = None,
+        details: dict[str, Any] | None = None
     ):
         super().__init__(
             message=message,
@@ -137,7 +138,7 @@ class ExternalServiceError(BeaconError):
         service: str,
         message: str,
         is_retryable: bool = True,
-        details: Optional[Dict[str, Any]] = None
+        details: dict[str, Any] | None = None
     ):
         super().__init__(
             message=f"{service} error: {message}",
@@ -154,7 +155,7 @@ class DatabaseError(BeaconError):
         message: str,
         operation: str,
         is_retryable: bool = True,
-        details: Optional[Dict[str, Any]] = None
+        details: dict[str, Any] | None = None
     ):
         super().__init__(
             message=f"Database error during {operation}: {message}",
@@ -171,7 +172,7 @@ class AuditError(BeaconError):
         message: str,
         url: str,
         scan_mode: str,
-        details: Optional[Dict[str, Any]] = None
+        details: dict[str, Any] | None = None
     ):
         super().__init__(
             message=f"Audit failed for {url}: {message}",
@@ -188,7 +189,7 @@ class BrowserError(BeaconError):
         message: str,
         browser: str = "unknown",
         is_retryable: bool = False,
-        details: Optional[Dict[str, Any]] = None
+        details: dict[str, Any] | None = None
     ):
         super().__init__(
             message=f"Browser error ({browser}): {message}",
@@ -200,7 +201,7 @@ class BrowserError(BeaconError):
 
 class ConfigurationError(BeaconError):
     """Raised when application is misconfigured."""
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(
             message=f"Configuration error: {message}",
             code="CONFIGURATION_ERROR",

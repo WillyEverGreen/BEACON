@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import hashlib
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 from app.audit.exploration import auth_fallback_urls
-
 
 STABLE_AUDIT_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -295,7 +294,7 @@ async def apply_anti_bot_delay(page: Any, seed_url: str) -> int:
     return delay
 
 
-async def detect_spa_framework(page: Any) -> Optional[str]:
+async def detect_spa_framework(page: Any) -> str | None:
     script = """
         () => {
             const hasReact = Boolean(
@@ -353,7 +352,7 @@ async def detect_spa_framework(page: Any) -> Optional[str]:
 
 async def wait_for_hydration(
     page: Any,
-    detected_framework: Optional[str],
+    detected_framework: str | None,
     *,
     network_idle_timeout_ms: int,
     ready_state_timeout_ms: int,
@@ -389,7 +388,7 @@ async def detect_framework_and_wait(
     *,
     network_idle_timeout_ms: int,
     ready_state_timeout_ms: int,
-) -> tuple[Optional[str], str]:
+) -> tuple[str | None, str]:
     framework = await detect_spa_framework(page)
     hydration_status = await wait_for_hydration(
         page,

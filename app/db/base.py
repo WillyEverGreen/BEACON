@@ -4,13 +4,12 @@ DEPRECATED: Shifting to Supabase SDK completely.
 """
 from contextlib import contextmanager
 
+
 def init_db() -> None:
     """No-op for Supabase migration."""
-    pass
 
 def ensure_db_ready() -> None:
     """No-op for Supabase migration."""
-    pass
 
 @contextmanager
 def get_session():

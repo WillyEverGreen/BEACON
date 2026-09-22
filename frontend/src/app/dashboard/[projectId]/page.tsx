@@ -1,6 +1,8 @@
 "use client";
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
+
+const emptySubscribe = () => () => {};
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import api, { downloadScanReport, toUserFacingError } from "@/lib/api";
@@ -180,6 +182,101 @@ function IconDownload({ className }: { className?: string }) {
     </svg>
   );
 }
+function IconUser({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+function IconPalette({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="13.5" cy="6.5" r=".5" fill="currentColor" />
+      <circle cx="17.5" cy="10.5" r=".5" fill="currentColor" />
+      <circle cx="8.5" cy="7.5" r=".5" fill="currentColor" />
+      <circle cx="6.5" cy="12.5" r=".5" fill="currentColor" />
+      <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
+    </svg>
+  );
+}
+function IconForm({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M7 8h10" />
+      <path d="M7 12h10" />
+      <path d="M7 16h6" />
+    </svg>
+  );
+}
+function IconImage({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <polyline points="21 15 16 10 5 21" />
+    </svg>
+  );
+}
+function IconKeyboard({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="M6 8h.001" />
+      <path d="M10 8h.001" />
+      <path d="M14 8h.001" />
+      <path d="M18 8h.001" />
+      <path d="M6 12h.001" />
+      <path d="M18 12h.001" />
+      <path d="M10 12h4" />
+      <path d="M6 16h.001" />
+      <path d="M10 16h.001" />
+      <path d="M14 16h.001" />
+      <path d="M18 16h.001" />
+    </svg>
+  );
+}
+function IconTag({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z" />
+      <path d="M7 7h.01" />
+    </svg>
+  );
+}
+function IconLayers({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12 2 2 7 12 12 22 7 12 2" />
+      <polyline points="2 17 12 22 22 17" />
+      <polyline points="2 12 12 17 22 12" />
+    </svg>
+  );
+}
+function IconFilter({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+    </svg>
+  );
+}
+function IconRefresh({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21.5 2v6h-6" />
+      <path d="M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+    </svg>
+  );
+}
+function IconCheck({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
 
 /* ── Constants ─────────────────────────────────────────────────── */
 const SEVERITY_COLORS: Record<string, string> = {
@@ -199,8 +296,45 @@ const TOOLTIP_STYLE = {
   boxShadow: "var(--beacon-card-shadow)",
 };
 
+const ROLE_OPTIONS = [
+  { id: "DEVELOPER", label: "Developer", desc: "AST selectors, code fixes, and technical diagnostics" },
+  { id: "QA_A11Y", label: "QA / A11y", desc: "Assertion checklist, verification queue, and test steps" },
+  { id: "COMPLIANCE", label: "Compliance", desc: "Mandatory criteria coverage, VPAT/EN 301 549 conformance" },
+  { id: "EXECUTIVE", label: "Executive", desc: "Risk overview, health score, and business impact" },
+] as const;
+
+const REGULATORY_PROFILES_OPTIONS = [
+  { id: "GLOBAL_WCAG_22_AA", label: "WCAG 2.2 AA", badge: "Global Standard" },
+  { id: "US_SECTION_508", label: "Section 508", badge: "US Federal / VPAT" },
+  { id: "EU_EN_301_549", label: "EN 301 549", badge: "EU Standard / EAA" },
+  { id: "UK_PUBLIC_SECTOR", label: "UK PSBAR", badge: "UK Public Sector" },
+  { id: "INDIA_GIGW", label: "GIGW 3.0", badge: "Govt of India" },
+] as const;
+
+const PERSONA_OPTIONS = [
+  { id: "ALL", label: "All Users" },
+  { id: "SCREEN_READER", label: "Screen Reader (Blind)" },
+  { id: "KEYBOARD_MOTOR", label: "Keyboard-Only (Motor)" },
+  { id: "LOW_VISION", label: "Low Vision / Contrast" },
+  { id: "COGNITIVE", label: "Cognitive / Neurodivergent" },
+  { id: "DEAF_HARD_OF_HEARING", label: "Deaf / Hard of Hearing" },
+] as const;
+
 type PresentationBucket = "verified" | "needs_review" | "low_confidence";
 type IssueViewFilter = "show_all" | "verified_only" | "hide_low_confidence";
+
+interface ContextualIssueFilter {
+  active: boolean;
+  sourceRole: "DEVELOPER" | "QA_A11Y" | "COMPLIANCE" | "EXECUTIVE";
+  profileId?: string;
+  profileName?: string;
+  personaId?: string;
+  personaName?: string;
+  severity?: "mandatory" | "advisory" | "other" | "critical_serious" | "needs_review" | "all";
+  title: string;
+  subtitle: string;
+  targetFindingIds?: string[];
+}
 
 const ISSUE_PRESENTATION_META: Record<
   PresentationBucket,
@@ -244,6 +378,163 @@ const ISSUE_PRESENTATION_META: Record<
       "badge-low-confidence",
   },
 };
+
+const ISSUE_CATEGORIES = [
+  {
+    id: "all",
+    label: "All Categories",
+    shortLabel: "All",
+    icon: IconLayers,
+    badgeClass: "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700",
+    activeClass: "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black shadow-sm",
+  },
+  {
+    id: "color",
+    label: "Contrast & Color",
+    shortLabel: "Contrast",
+    icon: IconPalette,
+    badgeClass: "bg-sky-500/10 text-sky-800 dark:text-sky-300 border-sky-500/30",
+    activeClass: "bg-sky-600 text-white shadow-sm",
+  },
+  {
+    id: "forms",
+    label: "Forms & Controls",
+    shortLabel: "Forms",
+    icon: IconForm,
+    badgeClass: "bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-500/30",
+    activeClass: "bg-amber-600 text-white shadow-sm",
+  },
+  {
+    id: "images",
+    label: "Images & Media",
+    shortLabel: "Images",
+    icon: IconImage,
+    badgeClass: "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border-emerald-500/30",
+    activeClass: "bg-emerald-600 text-white shadow-sm",
+  },
+  {
+    id: "keyboard",
+    label: "Keyboard & Focus",
+    shortLabel: "Keyboard",
+    icon: IconKeyboard,
+    badgeClass: "bg-purple-500/10 text-purple-800 dark:text-purple-300 border-purple-500/30",
+    activeClass: "bg-purple-600 text-white shadow-sm",
+  },
+  {
+    id: "aria",
+    label: "ARIA & Semantics",
+    shortLabel: "ARIA",
+    icon: IconTag,
+    badgeClass: "bg-rose-500/10 text-rose-800 dark:text-rose-300 border-rose-500/30",
+    activeClass: "bg-rose-600 text-white shadow-sm",
+  },
+  {
+    id: "structure",
+    label: "Structure & Navigation",
+    shortLabel: "Structure",
+    icon: IconLayers,
+    badgeClass: "bg-indigo-500/10 text-indigo-800 dark:text-indigo-300 border-indigo-500/30",
+    activeClass: "bg-indigo-600 text-white shadow-sm",
+  },
+] as const;
+
+function getIssueCategory(issue: any): (typeof ISSUE_CATEGORIES)[number] {
+  const cat = String(issue?.category || "").toLowerCase();
+  const rule = String(issue?.rule_id || issue?.rule || "").toLowerCase();
+  const desc = String(issue?.description || "").toLowerCase();
+  const wcag = String(issue?.wcag_criterion || "");
+
+  // Contrast & Color
+  if (
+    cat === "color" ||
+    cat === "contrast" ||
+    rule.includes("contrast") ||
+    desc.includes("contrast") ||
+    wcag.startsWith("1.4")
+  ) {
+    return ISSUE_CATEGORIES[1];
+  }
+
+  // Forms & Controls
+  if (
+    cat === "forms" ||
+    cat === "form" ||
+    rule.includes("label") ||
+    rule.includes("button") ||
+    rule.includes("input") ||
+    rule.includes("select") ||
+    desc.includes("label") ||
+    desc.includes("form") ||
+    (wcag.startsWith("1.3") && (rule.includes("form") || desc.includes("input") || rule.includes("label")))
+  ) {
+    return ISSUE_CATEGORIES[2];
+  }
+
+  // Images & Media
+  if (
+    cat === "images" ||
+    cat === "image" ||
+    cat === "media" ||
+    rule.includes("alt") ||
+    rule.includes("image") ||
+    rule.includes("video") ||
+    rule.includes("audio") ||
+    desc.includes("alt") ||
+    desc.includes("image") ||
+    wcag.startsWith("1.1") ||
+    wcag.startsWith("1.2")
+  ) {
+    return ISSUE_CATEGORIES[3];
+  }
+
+  // Keyboard & Focus
+  if (
+    cat === "keyboard" ||
+    rule.includes("keyboard") ||
+    rule.includes("tabindex") ||
+    rule.includes("focus") ||
+    rule.includes("accesskey") ||
+    desc.includes("keyboard") ||
+    desc.includes("focus") ||
+    wcag.startsWith("2.1")
+  ) {
+    return ISSUE_CATEGORIES[4];
+  }
+
+  // ARIA & Semantics
+  if (
+    cat === "aria" ||
+    rule.startsWith("aria-") ||
+    rule.includes("aria") ||
+    desc.includes("aria") ||
+    rule.includes("role") ||
+    wcag.startsWith("4.1")
+  ) {
+    return ISSUE_CATEGORIES[5];
+  }
+
+  // Structure & Navigation
+  if (
+    cat === "navigation" ||
+    cat === "html" ||
+    cat === "structure" ||
+    rule.includes("heading") ||
+    rule.includes("landmark") ||
+    rule.includes("region") ||
+    rule.includes("link") ||
+    rule.includes("bypass") ||
+    rule.includes("lang") ||
+    rule.includes("title") ||
+    rule.includes("table") ||
+    rule.includes("list") ||
+    wcag.startsWith("2.4") ||
+    wcag.startsWith("3.1")
+  ) {
+    return ISSUE_CATEGORIES[6];
+  }
+
+  return ISSUE_CATEGORIES[6];
+}
 
 function resolveConfidenceTier(issue: any): "high" | "medium" | "low" {
   const explicitTier = String(issue?.confidence_tier || "")
@@ -316,14 +607,46 @@ export default function ProjectDetailPage() {
   const [expandedIssue, setExpandedIssue] = useState<string | null>(null);
   const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [roleView, setRoleView] = useState<"DEVELOPER" | "QA_A11Y" | "COMPLIANCE" | "EXECUTIVE">("DEVELOPER");
+  const [regulatoryProfile, setRegulatoryProfile] = useState<string>("GLOBAL_WCAG_22_AA");
+  const [personaLens, setPersonaLens] = useState<string>("ALL");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [issueGroupBy, setIssueGroupBy] = useState<"status" | "category">("status");
+  const [projectedScan, setProjectedScan] = useState<any>(null);
+  const [contextualFilter, setContextualFilter] = useState<ContextualIssueFilter | null>(null);
+
+  const activeProfileLabel = useMemo(() => {
+    return REGULATORY_PROFILES_OPTIONS.find((p) => p.id === regulatoryProfile)?.label || regulatoryProfile;
+  }, [regulatoryProfile]);
+
+  const activePersonaLabel = useMemo(() => {
+    return PERSONA_OPTIONS.find((p) => p.id === personaLens)?.label || personaLens;
+  }, [personaLens]);
+
+  const applyContextualFilter = useCallback((filter: ContextualIssueFilter) => {
+    setContextualFilter(filter);
+    setIssueViewFilter("show_all");
+    setSelectedCategory("all");
+    setTab("issues");
+  }, []);
+
+  const clearActiveContext = useCallback(() => {
+    setContextualFilter(null);
+  }, []);
+  const [projectedLoading, setProjectedLoading] = useState(false);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
-  const [pollErrorCount, setPollErrorCount] = useState(0);
   const aiRefreshAttemptsRef = useRef(0);
   const aiRefreshScanIdRef = useRef<string | null>(null);
   const [aiRefreshExhausted, setAiRefreshExhausted] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const pollErrorCountRef = useRef(0);
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
 
-  useEffect(() => { setMounted(true); }, []);
+  const [statementOpen, setStatementOpen] = useState(false);
+  const [statementOrgName, setStatementOrgName] = useState("");
+  const [statementProfile, setStatementProfile] = useState("W3C WCAG 2.2 Level AA");
+  const [statementContent, setStatementContent] = useState("");
+  const [statementLoading, setStatementLoading] = useState(false);
+  const [statementCopied, setStatementCopied] = useState(false);
 
   /* ── Toast auto-dismiss: 60 seconds ──────────────────────────── */
   useEffect(() => {
@@ -365,6 +688,49 @@ export default function ProjectDetailPage() {
     aiAnalysisText.toLowerCase().includes("generating insights") ||
     aiAnalysisText.toLowerCase().includes("refreshing insights");
   const showAiRefreshing = aiAnalysisPending && !aiRefreshExhausted;
+
+  const generateStatement = useCallback(async (customOrg?: string, customProf?: string) => {
+    if (!latestScan?.id) return;
+    setStatementLoading(true);
+    try {
+      const org = (customOrg !== undefined ? customOrg : statementOrgName).trim() || project?.name || "Our Organization";
+      const prof = customProf !== undefined ? customProf : statementProfile;
+      const res = await api.generateAccessibilityStatement(projectId, latestScan.id, org, prof);
+      setStatementContent(res.statement || "No statement generated.");
+    } catch (err) {
+      console.error(err);
+      setStatementContent("Failed to generate statement. Ensure the BEACON backend is running on port 8000.");
+    } finally {
+      setStatementLoading(false);
+    }
+  }, [latestScan?.id, statementOrgName, project?.name, statementProfile, projectId]);
+
+  function handleOpenStatementModal() {
+    setStatementOpen(true);
+    const org = project?.name || "";
+    setStatementOrgName(org);
+    void generateStatement(org, statementProfile);
+  }
+
+  function handleCopyStatement() {
+    if (!statementContent) return;
+    navigator.clipboard.writeText(statementContent);
+    setStatementCopied(true);
+    setTimeout(() => setStatementCopied(false), 3000);
+  }
+
+  function handleDownloadStatement() {
+    if (!statementContent) return;
+    const blob = new Blob([statementContent], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `accessibility-statement-${projectId}.md`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
 
   // Load project + scans
   const loadData = useCallback(
@@ -424,7 +790,7 @@ export default function ProjectDetailPage() {
       pollRef.current = setInterval(async () => {
         try {
           const progress = await api.getScanProgress(projectId, activeScan.id);
-          setPollErrorCount(0); // reset on success
+          pollErrorCountRef.current = 0; // reset on success
           if (progress.status === "completed" || progress.status === "failed") {
             setScanning(false);
             if (pollRef.current) clearInterval(pollRef.current);
@@ -436,15 +802,12 @@ export default function ProjectDetailPage() {
           console.error("Polling error:", err);
           setApiError(toUserFacingError(err));
           // If we fail 10 times in a row, auto-stop to prevent hanging
-          setPollErrorCount((prev) => {
-            const next = prev + 1;
-            if (next >= 10) {
-              setScanning(false);
-              setScanStatus("failed");
-              if (pollRef.current) clearInterval(pollRef.current);
-            }
-            return next;
-          });
+          pollErrorCountRef.current += 1;
+          if (pollErrorCountRef.current >= 10) {
+            setScanning(false);
+            setScanStatus("failed");
+            if (pollRef.current) clearInterval(pollRef.current);
+          }
         }
       }, 2000);
     }
@@ -518,7 +881,42 @@ export default function ProjectDetailPage() {
     return () => clearInterval(interval);
   }, [latestScan?.id, aiAnalysisPending, scanning, loadData]);
 
-  const issues: any[] = latestScan?.issues || [];
+  // Multi-Lens & Regulatory Profile Projection (§39–§48)
+  useEffect(() => {
+    if (!latestScan?.id) {
+      setProjectedScan(null);
+      return;
+    }
+    let cancelled = false;
+    setProjectedLoading(true);
+    api.getScan(projectId, latestScan.id, {
+      profile: regulatoryProfile,
+      persona: personaLens === "ALL" ? undefined : personaLens,
+      view: roleView,
+    })
+      .then((data) => {
+        if (!cancelled) {
+          setProjectedScan(data);
+        }
+      })
+      .catch((err) => {
+        console.warn("Failed to load projected scan view:", err);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setProjectedLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, latestScan?.id, roleView, regulatoryProfile, personaLens]);
+
+  const issues: any[] = useMemo(() => {
+    return (personaLens !== "ALL" && projectedScan?.view_data?.findings)
+      ? projectedScan.view_data.findings
+      : (latestScan?.issues || []);
+  }, [personaLens, projectedScan?.view_data?.findings, latestScan?.issues]);
   const score = latestScan?.score ?? null;
   const issueTypesCount = Number(
     latestScan?.issue_types_count || issues.length || 0,
@@ -542,6 +940,46 @@ export default function ProjectDetailPage() {
       issues.filter((i: any) => i.severity === "minor").length,
   };
 
+  const contextFilteredIssues = useMemo(() => {
+    if (!contextualFilter?.active) return issues;
+
+    if (contextualFilter.targetFindingIds && contextualFilter.targetFindingIds.length > 0) {
+      const idSet = new Set(contextualFilter.targetFindingIds.map(String));
+      return issues.filter((issue: any) => {
+        const fid = String(issue.id || issue.finding_id || issue.issue_id || "");
+        return idSet.has(fid);
+      });
+    }
+
+    if (contextualFilter.severity === "mandatory" || contextualFilter.severity === "critical_serious") {
+      return issues.filter((i: any) => i.severity === "critical" || i.severity === "serious");
+    }
+    if (contextualFilter.severity === "advisory") {
+      return issues.filter((i: any) => i.severity === "moderate" || i.severity === "minor");
+    }
+    if (contextualFilter.severity === "needs_review") {
+      return issues.filter((i: any) => i.issue_type === "needs-review" || i.needs_manual_review);
+    }
+    return issues;
+  }, [issues, contextualFilter]);
+
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: contextFilteredIssues.length };
+    for (const cat of ISSUE_CATEGORIES) {
+      if (cat.id !== "all") counts[cat.id] = 0;
+    }
+    for (const issue of contextFilteredIssues) {
+      const cat = getIssueCategory(issue);
+      counts[cat.id] = (counts[cat.id] || 0) + 1;
+    }
+    return counts;
+  }, [contextFilteredIssues]);
+
+  const categoryFilteredIssues = useMemo(() => {
+    if (selectedCategory === "all") return contextFilteredIssues;
+    return contextFilteredIssues.filter((issue: any) => getIssueCategory(issue).id === selectedCategory);
+  }, [contextFilteredIssues, selectedCategory]);
+
   const presentationOrder: PresentationBucket[] = [
     "verified",
     "needs_review",
@@ -554,18 +992,19 @@ export default function ProjectDetailPage() {
       low_confidence: [],
     };
 
-    for (const issue of issues) {
+    for (const issue of categoryFilteredIssues) {
       grouped[classifyIssueBucket(issue)].push(issue);
     }
 
     return grouped;
-  }, [issues]);
+  }, [categoryFilteredIssues]);
+
   const presentationCounts: Record<PresentationBucket, number> = {
     verified: issuesByPresentation.verified.length,
     needs_review: issuesByPresentation.needs_review.length,
     low_confidence: issuesByPresentation.low_confidence.length,
   };
-  const totalPresentationIssues = issues.length;
+  const totalPresentationIssues = categoryFilteredIssues.length;
   const presentationPercentages: Record<PresentationBucket, string> = {
     verified: formatBucketPercentage(
       presentationCounts.verified,
@@ -591,10 +1030,29 @@ export default function ProjectDetailPage() {
     0,
   );
 
+  const issuesByCategoryGroup = useMemo(() => {
+    const groups: { category: (typeof ISSUE_CATEGORIES)[number]; issues: any[] }[] = [];
+    const allowedIssues = categoryFilteredIssues.filter((issue: any) => {
+      const bucket = classifyIssueBucket(issue);
+      if (issueViewFilter === "verified_only") return bucket === "verified";
+      if (issueViewFilter === "hide_low_confidence") return bucket === "verified" || bucket === "needs_review";
+      return true;
+    });
+
+    for (const cat of ISSUE_CATEGORIES) {
+      if (cat.id === "all") continue;
+      if (selectedCategory !== "all" && cat.id !== selectedCategory) continue;
+
+      const catIssues = allowedIssues.filter((issue: any) => getIssueCategory(issue).id === cat.id);
+      if (catIssues.length > 0) {
+        groups.push({ category: cat, issues: catIssues });
+      }
+    }
+
+    return groups;
+  }, [categoryFilteredIssues, issueViewFilter, selectedCategory]);
+
   const trust = latestScan?.trust || {};
-  const trustWarnings: string[] = Array.isArray(trust.calibration_warnings)
-    ? trust.calibration_warnings
-    : [];
   const lowTrustRules: string[] = Array.isArray(trust.low_trust_rules_present)
     ? trust.low_trust_rules_present
     : [];
@@ -611,8 +1069,6 @@ export default function ProjectDetailPage() {
             0,
           ) / latestScan.issues.length
         : 0;
-  const suppressionRate =
-    typeof trust.suppression_rate === "number" ? trust.suppression_rate : 0;
   const trustDataQuality =
     typeof trust.data_quality === "string" && trust.data_quality
       ? trust.data_quality
@@ -682,11 +1138,14 @@ export default function ProjectDetailPage() {
   const renderIssueCard = (
     issue: any,
     idx: number,
-    bucket: PresentationBucket,
+    explicitBucket?: PresentationBucket,
   ) => {
+    const bucket = explicitBucket || classifyIssueBucket(issue);
     const issueKey = issue.issue_id || `${bucket}-${idx}`;
     const isExpanded = expandedIssue === issueKey;
     const bucketMeta = ISSUE_PRESENTATION_META[bucket];
+    const issueCat = getIssueCategory(issue);
+    const CatIcon = issueCat.icon;
 
     return (
       <div
@@ -713,6 +1172,13 @@ export default function ProjectDetailPage() {
                 <span className="font-mono text-sm font-extrabold text-[var(--beacon-text)] tracking-tight">
                   {issue.rule_id || issue.description}
                 </span>
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded border inline-flex items-center gap-1.5 shadow-xs ${issueCat.badgeClass}`}
+                  title={`Category: ${issueCat.label}`}
+                >
+                  <CatIcon className="w-3 h-3 shrink-0" />
+                  <span>{issueCat.shortLabel}</span>
+                </span>
                 {issue.wcag_criterion && (
                   <span className="text-[10px] font-bold text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">
                     WCAG {issue.wcag_criterion}
@@ -734,6 +1200,24 @@ export default function ProjectDetailPage() {
                   >
                     Consensus ({issue.agreement_count} engines)
                   </span>
+                )}
+                {issue.engine && (
+                  <span className="text-[10px] font-bold text-zinc-600 dark:text-zinc-400 bg-zinc-200/70 dark:bg-zinc-800 px-1.5 py-0.5 rounded uppercase font-mono">
+                    {issue.engine}
+                  </span>
+                )}
+                {Array.isArray(issue.personas) && issue.personas.length > 0 && (
+                  <div className="flex gap-1 flex-wrap">
+                    {issue.personas.map((p: any) => (
+                      <span
+                        key={p.id || p}
+                        className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-800 dark:text-purple-300 border border-purple-500/30 inline-flex items-center gap-1"
+                      >
+                        <IconUser className="w-2.5 h-2.5 shrink-0" />
+                        <span>{p.name || p.id || p}</span>
+                      </span>
+                    ))}
+                  </div>
                 )}
               </div>
 
@@ -1052,6 +1536,34 @@ export default function ProjectDetailPage() {
                         </div>
                         <span className="text-[10px] font-mono font-bold bg-black/10 dark:bg-white/10 px-1.5 py-0.5 rounded text-[var(--beacon-text)] group-hover:text-black">.json</span>
                       </button>
+
+                      <button
+                        onClick={() => {
+                          setShowExportMenu(false);
+                          downloadScanReport(projectId, latestScan.id, "csv");
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold hover:bg-[var(--beacon-primary)] hover:text-black transition-colors flex items-center justify-between group cursor-pointer"
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-extrabold uppercase text-[var(--beacon-text)] group-hover:text-black">Audit Findings CSV</span>
+                          <span className="text-[10px] text-[var(--beacon-text-muted)] group-hover:text-black/80">Compliance Spreadsheet Matrix</span>
+                        </div>
+                        <span className="text-[10px] font-mono font-bold bg-black/10 dark:bg-white/10 px-1.5 py-0.5 rounded text-[var(--beacon-text)] group-hover:text-black">.csv</span>
+                      </button>
+                      <div className="h-px bg-[var(--beacon-border)]/60 my-1" />
+                      <button
+                        onClick={() => {
+                          setShowExportMenu(false);
+                          handleOpenStatementModal();
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold hover:bg-[var(--beacon-primary)] hover:text-black transition-colors flex items-center justify-between group cursor-pointer"
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-extrabold uppercase text-[var(--beacon-text)] group-hover:text-black">Accessibility Statement</span>
+                          <span className="text-[10px] text-[var(--beacon-text-muted)] group-hover:text-black/80">W3C / UK PSBAR / EU Draft (§68)</span>
+                        </div>
+                        <span className="text-[10px] font-mono font-bold bg-black/10 dark:bg-white/10 px-1.5 py-0.5 rounded text-[var(--beacon-text)] group-hover:text-black">.md</span>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -1185,6 +1697,129 @@ export default function ProjectDetailPage() {
         document.body
       )}
 
+      {/* ── Accessibility Statement Modal (§68) ──────────────────── */}
+      {statementOpen && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+          <div className="bg-zinc-950 border-2 border-zinc-700 rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-scale-in">
+            <div className="p-5 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/60">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[var(--beacon-primary)]/15 border border-[var(--beacon-primary)]/30 flex items-center justify-center text-[var(--beacon-primary)]">
+                  <IconShield className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-wider text-white">
+                    Accessibility Statement Generator
+                  </h3>
+                  <p className="text-[11px] text-zinc-400 font-medium">
+                    Authoritative compliance statement draft based on verified audit findings (§68)
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setStatementOpen(false)}
+                className="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center text-zinc-300 transition-colors"
+                aria-label="Close modal"
+              >
+                <IconX className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 overflow-y-auto flex-1 text-xs">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
+                    Organization / Project Name
+                  </label>
+                  <input
+                    type="text"
+                    value={statementOrgName}
+                    onChange={(e) => setStatementOrgName(e.target.value)}
+                    placeholder="Acme Corporation"
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-100 font-medium focus:outline-none focus:ring-1 focus:ring-[var(--beacon-primary)]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
+                    Target Standard / Profile
+                  </label>
+                  <select
+                    value={statementProfile}
+                    onChange={(e) => {
+                      setStatementProfile(e.target.value);
+                      void generateStatement(statementOrgName, e.target.value);
+                    }}
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-100 font-medium focus:outline-none focus:ring-1 focus:ring-[var(--beacon-primary)]"
+                  >
+                    <option value="W3C WCAG 2.2 Level AA">W3C WCAG 2.2 Level AA (Global)</option>
+                    <option value="US Section 508 / VPAT">US Section 508 / VPAT</option>
+                    <option value="EU EN 301 549 / EAA">EU Standard EN 301 549 (EAA)</option>
+                    <option value="UK Public Sector (PSBAR)">UK Public Sector (PSBAR)</option>
+                    <option value="India GIGW 3.0">Govt of India GIGW 3.0</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  onClick={() => void generateStatement()}
+                  disabled={statementLoading}
+                  className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <IconRefresh className={`w-3.5 h-3.5 ${statementLoading ? "animate-spin" : ""}`} />
+                  <span>{statementLoading ? "Regenerating..." : "Refresh Draft"}</span>
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
+                  Generated Markdown Preview
+                </label>
+                <div className="relative">
+                  {statementLoading ? (
+                    <div className="p-12 text-center bg-black/60 rounded-xl border border-zinc-800">
+                      <div className="w-6 h-6 border-2 border-[var(--beacon-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                      <span className="text-zinc-400 font-medium">Drafting official accessibility statement...</span>
+                    </div>
+                  ) : (
+                    <pre className="p-4 bg-black/80 rounded-xl border border-zinc-800 font-mono text-[11px] text-zinc-200 leading-relaxed whitespace-pre-wrap max-h-80 overflow-y-auto">
+                      {statementContent}
+                    </pre>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-zinc-800 bg-zinc-900/60 flex items-center justify-between gap-3">
+              <span className="text-[11px] text-zinc-400 italic">
+                Strict §68 rule: Never claims full conformance if unresolved findings remain.
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleCopyStatement}
+                  className="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  {statementCopied ? (
+                    <>
+                      <IconCheck className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-emerald-400 font-bold">Copied!</span>
+                    </>
+                  ) : (
+                    <span>Copy Markdown</span>
+                  )}
+                </button>
+                <button
+                  onClick={handleDownloadStatement}
+                  className="px-4 py-2 rounded-lg bg-[var(--beacon-primary)] hover:opacity-90 text-black font-black text-xs transition-opacity flex items-center gap-1.5 shadow-sm"
+                >
+                  <IconDownload className="w-3.5 h-3.5" />
+                  <span>Download .md</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Score Strip (Neo-brutalism layout) ────────────────── */}
       {latestScan && (
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
@@ -1281,6 +1916,478 @@ export default function ProjectDetailPage() {
           </span>
         </div>
       )}
+
+      {/* ── Governance & Perspective Ribbon (§39–§48) ────────────────── */}
+      <div className="bg-[var(--beacon-card-bg)] border border-zinc-200 dark:border-zinc-800/80 rounded-xl p-4 mb-6 shadow-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5">
+          
+          {/* Role View Switcher */}
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-[var(--beacon-text-muted)]">
+                Role Perspective
+              </span>
+              <span className="text-[11px] text-[var(--beacon-text-muted)] font-normal">
+                — {ROLE_OPTIONS.find((r) => r.id === roleView)?.desc}
+              </span>
+            </div>
+            <div className="flex items-center gap-1 bg-zinc-100/80 dark:bg-zinc-900/60 p-1 rounded-lg border border-zinc-200 dark:border-zinc-800/80 w-fit">
+              {ROLE_OPTIONS.map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => setRoleView(r.id)}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${
+                    roleView === r.id
+                      ? "bg-[var(--beacon-primary)] text-black shadow-sm font-black"
+                      : "text-[var(--beacon-text-muted)] hover:text-[var(--beacon-text)] hover:bg-white/70 dark:hover:bg-zinc-800/60"
+                  }`}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Regulatory Profile & Persona Lens Selectors */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Regulatory Profile */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-[var(--beacon-text-muted)]">
+                Regulatory Profile
+              </label>
+              <div className="relative">
+                <select
+                  value={regulatoryProfile}
+                  onChange={(e) => setRegulatoryProfile(e.target.value)}
+                  className="h-9 w-56 pl-3 pr-8 rounded-lg border border-zinc-200 dark:border-zinc-800/80 bg-zinc-100/80 dark:bg-zinc-900/60 text-xs font-bold text-[var(--beacon-text)] cursor-pointer outline-none focus:ring-1 focus:ring-[var(--beacon-primary)] appearance-none transition-colors"
+                >
+                  {REGULATORY_PROFILES_OPTIONS.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.label} ({p.badge})
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--beacon-text-muted)]">
+                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Persona Lens */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-[var(--beacon-text-muted)]">
+                Persona Lens
+              </label>
+              <div className="relative">
+                <select
+                  value={personaLens}
+                  onChange={(e) => setPersonaLens(e.target.value)}
+                  className="h-9 w-44 pl-3 pr-8 rounded-lg border border-zinc-200 dark:border-zinc-800/80 bg-zinc-100/80 dark:bg-zinc-900/60 text-xs font-bold text-[var(--beacon-text)] cursor-pointer outline-none focus:ring-1 focus:ring-[var(--beacon-primary)] appearance-none transition-colors"
+                >
+                  {PERSONA_OPTIONS.map((pl) => (
+                    <option key={pl.id} value={pl.id}>
+                      {pl.label}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--beacon-text-muted)]">
+                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Loading Indicator */}
+            {projectedLoading && (
+              <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 self-end mb-2">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                <span className="text-[11px] font-bold">Applying Lens...</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Dynamic Role / Compliance / Executive Perspective Summary Card */}
+        {projectedScan?.view_data && (
+          <div className="mt-3.5 pt-3.5 border-t border-zinc-200/80 dark:border-zinc-800/80 text-xs">
+            {roleView === "COMPLIANCE" && (
+              <div className="bg-zinc-50/80 dark:bg-zinc-900/40 p-4 rounded-xl border border-zinc-200/80 dark:border-zinc-800/60 shadow-xs space-y-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div>
+                    <div className="text-[10px] uppercase font-bold text-[var(--beacon-text-muted)] tracking-wider">Conformance Status</div>
+                    <div className={`text-sm font-black mt-0.5 ${
+                      projectedScan.view_data.technical_conformance_status === "CONFORMANT" ? "text-emerald-600 dark:text-emerald-400" :
+                      projectedScan.view_data.technical_conformance_status === "PARTIAL" ? "text-amber-600 dark:text-amber-400" : "text-rose-600 dark:text-rose-400"
+                    }`}>
+                      {projectedScan.view_data.technical_conformance_status || "EVALUATING"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase font-bold text-[var(--beacon-text-muted)] tracking-wider">Technical Assessment Score</div>
+                    <div className="text-sm font-black text-[var(--beacon-text)] mt-0.5">
+                      {projectedScan.view_data.technical_assessment_score ?? projectedScan.profile_score?.profile_score ?? projectedScan.profile_score?.score_details?.score ?? projectedScan.profile_score?.score ?? "--"}/100
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase font-bold text-[var(--beacon-text-muted)] tracking-wider">Mandatory Violations</div>
+                    <button
+                      onClick={() => {
+                        applyContextualFilter({
+                          active: true,
+                          sourceRole: "COMPLIANCE",
+                          profileId: regulatoryProfile,
+                          profileName: activeProfileLabel,
+                          personaId: personaLens,
+                          personaName: activePersonaLabel,
+                          severity: "mandatory",
+                          title: `${activeProfileLabel.toUpperCase()} MANDATORY FINDINGS`,
+                          subtitle: `Showing ${projectedScan.view_data.mandatory_violations_count ?? 0} mandatory blocking violations for ${activePersonaLabel}`,
+                          targetFindingIds: projectedScan.view_data.mandatory_finding_ids,
+                        });
+                      }}
+                      className="text-sm font-black text-rose-600 dark:text-rose-400 mt-0.5 hover:underline cursor-pointer flex items-center gap-1 text-left"
+                      title="Click to filter to mandatory blocking violations in Issues Tab"
+                    >
+                      {projectedScan.view_data.mandatory_violations_count ?? 0} blocking →
+                    </button>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase font-bold text-[var(--beacon-text-muted)] tracking-wider">Advisory Items</div>
+                    <button
+                      onClick={() => {
+                        applyContextualFilter({
+                          active: true,
+                          sourceRole: "COMPLIANCE",
+                          profileId: regulatoryProfile,
+                          profileName: activeProfileLabel,
+                          personaId: personaLens,
+                          personaName: activePersonaLabel,
+                          severity: "advisory",
+                          title: `${activeProfileLabel.toUpperCase()} ADVISORY FINDINGS`,
+                          subtitle: `Showing ${projectedScan.view_data.advisory_findings_count ?? 0} advisory findings for ${activePersonaLabel}`,
+                          targetFindingIds: projectedScan.view_data.advisory_finding_ids,
+                        });
+                      }}
+                      className="text-sm font-black text-amber-600 dark:text-amber-300 mt-0.5 hover:underline cursor-pointer flex items-center gap-1 text-left"
+                      title="Click to filter to advisory findings in Issues Tab"
+                    >
+                      {projectedScan.view_data.advisory_findings_count ?? 0} advisory →
+                    </button>
+                  </div>
+                </div>
+
+                {/* Finding Distribution Explanation (Fixing 10 vs 5 Discrepancy) */}
+                <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-lg bg-zinc-100/80 dark:bg-zinc-800/60 border border-zinc-200/70 dark:border-zinc-700/60 text-[11px]">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-extrabold text-[var(--beacon-text)]">
+                      {issues.length} Total Findings:
+                    </span>
+                    <span className="font-bold text-rose-600 dark:text-rose-400">
+                      {projectedScan.view_data.mandatory_violations_count ?? 0} Mandatory Blocking
+                    </span>
+                    <span className="text-zinc-400 dark:text-zinc-600">•</span>
+                    <span className="font-bold text-amber-600 dark:text-amber-400">
+                      {projectedScan.view_data.advisory_findings_count ?? 0} Advisory
+                    </span>
+                    <span className="text-zinc-400 dark:text-zinc-600">•</span>
+                    <button
+                      onClick={() => {
+                        applyContextualFilter({
+                          active: true,
+                          sourceRole: "COMPLIANCE",
+                          profileId: regulatoryProfile,
+                          profileName: activeProfileLabel,
+                          personaId: personaLens,
+                          personaName: activePersonaLabel,
+                          severity: "other",
+                          title: `${activeProfileLabel.toUpperCase()} OTHER FINDINGS`,
+                          subtitle: `Showing non-blocking / informational findings outside ${activeProfileLabel}`,
+                          targetFindingIds: projectedScan.view_data.other_finding_ids,
+                        });
+                      }}
+                      className="font-bold text-[var(--beacon-text-muted)] hover:text-[var(--beacon-text)] hover:underline cursor-pointer"
+                    >
+                      {Math.max(0, issues.length - (projectedScan.view_data.mandatory_violations_count ?? 0) - (projectedScan.view_data.advisory_findings_count ?? 0))} Other / Non-blocking Findings →
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-[var(--beacon-text-muted)] font-medium">
+                    Profile Filter Active
+                  </span>
+                </div>
+
+                {/* Card Action & Disclaimer */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-zinc-200/60 dark:border-zinc-800/40">
+                  <p className="text-[11px] text-[var(--beacon-text-muted)] italic flex-1 flex items-start gap-1.5 leading-relaxed">
+                    <IconInfo className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 shrink-0 mt-0.5" />
+                    <span>{projectedScan.view_data.disclaimer || "Technical assessment only. This evaluation maps detected evidence against the selected regulatory criteria. It does not constitute legal advice, formal ACR/VPAT certification, or a government determination of compliance."}</span>
+                  </p>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => {
+                        clearActiveContext();
+                        setIssueViewFilter("show_all");
+                        setTab("issues");
+                      }}
+                      className="px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-[var(--beacon-text)] text-xs font-bold hover:bg-zinc-50 dark:hover:bg-zinc-700/60 transition-all shadow-xs cursor-pointer"
+                    >
+                      View All {issues.length} Findings
+                    </button>
+                    <button
+                      onClick={() => {
+                        applyContextualFilter({
+                          active: true,
+                          sourceRole: "COMPLIANCE",
+                          profileId: regulatoryProfile,
+                          profileName: activeProfileLabel,
+                          personaId: personaLens,
+                          personaName: activePersonaLabel,
+                          severity: "mandatory",
+                          title: `${activeProfileLabel.toUpperCase()} MANDATORY FINDINGS`,
+                          subtitle: `Showing ${projectedScan.view_data.mandatory_violations_count ?? 0} mandatory blocking violations for ${activePersonaLabel}`,
+                          targetFindingIds: projectedScan.view_data.mandatory_finding_ids,
+                        });
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-[var(--beacon-primary)] text-black text-xs font-black hover:brightness-105 transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span>View {projectedScan.view_data.mandatory_violations_count ?? 0} Blocking Issues</span>
+                      <span>→</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {roleView === "EXECUTIVE" && (
+              <div className="bg-zinc-50/80 dark:bg-zinc-900/40 p-4 rounded-xl border border-zinc-200/80 dark:border-zinc-800/60 shadow-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div>
+                    <div className="text-[10px] uppercase font-bold text-[var(--beacon-text-muted)] tracking-wider">Health Score</div>
+                    <div className="text-sm font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                      {projectedScan.view_data.overall_health_score ?? "--"}/100
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase font-bold text-[var(--beacon-text-muted)] tracking-wider">High-Impact Issues</div>
+                    <button
+                      onClick={() => {
+                        applyContextualFilter({
+                          active: true,
+                          sourceRole: "EXECUTIVE",
+                          severity: "critical_serious",
+                          title: "EXECUTIVE HIGH-IMPACT FINDINGS",
+                          subtitle: `Showing ${projectedScan.view_data.critical_and_serious_issues ?? 0} critical & serious risk issues`,
+                          targetFindingIds: projectedScan.view_data.critical_serious_ids,
+                        });
+                      }}
+                      className="text-sm font-black text-rose-600 dark:text-rose-400 mt-0.5 hover:underline cursor-pointer flex items-center gap-1"
+                      title="Click to view critical & serious issues in Issues Tab"
+                    >
+                      {projectedScan.view_data.critical_and_serious_issues ?? 0} Critical/Serious →
+                    </button>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase font-bold text-[var(--beacon-text-muted)] tracking-wider">Pending Review</div>
+                    <div className="text-sm font-black text-amber-600 dark:text-amber-300 mt-0.5">
+                      {projectedScan.view_data.pending_human_review ?? 0} manual checks
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase font-bold text-[var(--beacon-text-muted)] tracking-wider">Validated Fixes</div>
+                    <div className="text-sm font-black text-teal-600 dark:text-teal-400 mt-0.5">
+                      {projectedScan.view_data.validated_fixes_count ?? 0} ready
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-3 mt-3 border-t border-zinc-200/60 dark:border-zinc-800/40">
+                  <p className="text-[11px] text-[var(--beacon-text-soft)] font-medium flex-1 flex items-center gap-1.5">
+                    <IconInfo className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 shrink-0" />
+                    <span>{projectedScan.view_data.executive_summary_statement || "Executive summary of audited digital assets."}</span>
+                  </p>
+                  <button
+                    onClick={() => {
+                      applyContextualFilter({
+                        active: true,
+                        sourceRole: "EXECUTIVE",
+                        severity: "critical_serious",
+                        title: "EXECUTIVE RISK FINDINGS",
+                        subtitle: `Showing high-priority risk findings`,
+                        targetFindingIds: projectedScan.view_data.critical_serious_ids,
+                      });
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-[var(--beacon-primary)] text-black text-xs font-black hover:brightness-105 transition-all shadow-xs shrink-0 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>View {projectedScan.view_data.critical_and_serious_issues ?? 0} High-Impact Issues</span>
+                    <span>→</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {roleView === "QA_A11Y" && (
+              <div className="bg-zinc-50/80 dark:bg-zinc-900/40 p-4 rounded-xl border border-zinc-200/80 dark:border-zinc-800/60 shadow-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div>
+                    <div className="text-[10px] uppercase font-bold text-[var(--beacon-text-muted)] tracking-wider">Verification Queue</div>
+                    <button
+                      onClick={() => {
+                        applyContextualFilter({
+                          active: true,
+                          sourceRole: "QA_A11Y",
+                          severity: "needs_review",
+                          title: "QA VERIFICATION QUEUE",
+                          subtitle: `Showing ${projectedScan.view_data.verification_queue_size ?? projectedScan.view_data.needs_review_count ?? 0} items for assistive technology review`,
+                          targetFindingIds: projectedScan.view_data.review_queue_ids,
+                        });
+                      }}
+                      className="text-sm font-black text-amber-600 dark:text-amber-400 mt-0.5 hover:underline cursor-pointer flex items-center gap-1 text-left"
+                    >
+                      {projectedScan.view_data.verification_queue_size ?? projectedScan.view_data.needs_review_count ?? 0} items for review →
+                    </button>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase font-bold text-[var(--beacon-text-muted)] tracking-wider">Verified Violations</div>
+                    <button
+                      onClick={() => {
+                        applyContextualFilter({
+                          active: true,
+                          sourceRole: "QA_A11Y",
+                          severity: "all",
+                          title: "QA VERIFIED VIOLATIONS",
+                          subtitle: `Showing ${projectedScan.view_data.verified_failures_count ?? projectedScan.view_data.verified_violations?.length ?? 0} confirmed automated failures`,
+                          targetFindingIds: projectedScan.view_data.verified_failure_ids,
+                        });
+                      }}
+                      className="text-sm font-black text-rose-600 dark:text-rose-400 mt-0.5 hover:underline cursor-pointer flex items-center gap-1"
+                      title="Click to view verified issues in Issues Tab"
+                    >
+                      {projectedScan.view_data.verified_failures_count ?? projectedScan.view_data.verified_violations?.length ?? 0} confirmed →
+                    </button>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase font-bold text-[var(--beacon-text-muted)] tracking-wider">Assertion Checklist</div>
+                    <div className="text-sm font-black text-[var(--beacon-text)] mt-0.5">
+                      {projectedScan.view_data.assertion_checklist?.length ?? 50} WCAG criteria
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase font-bold text-[var(--beacon-text-muted)] tracking-wider">Total Findings</div>
+                    <button
+                      onClick={() => {
+                        clearActiveContext();
+                        setIssueViewFilter("show_all");
+                        setTab("issues");
+                      }}
+                      className="text-sm font-black text-[var(--beacon-text)] mt-0.5 hover:underline cursor-pointer flex items-center gap-1"
+                      title="Click to view all issues in Issues Tab"
+                    >
+                      {issues.length} detected →
+                    </button>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-3 mt-3 border-t border-zinc-200/60 dark:border-zinc-800/40">
+                  <p className="text-[11px] text-[var(--beacon-text-muted)] italic flex-1 flex items-center gap-1.5">
+                    <IconInfo className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 shrink-0" />
+                    <span>Prioritize items in the Verification Queue using assistive technology tests (screen reader &amp; keyboard).</span>
+                  </p>
+                  <button
+                    onClick={() => {
+                      applyContextualFilter({
+                        active: true,
+                        sourceRole: "QA_A11Y",
+                        severity: "needs_review",
+                        title: "QA VERIFICATION QUEUE",
+                        subtitle: "Review items requiring manual verification",
+                        targetFindingIds: projectedScan.view_data.review_queue_ids,
+                      });
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-[var(--beacon-primary)] text-black text-xs font-black hover:brightness-105 transition-all shadow-xs shrink-0 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>View Verification Queue ({projectedScan.view_data.verification_queue_size ?? projectedScan.view_data.needs_review_count ?? 0})</span>
+                    <span>→</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {roleView === "DEVELOPER" && (
+              <div className="bg-zinc-50/80 dark:bg-zinc-900/40 p-4 rounded-xl border border-zinc-200/80 dark:border-zinc-800/60 shadow-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div>
+                    <div className="text-[10px] uppercase font-bold text-[var(--beacon-text-muted)] tracking-wider">Actionable Violations</div>
+                    <button
+                      onClick={() => {
+                        applyContextualFilter({
+                          active: true,
+                          sourceRole: "DEVELOPER",
+                          severity: "all",
+                          title: "DEVELOPER ACTIONABLE CODE FIXES",
+                          subtitle: `Showing ${projectedScan.view_data.total_actionable_findings ?? projectedScan.view_data.actionable_count ?? issues.length} actionable AST items with code patches`,
+                          targetFindingIds: projectedScan.view_data.actionable_finding_ids,
+                        });
+                      }}
+                      className="text-sm font-black text-rose-600 dark:text-rose-400 mt-0.5 hover:underline cursor-pointer flex items-center gap-1"
+                      title="Click to view actionable fixes in Issues Tab"
+                    >
+                      {projectedScan.view_data.total_actionable_findings ?? projectedScan.view_data.actionable_count ?? issues.length} AST items →
+                    </button>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase font-bold text-[var(--beacon-text-muted)] tracking-wider">Remediation Ready</div>
+                    <div className="text-sm font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                      {projectedScan.view_data.remediation_ready_count ?? projectedScan.view_data.total_actionable_findings ?? 0} patches ready
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase font-bold text-[var(--beacon-text-muted)] tracking-wider">Failing Elements</div>
+                    <div className="text-sm font-black text-[var(--beacon-text)] mt-0.5">
+                      {failingElementsCount} instances
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase font-bold text-[var(--beacon-text-muted)] tracking-wider">Total Findings</div>
+                    <button
+                      onClick={() => {
+                        clearActiveContext();
+                        setIssueViewFilter("show_all");
+                        setTab("issues");
+                      }}
+                      className="text-sm font-black text-[var(--beacon-text)] mt-0.5 hover:underline cursor-pointer flex items-center gap-1"
+                      title="Click to view all issues in Issues Tab"
+                    >
+                      {issues.length} detected →
+                    </button>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-3 mt-3 border-t border-zinc-200/60 dark:border-zinc-800/40">
+                  <p className="text-[11px] text-[var(--beacon-text-muted)] italic flex-1 flex items-center gap-1.5">
+                    <IconInfo className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 shrink-0" />
+                    <span>Verified selectors are mapped to DOM AST nodes. Click any issue below to inspect code diffs and fixes.</span>
+                  </p>
+                  <button
+                    onClick={() => {
+                      applyContextualFilter({
+                        active: true,
+                        sourceRole: "DEVELOPER",
+                        severity: "all",
+                        title: "DEVELOPER ACTIONABLE CODE FIXES",
+                        subtitle: "Review code-first fixes and AST locations",
+                        targetFindingIds: projectedScan.view_data.actionable_finding_ids,
+                      });
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-[var(--beacon-primary)] text-black text-xs font-black hover:brightness-105 transition-all shadow-xs shrink-0 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>View Actionable Code Fixes ({projectedScan.view_data.total_actionable_findings ?? projectedScan.view_data.actionable_count ?? issues.length})</span>
+                    <span>→</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
 {/* ── Tabs ──────────────────────────────────────── */}
       <div className="flex gap-1.5 bg-zinc-100/80 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800/80 p-1.5 rounded-xl w-full overflow-x-auto mb-8 shadow-sm backdrop-blur-sm">
@@ -1400,10 +2507,15 @@ export default function ProjectDetailPage() {
                   </div>
                 </div>
               ) : (
-                <div className="flex-1 flex flex-col items-center justify-center">
-                  <p className="text-5xl mb-4">🎉</p>
-                  <p className="text-[var(--beacon-text-muted)] text-base font-bold text-center">
+                <div className="flex-1 flex flex-col items-center justify-center py-6">
+                  <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-500 mb-3 shadow-xs">
+                    <IconCheckCircle className="w-8 h-8" />
+                  </div>
+                  <p className="text-[var(--beacon-text)] text-base font-bold text-center">
                     Perfect score! No issues identified.
+                  </p>
+                  <p className="text-xs text-[var(--beacon-text-muted)] text-center mt-1">
+                    All evaluated automated checks passed successfully.
                   </p>
                 </div>
               )}
@@ -1770,72 +2882,202 @@ export default function ProjectDetailPage() {
       {/* ── ISSUES TAB ────────────────────────────────────────── */}
       {tab === "issues" && latestScan && (
         <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--beacon-border)]/60">
+          {/* Contextual Filter & Compliance Projection Banner */}
+          {contextualFilter?.active && (
+            <div className="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-zinc-50/95 dark:bg-zinc-900/70 p-4 shadow-xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-[var(--beacon-text)]">
+                      {contextualFilter.title}
+                    </span>
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[var(--beacon-primary)] text-black">
+                      Perspective Active
+                    </span>
+                  </div>
+                  <p className="text-xs text-[var(--beacon-text-muted)] mt-0.5">
+                    {contextualFilter.subtitle}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-zinc-200/80 dark:bg-zinc-800 text-[var(--beacon-text)]">
+                    Showing {contextFilteredIssues.length} of {issues.length} findings
+                  </span>
+                  <button
+                    onClick={clearActiveContext}
+                    className="text-xs font-bold px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-[var(--beacon-text-muted)] hover:text-[var(--beacon-text)] hover:border-zinc-400 transition-colors cursor-pointer"
+                  >
+                    Clear Context &amp; Show All
+                  </button>
+                </div>
+              </div>
+
+              {/* Dismissible context tags */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-zinc-200/60 dark:border-zinc-800/50 text-xs">
+                <span className="text-[10px] font-bold text-[var(--beacon-text-muted)] uppercase tracking-wider mr-1">
+                  Active Filters:
+                </span>
+                {contextualFilter.profileName && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20 text-xs font-semibold">
+                    <span>{contextualFilter.profileName}</span>
+                  </span>
+                )}
+                {contextualFilter.personaName && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20 text-xs font-semibold">
+                    <span>{contextualFilter.personaName}</span>
+                  </span>
+                )}
+                {contextualFilter.severity && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20 text-xs font-semibold">
+                    <span className="capitalize">{contextualFilter.severity.replace("_", " ")}</span>
+                    <button
+                      onClick={() => setContextualFilter(prev => prev ? { ...prev, severity: undefined, targetFindingIds: undefined, subtitle: "Showing all profile findings" } : null)}
+                      className="hover:text-rose-950 dark:hover:text-rose-100 font-black cursor-pointer text-sm"
+                      title="Remove severity filter"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-[var(--beacon-border)]/60">
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h3 className="text-sm font-black uppercase tracking-[0.14em] text-[var(--beacon-text)]">
                   Discovered Issues
                 </h3>
                 <span className="text-xs font-bold bg-zinc-100 dark:bg-zinc-800 text-[var(--beacon-text-muted)] border border-zinc-200 dark:border-zinc-700 px-2.5 py-0.5 rounded-full">
-                  {issueTypesCount} rule types • {failingElementsCount} failing elements
+                  {issues.length} total • {issueTypesCount} rule types • {failingElementsCount} failing elements
                 </span>
               </div>
               <p className="text-xs font-medium text-[var(--beacon-text-muted)] mt-1">
-                Multi-engine static evaluation with confidence-weighted suppression
+                Multi-engine static evaluation with confidence-weighted suppression &amp; categorization
               </p>
             </div>
 
-            {/* Unified Segmented Filter Controls */}
-            <div className="inline-flex p-1 bg-zinc-100/80 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800/80 rounded-xl gap-1 self-start sm:self-auto shadow-sm">
-              <button
-                onClick={() => setIssueViewFilter("show_all")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  issueViewFilter === "show_all"
-                    ? "bg-[var(--beacon-primary)] text-black shadow-sm font-black"
-                    : "text-[var(--beacon-text-muted)] hover:text-[var(--beacon-text)] hover:bg-white/60 dark:hover:bg-zinc-800/60"
-                }`}
-              >
-                <span>Show All</span>
-                <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-md ${
-                  issueViewFilter === "show_all" ? "bg-black/15 text-black" : "bg-zinc-200/80 dark:bg-zinc-800 text-[var(--beacon-text)]"
-                }`}>
-                  {totalPresentationIssues}
-                </span>
-              </button>
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Group By Selector */}
+              <div className="inline-flex p-1 bg-zinc-100/80 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800/80 rounded-xl gap-1 shadow-xs">
+                <button
+                  onClick={() => setIssueGroupBy("status")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    issueGroupBy === "status"
+                      ? "bg-white dark:bg-zinc-800 text-[var(--beacon-text)] shadow-xs font-black"
+                      : "text-[var(--beacon-text-muted)] hover:text-[var(--beacon-text)] hover:bg-white/40 dark:hover:bg-zinc-800/40"
+                  }`}
+                  title="Group issues by verification confidence status"
+                >
+                  <IconShield className="w-3.5 h-3.5 shrink-0" />
+                  <span>By Status</span>
+                </button>
+                <button
+                  onClick={() => setIssueGroupBy("category")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    issueGroupBy === "category"
+                      ? "bg-white dark:bg-zinc-800 text-[var(--beacon-text)] shadow-xs font-black"
+                      : "text-[var(--beacon-text-muted)] hover:text-[var(--beacon-text)] hover:bg-white/40 dark:hover:bg-zinc-800/40"
+                  }`}
+                  title="Group issues by accessibility category (Contrast, Forms, Images, etc.)"
+                >
+                  <IconLayers className="w-3.5 h-3.5 shrink-0" />
+                  <span>By Category</span>
+                </button>
+              </div>
 
-              <button
-                onClick={() => setIssueViewFilter("verified_only")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  issueViewFilter === "verified_only"
-                    ? "bg-emerald-600 text-white shadow-sm font-black"
-                    : "text-[var(--beacon-text-muted)] hover:text-[var(--beacon-text)] hover:bg-white/60 dark:hover:bg-zinc-800/60"
-                }`}
-              >
-                <IconCheckCircle className="w-3.5 h-3.5" />
-                <span>Verified</span>
-                <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-md ${
-                  issueViewFilter === "verified_only" ? "bg-white/25 text-white" : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                }`}>
-                  {presentationCounts.verified}
-                </span>
-              </button>
+              {/* Unified Segmented Filter Controls */}
+              <div className="inline-flex p-1 bg-zinc-100/80 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800/80 rounded-xl gap-1 shadow-xs">
+                <button
+                  onClick={() => setIssueViewFilter("show_all")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    issueViewFilter === "show_all"
+                      ? "bg-[var(--beacon-primary)] text-black shadow-xs font-black"
+                      : "text-[var(--beacon-text-muted)] hover:text-[var(--beacon-text)] hover:bg-white/60 dark:hover:bg-zinc-800/60"
+                  }`}
+                >
+                  <span>Show All</span>
+                  <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-md ${
+                    issueViewFilter === "show_all" ? "bg-black/15 text-black" : "bg-zinc-200/80 dark:bg-zinc-800 text-[var(--beacon-text)]"
+                  }`}>
+                    {totalPresentationIssues}
+                  </span>
+                </button>
 
-              <button
-                onClick={() => setIssueViewFilter("hide_low_confidence")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  issueViewFilter === "hide_low_confidence"
-                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black shadow-sm font-black"
-                    : "text-[var(--beacon-text-muted)] hover:text-[var(--beacon-text)] hover:bg-white/60 dark:hover:bg-zinc-800/60"
-                }`}
-              >
-                <span>Hide Low Conf</span>
-                <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-md ${
-                  issueViewFilter === "hide_low_confidence" ? "bg-white/20 dark:bg-black/20" : "bg-zinc-200/80 dark:bg-zinc-800 text-[var(--beacon-text)]"
-                }`}>
-                  {presentationCounts.verified + presentationCounts.needs_review}
-                </span>
-              </button>
+                <button
+                  onClick={() => setIssueViewFilter("verified_only")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    issueViewFilter === "verified_only"
+                      ? "bg-emerald-600 text-white shadow-xs font-black"
+                      : "text-[var(--beacon-text-muted)] hover:text-[var(--beacon-text)] hover:bg-white/60 dark:hover:bg-zinc-800/60"
+                  }`}
+                >
+                  <IconCheckCircle className="w-3.5 h-3.5" />
+                  <span>Verified</span>
+                  <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-md ${
+                    issueViewFilter === "verified_only" ? "bg-white/25 text-white" : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                  }`}>
+                    {presentationCounts.verified}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setIssueViewFilter("hide_low_confidence")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    issueViewFilter === "hide_low_confidence"
+                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black shadow-xs font-black"
+                      : "text-[var(--beacon-text-muted)] hover:text-[var(--beacon-text)] hover:bg-white/60 dark:hover:bg-zinc-800/60"
+                  }`}
+                >
+                  <span>Hide Low Conf</span>
+                  <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-md ${
+                    issueViewFilter === "hide_low_confidence" ? "bg-white/20 dark:bg-black/20" : "bg-zinc-200/80 dark:bg-zinc-800 text-[var(--beacon-text)]"
+                  }`}>
+                    {presentationCounts.verified + presentationCounts.needs_review}
+                  </span>
+                </button>
+              </div>
             </div>
+          </div>
+
+          {/* Category Filter Pills Bar */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            <span className="text-[11px] font-bold uppercase text-[var(--beacon-text-muted)] tracking-wider mr-1 shrink-0 flex items-center gap-1.5">
+              <IconFilter className="w-3.5 h-3.5" />
+              <span>Category:</span>
+            </span>
+
+            {ISSUE_CATEGORIES.map((cat) => {
+              const count = categoryCounts[cat.id] || 0;
+              const isSelected = selectedCategory === cat.id;
+              const CatIcon = cat.icon;
+
+              if (cat.id !== "all" && count === 0 && !isSelected) return null;
+
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 border cursor-pointer ${
+                    isSelected
+                      ? cat.activeClass + " border-transparent"
+                      : "bg-white/80 dark:bg-zinc-900/60 border-zinc-200 dark:border-zinc-800 text-[var(--beacon-text-muted)] hover:text-[var(--beacon-text)] hover:border-zinc-300 dark:hover:border-zinc-700 shadow-xs"
+                  }`}
+                >
+                  <CatIcon className="w-3.5 h-3.5 shrink-0" />
+                  <span>{cat.shortLabel}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                      isSelected
+                        ? "bg-black/20 text-white dark:bg-white/20 dark:text-black"
+                        : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
           {issues.length === 0 ? (
@@ -1847,6 +3089,49 @@ export default function ProjectDetailPage() {
               <p className="text-base text-[var(--beacon-text-muted)] font-medium">
                 Your site passed all checks successfully.
               </p>
+            </div>
+          ) : issueGroupBy === "category" ? (
+            <div className="space-y-6">
+              {issuesByCategoryGroup.map(({ category, issues: catIssues }) => {
+                const CatIcon = category.icon;
+                return (
+                  <div key={category.id} className="space-y-3">
+                    <div className="flex items-center gap-3 pt-1">
+                      <div className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider border ${category.badgeClass}`}>
+                        <CatIcon className="w-3.5 h-3.5" />
+                        <span>{category.label}</span>
+                      </div>
+                      <span className="text-xs font-bold text-[var(--beacon-text-muted)]">
+                        {catIssues.length} issue{catIssues.length !== 1 ? "s" : ""}
+                      </span>
+                      <div className="flex-1 h-px bg-[var(--beacon-border)]/40" />
+                    </div>
+
+                    <div className="space-y-2.5">
+                      {catIssues.map((issue: any, idx: number) =>
+                        renderIssueCard(issue, idx)
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {issuesByCategoryGroup.length === 0 && (
+                <div className="glass-card p-8 text-center">
+                  <p className="text-sm font-medium text-[var(--beacon-text-muted)]">
+                    No issues match the selected category or filter.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setSelectedCategory("all");
+                      setIssueViewFilter("show_all");
+                    }}
+                    className="mt-3 px-3 py-1.5 rounded-lg bg-[var(--beacon-primary)] text-black text-xs font-bold hover:brightness-105 transition-all cursor-pointer inline-flex items-center gap-1.5"
+                  >
+                    <span>Reset All Filters</span>
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-6">
@@ -1880,8 +3165,19 @@ export default function ProjectDetailPage() {
               })}
 
               {visiblePresentationIssueCount === 0 && (
-                <div className="glass-card p-6 text-sm font-medium text-[var(--beacon-text-muted)]">
-                  No issues match this filter. Switch to <span className="font-extrabold text-[var(--beacon-text)]">Show All</span> to review every detected item.
+                <div className="glass-card p-8 text-center">
+                  <p className="text-sm font-medium text-[var(--beacon-text-muted)]">
+                    No issues match the selected category or filter.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setSelectedCategory("all");
+                      setIssueViewFilter("show_all");
+                    }}
+                    className="mt-3 px-3 py-1.5 rounded-lg bg-[var(--beacon-primary)] text-black text-xs font-bold hover:brightness-105 transition-all cursor-pointer inline-flex items-center gap-1.5"
+                  >
+                    <span>Reset All Filters</span>
+                  </button>
                 </div>
               )}
             </div>

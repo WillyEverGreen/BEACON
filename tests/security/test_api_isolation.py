@@ -1,9 +1,9 @@
 # tests/security/test_api_isolation.py
+
 import pytest
-import os
 from fastapi.testclient import TestClient
+
 from app.main import app
-import uuid
 
 # Mock JWT payloads for testing
 USER_A_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLWEtMTIzIn0.sig"

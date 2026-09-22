@@ -3,7 +3,10 @@ from collections import defaultdict
 import pytest
 
 from app.services import retrieval
-from scripts.ingest_wcag_techniques import PARTIAL_COVERAGE_SC, build_chunks_from_documents
+from scripts.ingest_wcag_techniques import (
+    PARTIAL_COVERAGE_SC,
+    build_chunks_from_documents,
+)
 
 
 def test_techniques_indexed_for_partial_sc() -> None:
@@ -15,7 +18,7 @@ def test_techniques_indexed_for_partial_sc() -> None:
                     "url": f"https://www.w3.org/WAI/WCAG22/Techniques/general/H{idx + 90}.html",
                     "html": (
                         f"<html><head><title>H{idx + 90}</title></head><body>"
-                        f"Technique H{idx + 90}. Success Criterion {sc_id}. Failure examples and tests."  # noqa: E501
+                        f"Technique H{idx + 90}. Success Criterion {sc_id}. Failure examples and tests."
                         "</body></html>"
                     ),
                 }

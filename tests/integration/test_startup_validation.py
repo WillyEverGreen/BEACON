@@ -3,9 +3,9 @@ Integration test for application startup with environment validation.
 """
 
 import os
-import pytest
 from unittest.mock import patch
-import sys
+
+import pytest
 
 
 def test_startup_fails_with_missing_env_vars_in_production():
@@ -71,6 +71,7 @@ def test_config_loads_without_hardcoded_keys():
     with patch.dict(os.environ, test_env, clear=True):
         # Reload config with test environment
         import importlib
+
         import app.config
         importlib.reload(app.config)
         
@@ -91,6 +92,7 @@ def test_config_has_empty_defaults_not_hardcoded_keys():
     
     with patch.dict(os.environ, test_env, clear=True):
         import importlib
+
         import app.config
         importlib.reload(app.config)
         

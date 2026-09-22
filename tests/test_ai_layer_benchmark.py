@@ -20,19 +20,17 @@ Accounting & Metrics Contract:
 """
 from __future__ import annotations
 
-import re
-import pytest
-import numpy as np
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
-from app.services.dom_context import DOMContextExtractor
+import numpy as np
+
 from app.services.adjudicator import _pre_adjudicate_fast_path, _sanitize_prompt_input
 from app.services.confidence import (
+    EmpiricalCalibrator,
     compute_calibrated_confidence_breakdown,
     expected_calibration_error,
-    EmpiricalCalibrator,
-    calibrate_confidence,
 )
+from app.services.dom_context import DOMContextExtractor
 
 
 def _build_case(
@@ -44,13 +42,13 @@ def _build_case(
     element: str,
     snippet: str,
     expected_verdict: str,
-    confidence_sources: List[str] | None = None,
+    confidence_sources: list[str] | None = None,
     is_injection: bool = False,
     description: str = "",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Helper to construct a standard labeled benchmark test case."""
     exp_norm = str(expected_verdict).replace("-", "_").lower()
-    issue: Dict[str, Any] = {
+    issue: dict[str, Any] = {
         "rule_id": rule_id,
         "wcag_criterion": wcag_sc,
         "element": element,
@@ -74,9 +72,9 @@ def _build_case(
 # ─────────────────────────────────────────────────────────────────────────────
 # Split 1: Calibration Set (100 cases)
 # ─────────────────────────────────────────────────────────────────────────────
-def _generate_calibration_dataset() -> List[Dict[str, Any]]:
+def _generate_calibration_dataset() -> list[dict[str, Any]]:
     """100 cases used strictly to fit empirical probability calibrators."""
-    cases: List[Dict[str, Any]] = []
+    cases: list[dict[str, Any]] = []
 
     # 1. Images (10 cases)
     for i in range(1, 6):
@@ -229,9 +227,9 @@ def _generate_calibration_dataset() -> List[Dict[str, Any]]:
 # ─────────────────────────────────────────────────────────────────────────────
 # Split 2: Held-Out Evaluation Set (150 cases)
 # ─────────────────────────────────────────────────────────────────────────────
-def _generate_heldout_dataset() -> List[Dict[str, Any]]:
+def _generate_heldout_dataset() -> list[dict[str, Any]]:
     """150 completely unseen test cases across 9 domains for unbiased final evaluation."""
-    cases: List[Dict[str, Any]] = []
+    cases: list[dict[str, Any]] = []
 
     # ── 1. Images (20 cases) ──────────────────────────────────────
     for i in range(1, 9):

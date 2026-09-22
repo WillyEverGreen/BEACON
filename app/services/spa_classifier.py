@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Literal, Mapping
-
+from typing import Any, Literal
 
 ConfidenceLabel = Literal["high", "medium", "low"]
 
@@ -31,7 +31,7 @@ class SPASignalSnapshot:
     body_child_count: int = 0
 
     @classmethod
-    def from_mapping(cls, payload: Mapping[str, Any]) -> "SPASignalSnapshot":
+    def from_mapping(cls, payload: Mapping[str, Any]) -> SPASignalSnapshot:
         return cls(
             strict_framework=_as_str_or_none(payload.get("strict_framework")),
             legacy_framework=_as_str_or_none(payload.get("legacy_framework")),
@@ -141,30 +141,14 @@ def classify_spa(snapshot: SPASignalSnapshot | Mapping[str, Any]) -> dict[str, A
         score -= 3
 
     is_spa = False
-    if strong_framework and (client_navigation or dynamic_dom_change or snap.hydration_waited or client_shell):
-        is_spa = True
-    elif client_navigation and (dynamic_dom_change or client_shell):
-        is_spa = True
-    elif strong_framework and score >= 2 and not static_html_only:
-        is_spa = True
-    elif strong_framework and not static_html_only and score >= 4:
-        is_spa = True
-    elif dynamic_client_boot:
-        is_spa = True
-    elif script_heavy_shell and (dynamic_dom_change or snap.body_text_length <= 1500):
-        is_spa = True
-    elif client_shell and snap.script_count >= 18 and (client_navigation or snap.route_marker_count >= 2):
+    if strong_framework and (client_navigation or dynamic_dom_change or snap.hydration_waited or client_shell) or client_navigation and (dynamic_dom_change or client_shell) or strong_framework and score >= 2 and not static_html_only or strong_framework and not static_html_only and score >= 4 or dynamic_client_boot or script_heavy_shell and (dynamic_dom_change or snap.body_text_length <= 1500) or client_shell and snap.script_count >= 18 and (client_navigation or snap.route_marker_count >= 2):
         is_spa = True
 
     confidence: ConfidenceLabel
     if is_spa:
-        if strong_framework and (client_navigation or dynamic_dom_change):
+        if strong_framework and (client_navigation or dynamic_dom_change) or client_navigation and dynamic_dom_change:
             confidence = "high"
-        elif client_navigation and dynamic_dom_change:
-            confidence = "high"
-        elif dynamic_client_boot or script_heavy_shell:
-            confidence = "medium"
-        elif strong_framework or client_shell:
+        elif dynamic_client_boot or script_heavy_shell or strong_framework or client_shell:
             confidence = "medium"
         else:
             confidence = "low"

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass
-from typing import Optional
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 
@@ -37,12 +36,12 @@ class CrawlSession:
     def __len__(self) -> int:
         return len(self._queue)
 
-    def dequeue(self) -> Optional[CrawlQueueEntry]:
+    def dequeue(self) -> CrawlQueueEntry | None:
         if not self._queue:
             return None
         return self._queue.popleft()
 
-    def dequeue_prioritized(self) -> Optional[CrawlQueueEntry]:
+    def dequeue_prioritized(self) -> CrawlQueueEntry | None:
         """Pop the highest-priority entry while preserving FIFO within the same tier."""
         if not self._queue:
             return None

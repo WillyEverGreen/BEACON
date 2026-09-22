@@ -1,12 +1,13 @@
 from __future__ import annotations
+
+import logging
 import os
 import uuid
-import logging
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
-from app.config import CACHE_STATS, settings
+from app.config import settings
 
 
 def _audit_id(payload: dict[str, Any]) -> str:
@@ -14,22 +15,11 @@ def _audit_id(payload: dict[str, Any]) -> str:
     return value or uuid.uuid4().hex
 
 
-def _upsert_cache_meta(session: Session) -> None:
-    tiers = ("page", "dom", "llm", "fix")
-    for tier in tiers:
-        record = session.get(CacheMetaRecord, tier)
-        if record is None:
-            record = CacheMetaRecord(tier=tier)
-            session.add(record)
-
-        record.hits = int(CACHE_STATS.get(f"{tier}_hits", 0) or 0)
-        record.misses = int(CACHE_STATS.get(f"{tier}_misses", 0) or 0)
-        record.writes = int(CACHE_STATS.get(f"{tier}_writes", 0) or 0)
-
 
 from app.db.supabase_client import get_supabase
 
-def persist_audit_payload(payload: dict[str, Any], *, status: str = "completed", user_id: Optional[str] = None) -> str:
+
+def persist_audit_payload(payload: dict[str, Any], *, status: str = "completed", user_id: str | None = None) -> str:
     """Persist an audit payload directly to Supabase using the SDK."""
     if user_id is None:
         if os.environ.get("ENVIRONMENT") == "production":
@@ -109,10 +99,10 @@ def persist_audit_payload(payload: dict[str, Any], *, status: str = "completed",
 def persist_enrichment_payload(
     audit_id: str,
     enrichment_issues: list[dict[str, Any]],
-    enrichment_meta: Optional[dict[str, Any]] = None,
+    enrichment_meta: dict[str, Any] | None = None,
     *,
     status: str = "complete",
-    user_id: Optional[str] = None,
+    user_id: str | None = None,
 ) -> None:
     """Update persisted enrichment details after background enrichment completes."""
     if not audit_id:

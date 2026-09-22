@@ -1,14 +1,13 @@
 """
 Test suite for Multi-Framework RAG Taxonomy & Ingestion (WCAG 2.2, ARIA APG, COGA).
 """
-import pytest
 from app.services.ingestion import (
-    _load_wcag_criteria,
-    _load_aria_apg_patterns,
-    _load_coga_guidelines,
-    _criteria_to_chunks,
     _apg_to_chunks,
     _coga_to_chunks,
+    _criteria_to_chunks,
+    _load_aria_apg_patterns,
+    _load_coga_guidelines,
+    _load_wcag_criteria,
 )
 
 

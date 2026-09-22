@@ -3,10 +3,19 @@ RAG router: query the WCAG knowledge base.
 """
 import logging
 import re
+
 from fastapi import APIRouter, HTTPException
-from app.models import RAGRequest, RAGResponse, TopicsResponse, WCAGReference, PracticalAsset, RetrievedSource
-from app.services.retrieval import retrieve
+
+from app.models import (
+    PracticalAsset,
+    RAGRequest,
+    RAGResponse,
+    RetrievedSource,
+    TopicsResponse,
+    WCAGReference,
+)
 from app.services.llm import generate_rag_response
+from app.services.retrieval import retrieve
 from app.services.vector_store import get_all_metadata_values
 
 logger = logging.getLogger(__name__)
@@ -102,7 +111,7 @@ async def query_rag(request: RAGRequest):
         raise
     except Exception as e:
         logger.error(f"RAG query error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal error: {e!s}")
 
 
 @router.get("/topics", response_model=TopicsResponse)

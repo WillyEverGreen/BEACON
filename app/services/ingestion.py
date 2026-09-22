@@ -4,10 +4,10 @@ Clean ingestion service — wraps rag modules for the FastAPI app.
 Replaces the 22KB legacy ingestion_old.py with a thin delegation layer
 that properly calls the rag's crawl → extract → chunk → tag → filter → dedup → embed → store pipeline.
 """
-import logging
-import sys
-import os
 import json
+import logging
+import os
+import sys
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -191,10 +191,10 @@ def run_full_ingestion(expand_corpus: bool = False) -> list[dict]:
     5. Deduplicate
     6. Generate embeddings
     """
-    from tag import tag_chunk
-    from filter import passes_filter
     from dedup import dedup
     from embed import embed_chunks
+    from filter import passes_filter
+    from tag import tag_chunk
 
     all_chunks = []
 
@@ -223,6 +223,7 @@ def run_full_ingestion(expand_corpus: bool = False) -> list[dict]:
     if expand_corpus:
         try:
             from chunk import chunk_document
+
             from extract import extract_content
 
             raw_dir = Path("rag/data/raw")

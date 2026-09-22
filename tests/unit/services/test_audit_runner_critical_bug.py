@@ -6,7 +6,7 @@ import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")))
 
-import app.services.audit_runner as audit_runner
+from app.services import audit_runner
 
 
 def _minimal_issue(url: str) -> dict:

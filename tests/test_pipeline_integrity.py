@@ -7,10 +7,10 @@ Validates:
 - Hybrid required rules run before precision profile filtering
 """
 import pytest
-from app.services.audit_runner import run_audit
+
 from app.services.adjudicator import adjudicate_issues
-from app.services.grouper import cluster_root_causes
 from app.services.confidence import apply_confidence_rules
+from app.services.grouper import cluster_root_causes
 from app.services.prioritizer import build_scoring_summary
 
 

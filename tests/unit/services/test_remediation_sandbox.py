@@ -1,6 +1,5 @@
 """Unit tests for Phase 6 Remediation Sandbox and Patch Safety Policy."""
 
-import pytest
 from app.services.patch_policy import PatchPolicy
 from app.services.remediation_sandbox import RemediationSandbox
 

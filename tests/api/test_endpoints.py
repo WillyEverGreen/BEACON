@@ -1,23 +1,19 @@
-import os
 from unittest.mock import MagicMock, patch
-import pytest
+
 from fastapi.testclient import TestClient
 
+import importlib.util
+import sys
+
 # Cleanly mock optional heavy ML modules only if not installed
-try:
-    import sentence_transformers
-except ImportError:
-    import sys
+if not importlib.util.find_spec('sentence_transformers'):
     sys.modules['sentence_transformers'] = MagicMock()
 
-try:
-    import rag.model_registry
-except ImportError:
-    import sys
+if not importlib.util.find_spec('rag.model_registry'):
     sys.modules['rag.model_registry'] = MagicMock()
 
-from app.main import app
 from app.config import settings
+from app.main import app
 
 client = TestClient(app)
 

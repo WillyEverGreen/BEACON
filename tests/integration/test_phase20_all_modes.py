@@ -29,7 +29,7 @@ pytestmark = [pytest.mark.integration, pytest.mark.slow]
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from app.services.audit_runner import run_audit  # noqa: E402
+from app.services.audit_runner import run_audit
 
 # ── Output paths ──────────────────────────────────────────────────────────────
 RESULTS_FILE = ROOT / "phase20_all_modes_results.json"
@@ -153,7 +153,7 @@ def all_modes_summary_reporter():
     print(
         f"TOTAL: {total} runs | PASS: {pass_c} | DEGRADED: {degraded_c} | FAIL: {fail_c}"
     )
-    print(f"(10 sites x 3 modes = 30 runs expected)")
+    print("(10 sites x 3 modes = 30 runs expected)")
     print(DIVIDER)
 
     # ── Per-mode breakdown ────────────────────────────────────────────────────
@@ -252,9 +252,7 @@ async def test_all_modes_site_audit(
     # ── Determine status ──────────────────────────────────────────────────────
     if exc is not None or result is None:
         status = "fail"
-    elif degraded_mode:
-        status = "degraded"
-    elif score is None:
+    elif degraded_mode or score is None:
         status = "degraded"
     else:
         # Fake-score guard: score > 90 while degraded is a regression

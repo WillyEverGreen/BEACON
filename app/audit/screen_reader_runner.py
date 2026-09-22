@@ -7,7 +7,8 @@ Executes second-stage empirical screen reader tests on interactive components
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from bs4 import BeautifulSoup
 
 from app.audit.adapters.guidepup_adapter import GuidepupAdapter
@@ -25,15 +26,15 @@ class ScreenReaderAuditRunner:
     async def audit_page_interactions(
         self,
         html: str,
-        page: Optional[Any] = None,
-        context: Optional[Dict[str, Any]] = None,
-    ) -> List[Finding]:
+        page: Any | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> list[Finding]:
         """Inspect interactive components in the DOM and verify screen reader semantics.
         
         If an active browser page is provided, can perform live keyboard navigations.
         Otherwise, performs virtual speech simulation on candidate widgets.
         """
-        findings: List[Finding] = []
+        findings: list[Finding] = []
         if not html:
             return findings
 

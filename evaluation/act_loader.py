@@ -13,7 +13,6 @@ from pathlib import Path
 
 from evaluation.benchmark_runner import FixtureCase
 
-
 _EXPECTED_PASS_MARKERS = {"pass", "inapplicable", "valid"}
 _EXPECTED_FAIL_MARKERS = {"fail", "failed", "violation", "invalid"}
 

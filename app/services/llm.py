@@ -6,12 +6,14 @@ import asyncio
 import json
 import logging
 import re
-from typing import Any, Optional
+from typing import Any
+
 from openai import AsyncOpenAI
 
 from app.config import CACHE_STATS, settings
 from app.services.feedback import get_feedback_stats
 from app.services.fix_cache import get_cache_key, get_cached_fix, store_fix
+from app.services.vendor_axe import inject_axe
 
 logger = logging.getLogger(__name__)
 
@@ -100,9 +102,9 @@ def _get_fallback_remediation(issue: dict) -> dict:
 import httpx
 
 # Async client (cached)
-_client: Optional[AsyncOpenAI] = None
+_client: AsyncOpenAI | None = None
 _llm_response_cache: dict[str, dict[str, Any]] = {}
-_ENRICHMENT_SEMAPHORE: Optional[asyncio.Semaphore] = None
+_ENRICHMENT_SEMAPHORE: asyncio.Semaphore | None = None
 _ENRICHMENT_SEMAPHORE_LIMIT = 0
 
 
@@ -155,7 +157,7 @@ def _llm_cache_key(issue: dict) -> str:
     return get_cache_key(issue.get("rule_id", "unknown"), issue.get("html_snippet", ""))
 
 
-def _get_llm_cached_remediation(issue: dict) -> Optional[dict]:
+def _get_llm_cached_remediation(issue: dict) -> dict | None:
     if not bool(getattr(settings, "enrichment_enable_llm_cache", True)):
         return None
     return _llm_response_cache.get(_llm_cache_key(issue))
@@ -660,7 +662,7 @@ async def generate_rag_response(query: str, context_chunks: list[dict]) -> dict:
     except Exception as e:
         logger.error(f"LLM generation failed: {e}")
         return {
-            "explanation": f"Error generating response: {str(e)}",
+            "explanation": f"Error generating response: {e!s}",
             "wcag_references": [],
             "code_fix": "",
             "practical_assets": [],
@@ -863,7 +865,8 @@ async def generate_semantic_remediation(issue: dict, context_chunks: list[dict])
             if match:
                 json_text = match.group(1).strip()
 
-        import re, json
+        import json
+        import re
         match = re.search(r'\{[\s\S]*\}', json_text)
         if match:
             parsed = json.loads(match.group())
@@ -888,7 +891,7 @@ async def generate_semantic_remediation(issue: dict, context_chunks: list[dict])
         logger.error(f"Semantic remediation generation failed: {e}")
         return {
             "issue_id": issue.get("issue_id", ""),
-            "explanation": f"Semantic remediation generation failed: {str(e)}",
+            "explanation": f"Semantic remediation generation failed: {e!s}",
             "wcag_references": [],
             "code_fix": "",
             "practical_assets": [],
@@ -899,7 +902,7 @@ async def generate_semantic_remediation(issue: dict, context_chunks: list[dict])
 
 
 
-async def validate_remediation_fix(issue: dict, remediation: dict) -> tuple[bool, Optional[str]]:
+async def validate_remediation_fix(issue: dict, remediation: dict) -> tuple[bool, str | None]:
     """
     Validate if a proposed vanilla code fix resolves the axe-core rule violation.
     Returns (is_valid, error_message).
@@ -919,8 +922,8 @@ async def validate_remediation_fix(issue: dict, remediation: dict) -> tuple[bool
         return True, None  # No code fix provided to validate
         
     try:
+
         from playwright.async_api import async_playwright
-        from pathlib import Path
         
         async with async_playwright() as p:
             # Launch browser
@@ -936,12 +939,8 @@ async def validate_remediation_fix(issue: dict, remediation: dict) -> tuple[bool
             test_html_orig = f"<!DOCTYPE html><html><head><title>Test</title></head><body>{original_html}</body></html>"
             await page.set_content(test_html_orig)
             
-            # Load axe-core
-            axe_local_path = Path(__file__).resolve().parents[2] / "axe-core" / "axe.min.js"
-            if axe_local_path.exists():
-                await page.add_script_tag(path=str(axe_local_path))
-            else:
-                await page.add_script_tag(url="https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.9.1/axe.min.js")
+            # Load axe-core (offline vendored first)
+            await inject_axe(page, allow_cdn_fallback=False)
             
             await page.wait_for_timeout(200)
             orig_results = await page.evaluate("axe.run()")
@@ -956,11 +955,8 @@ async def validate_remediation_fix(issue: dict, remediation: dict) -> tuple[bool
             test_html_fixed = f"<!DOCTYPE html><html><head><title>Test</title></head><body>{vanilla_fix}</body></html>"
             await page.set_content(test_html_fixed)
             
-            # Re-inject axe-core
-            if axe_local_path.exists():
-                await page.add_script_tag(path=str(axe_local_path))
-            else:
-                await page.add_script_tag(url="https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.9.1/axe.min.js")
+            # Re-inject axe-core (offline vendored first)
+            await inject_axe(page, allow_cdn_fallback=False)
                 
             await page.wait_for_timeout(200)
             fixed_results = await page.evaluate("axe.run()")
@@ -1120,7 +1116,7 @@ async def generate_remediation(issue: dict, context_chunks: list[dict], temperat
         logger.error(f"Remediation generation failed: {e}")
         return {
             "issue_id": issue.get("issue_id", ""),
-            "explanation": f"Remediation generation failed: {str(e)}",
+            "explanation": f"Remediation generation failed: {e!s}",
             "wcag_references": [],
             "code_fix": "",
             "practical_assets": [],
@@ -1194,8 +1190,8 @@ async def enrich_issues(
     issues: list[dict],
     max_issues: int = 20,
     *,
-    max_tokens_per_audit: Optional[int] = None,
-    max_llm_cost_per_audit: Optional[float] = None,
+    max_tokens_per_audit: int | None = None,
+    max_llm_cost_per_audit: float | None = None,
     return_meta: bool = False,
 ) -> list[dict] | tuple[list[dict], dict[str, Any]]:
     """Enrich the top issues using cache-first and bounded batched RAG remediation."""

@@ -5,19 +5,19 @@ Multi-signal formula: source reliability + signal strength + cross-engine agreem
 """
 import logging
 import re
+
 import numpy as np
 
 from app.config import (
     CONFIDENCE_WEIGHTS,
-    SOURCE_RELIABILITY_SCORES,
-    RULE_TYPE_MAP,
-    USER_IMPACT_SCORES,
     IMPACT_SUMMARIES,
     PAGE_LEVEL_RULES,
+    RULE_TYPE_MAP,
+    SOURCE_RELIABILITY_SCORES,
     STRUCTURAL_FP_RULES,
+    USER_IMPACT_SCORES,
 )
-from app.services.rule_calibrator import get_rule_trust_score, get_rule_trust_entry
-
+from app.services.rule_calibrator import get_rule_trust_entry, get_rule_trust_score
 
 logger = logging.getLogger(__name__)
 

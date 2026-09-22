@@ -17,7 +17,6 @@ import asyncio
 import json
 import pathlib
 import re
-from typing import Any
 
 import pytest
 
@@ -259,17 +258,12 @@ def test_no_hardcoded_max_pages_in_app_code():
 # T A S K   5 — Site Topology Detector
 # ─────────────────────────────────────────────────────────────────────────────
 
-from app.config import SiteTopology  # noqa: E402
-from app.services.topology_detector import (  # noqa: E402
-    TopologyResult,
+from app.config import SiteTopology
+from app.services.topology_detector import (
     _find_structural_segments,
-    _is_homepage,
-    _is_paginated,
-    _normalize_path,
     _with_homepage_first,
     detect_topology,
 )
-
 
 # ── Guards ─────────────────────────────────────────────────────────────────
 
@@ -581,6 +575,7 @@ async def test_bot_wall_preflight_check_aborts():
     when the seed URL is detected to be protected by a bot wall (e.g. Cloudflare).
     """
     from unittest.mock import AsyncMock, patch
+
     from app.crawlers.orchestrator import CrawlerOrchestrator
     
     orchestrator = CrawlerOrchestrator()

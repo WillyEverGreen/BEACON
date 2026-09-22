@@ -1,7 +1,11 @@
-from rank_bm25 import BM25Okapi
-import chromadb, functools, time, logging, re
+import functools
+import logging
+import re
+import time
 
-from model_registry import get_embedding_model, get_bm25_cache, get_rerank_model
+import chromadb
+from model_registry import get_bm25_cache, get_embedding_model, get_rerank_model
+from rank_bm25 import BM25Okapi
 
 logger = logging.getLogger("rag-query")
 

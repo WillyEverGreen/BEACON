@@ -6,7 +6,7 @@ Validates:
 - p95 is consistent across suite configurations
 """
 import math
-import pytest
+
 from app.config import METRIC_DEFINITIONS
 
 

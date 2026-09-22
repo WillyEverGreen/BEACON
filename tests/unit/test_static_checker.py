@@ -1,5 +1,5 @@
-import pytest
 from app.services.static_checks import StaticChecker
+
 
 # 1. Blocked page guard - should suppress landmark/heading checks
 def test_blocked_page_suppresses_structural_checks():

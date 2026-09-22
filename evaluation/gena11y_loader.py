@@ -9,7 +9,6 @@ from typing import Any
 
 from evaluation.benchmark_runner import FixtureCase
 
-
 _PASS_MARKERS = {
     "pass",
     "valid",

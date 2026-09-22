@@ -19,17 +19,16 @@ Config: RAG ENABLED, Cognitive DISABLED (save API costs)
 """
 
 import asyncio
-import sys
-import os
 import json
+import os
+import sys
 import time
-from datetime import datetime
 from dataclasses import dataclass, field
-from typing import Optional
+from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from app.services.audit_runner import run_audit
 from app.audit.failure_taxonomy import classify_failure_reason, normalize_reason
+from app.services.audit_runner import run_audit
 
 
 def _safe_avg(values: list[float]) -> float:
@@ -170,7 +169,7 @@ class StrategicResult:
     fast_fix_acceptance_rate: float = 0.0
     fast_enrichment_status: str = "off"
     fast_degraded: bool = False
-    fast_degraded_reason: Optional[str] = None
+    fast_degraded_reason: str | None = None
     
     # Deep scan results
     deep_score: float = 0.0
@@ -182,15 +181,15 @@ class StrategicResult:
     deep_fix_acceptance_rate: float = 0.0
     deep_enrichment_status: str = "off"
     deep_degraded: bool = False
-    deep_degraded_reason: Optional[str] = None
-    deep_spa_framework: Optional[str] = None
+    deep_degraded_reason: str | None = None
+    deep_spa_framework: str | None = None
     deep_is_spa: bool = False
     
     # Comparison
     improvement_pct: float = 0.0
     met_expectations: bool = False
     notes: str = ""
-    error: Optional[str] = None
+    error: str | None = None
 
 async def _run_strategic_site(site_data: dict, semaphore) -> StrategicResult:
     """Test one strategic site with both Fast and Deep scans (RAG enabled)."""
@@ -212,7 +211,7 @@ async def _run_strategic_site(site_data: dict, semaphore) -> StrategicResult:
         # ========================================================================
         # FAST SCAN (with RAG, no Cognitive)
         # ========================================================================
-        print(f"  [1/2] FAST scan (RAG enabled, no API)...", flush=True)
+        print("  [1/2] FAST scan (RAG enabled, no API)...", flush=True)
         fast_start = time.time()
         try:
             fast_result = await run_audit(
@@ -250,7 +249,7 @@ async def _run_strategic_site(site_data: dict, semaphore) -> StrategicResult:
         # ========================================================================
         # DEEP SCAN (with RAG, no Cognitive)
         # ========================================================================
-        print(f"\n  [2/2] DEEP scan (RAG enabled, no API)...", flush=True)
+        print("\n  [2/2] DEEP scan (RAG enabled, no API)...", flush=True)
         deep_start = time.time()
         try:
             deep_result = await run_audit(
@@ -294,7 +293,7 @@ async def _run_strategic_site(site_data: dict, semaphore) -> StrategicResult:
         if not result.error:
             result.improvement_pct = ((result.deep_issues - result.fast_issues) / result.fast_issues * 100) if result.fast_issues > 0 else 0
             
-            print(f"\n  📊 Analysis:")
+            print("\n  📊 Analysis:")
             print(f"    Fast → Deep: {result.fast_score:.1f} → {result.deep_score:.1f} ({result.deep_score - result.fast_score:+.1f})")
             print(f"    Issues found: {result.fast_issues} → {result.deep_issues} ({result.improvement_pct:+.1f}%)")
             print(f"    Speed: {result.fast_time:.1f}s → {result.deep_time:.1f}s ({result.deep_time/result.fast_time:.1f}x)")
@@ -389,8 +388,8 @@ async def main():
     fast_mode_usage = round((len(completed) / len(STRATEGIC_SITES)) * 100, 1)
     fast_mode_p95_time = _p95(fast_times)
     
-    print(f"\n📋 Execution Summary:")
-    print(f"  Total sites: 10")
+    print("\n📋 Execution Summary:")
+    print("  Total sites: 10")
     print(f"  Completed (no crash): {len(completed)}")
     print(f"  Runtime success: {len(runtime_successes)}/{total_sites} ({runtime_success_rate:.1f}%)")
     print(f"  Errors: {len(errors)}")
@@ -403,7 +402,7 @@ async def main():
         avg_deep_score = sum(r.deep_score for r in completed) / len(completed)
         avg_improvement = sum(r.improvement_pct for r in completed) / len(completed)
         
-        print(f"\n📈 Score Performance:")
+        print("\n📈 Score Performance:")
         print(f"  Fast scan average: {avg_fast_score:.1f}/100")
         print(f"  Deep scan average: {avg_deep_score:.1f}/100")
         print(f"  Deep improvement: {avg_improvement:+.1f}% more issues found")
@@ -412,7 +411,7 @@ async def main():
         total_fast_rag = sum(r.fast_rag_enriched for r in completed)
         total_deep_rag = sum(r.deep_rag_enriched for r in completed)
         
-        print(f"\n📚 RAG Enrichment Effectiveness:")
+        print("\n📚 RAG Enrichment Effectiveness:")
         print(f"  Sites with RAG data: {len(rag_enriched)}/10 ({100*len(rag_enriched)/len(completed):.0f}%)")
         print(f"  Fast scan enriched: {total_fast_rag} issues")
         print(f"  Deep scan enriched: {total_deep_rag} issues")
@@ -422,14 +421,14 @@ async def main():
         
         # SPA detection
         if spas_detected:
-            print(f"\n🔧 SPA Detection:")
+            print("\n🔧 SPA Detection:")
             print(f"  SPAs detected: {len(spas_detected)}/10")
             for r in spas_detected:
                 fw = r.deep_spa_framework or "Unknown"
                 print(f"    - {r.name}: {fw}")
         
         # Detailed results
-        print(f"\n📊 Detailed Site-by-Site Results:")
+        print("\n📊 Detailed Site-by-Site Results:")
         print(f"  {'Site':<15} {'Fast':>6} {'Deep':>6} {'Δ':>6} {'Issues':>7} {'RAG':>5} {'SPA':<8} {'Met?':<5}")
         print(f"  {'-'*70}")
         for r in completed:
@@ -441,7 +440,7 @@ async def main():
                   f"{issues_str:>7} {r.deep_rag_enriched:>5} {spa_str:<8} {met_str:<5}")
         
         # Purpose-specific insights
-        print(f"\n🎯 Purpose-Specific Insights:")
+        print("\n🎯 Purpose-Specific Insights:")
         for r in completed:
             status = "✅" if r.met_expectations else "⚠️"
             print(f"\n  {status} {r.name}:")
@@ -456,7 +455,7 @@ async def main():
     # SAVE RESULTS
     # ============================================================================
     
-    def _runtime_failure_type(row: StrategicResult) -> Optional[str]:
+    def _runtime_failure_type(row: StrategicResult) -> str | None:
         if not (row.error or row.fast_degraded or row.deep_degraded):
             return None
         reason = normalize_reason(row.deep_degraded_reason or row.fast_degraded_reason) or classify_failure_reason(row.error)
@@ -639,9 +638,7 @@ async def main():
         else:
             print(f"  ⚠️  Fix Acceptance Rate below target: {fix_acceptance_rate:.1f}%")
         
-        if avg_improvement > 40:
-            print(f"  ✅ Deep vs Fast: Deep scan finds {avg_improvement:.0f}% more issues")
-        elif avg_improvement > 20:
+        if avg_improvement > 40 or avg_improvement > 20:
             print(f"  ✅ Deep vs Fast: Deep scan finds {avg_improvement:.0f}% more issues")
         else:
             print(f"  ⚠️  Deep vs Fast: Only {avg_improvement:.0f}% improvement")

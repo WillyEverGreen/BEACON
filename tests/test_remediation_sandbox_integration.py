@@ -6,9 +6,8 @@ Validates:
 - Regression detection (new rule violations introduced)
 - Accurate validation scope reporting (Correction 5: static_validation_passed vs runtime/visual not_run)
 """
-import pytest
-from app.services.remediation_sandbox import RemediationSandbox
 from app.models.contracts import PatchResult
+from app.services.remediation_sandbox import RemediationSandbox
 
 
 def test_sandbox_evaluates_clean_patch_accepted():

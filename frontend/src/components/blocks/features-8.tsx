@@ -1,5 +1,5 @@
 import { Card, CardContent } from '@/components/ui/card'
-import { Shield, Users, ScanSearch, Eye, Sparkles, BarChart3 } from 'lucide-react'
+import { ScanSearch, Eye, Sparkles } from 'lucide-react'
 
 export function Features() {
     return (
@@ -93,12 +93,12 @@ export function Features() {
                                         <span className="block size-2 rounded-full border border-zinc-600 bg-zinc-700"></span>
                                     </div>
                                     <div className="mt-4 space-y-2 font-mono text-xs text-zinc-400">
-                                        <p className="text-[#ffe17c]">// AI-generated fix</p>
+                                        <p className="text-[#ffe17c]">{"// AI-generated fix"}</p>
                                         <p>&lt;img <span className="text-[#b7c6c2]">src</span>=&quot;hero.jpg&quot;</p>
                                         <p className="pl-4"><span className="text-[#ffe17c]">alt</span>=&quot;<span className="text-white">Accessible dashboard</span>&quot;</p>
                                         <p className="pl-4"><span className="text-[#ffe17c]">role</span>=&quot;<span className="text-white">img</span>&quot; /&gt;</p>
                                         <div className="mt-3 h-px bg-zinc-700" />
-                                        <p className="text-[#ffe17c]">// Contrast fix</p>
+                                        <p className="text-[#ffe17c]">{"// Contrast fix"}</p>
                                         <p><span className="text-[#b7c6c2]">color</span>: <span className="text-white">#1a1a2e</span>;</p>
                                         <p><span className="text-[#b7c6c2]">background</span>: <span className="text-white">#ffffff</span>;</p>
                                     </div>

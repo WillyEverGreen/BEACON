@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import asyncio
-from contextlib import suppress
 import hashlib
 import logging
-from typing import Any, Optional
+from contextlib import suppress
+from typing import Any
 
 from app.config import CRAWLER_CONFIG
 from app.crawlers.common import (
@@ -78,10 +78,10 @@ class DOMCrawler:
     def __init__(
         self,
         *,
-        interaction_budget_per_page: Optional[int] = None,
-        scroll_steps: Optional[int] = None,
-        page_timeout_seconds: Optional[float] = None,
-        max_click_candidates: Optional[int] = None,
+        interaction_budget_per_page: int | None = None,
+        scroll_steps: int | None = None,
+        page_timeout_seconds: float | None = None,
+        max_click_candidates: int | None = None,
         shared_browser: Any | None = None,
     ) -> None:
         cfg = CRAWLER_CONFIG["dom"]
@@ -113,7 +113,7 @@ class DOMCrawler:
             "early_stopped": False,
         }
 
-    async def crawl(self, seed_url: str, max_pages: Optional[int] = None) -> list[CrawledURL]:
+    async def crawl(self, seed_url: str, max_pages: int | None = None) -> list[CrawledURL]:
         """Crawl a page in multiple states and return discovered same-origin URLs."""
         discovered: dict[str, CrawledURL] = {}
         requested_max = self.default_max_pages if max_pages is None else int(max_pages)
@@ -170,7 +170,7 @@ class DOMCrawler:
         base_origin: str,
         cap: int,
         discovered: dict[str, CrawledURL],
-        exploration_quality: Optional[dict[str, Any]] = None,
+        exploration_quality: dict[str, Any] | None = None,
     ) -> None:
         if exploration_quality is None:
             exploration_quality = {

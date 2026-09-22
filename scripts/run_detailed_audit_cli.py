@@ -1,7 +1,7 @@
 import argparse
 import asyncio
-import csv
 import copy
+import csv
 import json
 import re
 import sys
@@ -10,14 +10,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.services.audit_runner import run_audit
 from app.services.prioritizer import build_scoring_summary
-
 
 SEVERITY_RANK = {
     "critical": 4,
@@ -527,11 +525,7 @@ async def _run_cli(args: argparse.Namespace) -> int:
     print(f"Degraded: {result.get('degraded_mode')} reason={result.get('degraded_reason')}")
     print(f"Issues: {len(issues)} | Groups: {len(groups)}")
     print(
-        "Scoring coverage: calibrated_scorable={calibrated} excluded_low_conf={excluded} ({ratio:.1%})".format(
-            calibrated=calibrated_scorable,
-            excluded=low_conf_excluded,
-            ratio=low_conf_ratio,
-        )
+        f"Scoring coverage: calibrated_scorable={calibrated_scorable} excluded_low_conf={low_conf_excluded} ({low_conf_ratio:.1%})"
     )
     print(
         "Dedup: before={before} after={after} removed={removed}".format(

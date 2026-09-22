@@ -4,22 +4,24 @@ Registers routers, CORS, health check, and ingestion endpoint.
 """
 import logging
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 
 from app.config import settings
 from app.core.env_validator import validate_or_exit
-from app.db.base import init_db
 from app.db.repository import get_audit_history
 from app.models import HealthResponse
-from app.observability import configure_logging, render_prometheus_metrics, trigger_test_alert
-from app.routers import rag, audit, dashboard_api
+from app.observability import (
+    configure_logging,
+    render_prometheus_metrics,
+    trigger_test_alert,
+)
+from app.routers import audit, dashboard_api, rag
 from app.security.auth import APIKeyMiddleware, bootstrap_auth_store
-from app.services.vector_store import get_chunks_count
-from app.services.ingestion import run_full_ingestion
-from app.services.vector_store import upsert_chunks, reset_collection
 from app.services.audit_runner import get_audit_runtime_health
+from app.services.ingestion import run_full_ingestion
+from app.services.vector_store import get_chunks_count, reset_collection, upsert_chunks
 
 # Configure logging
 configure_logging()
@@ -74,23 +76,29 @@ app = FastAPI(
 
 # 1. Error handling middleware (outermost - catches all errors)
 from app.middleware.error_handler import error_handler_middleware
+
 app.middleware("http")(error_handler_middleware)
 
 # 2. Security headers (add security headers to all responses)
 from app.middleware.security import SecurityHeadersMiddleware
+
 app.add_middleware(SecurityHeadersMiddleware)
 
 # 3. Request size limit (block oversized requests early)
 from app.middleware.security import RequestSizeLimitMiddleware
+
 app.add_middleware(RequestSizeLimitMiddleware, max_size_mb=10)
 
 # 4. CORS (configure before other middleware that might block)
 from app.middleware.security import configure_cors
+
 configure_cors(app)
 
 # 5. Rate limiting (prevent abuse)
-from app.middleware.security import RateLimitMiddleware
 import os
+
+from app.middleware.security import RateLimitMiddleware
+
 rate_limit_enabled = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
 if rate_limit_enabled:
     requests_per_minute = int(os.getenv("RATE_LIMIT_PER_MINUTE", "60"))
@@ -106,6 +114,7 @@ else:
 
 # 6. Request logging (log all requests with timing)
 from app.middleware.logging_middleware import RequestLoggingMiddleware
+
 app.add_middleware(RequestLoggingMiddleware)
 
 # 7. Authentication (verify API keys)
@@ -265,7 +274,7 @@ async def ingest_corpus(reset: bool = False, expand_corpus: bool = False):
         raise
     except Exception as e:
         logger.error(f"Ingestion failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ingestion failed: {e!s}")
 
 
 @app.get("/")

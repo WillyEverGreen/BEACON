@@ -1,7 +1,7 @@
 """Data models shared by crawler modules."""
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass(slots=True)
@@ -11,7 +11,7 @@ class SitemapURL:
     url: str
     priority: float = 0.5
     changefreq: str = "unknown"
-    lastmod: Optional[str] = None
+    lastmod: str | None = None
     depth: int = 0
     source: str = "sitemap"
 
@@ -23,7 +23,7 @@ class CrawledURL:
     url: str
     source: str
     depth: int = 0
-    discovered_from: Optional[str] = None
-    state: Optional[str] = None
+    discovered_from: str | None = None
+    state: str | None = None
     priority: float = 0.5
     metadata: dict[str, Any] = field(default_factory=dict)

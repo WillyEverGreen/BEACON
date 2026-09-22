@@ -84,11 +84,11 @@ export async function proxyToBeacon(request: Request, options: ProxyOptions): Pr
   }
 
   // Get body if method has one
-  let body: any = undefined;
+  let body: string | undefined = undefined;
   if (["POST", "PUT", "PATCH", "DELETE"].includes(request.method)) {
     try {
       body = await request.text();
-    } catch (e) {
+    } catch {
       // no body
     }
   }
@@ -102,7 +102,7 @@ export async function proxyToBeacon(request: Request, options: ProxyOptions): Pr
         body,
         cache: "no-store",
       });
-    } catch (fetchErr: any) {
+    } catch (fetchErr: unknown) {
       // Automatic IPv6/IPv4 fallback: If localhost failed, try 127.0.0.1
       if (targetUrl.hostname === "localhost") {
         const fallbackUrl = new URL(targetUrl.toString());
@@ -125,12 +125,12 @@ export async function proxyToBeacon(request: Request, options: ProxyOptions): Pr
       statusText: response.statusText,
       headers: responseHeaders,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("proxyToBeacon failed:", error);
     return NextResponse.json(
       {
         error: "BEACON backend is offline or unreachable. Ensure the backend server is running on port 8000 (`py -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload`).",
-        details: error.message,
+        details: error instanceof Error ? error.message : String(error),
       },
       { status: 502 }
     );

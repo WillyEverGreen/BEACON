@@ -3,13 +3,14 @@ Unit tests for environment variable validation.
 """
 
 import os
-import pytest
 from unittest.mock import patch
 
+import pytest
+
 from app.core.env_validator import (
+    get_validation_report,
     is_placeholder_value,
     validate_production_env,
-    get_validation_report,
 )
 
 

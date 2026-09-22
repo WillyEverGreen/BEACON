@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Iterable, Literal, Optional
+from collections.abc import Iterable
+from typing import Literal
 from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
 
 from bs4 import BeautifulSoup
@@ -11,7 +12,6 @@ from curl_cffi import AsyncSession
 from curl_cffi.requests import Response
 
 from app.config import CRAWLER_CONFIG, CRAWLER_URL_RULES
-
 
 _TRACKING_PARAMS = {p.lower() for p in CRAWLER_URL_RULES["tracking_params"]}
 _BINARY_EXTENSIONS = tuple(ext.lower() for ext in CRAWLER_URL_RULES["binary_extensions"])
@@ -60,7 +60,7 @@ def normalize_scan_mode(raw: str | None) -> ScanMode:
     raise ValueError(f"Unrecognised scan_mode: {raw!r}. Expected fast | deep | max.")
 
 
-def safe_float(value: Optional[str], default: float) -> float:
+def safe_float(value: str | None, default: float) -> float:
     if value is None:
         return default
     try:
@@ -155,7 +155,7 @@ def priority_path_boost(url: str) -> float:
     return 0.0
 
 
-def detect_critical_page_type(url: str) -> Optional[str]:
+def detect_critical_page_type(url: str) -> str | None:
     path = urlparse(url).path.lower()
     if any(token in path for token in ("/login", "/signin", "/signup", "/register", "/auth")):
         return "auth"

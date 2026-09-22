@@ -6,11 +6,10 @@ import hashlib
 import logging
 import re
 import time
-from typing import Any, Optional
+from typing import Any
 
 from bs4 import BeautifulSoup
 
-from app.config import CRAWLER_CONFIG, SEVERITY_WEIGHTS
 from app.audit.dynamic_handling import (
     apply_anti_bot_delay,
     apply_anti_bot_headers,
@@ -21,13 +20,22 @@ from app.audit.dynamic_handling import (
     install_request_interception,
     resolve_adaptive_timeouts,
 )
-from app.audit.failure_taxonomy import classify_failure_reason, normalize_failure, normalize_reason
-from app.audit.exploration import SPAStrategyPack
-from app.audit.fingerprint import stable_selector_fingerprint
-from app.audit.models import PageAuditResult, PageContext, PageStateMeta, state_meta_to_dict
 from app.audit.earl_report import generate_earl_report
+from app.audit.exploration import SPAStrategyPack
+from app.audit.failure_taxonomy import (
+    classify_failure_reason,
+    normalize_failure,
+    normalize_reason,
+)
+from app.audit.fingerprint import stable_selector_fingerprint
+from app.audit.models import (
+    PageAuditResult,
+    PageContext,
+    PageStateMeta,
+    state_meta_to_dict,
+)
+from app.config import CRAWLER_CONFIG, SEVERITY_WEIGHTS
 from app.crawlers.common import normalize_scan_mode
-
 
 _STATE_SEQUENCE = ("initial", "after_interaction", "after_scroll")
 
@@ -198,7 +206,7 @@ def _pick_degraded_reason(reasons: set[str]) -> str:
     ):
         if preferred in reasons:
             return preferred
-    return sorted(normalized_reasons)[0] if normalized_reasons else ""
+    return min(normalized_reasons) if normalized_reasons else ""
 
 
 async def _ensure_playwright_browser(page_context: PageContext) -> Any:
@@ -246,7 +254,7 @@ async def _default_state_provider(url: str, state: str, page_context: PageContex
 
     page = await browser.new_page()
     hydration_status = "uncertain"
-    detected_framework: Optional[str] = None
+    detected_framework: str | None = None
     render_retry_used = False
 
     async def _snapshot_current_dom() -> str:

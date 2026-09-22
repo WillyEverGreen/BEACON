@@ -7,8 +7,6 @@ import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
-
 
 logger = logging.getLogger(__name__)
 
@@ -70,8 +68,8 @@ def record_feedback(
     issue_id: str,
     rule_id: str = "",
     state: str = "ignored",
-    edited_fix: Optional[str] = None,
-    comment: Optional[str] = None,
+    edited_fix: str | None = None,
+    comment: str | None = None,
 ) -> dict:
     """
     Record developer feedback for a suggested fix.

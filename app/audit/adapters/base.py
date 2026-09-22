@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
 import uuid
+from abc import ABC, abstractmethod
+from typing import Any
 
-from app.models.contracts import Finding
 from app.audit.fingerprint import stable_selector_fingerprint
+from app.models.contracts import Finding
 
 
 class BaseAuditAdapter(ABC):
@@ -20,9 +20,8 @@ class BaseAuditAdapter(ABC):
         self.beacon_version = "2.1.0"
 
     @abstractmethod
-    def normalize(self, raw_issue: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Finding:
+    def normalize(self, raw_issue: dict[str, Any], context: dict[str, Any] | None = None) -> Finding:
         """Transform an engine-specific issue dictionary into a canonical Finding."""
-        pass
 
     def generate_finding_id(self, rule_id: str, selector: str) -> str:
         """Generate a deterministic finding ID based on rule and selector fingerprint."""

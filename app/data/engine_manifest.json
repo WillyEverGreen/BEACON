@@ -1,0 +1,33 @@
+{
+  "beacon_engine_version": "2.2.0",
+  "wcag_baseline": "2.2",
+  "knowledge_base_version": "2.2.0",
+  "adjudicator_version": "2.0.0",
+  "calibrator_version": "2.0.0",
+  "benchmark_version": "2.0.0",
+  "prompt_version": "2.0.0",
+  "remediation_sandbox_version": "2.0.0",
+  "scan_engine_versions": {
+    "axe": "4.11.1",
+    "ibm": "3.1.60",
+    "beacon_static": "2.0.0",
+    "beacon_heuristics": "2.0.0",
+    "beacon_browser": "2.0.0",
+    "beacon_coga": "2.0.0"
+  },
+  "supported_profiles": [
+    "GLOBAL_WCAG_22_AA",
+    "US_SECTION_508",
+    "UK_PUBLIC_SECTOR",
+    "EU_EN_301_549",
+    "INDIA_GIGW_3"
+  ],
+  "supported_lenses": [
+    "screen_reader",
+    "keyboard_motor",
+    "low_vision",
+    "cognitive",
+    "deaf_hard_of_hearing"
+  ],
+  "engine_freeze_timestamp": "2026-09-21T18:30:00Z"
+}

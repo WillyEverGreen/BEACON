@@ -2,20 +2,19 @@
 from __future__ import annotations
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from app.services.lighthouse_runner import (
     ChromeLaunchError,
     LighthouseRunError,
-    _cache_key,
     _cache_get,
+    _cache_key,
     _cache_set,
     clear_lighthouse_cache,
     run_lighthouse_for_url,
 )
-
 
 # ── Cache tests ───────────────────────────────────────────────────────────────
 
@@ -49,8 +48,9 @@ def test_cache_set_and_get():
 def test_cache_get_expired(monkeypatch):
     """Entry with timestamp far in the past should be treated as expired."""
     clear_lighthouse_cache()
-    import app.services.lighthouse_runner as mod
     import time
+
+    import app.services.lighthouse_runner as mod
 
     key = _cache_key("https://expired.com", "10.x", "v1")
     # Store with a timestamp far in the past relative to current monotonic time
@@ -77,10 +77,9 @@ async def test_chrome_not_found_raises_chrome_launch_error():
     with patch(
         "asyncio.create_subprocess_exec",
         side_effect=FileNotFoundError("No such file or directory"),
-    ):
-        with pytest.raises(ChromeLaunchError):
-            from app.services.lighthouse_runner import _invoke_lighthouse_cli
-            await _invoke_lighthouse_cli("https://example.com")
+    ), pytest.raises(ChromeLaunchError):
+        from app.services.lighthouse_runner import _invoke_lighthouse_cli
+        await _invoke_lighthouse_cli("https://example.com")
 
 
 # ── url_timeout handling ───────────────────────────────────────────────────────
@@ -91,9 +90,8 @@ async def test_url_timeout_returns_failure_dict_not_exception():
     with patch(
         "app.services.lighthouse_runner._invoke_lighthouse_cli",
         side_effect=asyncio.TimeoutError(),
-    ):
-        with patch("asyncio.wait_for", side_effect=asyncio.TimeoutError()):
-            result = await run_lighthouse_for_url("https://timeout.com")
+    ), patch("asyncio.wait_for", side_effect=asyncio.TimeoutError()):
+        result = await run_lighthouse_for_url("https://timeout.com")
     assert result["failure_reason"] == "url_timeout"
     assert result["raw_report"] is None
     assert result["cache_hit"] is False

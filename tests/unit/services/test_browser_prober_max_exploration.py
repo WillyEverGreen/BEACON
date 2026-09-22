@@ -45,8 +45,7 @@ async def test_max_exploration_runs_login_fallback_and_marks_phases(monkeypatch)
                 "lazy_load": {"actions_taken": 1, "growth_steps": 1, "infinite_scroll_detected": True},
             }
 
-    import app.audit.dynamic_handling as dynamic_handling
-    import app.audit.exploration as exploration
+    from app.audit import dynamic_handling, exploration
 
     monkeypatch.setattr(dynamic_handling, "detect_login_wall", _fake_detect_login_wall)
     monkeypatch.setattr(dynamic_handling, "attempt_public_fallback_scan", _fake_attempt_fallback)

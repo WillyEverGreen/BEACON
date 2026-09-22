@@ -10,7 +10,6 @@ import asyncio
 import json
 import logging
 import re
-from typing import Any, Dict, List, Optional, Tuple
 
 from app.config import settings
 from app.models import VerificationResult
@@ -107,7 +106,7 @@ def _sanitize_prompt_input(text: str) -> str:
     return cleaned[:1000]
 
 
-def _pre_adjudicate_fast_path(issue: dict, dom_context: dict) -> Optional[VerificationResult]:
+def _pre_adjudicate_fast_path(issue: dict, dom_context: dict) -> VerificationResult | None:
     """Fast deterministic adjudication for well-defined DOM context patterns without LLM latency."""
     from app.services.dom_context import GENERIC_LINK_TEXTS
     rule_id = str(issue.get("rule_id", "")).lower()
@@ -535,7 +534,7 @@ async def adjudicate_issues(
     issues: list[dict],
     html: str,
     max_adjudications: int = 15,
-) -> Tuple[list[dict], list[dict], list[dict]]:
+) -> tuple[list[dict], list[dict], list[dict]]:
     """Adjudicate candidate issues using DOM context extraction and verification.
     
     Returns:
@@ -555,7 +554,6 @@ async def adjudicate_issues(
         "empty-link", "link-name", "missing-label", "color-contrast"
     }
 
-    adjudication_tasks = []
     issue_candidates = []
 
     for issue in issues:
@@ -575,22 +573,45 @@ async def adjudicate_issues(
             else:
                 verified_failures.append(issue)
 
-    for issue, dom_ctx in issue_candidates:
-        # Evaluate deterministic fast path FIRST before heavy RAG retrieval
-        fast_result = _pre_adjudicate_fast_path(issue, dom_ctx)
-        if fast_result is not None:
-            result = fast_result
-        else:
-            sc = issue.get("wcag_criterion", "")
+    sem = asyncio.Semaphore(3)
+
+    async def _adjudicate_one(cand_issue: dict, cand_ctx: Any) -> tuple[dict, VerificationResult]:
+        async with sem:
+            fast_result = _pre_adjudicate_fast_path(cand_issue, cand_ctx)
+            if fast_result is not None:
+                return cand_issue, fast_result
+            sc = cand_issue.get("wcag_criterion", "")
             try:
                 chunks = await retrieve(
-                    query=f"{issue.get('rule_id')} WCAG {sc}",
+                    query=f"{cand_issue.get('rule_id')} WCAG {sc}",
                     filters={"criterion": sc} if sc else None,
                 )
             except Exception:
                 chunks = []
-            result = await verify_finding(issue, dom_ctx, chunks)
+            try:
+                async with asyncio.timeout(10.0):
+                    res = await verify_finding(cand_issue, cand_ctx, chunks)
+                    return cand_issue, res
+            except Exception as exc:
+                logger.warning(f"Adjudication candidate {cand_issue.get('rule_id')} timed out or failed: {exc}")
+                fallback = VerificationResult(
+                    verdict="needs_review",
+                    confidence=0.5,
+                    wcag_applicable=True,
+                    wcag_criterion=sc or cand_issue.get("wcag_criterion"),
+                    missing_evidence=["Verification timed out or model unavailable."],
+                    reasoning_summary="Auto-fallback to needs_review to prevent audit pipeline freeze.",
+                    user_impact="",
+                    recommended_action="Inspect element manually.",
+                )
+                return cand_issue, fallback
 
+    if issue_candidates:
+        results = await asyncio.gather(*[_adjudicate_one(issue, dom_ctx) for issue, dom_ctx in issue_candidates])
+    else:
+        results = []
+
+    for issue, result in results:
         issue["verification_result"] = result.model_dump()
         issue["verification_confidence"] = result.confidence
         if result.wcag_criterion:

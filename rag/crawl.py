@@ -1,11 +1,13 @@
 # crawl.py
-import asyncio, hashlib, json, logging
-from pathlib import Path
-from crawl4ai import AsyncWebCrawler
-from urllib.parse import urlparse
-from config import SOURCES, ALLOWED_DOMAINS
-
+import hashlib
+import json
+import logging
 from collections import deque
+from pathlib import Path
+from urllib.parse import urlparse
+
+from config import ALLOWED_DOMAINS
+from crawl4ai import AsyncWebCrawler
 
 logger = logging.getLogger("rag.crawl")
 

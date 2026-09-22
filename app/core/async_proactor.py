@@ -2,9 +2,9 @@
 Utility to safely run asyncio coroutines requiring Windows ProactorEventLoop (such as subprocesses/Playwright)
 even when the main thread event loop is a SelectorEventLoop (common in uvicorn on Windows).
 """
-import sys
 import asyncio
-from typing import Coroutine, TypeVar, Any
+import sys
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 

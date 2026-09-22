@@ -1,8 +1,10 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import api, { toUserFacingError } from "@/lib/api";
 import Link from "next/link";
+
+const emptySubscribe = () => () => {};
 
 function IconPlus({ className }: { className?: string }) {
   return (
@@ -17,25 +19,6 @@ function IconPlus({ className }: { className?: string }) {
     >
       <line x1="12" y1="5" x2="12" y2="19" />
       <line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
-  );
-}
-function IconScan({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M3 7V5a2 2 0 0 1 2-2h2" />
-      <path d="M17 3h2a2 2 0 0 1 2 2v2" />
-      <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
-      <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
-      <line x1="7" y1="12" x2="17" y2="12" />
     </svg>
   );
 }
@@ -129,9 +112,7 @@ export default function AllProjectsPage() {
   const [creating, setCreating] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const successTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => { setMounted(true); }, []);
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
 
   useEffect(() => {
     loadProjects();

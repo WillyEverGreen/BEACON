@@ -318,7 +318,7 @@ def test_group3_rule_activity_contains_confidence_buckets():
         ["images", "forms", "buttons", "svg_accessible_name", "language"],
     )
 
-    expected = {
+    _expected = {
         "missing-alt",
         "input-label",
         "input-name",

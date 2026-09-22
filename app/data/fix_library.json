@@ -2043,8 +2043,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 17,
-    "successful_fixes": 17,
+    "times_used": 19,
+    "successful_fixes": 19,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -2548,8 +2548,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 12,
-    "successful_fixes": 12,
+    "times_used": 14,
+    "successful_fixes": 14,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -2673,8 +2673,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 20,
-    "successful_fixes": 20,
+    "times_used": 22,
+    "successful_fixes": 22,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -2723,8 +2723,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 17,
-    "successful_fixes": 17,
+    "times_used": 19,
+    "successful_fixes": 19,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -2748,8 +2748,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 26,
-    "successful_fixes": 26,
+    "times_used": 28,
+    "successful_fixes": 28,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -2898,8 +2898,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 26,
-    "successful_fixes": 26,
+    "times_used": 28,
+    "successful_fixes": 28,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -2923,8 +2923,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 30,
-    "successful_fixes": 30,
+    "times_used": 32,
+    "successful_fixes": 32,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -2948,8 +2948,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 23,
-    "successful_fixes": 23,
+    "times_used": 25,
+    "successful_fixes": 25,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -2973,8 +2973,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 15,
-    "successful_fixes": 15,
+    "times_used": 17,
+    "successful_fixes": 17,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -3412,8 +3412,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 32,
-    "successful_fixes": 32,
+    "times_used": 34,
+    "successful_fixes": 34,
     "confidence": 0.85,
     "validated": true,
     "validation_reason": "All links have descriptive text"
@@ -4313,8 +4313,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 5,
-    "successful_fixes": 5,
+    "times_used": 7,
+    "successful_fixes": 7,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -5461,8 +5461,8 @@
       },
       "practical_assets": []
     },
-    "times_used": 2,
-    "successful_fixes": 2,
+    "times_used": 4,
+    "successful_fixes": 4,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"
@@ -5545,6 +5545,210 @@
     },
     "times_used": 4,
     "successful_fixes": 4,
+    "confidence": 0.6,
+    "validated": true,
+    "validation_reason": "Structural change detected (generic check)"
+  },
+  "3cb05f62b01ba48e197ef018a4983f1a605d0e154b1f7a64a35441b82f0f896e": {
+    "rule_id": "svg-no-accessible-name",
+    "normalized_pattern": "<svg><path></path><circ",
+    "remediation_data": {
+      "structured_fix": {
+        "explanation": "Inline SVG is missing a robust accessible name source. This is a serious accessibility issue that prevents screen readers from providing a meaningful description of the SVG to visually impaired users.",
+        "fix_steps": [
+          "Add an `aria-label` attribute to the SVG element with a descriptive text that conveys the purpose of the SVG.",
+          "Alternatively, add a `title` attribute to the SVG element with a descriptive text that conveys the purpose of the SVG.",
+          "Verify that the added `aria-label` or `title` attribute provides a clear and concise description of the SVG by using a screen reader."
+        ],
+        "code_example": {
+          "vanilla": "<svg aria-label=\"Description of the SVG\" ...>...</svg>",
+          "react": "<svg aria-label=\"Description of the SVG\" ...>...</svg>",
+          "vue": "<svg title=\"Description of the SVG\" ...>...</svg>",
+          "angular": "<svg aria-label=\"Description of the SVG\" ...>...</svg>"
+        },
+        "impact": "Visually impaired users who rely on screen readers to navigate the web will be unable to understand the purpose of the SVG, potentially leading to confusion and frustration.",
+        "wcag_reference": "1.1.1: Provide text alternatives for non-text content."
+      },
+      "explanation": {
+        "what_is_broken": "Inline SVG is missing a robust accessible name source. This is a serious accessibility issue that prevents screen readers from providing a meaningful description of the SVG to visually impaired users.",
+        "impact": "Visually impaired users who rely on screen readers to navigate the web will be unable to understand the purpose of the SVG, potentially leading to confusion and frustration.",
+        "wcag_sc": "1.1.1: Provide text alternatives for non-text content.",
+        "intent": "",
+        "verification": "Add an `aria-label` attribute to the SVG element with a descriptive text that conveys the purpose of the SVG.\nAlternatively, add a `title` attribute to the SVG element with a descriptive text that conveys the purpose of the SVG.\nVerify that the added `aria-label` or `title` attribute provides a clear and concise description of the SVG by using a screen reader."
+      },
+      "fixes": {
+        "vanilla": "<svg aria-label=\"Description of the SVG\" ...>...</svg>",
+        "react": "<svg aria-label=\"Description of the SVG\" ...>...</svg>",
+        "vue": "<svg title=\"Description of the SVG\" ...>...</svg>",
+        "angular": "<svg aria-label=\"Description of the SVG\" ...>...</svg>"
+      },
+      "practical_assets": []
+    },
+    "times_used": 1,
+    "successful_fixes": 1,
+    "confidence": 0.6,
+    "validated": true,
+    "validation_reason": "Structural change detected (generic check)"
+  },
+  "0b615b9c555752296b63dd60b715c0d60b71579354849b8c737fa2c5220f60b7": {
+    "rule_id": "button-name",
+    "normalized_pattern": "<button>\n<!--lit-part-->OS default<!--/lit-part-->\n</button>",
+    "remediation_data": {
+      "structured_fix": {
+        "explanation": "Button has no accessible name. Screen readers cannot identify this control.",
+        "fix_steps": [
+          "Add an accessible name to the button using the `aria-label` attribute.",
+          "Update the button HTML to include the `aria-label` attribute with a descriptive name.",
+          "Verify that the button has an accessible name by checking that screen readers announce the correct name."
+        ],
+        "code_example": {
+          "vanilla": "<button class=\"color-theme__option\" aria-label=\"Change color theme\" data-current=\"\" data-mode=\"light dark\" type=\"button\">\n<!--lit-part-->OS default<!--/lit-part-->\n</button>",
+          "react": "import { Button } from 'react';\nconst MyButton = () => {\n  return (\n    <Button aria-label=\"Change color theme\" data-current=\"\" data-mode=\"light dark\" type=\"button\">\n      OS default\n    </Button>\n  );\n};",
+          "vue": "template:\n  div\n    button(v-aria-label=\"Change color theme\" data-current=\"\" data-mode=\"light dark\" type=\"button\")\n      | OS default\n//",
+          "angular": "import { Component } from '@angular/core';\n@Component({\n  selector: 'app-my-button',\n  template: '<button aria-label=\"Change color theme\" data-current=\"\" data-mode=\"light dark\" type=\"button\">\n      OS default\n    </button>'\n})"
+        },
+        "impact": "Screen reader users will not be able to identify the button, making it inaccessible.",
+        "wcag_reference": "4.1.2"
+      },
+      "explanation": {
+        "what_is_broken": "Button has no accessible name. Screen readers cannot identify this control.",
+        "impact": "Screen reader users will not be able to identify the button, making it inaccessible.",
+        "wcag_sc": "4.1.2",
+        "intent": "",
+        "verification": "Add an accessible name to the button using the `aria-label` attribute.\nUpdate the button HTML to include the `aria-label` attribute with a descriptive name.\nVerify that the button has an accessible name by checking that screen readers announce the correct name."
+      },
+      "fixes": {
+        "vanilla": "<button class=\"color-theme__option\" aria-label=\"Change color theme\" data-current=\"\" data-mode=\"light dark\" type=\"button\">\n<!--lit-part-->OS default<!--/lit-part-->\n</button>",
+        "react": "import { Button } from 'react';\nconst MyButton = () => {\n  return (\n    <Button aria-label=\"Change color theme\" data-current=\"\" data-mode=\"light dark\" type=\"button\">\n      OS default\n    </Button>\n  );\n};",
+        "vue": "template:\n  div\n    button(v-aria-label=\"Change color theme\" data-current=\"\" data-mode=\"light dark\" type=\"button\")\n      | OS default\n//",
+        "angular": "import { Component } from '@angular/core';\n@Component({\n  selector: 'app-my-button',\n  template: '<button aria-label=\"Change color theme\" data-current=\"\" data-mode=\"light dark\" type=\"button\">\n      OS default\n    </button>'\n})"
+      },
+      "practical_assets": []
+    },
+    "times_used": 1,
+    "successful_fixes": 1,
+    "confidence": 0.6,
+    "validated": true,
+    "validation_reason": "Structural change detected (generic check)"
+  },
+  "1ea4ddfe313a49d1760a54f5895a4aa6ccd9ffc56a81742035fc59d44456de29": {
+    "rule_id": "empty-link",
+    "normalized_pattern": "<a>\n<!--lit-part--><!--lit-part bRP2a5ux/uw=--><span><!--lit-part quQU0uIDm5U=--><svg><circle></circle><path d=\"M12 16v-4m0",
+    "remediation_data": {
+      "structured_fix": {
+        "explanation": "Link has no text content. Screen readers will announce it as empty.",
+        "fix_steps": [
+          "Add text content to the link, e.g., <a class=\"button\" href=\"https://github.com/orgs/mdn/discussions/739\">Link text</a>.",
+          "Verify that the link text is descriptive and makes sense in context.",
+          "Check that the link text is visible and not hidden by CSS or JavaScript."
+        ],
+        "code_example": {
+          "vanilla": "<a class=\"button\" href=\"https://github.com/orgs/mdn/discussions/739\">Link text</a>",
+          "react": "Not applicable",
+          "vue": "Not applicable",
+          "angular": "Not applicable"
+        },
+        "impact": "Screen reader users will not be able to understand the purpose of the link.",
+        "wcag_reference": "2.4.4"
+      },
+      "explanation": {
+        "what_is_broken": "Link has no text content. Screen readers will announce it as empty.",
+        "impact": "Screen reader users will not be able to understand the purpose of the link.",
+        "wcag_sc": "2.4.4",
+        "intent": "",
+        "verification": "Add text content to the link, e.g., <a class=\"button\" href=\"https://github.com/orgs/mdn/discussions/739\">Link text</a>.\nVerify that the link text is descriptive and makes sense in context.\nCheck that the link text is visible and not hidden by CSS or JavaScript."
+      },
+      "fixes": {
+        "vanilla": "<a class=\"button\" href=\"https://github.com/orgs/mdn/discussions/739\">Link text</a>",
+        "react": "Not applicable",
+        "vue": "Not applicable",
+        "angular": "Not applicable"
+      },
+      "practical_assets": []
+    },
+    "times_used": 1,
+    "successful_fixes": 1,
+    "confidence": 0.6,
+    "validated": true,
+    "validation_reason": "Structural change detected (generic check)"
+  },
+  "529ee7928119e7b581b728c627704aa1f7cb6dd7c52adcf61c6aaee4b702a489": {
+    "rule_id": "timeout-no-warning",
+    "normalized_pattern": "<body>",
+    "remediation_data": {
+      "structured_fix": {
+        "explanation": "The page has session logic but lacks an accessible warning mechanism for timeouts, violating WCAG 2.2.1.",
+        "fix_steps": [
+          "Add a warning message before the timeout, indicating the user's session will expire soon.",
+          "Provide a clear call-to-action to extend the session or log back in.",
+          "Validate that the warning message is visible and accessible to all users."
+        ],
+        "code_example": {
+          "vanilla": "<script>setTimeout(function() { alert('Your session will expire in 5 minutes. Please extend your session or log back in.'); }, 300000);</script>",
+          "react": "import { useEffect, useState } from 'react'; // ... useEffect(() => { const timeoutId = setTimeout(() => { alert('Your session will expire in 5 minutes. Please extend your session or log back in.'); }, 300000); return () => { clearTimeout(timeoutId); }; }, []);",
+          "vue": "<script>export default { mounted() { const timeoutId = setTimeout(() => { alert('Your session will expire in 5 minutes. Please extend your session or log back in.'); }, 300000); this.$once('hook:beforeDestroy', () => { clearTimeout(timeoutId); }); },</script>",
+          "angular": "import { Component, OnDestroy } from '@angular/core'; // ... @Component({ ... }) export class MyComponent implements OnDestroy { timeoutId: any; constructor() { this.timeoutId = setTimeout(() => { alert('Your session will expire in 5 minutes. Please extend your session or log back in.'); }, 300000); } ngOnDestroy() { clearTimeout(this.timeoutId); } }"
+        },
+        "impact": "Users with disabilities may lose their work or experience frustration due to unexpected timeouts.",
+        "wcag_reference": "2.2.1"
+      },
+      "explanation": {
+        "what_is_broken": "The page has session logic but lacks an accessible warning mechanism for timeouts, violating WCAG 2.2.1.",
+        "impact": "Users with disabilities may lose their work or experience frustration due to unexpected timeouts.",
+        "wcag_sc": "2.2.1",
+        "intent": "",
+        "verification": "Add a warning message before the timeout, indicating the user's session will expire soon.\nProvide a clear call-to-action to extend the session or log back in.\nValidate that the warning message is visible and accessible to all users."
+      },
+      "fixes": {
+        "vanilla": "<script>setTimeout(function() { alert('Your session will expire in 5 minutes. Please extend your session or log back in.'); }, 300000);</script>",
+        "react": "import { useEffect, useState } from 'react'; // ... useEffect(() => { const timeoutId = setTimeout(() => { alert('Your session will expire in 5 minutes. Please extend your session or log back in.'); }, 300000); return () => { clearTimeout(timeoutId); }; }, []);",
+        "vue": "<script>export default { mounted() { const timeoutId = setTimeout(() => { alert('Your session will expire in 5 minutes. Please extend your session or log back in.'); }, 300000); this.$once('hook:beforeDestroy', () => { clearTimeout(timeoutId); }); },</script>",
+        "angular": "import { Component, OnDestroy } from '@angular/core'; // ... @Component({ ... }) export class MyComponent implements OnDestroy { timeoutId: any; constructor() { this.timeoutId = setTimeout(() => { alert('Your session will expire in 5 minutes. Please extend your session or log back in.'); }, 300000); } ngOnDestroy() { clearTimeout(this.timeoutId); } }"
+      },
+      "practical_assets": []
+    },
+    "times_used": 1,
+    "successful_fixes": 1,
+    "confidence": 0.6,
+    "validated": true,
+    "validation_reason": "Structural change detected (generic check)"
+  },
+  "9f4be0e66ed83f0bfe555e8932d1a69a328b742f505ebac5ac8ff8e5b6d84600": {
+    "rule_id": "unsafe-external-link",
+    "normalized_pattern": "<a>\n<!--lit-part--><!--lit-part bRP2a5ux/uw=--><span><!--lit-part quQU0uIDm5U=--><svg><circle></circle><path d=\"M12 16v-4m0",
+    "remediation_data": {
+      "structured_fix": {
+        "explanation": "The link opens in a new tab without the rel=\"noopener noreferrer\" attribute, which can cause security issues.",
+        "fix_steps": [
+          "Add the rel=\"noopener noreferrer\" attribute to the link's href attribute.",
+          "Verify that the link opens in a new tab by checking the browser's behavior."
+        ],
+        "code_example": {
+          "vanilla": "<a aria-labelledby=\"label-l77zebdnxci\" class=\"button\" data-variant=\"plain\" href=\"https://github.com/orgs/mdn/discussions/739\" part=\"button\" target=\"_blank\" rel=\"noopener noreferrer\">\n<!--lit-part--><!--lit-part bRP2a5ux/uw=--><span class=\"icon\" part=\"icon\"><!--lit-part quQU0uIDm5U=--><svg fill=\"none\" height=\"24\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" viewbox=\"0 0 24 24\" width=\"24\" xmlns=\"http://www.w3.org/2000/svg\">\n<!--lit-part--><!--lit-part 5g7z9j5J8Q=--><path d=\"M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z\" fill=\"currentColor\"/>\n</svg>\n</span>\n</a>",
+          "react": "Use the \"noopener noreferrer\" attribute when creating the link in React.",
+          "vue": "Use the \"noopener noreferrer\" attribute when creating the link in Vue.",
+          "angular": "Use the \"noopener noreferrer\" attribute when creating the link in Angular."
+        },
+        "impact": "Users may be vulnerable to security issues when clicking on the link.",
+        "wcag_reference": "3.2.5 Change on request: Context changes only when user explicitly requests them."
+      },
+      "explanation": {
+        "what_is_broken": "The link opens in a new tab without the rel=\"noopener noreferrer\" attribute, which can cause security issues.",
+        "impact": "Users may be vulnerable to security issues when clicking on the link.",
+        "wcag_sc": "3.2.5 Change on request: Context changes only when user explicitly requests them.",
+        "intent": "",
+        "verification": "Add the rel=\"noopener noreferrer\" attribute to the link's href attribute.\nVerify that the link opens in a new tab by checking the browser's behavior."
+      },
+      "fixes": {
+        "vanilla": "<a aria-labelledby=\"label-l77zebdnxci\" class=\"button\" data-variant=\"plain\" href=\"https://github.com/orgs/mdn/discussions/739\" part=\"button\" target=\"_blank\" rel=\"noopener noreferrer\">\n<!--lit-part--><!--lit-part bRP2a5ux/uw=--><span class=\"icon\" part=\"icon\"><!--lit-part quQU0uIDm5U=--><svg fill=\"none\" height=\"24\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" viewbox=\"0 0 24 24\" width=\"24\" xmlns=\"http://www.w3.org/2000/svg\">\n<!--lit-part--><!--lit-part 5g7z9j5J8Q=--><path d=\"M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z\" fill=\"currentColor\"/>\n</svg>\n</span>\n</a>",
+        "react": "Use the \"noopener noreferrer\" attribute when creating the link in React.",
+        "vue": "Use the \"noopener noreferrer\" attribute when creating the link in Vue.",
+        "angular": "Use the \"noopener noreferrer\" attribute when creating the link in Angular."
+      },
+      "practical_assets": []
+    },
+    "times_used": 1,
+    "successful_fixes": 1,
     "confidence": 0.6,
     "validated": true,
     "validation_reason": "Structural change detected (generic check)"

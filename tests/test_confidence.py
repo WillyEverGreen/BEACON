@@ -4,23 +4,21 @@ Unit tests for the confidence scoring engine.
 Tests multi-signal confidence calculation, severity downgrade rules,
 cross-engine agreement boosting, and manual review flagging.
 """
-import sys
 import os
-import pytest
+import sys
 
 # Ensure app is importable
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.services.confidence import (
-    calculate_confidence,
-    apply_confidence_rules,
-    _calc_source_reliability,
-    _calc_signal_strength,
     _calc_cross_engine_agreement,
     _calc_evidence_quality,
+    _calc_signal_strength,
+    _calc_source_reliability,
     _confidence_tier,
+    apply_confidence_rules,
+    calculate_confidence,
 )
-
 
 # ── Source Reliability ─────────────────────────────────────────
 

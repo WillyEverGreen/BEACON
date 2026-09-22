@@ -1,6 +1,8 @@
 import pytest
-from app.audit.site_aggregator import detect_page_type, _page_weight
+
 from app.audit.fingerprint import stable_selector_fingerprint
+from app.audit.site_aggregator import _page_weight, detect_page_type
+
 
 def test_page_type_tiebreaks_and_weights():
     """Verify classification and weight matching for complex layouts (e.g. blog + form)."""
@@ -79,8 +81,9 @@ def test_fingerprint_normalization_real_frameworks():
 @pytest.mark.asyncio
 async def test_bot_wall_preflight_check_live_mock():
     """Verify orchestrator's preflight bot wall check detects actual blocking responses without false-positives."""
-    from app.crawlers.orchestrator import CrawlerOrchestrator
     from unittest.mock import AsyncMock, patch
+
+    from app.crawlers.orchestrator import CrawlerOrchestrator
 
     orchestrator = CrawlerOrchestrator()
 

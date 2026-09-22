@@ -1,9 +1,8 @@
 """Unit tests for BEACON Native Multi-Signal DOM Topology & Adaptive Sampling."""
 
-import pytest
 from app.crawlers.topology import (
-    extract_multi_signal_fingerprint,
     AdaptiveTopologyTracker,
+    extract_multi_signal_fingerprint,
 )
 
 HTML_PRODUCT_BASE = """

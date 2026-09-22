@@ -85,7 +85,7 @@ def test_complete_html_allows_structural_checks():
     assert incomplete_issue is None, "Should NOT detect complete HTML as incomplete"
     
     # Structural checks should run
-    rule_ids = {issue.get("rule_id") for issue in issues}
+    _rule_ids = {issue.get("rule_id") for issue in issues}
     # No headings violation is expected since we have an h1
     # We're just verifying the checks ran (not suppressed)
 

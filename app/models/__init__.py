@@ -2,28 +2,28 @@
 Pydantic request/response models for the Accessibility Intelligence Engine.
 Extended schemas for multi-engine auditing, RAG remediation, feedback, and error handling.
 """
-from pydantic import BaseModel, Field, field_validator
-from typing import Any, Literal, Optional
 from enum import Enum
+from typing import Any, Literal
 
-from app.security.url_validator import URLValidationError, validate_public_url
+from pydantic import BaseModel, Field, field_validator
+
 from app.models.errors import (
-    ErrorDetail,
-    ErrorResponse,
-    ValidationErrorDetail,
-    BeaconError,
-    ValidationError,
+    AuditError,
     AuthenticationError,
     AuthorizationError,
-    ResourceNotFoundError,
-    RateLimitError,
-    DatabaseError,
-    ExternalServiceError,
-    AuditError,
+    BeaconError,
     BrowserError,
     ConfigurationError,
+    DatabaseError,
+    ErrorDetail,
+    ErrorResponse,
+    ExternalServiceError,
+    RateLimitError,
+    ResourceNotFoundError,
+    ValidationError,
+    ValidationErrorDetail,
 )
-
+from app.security.url_validator import URLValidationError, validate_public_url
 
 # ── Enums ───────────────────────────────────────────────────────
 
@@ -64,7 +64,7 @@ class FeedbackState(str, Enum):
 
 class RAGRequest(BaseModel):
     query: str = Field(..., min_length=3, description="Accessibility question or issue description")
-    filters: Optional[dict] = Field(
+    filters: dict | None = Field(
         default=None,
         description="Optional filters: {topic: str, level: str, chunk_type: str}",
         json_schema_extra={"example": {"topic": "contrast", "level": "AA"}}
@@ -81,13 +81,13 @@ class AuditRequest(BaseModel):
         default=ScanMode.FAST,
         description="Scan mode: 'fast', 'deep', or 'max'"
     )
-    max_pages: Optional[int] = Field(
+    max_pages: int | None = Field(
         default=None,
         ge=1,
         le=200,
         description="Optional page cap for multi-page scan orchestration",
     )
-    checks: Optional[list[str]] = Field(
+    checks: list[str] | None = Field(
         default=None,
         description="Specific checks to run: contrast, aria, headings, forms, etc."
     )
@@ -104,8 +104,8 @@ class AuditRequest(BaseModel):
 class FeedbackRequest(BaseModel):
     issue_id: str = Field(..., description="ID of the issue this feedback is for")
     state: FeedbackState = Field(..., description="Developer response to the fix")
-    edited_fix: Optional[str] = Field(default=None, description="If edited, the modified fix")
-    comment: Optional[str] = Field(default=None, description="Optional developer comment")
+    edited_fix: str | None = Field(default=None, description="If edited, the modified fix")
+    comment: str | None = Field(default=None, description="Optional developer comment")
 
 
 # ── Core Issue & Remediation Schemas ────────────────────────────
@@ -147,7 +147,7 @@ class VerificationResult(BaseModel):
     )
     confidence: float = Field(default=0.5, description="Adjudication confidence [0.0 - 1.0]")
     wcag_applicable: bool = Field(default=True, description="Whether the mapped WCAG criterion applies in this context")
-    wcag_criterion: Optional[str] = Field(default=None, description="Corrected or confirmed WCAG criterion, e.g. '2.4.4'")
+    wcag_criterion: str | None = Field(default=None, description="Corrected or confirmed WCAG criterion, e.g. '2.4.4'")
     evidence_for: list[str] = Field(default_factory=list, description="Concrete evidence points supporting failure")
     evidence_against: list[str] = Field(default_factory=list, description="Concrete evidence points supporting compliance/pass")
     missing_evidence: list[str] = Field(default_factory=list, description="Ambiguous or missing signals requiring review")
@@ -180,8 +180,8 @@ class AuditIssue(BaseModel):
     verification_confidence: float = Field(default=0.5, description="AI adjudication certainty [0.0 - 1.0]")
     wcag_mapping_confidence: float = Field(default=0.5, description="Success criterion mapping certainty [0.0 - 1.0]")
     consensus_confidence: float = Field(default=0.5, description="Cross-engine/method agreement certainty [0.0 - 1.0]")
-    confidence_breakdown: Optional[ConfidenceBreakdown] = None
-    verification_result: Optional[VerificationResult] = None
+    confidence_breakdown: ConfidenceBreakdown | None = None
+    verification_result: VerificationResult | None = None
     confidence_sources: list[str] = Field(default_factory=list, description="e.g. ['axe-core', 'heuristic']")
     confidence_reason: str = Field(default="", description="Human-readable reason for the confidence score")
     needs_manual_review: bool = Field(default=False, description="True if confidence < 0.6")
@@ -304,8 +304,8 @@ class AuditResponse(BaseModel):
     prioritized_issues: list[dict] = Field(default_factory=list, description="Ranked issue summaries for fix-first decisions")
     recommendations: list[str] = Field(default_factory=list, description="Deterministic fix-order recommendations")
     groups: list[IssueGroup] = Field(default_factory=list)
-    score: Optional[float] = Field(default=None, description="Accessibility score 0-100 (nullable when confidence is low)")
-    overall_score: Optional[float] = Field(default=None, description="Deterministic overall accessibility score")
+    score: float | None = Field(default=None, description="Accessibility score 0-100 (nullable when confidence is low)")
+    overall_score: float | None = Field(default=None, description="Deterministic overall accessibility score")
     severity_breakdown: dict = Field(default_factory=dict, description="Critical / major / minor counts")
     score_distribution: dict = Field(default_factory=dict, description="Score penalty distribution")
     priority_score_distribution: dict = Field(default_factory=dict, description="Priority score distribution")
@@ -313,15 +313,15 @@ class AuditResponse(BaseModel):
     issue_groupings: dict = Field(default_factory=dict, description="Issue groupings by type, component, and pattern")
     score_explanation: dict = Field(default_factory=dict, description="Score calculation details")
     score_display_context: str = Field(default="", description="Important caveat for perfect scores")
-    expected_score_after_fix: Optional[float] = Field(default=None, description="Score if top priorities are fixed")
-    score_improvement: Optional[float] = Field(default=None, description="Potential score boost")
+    expected_score_after_fix: float | None = Field(default=None, description="Score if top priorities are fixed")
+    score_improvement: float | None = Field(default=None, description="Potential score boost")
     degraded_mode: bool = Field(default=False, description="True if one or more requested engines failed or skipped")
-    degraded_reason: Optional[str] = Field(default=None, description="Machine-readable degradation reason code")
+    degraded_reason: str | None = Field(default=None, description="Machine-readable degradation reason code")
     skipped_components: list[str] = Field(default_factory=list, description="e.g., ['playwright', 'llm']")
-    degradation_reason: Optional[str] = Field(default=None, description="Reason for degradation")
+    degradation_reason: str | None = Field(default=None, description="Reason for degradation")
     confidence_score: float = Field(default=0.0, description="0-1 confidence in score reliability")
     confidence_note: str = Field(default="", description="Human-readable confidence interpretation")
-    cognitive_scores: Optional[CognitiveScore] = None
+    cognitive_scores: CognitiveScore | None = None
     summary: str = ""
     markdown_report: str = Field(default="", description="Full markdown report")
     scan_time_seconds: float = Field(default=0.0)
@@ -330,7 +330,7 @@ class AuditResponse(BaseModel):
     quality_gates: dict = Field(default_factory=dict)
     trust: dict = Field(default_factory=dict, description="Machine-readable trust/calibration payload")
     browser_probe_metadata: dict = Field(default_factory=dict, description="Browser runtime metadata from Playwright probes")
-    spa_framework: Optional[str] = Field(default=None, description="Detected SPA framework, if available")
+    spa_framework: str | None = Field(default=None, description="Detected SPA framework, if available")
     is_spa: bool = Field(default=False, description="Final SPA classification decision")
     spa_classification: dict = Field(
         default_factory=lambda: {"is_spa": False, "confidence": "low", "signals": []},
@@ -338,7 +338,7 @@ class AuditResponse(BaseModel):
     )
     enrichment_status: str = Field(default="complete", description="complete | pending | failed")
     audit_id: str = Field(default="", description="Unique ID for this audit run to poll for enrichment")
-    explain: Optional[dict] = Field(default=None, description="Optional explainability breakdown returned when explain=true")
+    explain: dict | None = Field(default=None, description="Optional explainability breakdown returned when explain=true")
 
 
 class FeedbackResponse(BaseModel):
@@ -362,8 +362,47 @@ class TopicsResponse(BaseModel):
 
 from app.models.contracts import (
     AntiBotState,
-    Fingerprint,
     Finding,
-    PatchResult,
     FindingNormalizer,
+    Fingerprint,
+    PatchResult,
 )
+
+__all__ = [
+    "ScanMode",
+    "Severity",
+    "AuditRequest",
+    "AuditResponse",
+    "AuditStreamEvent",
+    "EnrichmentPollResponse",
+    "FeedbackRequest",
+    "FeedbackResponse",
+    "HealthResponse",
+    "Issue",
+    "IssueGroup",
+    "RAGQueryRequest",
+    "RAGQueryResponse",
+    "TopicsResponse",
+    "AuditError",
+    "AuthenticationError",
+    "AuthorizationError",
+    "BeaconError",
+    "BrowserError",
+    "ConfigurationError",
+    "DatabaseError",
+    "ErrorDetail",
+    "ErrorResponse",
+    "ExternalServiceError",
+    "RateLimitError",
+    "ResourceNotFoundError",
+    "ValidationError",
+    "ValidationErrorDetail",
+    "URLValidationError",
+    "validate_public_url",
+    "AntiBotState",
+    "Finding",
+    "FindingNormalizer",
+    "Fingerprint",
+    "PatchResult",
+]
+

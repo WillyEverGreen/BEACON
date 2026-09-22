@@ -42,17 +42,17 @@ from typing import Any
 from urllib.parse import urlparse
 
 from app.config import (
-    LIGHTHOUSE_MAX_URLS_PER_SCAN,
     _LIGHTHOUSE_ELIGIBLE_MODES,
+    CRAWLER_URL_RULES,
+    LIGHTHOUSE_MAX_URLS_PER_SCAN,
 )
-from app.config import CRAWLER_URL_RULES
-from app.services.lighthouse_runner import ChromeLaunchError, run_lighthouse_for_url
 from app.services.lighthouse_mapper import (
     extract_category_scores,
     get_lighthouse_version,
     get_mapping_version,
     map_lighthouse_report,
 )
+from app.services.lighthouse_runner import ChromeLaunchError, run_lighthouse_for_url
 
 logger = logging.getLogger(__name__)
 

@@ -10,52 +10,62 @@ Pipeline:
 6. Generate report -> output
 """
 import asyncio
-from dataclasses import dataclass, field, replace
 import hashlib
 import json
 import logging
 import time
 import uuid
+from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 from curl_cffi import AsyncSession
 
+from app.audit.dynamic_handling import resolve_adaptive_timeouts, stable_request_headers
+from app.audit.earl_report import generate_earl_report
+from app.audit.failure_taxonomy import normalize_failure, reason_message
 from app.config import (
     AUDIT_CONCURRENCY_LIMIT,
     DEGRADED_MODE_MAX_SCORE,
     LLM_FIRE_BUDGET_PER_AUDIT,
+    PRECISION_PROFILES,
     QUALITY_GATES,
     SEVERITY_WEIGHTS,
     settings,
 )
-from app.config import PRECISION_PROFILES
-from app.audit.dynamic_handling import resolve_adaptive_timeouts, stable_request_headers
-from app.audit.earl_report import generate_earl_report
-from app.audit.failure_taxonomy import normalize_failure, reason_message
 from app.crawlers.common import http_get_with_backoff, normalize_scan_mode
-from app.services.static_checks import StaticChecker
-from app.services.heuristics import HeuristicAnalyzer
-from app.services.normalizer import normalize_all
-from app.services.ibm_checker import run_ibm_scan_url
-from app.services.dedup_engine import deduplicate, proximity_dedup
-from app.services.confidence import apply_confidence_rules
-from app.services.grouper import group_issues, cluster_root_causes
-from app.services.adjudicator import adjudicate_issues
-from app.services.report import generate_markdown_report
-from app.services.cognitive_checks import CognitiveAnalyzer
-from app.services.llm import enrich_issues
-from app.services.page_cache import (
-    get_url_hash, clean_html_for_hash, get_dom_hash, check_cache, save_to_cache
+from app.db.repository import (
+    get_user_usage_limits,
+    persist_audit_payload,
+    persist_enrichment_payload,
 )
-from app.services.prioritizer import build_scoring_summary, prioritize_issues
-from app.services.aggregator import aggregate_issues
-from app.services.rule_calibrator import get_rule_trust_entry, get_rule_trust_score
-from app.db.repository import persist_audit_payload, persist_enrichment_payload, get_user_usage_limits
 from app.observability.alerts import evaluate_audit_alerts, notify_llm_failure
 from app.observability.telemetry import record_audit_event
 from app.security.url_validator import URLValidationError, validate_public_url
+from app.services.adjudicator import adjudicate_issues
+from app.services.aggregator import aggregate_issues
+from app.services.cognitive_checks import CognitiveAnalyzer
+from app.services.confidence import apply_confidence_rules
+from app.services.dedup_engine import deduplicate, proximity_dedup
+from app.services.engine_manifest import attach_manifest_to_result
+from app.services.grouper import cluster_root_causes, group_issues
+from app.services.heuristics import HeuristicAnalyzer
+from app.services.ibm_checker import run_ibm_scan_url
+from app.services.llm import enrich_issues
+from app.services.normalizer import normalize_all
+from app.services.page_cache import (
+    check_cache,
+    clean_html_for_hash,
+    get_dom_hash,
+    get_url_hash,
+    save_to_cache,
+)
+from app.services.prioritizer import build_scoring_summary, prioritize_issues
+from app.services.report import generate_markdown_report
+from app.services.rule_calibrator import get_rule_trust_entry, get_rule_trust_score
+from app.services.static_checks import StaticChecker
+from app.services.vendor_axe import run_axe_core
 
 logger = logging.getLogger(__name__)
 
@@ -954,17 +964,18 @@ def get_audit_runtime_health() -> dict[str, Any]:
         "active_audits": int(_active_audits),
         "max_concurrent_audits": int(_MAX_CONCURRENT_AUDITS),
         "enrichment_tasks_pending": int(queued_enrichment),
-        "domain_preflight_cache_runs": int(len(_DOMAIN_PREFLIGHT_CACHE)),
+        "domain_preflight_cache_runs": len(_DOMAIN_PREFLIGHT_CACHE),
         "domain_preflight_cache_entries": int(cached_domains),
         "llm_fire_budget_per_audit": int(LLM_FIRE_BUDGET_PER_AUDIT),
     }
 
 
 def _finalize_result(
-    result: dict[str, Any], *, status: str, persist_db: bool = True, user_id: Optional[str] = None
+    result: dict[str, Any], *, status: str, persist_db: bool = True, user_id: str | None = None
 ) -> dict[str, Any]:
     """Persist DB state and emit telemetry/alert side effects for an audit result."""
     result = _enforce_audit_invariants(result)
+    result = attach_manifest_to_result(result)
 
     if persist_db:
         try:
@@ -1038,7 +1049,7 @@ async def _fetch_html(
     timeout: float = 15.0,
     max_attempts: int = 3,
     allow_lightweight_fallback: bool = True,
-) -> tuple[Optional[str], str, dict[str, Any]]:
+) -> tuple[str | None, str, dict[str, Any]]:
     """Fetch page HTML with selective retry and lightweight fallback.
 
     Returns tuple: (html_or_none, failure_reason_if_any, fetch_metadata)
@@ -1096,7 +1107,7 @@ async def _fetch_html(
         attempt_timeout: float,
         lightweight: bool,
         attempt_index: int,
-    ) -> tuple[Optional[str], Optional[int], str, bool]:
+    ) -> tuple[str | None, int | None, str, bool]:
         headers = stable_request_headers(url, attempt_index=attempt_index)
 
         try:
@@ -1235,16 +1246,10 @@ async def _fetch_html(
 
 
 async def _run_axe_core_via_playwright(page) -> list[dict]:
-    """Run axe-core in Playwright page and return violations."""
+    """Run axe-core in Playwright page using local vendored runtime and return violations."""
     try:
-        axe_local_path = Path(__file__).resolve().parents[2] / "axe-core" / "axe.min.js"
-        if axe_local_path.exists():
-            await page.add_script_tag(path=str(axe_local_path))
-        else:
-            await page.add_script_tag(url="https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.9.1/axe.min.js")
-        await page.wait_for_timeout(500)
-        results = await page.evaluate("axe.run()")
-        return results.get("violations", [])
+        res = await run_axe_core(page, allow_cdn_fallback=False)
+        return res.get("violations", [])
     except Exception as e:
         logger.warning(f"axe-core execution failed: {e}")
         return []
@@ -1253,17 +1258,17 @@ async def _run_axe_core_via_playwright(page) -> list[dict]:
 async def run_audit(
     url: str,
     scan_mode: str = "fast",
-    checks: Optional[list[str]] = None,
-    max_pages: Optional[int] = None,
+    checks: list[str] | None = None,
+    max_pages: int | None = None,
     precision_profile: str = "balanced",
     enable_enrichment: bool = True,
     max_enrich_issues: int = 20,
     enable_cognitive: bool = True,
     await_enrichment: bool = False,
     use_cache: bool = True,
-    run_id: Optional[str] = None,
+    run_id: str | None = None,
     enable_ibm: bool = True,
-    user_id: Optional[str] = None,
+    user_id: str | None = None,
     is_internal: bool = False,
 ) -> dict:
     """
@@ -1362,9 +1367,9 @@ async def run_audit(
     # ── Step 0b: Fetch Plan Limits ─────────────────────────────
     user_limits = get_user_usage_limits(user_id) if user_id else get_user_usage_limits("")
     effective_ai_budget = min(max_enrich_issues, user_limits.get("ai_budget", 5))
-    effective_max_pages = min(max_pages if max_pages else 100, user_limits.get("max_pages", 10))
+    max_pages = min(max_pages if max_pages else 100, user_limits.get("max_pages", 10))
 
-    def _mark_degraded(reason_code: str, message: Optional[str] = None) -> None:
+    def _mark_degraded(reason_code: str, message: str | None = None) -> None:
         nonlocal degraded_mode, degraded_reason, degradation_reason
         normalized_reason = normalize_failure(reason_code)
         degraded_mode = True
@@ -1443,7 +1448,10 @@ async def run_audit(
         if scan_mode in {"deep", "max"}:
             # Try Playwright for deep scan
             try:
-                from app.services.browser_probes import BrowserProber, _PLAYWRIGHT_AVAILABLE
+                from app.services.browser_probes import (
+                    _PLAYWRIGHT_AVAILABLE,
+                    BrowserProber,
+                )
                 if _PLAYWRIGHT_AVAILABLE:
                     # Use three navigation attempts total for production robustness.
                     prober = BrowserProber(url, timeout=browser_timeout_ms, max_retries=2)
@@ -2267,7 +2275,9 @@ async def run_audit(
         # (deep/max with a crawl phase) the full discovered set is passed and
         # the topology classification informs template-diverse URL selection.
         try:
-            from app.services.topology_detector import detect_topology as _detect_topology
+            from app.services.topology_detector import (
+                detect_topology as _detect_topology,
+            )
             _rendered_count = int(bool(
                 browser_probe_metadata.get("rendered_html_length", 0) or
                 browser_probe_metadata.get("url_count", 0) or
@@ -2449,7 +2459,8 @@ def _apply_precision_profile(
     (confidence != visibility - see design constraints).
     """
     from collections import Counter
-    from app.config import STRUCTURAL_FP_RULES, PAGE_LEVEL_RULES
+
+    from app.config import PAGE_LEVEL_RULES, STRUCTURAL_FP_RULES
 
     profile = PRECISION_PROFILES.get(profile_name, PRECISION_PROFILES["balanced"])
     profile = _merge_profile_with_policy(profile_name, profile)
@@ -3008,8 +3019,8 @@ async def _run_lighthouse_background(
     On timeout or any failure: writes status='failed' with failure_reason to DB.
     """
     from app.config import LIGHTHOUSE_GLOBAL_TIMEOUT_SECONDS
-    from app.services.lighthouse_enricher import run_lighthouse_enrichment
     from app.db.repository import persist_lighthouse_enrichment
+    from app.services.lighthouse_enricher import run_lighthouse_enrichment
 
     try:
         enrichment_block = await asyncio.wait_for(

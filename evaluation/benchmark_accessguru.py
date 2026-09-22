@@ -3,17 +3,18 @@
 from __future__ import annotations
 
 import argparse
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import json
 from collections import defaultdict
 from datetime import datetime, timezone
-import json
 from pathlib import Path
 
-from evaluation.accessguru_loader import AccessGuruExample, load_accessguru_examples
 from app.services.heuristics import HeuristicAnalyzer
 from app.services.static_checks import StaticChecker
+from evaluation.accessguru_loader import AccessGuruExample, load_accessguru_examples
 
 
 def _default_output() -> Path:

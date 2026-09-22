@@ -12,11 +12,9 @@ import os
 import threading
 import time
 import uuid
-from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Header, Depends, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
-from app.security.jwt_utils import extract_user_id_from_jwt, get_current_user_id
 
 from app.audit.failure_taxonomy import normalize_failure
 from app.audit.scan_mode_runner import run_scan_mode_audit
@@ -25,15 +23,28 @@ from app.config import (
 )
 from app.db.dashboard_repository import (
     delete_project as delete_project_record,
+)
+from app.db.dashboard_repository import (
     get_project as get_project_record,
+)
+from app.db.dashboard_repository import (
     get_scan as get_scan_record,
+)
+from app.db.dashboard_repository import (
     list_projects as list_project_records,
+)
+from app.db.dashboard_repository import (
     list_scans as list_scan_records,
+)
+from app.db.dashboard_repository import (
     upsert_project as upsert_project_record,
+)
+from app.db.dashboard_repository import (
     upsert_scan as upsert_scan_record,
 )
-from app.services.grouper import group_issues
+from app.security.jwt_utils import get_current_user_id
 from app.services.audit_runner import get_audit_runtime_health, run_audit
+from app.services.grouper import group_issues
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +60,7 @@ _legacy_bootstrap_done = False
 _legacy_bootstrap_lock = threading.Lock()
 
 
-def _resolve_site_scan_page_budget(scan_mode: str, user_id: Optional[str] = None) -> int:
+def _resolve_site_scan_page_budget(scan_mode: str, user_id: str | None = None) -> int:
     from app.db.repository import get_user_usage_limits
     mode = (scan_mode or "deep").lower()
     mode_ceiling = resolve_max_pages(mode, has_sitemap=False)
@@ -345,7 +356,7 @@ def _utc_now_iso() -> str:
     return datetime.datetime.utcnow().isoformat()
 
 
-def _parse_iso(ts: Optional[str]) -> Optional[datetime.datetime]:
+def _parse_iso(ts: str | None) -> datetime.datetime | None:
     if not ts:
         return None
     try:
@@ -354,7 +365,7 @@ def _parse_iso(ts: Optional[str]) -> Optional[datetime.datetime]:
         return None
 
 
-def _expire_stale_scans(project_id: Optional[str] = None) -> int:
+def _expire_stale_scans(project_id: str | None = None) -> int:
     """Mark long-running scans as failed so the UI does not spin forever."""
     now = datetime.datetime.utcnow()
     changed = 0
@@ -474,7 +485,7 @@ def _recompute_project_summary(project_id: str) -> bool:
     return False
 
 
-def _repair_invalid_completed_scans(project_id: Optional[str] = None) -> int:
+def _repair_invalid_completed_scans(project_id: str | None = None) -> int:
     """Repair legacy records where failed fetches were persisted as completed scans."""
     changed = 0
     touched_projects: set[str] = set()
@@ -522,18 +533,18 @@ def _repair_invalid_completed_scans(project_id: Optional[str] = None) -> int:
 class ProjectCreate(BaseModel):
     name: str
     url: str
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class ScanStart(BaseModel):
     project_id: str
-    scan_mode: Optional[str] = "fast"
+    scan_mode: str | None = "fast"
 
 
 @router.post("/projects/")
 async def create_project(
     data: ProjectCreate,
-    user_id: Optional[str] = Depends(get_current_user_id),
+    user_id: str | None = Depends(get_current_user_id),
 ):
     _ensure_legacy_bootstrap()
     pid = str(uuid.uuid4())[:8]
@@ -552,7 +563,7 @@ async def create_project(
 
 
 @router.get("/projects/")
-async def get_projects(user_id: Optional[str] = Depends(get_current_user_id)):
+async def get_projects(user_id: str | None = Depends(get_current_user_id)):
     _ensure_legacy_bootstrap()
     _repair_invalid_completed_scans()
 
@@ -570,7 +581,7 @@ async def get_projects(user_id: Optional[str] = Depends(get_current_user_id)):
 @router.get("/projects/{pid}")
 async def get_project(
     pid: str,
-    user_id: Optional[str] = Depends(get_current_user_id),
+    user_id: str | None = Depends(get_current_user_id),
 ):
     _ensure_legacy_bootstrap()
 
@@ -587,7 +598,7 @@ async def get_project(
 @router.delete("/projects/{pid}")
 async def delete_project(
     pid: str,
-    user_id: Optional[str] = Depends(get_current_user_id),
+    user_id: str | None = Depends(get_current_user_id),
 ):
     _ensure_legacy_bootstrap()
 
@@ -601,7 +612,7 @@ async def delete_project(
 @router.post("/scans/")
 async def start_scan(
     data: ScanStart,
-    user_id: Optional[str] = Depends(get_current_user_id),
+    user_id: str | None = Depends(get_current_user_id),
 ):
     _ensure_legacy_bootstrap()
 
@@ -922,8 +933,28 @@ async def get_scans(pid: str):
     return sorted(scans, key=lambda scan: scan.get("created_at", ""), reverse=True)
 
 
+@router.get("/profiles")
+async def list_regulatory_profiles():
+    """Lists all authoritative regulatory compliance control profiles (§25–§30)."""
+    from app.profiles.registry import REGULATORY_PROFILES
+    return [p.to_dict() for p in REGULATORY_PROFILES.values()]
+
+
+@router.get("/personas")
+async def list_persona_lenses():
+    """Lists all user persona lenses (§32–§38)."""
+    from app.profiles.registry import PERSONA_LENSES
+    return [lens.to_dict() for lens in PERSONA_LENSES.values()]
+
+
 @router.get("/scans/{pid}/{sid}")
-async def get_scan(pid: str, sid: str):
+async def get_scan(
+    pid: str,
+    sid: str,
+    profile: str | None = Query(None, description="Regulatory profile ID (e.g. GLOBAL_WCAG_22_AA, US_SECTION_508)"),
+    persona: str | None = Query(None, description="Persona lens ID (e.g. SCREEN_READER, KEYBOARD_MOTOR)"),
+    view: str | None = Query(None, description="Role view (DEVELOPER, QA_A11Y, COMPLIANCE, EXECUTIVE)"),
+):
     _ensure_legacy_bootstrap()
 
     _repair_invalid_completed_scans(project_id=pid)
@@ -932,6 +963,13 @@ async def get_scan(pid: str, sid: str):
     scan = get_scan_record(sid)
     if not scan:
         raise HTTPException(404, "Scan not found")
+
+    if profile or persona or view:
+        try:
+            from app.services.role_views import project_scan_view
+            return project_scan_view(scan, profile_id=profile, persona_id=persona, view=view)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
 
     return scan
 
@@ -1050,9 +1088,40 @@ async def export_scan_report(pid: str, sid: str, fmt: str):
             media_type="application/json",
             headers={"Content-Disposition": f'attachment; filename="beacon-scan-{sid}.json"'},
         )
+
+    elif normalized_format == "csv":
+        from app.audit.exporters.csv_exporter import export_to_csv
+        csv_text = export_to_csv(issues, target_url=url)
+        return Response(
+            content=csv_text,
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="beacon-scan-{sid}.csv"'},
+        )
     else:
         raise HTTPException(
             400,
-            f"Unsupported export format: '{fmt}'. Supported formats: sarif, earl, markdown, json.",
+            f"Unsupported export format: '{fmt}'. Supported formats: sarif, earl, markdown, json, csv.",
         )
+
+
+@router.get("/scans/{pid}/{sid}/statement")
+async def get_accessibility_statement(
+    pid: str,
+    sid: str,
+    org_name: str = Query("[Organization Name]", description="Name of the organization"),
+    profile: str = Query("W3C WCAG 2.2 Level AA", description="Target standard/profile"),
+):
+    """Generate an authoritative accessibility statement draft (§68)."""
+    _ensure_legacy_bootstrap()
+    scan = get_scan_record(sid)
+    if not scan:
+        raise HTTPException(404, "Scan not found")
+    from app.services.accessibility_statement import generate_accessibility_statement
+    statement = generate_accessibility_statement(
+        scan,
+        organization_name=org_name,
+        profile_name=profile,
+    )
+    return {"statement": statement, "scan_id": sid, "project_id": pid}
+
 

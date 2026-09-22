@@ -1,7 +1,7 @@
 """Regression test suite running against permanent golden fixtures in tests/regression/corpus."""
 
 from pathlib import Path
-import pytest
+
 from app.services.static_checks import StaticChecker
 
 CORPUS_DIR = Path(__file__).parent / "corpus"

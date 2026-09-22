@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from enum import Enum
-from typing import Any, Final, Mapping
+from typing import Any, Final
 
 
 class DegradedReason(str, Enum):

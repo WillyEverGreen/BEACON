@@ -3,6 +3,7 @@ Fix Validator: Re-runs the static checker against proposed code fixes
 to validate they actually resolve the flagged issue before storing to cache.
 """
 import logging
+
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)

@@ -14,7 +14,6 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import List, Tuple
 
 if hasattr(sys.stdout, "reconfigure"):
     try:
@@ -88,7 +87,7 @@ def print_warning(text: str):
     print(f"{YELLOW}{WARN_MARK} {text}{RESET}")
 
 
-def check_placeholder_values() -> Tuple[bool, List[str]]:
+def check_placeholder_values() -> tuple[bool, list[str]]:
     """Check for placeholder values in production code."""
     print_header("Checking for placeholder values in production code...")
     
@@ -127,7 +126,7 @@ def check_placeholder_values() -> Tuple[bool, List[str]]:
         return True, []
 
 
-def check_secrets() -> Tuple[bool, List[str]]:
+def check_secrets() -> tuple[bool, list[str]]:
     """Check for accidentally committed secrets."""
     print_header("Checking for accidentally committed secrets...")
     
@@ -169,7 +168,7 @@ def check_secrets() -> Tuple[bool, List[str]]:
         return True, []
 
 
-def check_env_files() -> Tuple[bool, List[str]]:
+def check_env_files() -> tuple[bool, list[str]]:
     """Check that .env files are not committed."""
     print_header("Checking that .env files are not committed...")
     
@@ -192,7 +191,7 @@ def check_env_files() -> Tuple[bool, List[str]]:
         return True, []
 
 
-def check_env_example() -> Tuple[bool, List[str]]:
+def check_env_example() -> tuple[bool, list[str]]:
     """Check that .env.example exists and has no real values."""
     print_header("Checking .env.example file...")
     
@@ -229,7 +228,7 @@ def check_env_example() -> Tuple[bool, List[str]]:
         return True, []
 
 
-def check_security_configs() -> Tuple[bool, List[str]]:
+def check_security_configs() -> tuple[bool, list[str]]:
     """Check that security configurations are present."""
     print_header("Checking security configurations...")
     
@@ -262,7 +261,7 @@ def check_security_configs() -> Tuple[bool, List[str]]:
         return True, []
 
 
-def check_docker_config() -> Tuple[bool, List[str]]:
+def check_docker_config() -> tuple[bool, list[str]]:
     """Check Docker configuration."""
     print_header("Checking Docker configuration...")
     
@@ -295,7 +294,7 @@ def check_docker_config() -> Tuple[bool, List[str]]:
         return True, []
 
 
-def check_render_config() -> Tuple[bool, List[str]]:
+def check_render_config() -> tuple[bool, list[str]]:
     """Check Render configuration."""
     print_header("Checking Render configuration...")
     

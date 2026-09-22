@@ -1,16 +1,12 @@
 """Unit tests for app/services/lighthouse_mapper.py"""
 from __future__ import annotations
 
-import json
-import pytest
-
 from app.services.lighthouse_mapper import (
     _normalize_score,
     _score_to_severity,
     extract_category_scores,
     map_lighthouse_report,
 )
-
 
 # ── Score normalization ───────────────────────────────────────────────────────
 

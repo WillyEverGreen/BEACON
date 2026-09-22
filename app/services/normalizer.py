@@ -6,6 +6,7 @@ import hashlib
 import logging
 
 from app.config import RULE_DOMAIN_MAP
+from app.services.engine_manifest import get_engine_manifest
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,27 @@ AXE_WCAG_MAP = {
     "list": ("1.3.1", "A"),
     "listitem": ("1.3.1", "A"),
     "form-field-multiple-labels": ("1.3.1", "A"),
+    "empty-link": ("2.4.4", "A"),
+    "link-purpose": ("2.4.4", "A"),
+    "no-headings": ("1.3.1", "A"),
+    "missing-h1": ("1.3.1", "A"),
+    "table-no-headers": ("1.3.1", "A"),
+    "table-layout": ("1.3.1", "A"),
+    "semantic-html": ("1.3.1", "A"),
+    "no-main-landmark": ("1.3.1", "A"),
+    "no-nav-landmark": ("1.3.1", "A"),
+    "unlabeled-icon": ("1.1.1", "A"),
+    "svg-no-accessible-name": ("1.1.1", "A"),
+    "input-label": ("1.3.1", "A"),
+    "placeholder-as-label": ("1.3.1", "A"),
+    "missing-label": ("1.3.1", "A"),
+    "line-height": ("1.4.12", "AA"),
+    "avoid-inline-spacing": ("1.4.12", "AA"),
+    "unsafe-external-link": ("2.4.4", "A"),
+    "timeout-no-warning": ("2.2.1", "A"),
+    "landmark-roles": ("1.3.1", "A"),
+    "skip-link": ("2.4.1", "A"),
+    "missing-skip-link": ("2.4.1", "A"),
 }
 
 # ── axe-core rule → category mapping ──────────────────────────
@@ -82,6 +104,27 @@ AXE_CATEGORY_MAP = {
     "region": "html",
     "meta-viewport": "html",
     "video-caption": "media",
+    "empty-link": "navigation",
+    "link-purpose": "navigation",
+    "no-headings": "html",
+    "missing-h1": "html",
+    "table-no-headers": "html",
+    "table-layout": "html",
+    "semantic-html": "html",
+    "no-main-landmark": "navigation",
+    "no-nav-landmark": "navigation",
+    "unlabeled-icon": "images",
+    "svg-no-accessible-name": "images",
+    "input-label": "forms",
+    "placeholder-as-label": "forms",
+    "missing-label": "forms",
+    "line-height": "color",
+    "avoid-inline-spacing": "color",
+    "unsafe-external-link": "navigation",
+    "timeout-no-warning": "navigation",
+    "landmark-roles": "navigation",
+    "skip-link": "navigation",
+    "missing-skip-link": "navigation",
 }
 
 # ── IBM Equal Access rule → WCAG mapping ──────────────────────
@@ -185,6 +228,8 @@ def normalize_axe_results(axe_violations: list[dict], url: str) -> list[dict]:
     Convert axe-core violation results into unified AuditIssue dicts.
     Groupable rules produce one representative issue with affected_count.
     """
+    manifest = get_engine_manifest()
+    axe_ver = manifest.get("scan_engine_versions", {}).get("axe", "4.11.1")
     issues = []
     for violation in axe_violations:
         raw_rule_id = violation.get("id", "unknown")
@@ -208,9 +253,14 @@ def normalize_axe_results(axe_violations: list[dict], url: str) -> list[dict]:
             issues.append({
                 "issue_id": _make_issue_id(url, f"{rule_id}:grouped", rule_id),
                 "rule_id": rule_id,
+                "raw_rule_id": raw_rule_id,
+                "source_engine": "axe-core",
+                "engine_version": axe_ver,
                 "is_grouped": True,
                 "issue_type": "violation",
                 "element": f"{affected} elements" if affected > 1 else selector,
+                "selector": selector,
+                "html": html_snippet,
                 "html_snippet": html_snippet,
                 "page_url": url,
                 "severity": severity,
@@ -244,9 +294,14 @@ def normalize_axe_results(axe_violations: list[dict], url: str) -> list[dict]:
             issues.append({
                 "issue_id": _make_issue_id(url, selector, rule_id),
                 "rule_id": rule_id,
+                "raw_rule_id": raw_rule_id,
+                "source_engine": "axe-core",
+                "engine_version": axe_ver,
                 "is_grouped": False,
                 "issue_type": "violation",
                 "element": selector,
+                "selector": selector,
+                "html": html_snippet,
                 "html_snippet": html_snippet,
                 "page_url": url,
                 "severity": severity,
@@ -273,46 +328,124 @@ def normalize_axe_results(axe_violations: list[dict], url: str) -> list[dict]:
     return issues
 
 
-def normalize_static_results(static_issues: list[dict]) -> list[dict]:
+def normalize_static_results(static_issues: list[dict], url: str = "") -> list[dict]:
     """
     Static check results are already in the unified format.
-    Just ensure domain is populated from the rule_id mapping.
+    Ensure domain, raw_rule_id, source_engine, selector/html, id, wcag_criterion, and category are populated.
     """
+    manifest = get_engine_manifest()
+    static_ver = manifest.get("scan_engine_versions", {}).get("beacon_static", "2.0.0")
     for issue in static_issues:
-        issue["rule_id"] = _translate_rule_id(issue.get("rule_id", ""))
+        raw_id = issue.get("raw_rule_id") or issue.get("rule_id", "")
+        rule_id = _translate_rule_id(issue.get("rule_id", ""))
+        issue["raw_rule_id"] = raw_id
+        issue["rule_id"] = rule_id
+        issue.setdefault("source_engine", "beacon_static")
+        issue.setdefault("engine_version", static_ver)
+        selector = str(issue.get("element", "") or issue.get("selector", "") or "")
+        issue["selector"] = selector
+        issue.setdefault("html", str(issue.get("html_snippet", "") or ""))
+
+        # Ensure unique ID
+        if not issue.get("issue_id") and not issue.get("id"):
+            fid = _make_issue_id(url, selector, rule_id)
+            issue["issue_id"] = fid
+            issue["id"] = fid
+            issue["finding_id"] = fid
+
+        # Ensure WCAG mapping
+        if not issue.get("wcag_criterion"):
+            mapped_wcag = AXE_WCAG_MAP.get(rule_id) or AXE_WCAG_MAP.get(raw_id)
+            if mapped_wcag:
+                issue["wcag_criterion"] = mapped_wcag[0]
+                issue["wcag_level"] = mapped_wcag[1]
+
+        # Ensure Category mapping
+        if not issue.get("category") or issue.get("category") == "general":
+            mapped_cat = AXE_CATEGORY_MAP.get(rule_id) or AXE_CATEGORY_MAP.get(raw_id)
+            if mapped_cat:
+                issue["category"] = mapped_cat
+
         if not issue.get("domain"):
-            issue["domain"] = RULE_DOMAIN_MAP.get(issue.get("rule_id", ""), "")
+            issue["domain"] = RULE_DOMAIN_MAP.get(rule_id, "")
+        if not isinstance(issue.get("evidence"), dict):
+            issue["evidence"] = {}
     return static_issues
 
 
-def normalize_heuristic_results(heuristic_issues: list[dict]) -> list[dict]:
+def normalize_heuristic_results(heuristic_issues: list[dict], url: str = "") -> list[dict]:
     """
     Heuristic results are already in unified format.
-    Populate domain and ensure needs_manual_review is set.
+    Populate domain, raw_rule_id, source_engine, id, wcag_criterion, category, and ensure needs_manual_review is set.
     """
+    manifest = get_engine_manifest()
+    h_ver = manifest.get("scan_engine_versions", {}).get("beacon_heuristics", "2.0.0")
     for issue in heuristic_issues:
-        issue["rule_id"] = _translate_rule_id(issue.get("rule_id", ""))
+        raw_id = issue.get("raw_rule_id") or issue.get("rule_id", "")
+        rule_id = _translate_rule_id(issue.get("rule_id", ""))
+        issue["raw_rule_id"] = raw_id
+        issue["rule_id"] = rule_id
+        issue.setdefault("source_engine", "beacon_heuristics")
+        issue.setdefault("engine_version", h_ver)
+        selector = str(issue.get("element", "") or issue.get("selector", "") or "")
+        issue["selector"] = selector
+        issue.setdefault("html", str(issue.get("html_snippet", "") or ""))
+
+        # Ensure unique ID
+        if not issue.get("issue_id") and not issue.get("id"):
+            fid = _make_issue_id(url, selector, rule_id)
+            issue["issue_id"] = fid
+            issue["id"] = fid
+            issue["finding_id"] = fid
+
+        # Ensure WCAG mapping
+        if not issue.get("wcag_criterion"):
+            mapped_wcag = AXE_WCAG_MAP.get(rule_id) or AXE_WCAG_MAP.get(raw_id)
+            if mapped_wcag:
+                issue["wcag_criterion"] = mapped_wcag[0]
+                issue["wcag_level"] = mapped_wcag[1]
+
+        # Ensure Category mapping
+        if not issue.get("category") or issue.get("category") == "general":
+            mapped_cat = AXE_CATEGORY_MAP.get(rule_id) or AXE_CATEGORY_MAP.get(raw_id)
+            if mapped_cat:
+                issue["category"] = mapped_cat
+
         if not issue.get("domain"):
-            issue["domain"] = RULE_DOMAIN_MAP.get(issue.get("rule_id", ""), "")
+            issue["domain"] = RULE_DOMAIN_MAP.get(rule_id, "")
         issue["needs_manual_review"] = True
         issue["issue_type"] = "needs-review"
+        if not isinstance(issue.get("evidence"), dict):
+            issue["evidence"] = {}
     return heuristic_issues
 
 
 def normalize_browser_results(browser_issues: list[dict]) -> list[dict]:
     """
     Browser probe results are already in unified format.
-    Populate domain from rule_id mapping.
+    Populate domain, raw_rule_id, source_engine from rule_id mapping.
     """
+    manifest = get_engine_manifest()
+    b_ver = manifest.get("scan_engine_versions", {}).get("beacon_browser", "2.0.0")
     for issue in browser_issues:
+        raw_id = issue.get("raw_rule_id") or issue.get("rule_id", "")
+        issue["raw_rule_id"] = raw_id
         issue["rule_id"] = _translate_rule_id(issue.get("rule_id", ""))
+        issue.setdefault("source_engine", "beacon_browser")
+        issue.setdefault("engine_version", b_ver)
+        issue.setdefault("selector", str(issue.get("element", "") or ""))
+        issue.setdefault("html", str(issue.get("html_snippet", "") or ""))
         if not issue.get("domain"):
             issue["domain"] = RULE_DOMAIN_MAP.get(issue.get("rule_id", ""), "")
+        if not isinstance(issue.get("evidence"), dict):
+            issue["evidence"] = {}
     return browser_issues
 
 
 def normalize_ibm_results(ibm_issues: list[dict], url: str) -> list[dict]:
     """Normalize IBM Equal Access findings into AuditIssue shape."""
+    manifest = get_engine_manifest()
+    ibm_ver = manifest.get("scan_engine_versions", {}).get("ibm", "3.1.60")
     normalized: list[dict] = []
     for issue in ibm_issues:
         raw_rule_id = str(issue.get("rule_id", "") or issue.get("id", "")).strip()
@@ -321,6 +454,7 @@ def normalize_ibm_results(ibm_issues: list[dict], url: str) -> list[dict]:
 
         rule_id = _translate_rule_id(raw_rule_id)
         selector = str(issue.get("selector", "") or issue.get("element", "")).strip()
+        html_snippet = str(issue.get("html_snippet", "") or issue.get("html", "") or "")[:500]
         message = str(issue.get("message", "") or issue.get("description", "")).strip()
         severity = str(issue.get("severity", "moderate") or "moderate").lower().strip()
         if severity not in AXE_SEVERITY_MAP:
@@ -333,10 +467,15 @@ def normalize_ibm_results(ibm_issues: list[dict], url: str) -> list[dict]:
             {
                 "issue_id": _make_issue_id(url, selector, rule_id),
                 "rule_id": rule_id,
+                "raw_rule_id": raw_rule_id,
+                "source_engine": "ibm",
+                "engine_version": ibm_ver,
                 "is_grouped": False,
                 "issue_type": "violation",
                 "element": selector,
-                "html_snippet": str(issue.get("html_snippet", "") or "")[:500],
+                "selector": selector,
+                "html": html_snippet,
+                "html_snippet": html_snippet,
                 "page_url": url,
                 "severity": severity,
                 "wcag_criterion": wcag_criterion,
@@ -415,8 +554,8 @@ def normalize_all(
     """
     all_issues = []
 
-    all_issues.extend(normalize_static_results(static_issues))
-    all_issues.extend(normalize_heuristic_results(heuristic_issues))
+    all_issues.extend(normalize_static_results(static_issues, url))
+    all_issues.extend(normalize_heuristic_results(heuristic_issues, url))
     all_issues.extend(normalize_browser_results(browser_issues))
     all_issues.extend(normalize_axe_results(axe_issues, url))
     all_issues.extend(normalize_ibm_results(ibm_issues or [], url))

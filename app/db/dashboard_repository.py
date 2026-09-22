@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import os
 import datetime as dt
-from typing import Any, Optional
+import os
+from typing import Any
 
-from app.audit.failure_taxonomy import normalize_failure
 from app.audit.failure_taxonomy import normalize_failure
 
 
@@ -29,7 +28,7 @@ def _from_iso(value: Any) -> dt.datetime | None:
         return None
 
 
-def _serialize_project(record: DashboardProjectRecord) -> dict[str, Any]:
+def _serialize_project(record: Any) -> dict[str, Any]:
     return {
         "id": record.id,
         "name": record.name,
@@ -42,7 +41,7 @@ def _serialize_project(record: DashboardProjectRecord) -> dict[str, Any]:
     }
 
 
-def _serialize_scan(record: DashboardScanRecord) -> dict[str, Any]:
+def _serialize_scan(record: Any) -> dict[str, Any]:
     trust_payload = dict(record.trust or {})
     return {
         "id": record.id,
@@ -88,7 +87,7 @@ def _serialize_scan(record: DashboardScanRecord) -> dict[str, Any]:
     }
 
 
-def _apply_project_record(record: DashboardProjectRecord, payload: dict[str, Any]) -> None:
+def _apply_project_record(record: Any, payload: dict[str, Any]) -> None:
     record.name = str(payload.get("name") or "")
     record.url = str(payload.get("url") or "")
     record.description = str(payload.get("description") or "")
@@ -100,7 +99,7 @@ def _apply_project_record(record: DashboardProjectRecord, payload: dict[str, Any
     record.total_issues = int(payload.get("total_issues") or 0)
 
 
-def _apply_scan_record(record: DashboardScanRecord, payload: dict[str, Any]) -> None:
+def _apply_scan_record(record: Any, payload: dict[str, Any]) -> None:
     record.project_id = str(payload.get("project_id") or "")
     record.status = str(payload.get("status") or "scanning")
     record.url = str(payload.get("url") or "")
@@ -185,7 +184,7 @@ def _write_local_json(filepath: str, data: dict[str, Any]) -> None:
         logger.warning("Failed to write local json %s: %s", filepath, e)
 
 
-def list_projects(user_id: Optional[str] = None) -> list[dict[str, Any]]:
+def list_projects(user_id: str | None = None) -> list[dict[str, Any]]:
     try:
         sb = get_supabase()
         query = sb.table("projects").select("*")
@@ -201,7 +200,7 @@ def list_projects(user_id: Optional[str] = None) -> list[dict[str, Any]]:
         return sorted(items, key=lambda x: str(x.get("created_at") or ""), reverse=True)
 
 
-def get_project(project_id: str, user_id: Optional[str] = None) -> dict[str, Any] | None:
+def get_project(project_id: str, user_id: str | None = None) -> dict[str, Any] | None:
     try:
         sb = get_supabase()
         query = sb.table("projects").select("*").eq("id", project_id)
@@ -218,7 +217,7 @@ def get_project(project_id: str, user_id: Optional[str] = None) -> dict[str, Any
         return proj
 
 
-def upsert_project(project: dict[str, Any], user_id: Optional[str] = None) -> dict[str, Any]:
+def upsert_project(project: dict[str, Any], user_id: str | None = None) -> dict[str, Any]:
     project_id = str(project.get("id") or "").strip()
     if not project_id:
         raise ValueError("project id is required")
@@ -243,7 +242,7 @@ def upsert_project(project: dict[str, Any], user_id: Optional[str] = None) -> di
     return project
 
 
-def delete_project(project_id: str, user_id: Optional[str] = None) -> bool:
+def delete_project(project_id: str, user_id: str | None = None) -> bool:
     deleted = False
     try:
         sb = get_supabase()
@@ -265,7 +264,7 @@ def delete_project(project_id: str, user_id: Optional[str] = None) -> bool:
     return deleted
 
 
-def list_scans(project_id: str | None = None, user_id: Optional[str] = None) -> list[dict[str, Any]]:
+def list_scans(project_id: str | None = None, user_id: str | None = None) -> list[dict[str, Any]]:
     try:
         sb = get_supabase()
         query = sb.table("scans").select("*")
@@ -286,7 +285,7 @@ def list_scans(project_id: str | None = None, user_id: Optional[str] = None) -> 
         return sorted(items, key=lambda x: str(x.get("created_at") or ""), reverse=True)
 
 
-def get_scan(scan_id: str, user_id: Optional[str] = None) -> dict[str, Any] | None:
+def get_scan(scan_id: str, user_id: str | None = None) -> dict[str, Any] | None:
     try:
         sb = get_supabase()
         query = sb.table("scans").select("*").eq("id", scan_id)
@@ -303,7 +302,7 @@ def get_scan(scan_id: str, user_id: Optional[str] = None) -> dict[str, Any] | No
         return scan
 
 
-def upsert_scan(scan: dict[str, Any], user_id: Optional[str] = None) -> dict[str, Any]:
+def upsert_scan(scan: dict[str, Any], user_id: str | None = None) -> dict[str, Any]:
     scan_id = str(scan.get("id") or "").strip()
     if not scan_id:
         raise ValueError("scan id is required")

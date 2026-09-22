@@ -1,10 +1,10 @@
-from typing import Optional
 import logging
+
 from fastapi import Header
 
 logger = logging.getLogger(__name__)
 
-def extract_user_id_from_jwt(supabase_token: Optional[str]) -> Optional[str]:
+def extract_user_id_from_jwt(supabase_token: str | None) -> str | None:
     """
     Extract user_id (sub claim) from a Supabase JWT.
     Does NOT verify signature — Supabase RLS handles authorization.
@@ -14,11 +14,11 @@ def extract_user_id_from_jwt(supabase_token: Optional[str]) -> Optional[str]:
         return None
     
     token = supabase_token.strip()
-    if token.startswith("Bearer "):
-        token = token[7:]
+    token = token.removeprefix("Bearer ")
     
     try:
-        import base64, json
+        import base64
+        import json
         # JWT is three base64 parts: header.payload.signature
         parts = token.split(".")
         if len(parts) < 2:
@@ -41,9 +41,9 @@ def extract_user_id_from_jwt(supabase_token: Optional[str]) -> Optional[str]:
         return None
 
 async def get_current_user_id(
-    authorization: Optional[str] = Header(None),
-    x_supabase_token: Optional[str] = Header(None, alias="X-Supabase-Token")
-) -> Optional[str]:
+    authorization: str | None = Header(None),
+    x_supabase_token: str | None = Header(None, alias="X-Supabase-Token")
+) -> str | None:
     """
     FastAPI dependency to extract user_id from various auth headers.
     Prioritizes X-Supabase-Token, falls back to Authorization: Bearer.

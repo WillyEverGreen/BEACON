@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import sys
 import time
 import traceback
@@ -33,7 +32,7 @@ pytestmark = [pytest.mark.integration, pytest.mark.slow]
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from app.services.audit_runner import run_audit  # noqa: E402
+from app.services.audit_runner import run_audit
 
 # ── Output paths ──────────────────────────────────────────────────────────────
 RESULTS_FILE = ROOT / "phase19_results.json"
@@ -187,7 +186,7 @@ def phase19_summary_reporter():
     print("BEACON Phase 19 -- Real-Site Validation Summary")
     print(DIVIDER)
     print(
-        f"{'Site':<28} {'Score':>6}  {'Issues':>6}  {'Degraded':<10} {'Status':<8} {'Time':>5}"
+        f"{header_site:<28} {header_score:>6}  {header_issues:>6}  {header_deg:<10} {header_status:<8} {header_time:>5}"
     )
     print(ROW_DIV)
 
@@ -270,12 +269,12 @@ def _write_triage_report(
     lines: list[str] = [
         "# BEACON Phase 19 — Triage Report",
         "",
-        f"> Generated at runtime after all 10 real-site audits.",
+        "> Generated at runtime after all 10 real-site audits.",
         "",
         "## Success Criteria",
         "",
-        f"| Criterion | Result |",
-        f"|-----------|--------|",
+        "| Criterion | Result |",
+        "|-----------|--------|",
         f"| ≥8/10 non-degraded valid scores | {'✅ PASS' if non_degraded_count >= 8 else '❌ FAIL'} ({non_degraded_count}/10) |",
         f"| 0 PIPELINE_CRASH failures | {'✅ PASS' if pipeline_crashes == 0 else '❌ FAIL'} ({pipeline_crashes}) |",
         f"| 0 FAKE_SCORE regressions | {'✅ PASS' if fake_score_regressions == 0 else '❌ FAIL'} ({fake_score_regressions}) |",

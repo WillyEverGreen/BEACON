@@ -8,19 +8,18 @@ using DOM selector fingerprints and WCAG success criteria mappings.
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from app.models.contracts import Finding
 
-
-SEVERITY_RANKS: Dict[str, int] = {
+SEVERITY_RANKS: dict[str, int] = {
     "critical": 4,
     "serious": 3,
     "moderate": 2,
     "minor": 1,
 }
 
-REVERSE_SEVERITY: Dict[int, str] = {v: k for k, v in SEVERITY_RANKS.items()}
+REVERSE_SEVERITY: dict[int, str] = {v: k for k, v in SEVERITY_RANKS.items()}
 
 
 class ConsensusEngine:
@@ -30,7 +29,7 @@ class ConsensusEngine:
         self.min_confidence = min_confidence
 
     @staticmethod
-    def cluster_key(finding: Finding) -> Tuple[str, str]:
+    def cluster_key(finding: Finding) -> tuple[str, str]:
         """Compute the clustering key for cross-engine correlation.
         
         Matches findings that target the exact same DOM element fingerprint and address
@@ -39,16 +38,16 @@ class ConsensusEngine:
         criterion = finding.wcag_criterion.strip() if finding.wcag_criterion else finding.rule_id
         return (criterion, finding.selector_fingerprint)
 
-    def reconcile(self, raw_findings: List[Finding]) -> List[Finding]:
+    def reconcile(self, raw_findings: list[Finding]) -> list[Finding]:
         """Group and reconcile a heterogeneous list of findings into a consensus list."""
         if not raw_findings:
             return []
 
-        clusters: Dict[Tuple[str, str], List[Finding]] = defaultdict(list)
+        clusters: dict[tuple[str, str], list[Finding]] = defaultdict(list)
         for f in raw_findings:
             clusters[self.cluster_key(f)].append(f)
 
-        consensus_findings: List[Finding] = []
+        consensus_findings: list[Finding] = []
         for (criterion, fp), group in clusters.items():
             consensus = self._merge_cluster(criterion, fp, group)
             if consensus.confidence >= self.min_confidence:
@@ -61,7 +60,7 @@ class ConsensusEngine:
         )
         return consensus_findings
 
-    def _merge_cluster(self, criterion: str, fp: str, cluster: List[Finding]) -> Finding:
+    def _merge_cluster(self, criterion: str, fp: str, cluster: list[Finding]) -> Finding:
         """Merge multiple findings for the same element and criterion into a single canonical Finding."""
         # Engines involved
         engines = sorted(list({f.engine for f in cluster}))
@@ -102,8 +101,8 @@ class ConsensusEngine:
             calibrated_conf = max(0.95, calibrated_conf)
 
         # Merge evidence from all participating findings
-        combined_evidence: Dict[str, Any] = {}
-        messages: List[str] = []
+        combined_evidence: dict[str, Any] = {}
+        messages: list[str] = []
         for f in cluster:
             combined_evidence[f.engine] = {
                 "rule_id": f.rule_id,

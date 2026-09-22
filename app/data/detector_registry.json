@@ -1,0 +1,2501 @@
+{
+  "html-incomplete": {
+    "rule_id": "html-incomplete",
+    "category": "general",
+    "wcag_criterion": "",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "no-headings": {
+    "rule_id": "no-headings",
+    "category": "structure",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "missing-skip-link": {
+    "rule_id": "missing-skip-link",
+    "category": "navigation",
+    "wcag_criterion": "2.4.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "invalid-lang": {
+    "rule_id": "invalid-lang",
+    "category": "general",
+    "wcag_criterion": "3.1.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "no-title": {
+    "rule_id": "no-title",
+    "category": "structure",
+    "wcag_criterion": "2.4.2",
+    "severity_class": "serious",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "no-main-landmark": {
+    "rule_id": "no-main-landmark",
+    "category": "structure",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "no-nav-landmark": {
+    "rule_id": "no-nav-landmark",
+    "category": "navigation",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "no-header-landmark": {
+    "rule_id": "no-header-landmark",
+    "category": "general",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "no-footer-landmark": {
+    "rule_id": "no-footer-landmark",
+    "category": "general",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "landmark-roles": {
+    "rule_id": "landmark-roles",
+    "category": "general",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "link-purpose": {
+    "rule_id": "link-purpose",
+    "category": "navigation",
+    "wcag_criterion": "2.4.4",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "missing-label": {
+    "rule_id": "missing-label",
+    "category": "forms",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "serious",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "aria-required-parent": {
+    "rule_id": "aria-required-parent",
+    "category": "aria",
+    "wcag_criterion": "4.1.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static",
+      "axe"
+    ]
+  },
+  "aria-required-children": {
+    "rule_id": "aria-required-children",
+    "category": "aria",
+    "wcag_criterion": "4.1.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static",
+      "axe"
+    ]
+  },
+  "aria-allowed-role": {
+    "rule_id": "aria-allowed-role",
+    "category": "aria",
+    "wcag_criterion": "4.1.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "meta-refresh": {
+    "rule_id": "meta-refresh",
+    "category": "general",
+    "wcag_criterion": "2.2.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "semantic-html": {
+    "rule_id": "semantic-html",
+    "category": "general",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "keyboard-trap": {
+    "rule_id": "keyboard-trap",
+    "category": "keyboard",
+    "wcag_criterion": "2.1.2",
+    "severity_class": "serious",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "focus-management": {
+    "rule_id": "focus-management",
+    "category": "keyboard",
+    "wcag_criterion": "2.1.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "video-transcript": {
+    "rule_id": "video-transcript",
+    "category": "general",
+    "wcag_criterion": "1.2.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "marquee-used": {
+    "rule_id": "marquee-used",
+    "category": "general",
+    "wcag_criterion": "2.2.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "color-contrast": {
+    "rule_id": "color-contrast",
+    "category": "content",
+    "wcag_criterion": "1.4.3",
+    "severity_class": "serious",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": true,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static",
+      "axe"
+    ]
+  },
+  "svg-no-accessible-name": {
+    "rule_id": "svg-no-accessible-name",
+    "category": "general",
+    "wcag_criterion": "1.1.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "empty-heading": {
+    "rule_id": "empty-heading",
+    "category": "structure",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "captcha-detected": {
+    "rule_id": "captcha-detected",
+    "category": "general",
+    "wcag_criterion": "3.3.8",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "keyboard-mouse-only-handler": {
+    "rule_id": "keyboard-mouse-only-handler",
+    "category": "keyboard",
+    "wcag_criterion": "2.1.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "keyboard-div-onclick-no-role": {
+    "rule_id": "keyboard-div-onclick-no-role",
+    "category": "keyboard",
+    "wcag_criterion": "2.1.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "missing-lang": {
+    "rule_id": "missing-lang",
+    "category": "structure",
+    "wcag_criterion": "3.1.1",
+    "severity_class": "serious",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "missing-landmark": {
+    "rule_id": "missing-landmark",
+    "category": "general",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "empty-link": {
+    "rule_id": "empty-link",
+    "category": "navigation",
+    "wcag_criterion": "2.4.4",
+    "severity_class": "serious",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "link-no-underline": {
+    "rule_id": "link-no-underline",
+    "category": "navigation",
+    "wcag_criterion": "1.4.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "button-name": {
+    "rule_id": "button-name",
+    "category": "forms",
+    "wcag_criterion": "4.1.2",
+    "severity_class": "serious",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static",
+      "axe"
+    ]
+  },
+  "clickable-no-role": {
+    "rule_id": "clickable-no-role",
+    "category": "aria",
+    "wcag_criterion": "4.1.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "table-no-headers": {
+    "rule_id": "table-no-headers",
+    "category": "content",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "table-no-caption": {
+    "rule_id": "table-no-caption",
+    "category": "content",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "aria-hidden-focusable": {
+    "rule_id": "aria-hidden-focusable",
+    "category": "aria",
+    "wcag_criterion": "4.1.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "no-aria-live": {
+    "rule_id": "no-aria-live",
+    "category": "aria",
+    "wcag_criterion": "4.1.3",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "autoplay-media": {
+    "rule_id": "autoplay-media",
+    "category": "media",
+    "wcag_criterion": "1.4.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "viewport-zoom-disabled": {
+    "rule_id": "viewport-zoom-disabled",
+    "category": "general",
+    "wcag_criterion": "1.4.4",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": true,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "redundant-entry": {
+    "rule_id": "redundant-entry",
+    "category": "general",
+    "wcag_criterion": "3.3.7",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "apg-tablist-missing-tabs": {
+    "rule_id": "apg-tablist-missing-tabs",
+    "category": "structure",
+    "wcag_criterion": "4.1.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "apg-expanded-missing-controls": {
+    "rule_id": "apg-expanded-missing-controls",
+    "category": "general",
+    "wcag_criterion": "4.1.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "apg-dialog-no-name": {
+    "rule_id": "apg-dialog-no-name",
+    "category": "general",
+    "wcag_criterion": "4.1.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "apg-dialog-not-modal": {
+    "rule_id": "apg-dialog-not-modal",
+    "category": "general",
+    "wcag_criterion": "4.1.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "aria-roles": {
+    "rule_id": "aria-roles",
+    "category": "aria",
+    "wcag_criterion": "4.1.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static",
+      "axe"
+    ]
+  },
+  "aria-valid-attr-value": {
+    "rule_id": "aria-valid-attr-value",
+    "category": "aria",
+    "wcag_criterion": "4.1.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static",
+      "axe"
+    ]
+  },
+  "aria-valid-attr": {
+    "rule_id": "aria-valid-attr",
+    "category": "aria",
+    "wcag_criterion": "4.1.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static",
+      "axe"
+    ]
+  },
+  "aria-allowed-attr": {
+    "rule_id": "aria-allowed-attr",
+    "category": "aria",
+    "wcag_criterion": "4.1.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "timeout-no-warning": {
+    "rule_id": "timeout-no-warning",
+    "category": "general",
+    "wcag_criterion": "2.2.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "visibility-aria-mismatch": {
+    "rule_id": "visibility-aria-mismatch",
+    "category": "aria",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "css-reordering": {
+    "rule_id": "css-reordering",
+    "category": "general",
+    "wcag_criterion": "2.4.3",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "placeholder-as-label": {
+    "rule_id": "placeholder-as-label",
+    "category": "forms",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "serious",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "duplicate-id": {
+    "rule_id": "duplicate-id",
+    "category": "general",
+    "wcag_criterion": "4.1.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "unsafe-external-link": {
+    "rule_id": "unsafe-external-link",
+    "category": "navigation",
+    "wcag_criterion": "Best Practice",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "keyboard-tabindex-negative": {
+    "rule_id": "keyboard-tabindex-negative",
+    "category": "keyboard",
+    "wcag_criterion": "2.1.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "keyboard-focus-invisible": {
+    "rule_id": "keyboard-focus-invisible",
+    "category": "keyboard",
+    "wcag_criterion": "2.1.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": true,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "keyboard-role-button-no-tabindex": {
+    "rule_id": "keyboard-role-button-no-tabindex",
+    "category": "keyboard",
+    "wcag_criterion": "2.1.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "missing-h1": {
+    "rule_id": "missing-h1",
+    "category": "general",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "multiple-h1": {
+    "rule_id": "multiple-h1",
+    "category": "structure",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "heading-order": {
+    "rule_id": "heading-order",
+    "category": "structure",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static",
+      "axe"
+    ]
+  },
+  "no-fieldset-legend": {
+    "rule_id": "no-fieldset-legend",
+    "category": "general",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "error-not-linked": {
+    "rule_id": "error-not-linked",
+    "category": "navigation",
+    "wcag_criterion": "3.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "fake-list": {
+    "rule_id": "fake-list",
+    "category": "structure",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "role-no-name": {
+    "rule_id": "role-no-name",
+    "category": "aria",
+    "wcag_criterion": "4.1.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "missing-captions": {
+    "rule_id": "missing-captions",
+    "category": "media",
+    "wcag_criterion": "1.2.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "media-alternative": {
+    "rule_id": "media-alternative",
+    "category": "media",
+    "wcag_criterion": "1.2.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "missing-transcript": {
+    "rule_id": "missing-transcript",
+    "category": "media",
+    "wcag_criterion": "1.2.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "small-font-size": {
+    "rule_id": "small-font-size",
+    "category": "general",
+    "wcag_criterion": "1.4.4",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "positive-tabindex": {
+    "rule_id": "positive-tabindex",
+    "category": "keyboard",
+    "wcag_criterion": "2.4.3",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "missing-autocomplete-auth": {
+    "rule_id": "missing-autocomplete-auth",
+    "category": "general",
+    "wcag_criterion": "3.3.8",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "apg-tab-missing-controls": {
+    "rule_id": "apg-tab-missing-controls",
+    "category": "general",
+    "wcag_criterion": "4.1.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "div-itis-missing-semantics": {
+    "rule_id": "div-itis-missing-semantics",
+    "category": "general",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "auto-update-no-control": {
+    "rule_id": "auto-update-no-control",
+    "category": "general",
+    "wcag_criterion": "2.2.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "lang-mismatch": {
+    "rule_id": "lang-mismatch",
+    "category": "general",
+    "wcag_criterion": "3.1.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "inaccessible-document-link": {
+    "rule_id": "inaccessible-document-link",
+    "category": "navigation",
+    "wcag_criterion": "2.4.4",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "unlabeled-icon": {
+    "rule_id": "unlabeled-icon",
+    "category": "forms",
+    "wcag_criterion": "1.1.1",
+    "severity_class": "serious",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "broken-aria-label": {
+    "rule_id": "broken-aria-label",
+    "category": "aria",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "serious",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "broken-aria-description": {
+    "rule_id": "broken-aria-description",
+    "category": "aria",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "image-redundant-alt": {
+    "rule_id": "image-redundant-alt",
+    "category": "images",
+    "wcag_criterion": "1.1.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "nested-interactive": {
+    "rule_id": "nested-interactive",
+    "category": "general",
+    "wcag_criterion": "4.1.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "keyboard-event-suppressed": {
+    "rule_id": "keyboard-event-suppressed",
+    "category": "keyboard",
+    "wcag_criterion": "2.1.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "missing-alt": {
+    "rule_id": "missing-alt",
+    "category": "content",
+    "wcag_criterion": "1.1.1",
+    "severity_class": "serious",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "empty-alt": {
+    "rule_id": "empty-alt",
+    "category": "content",
+    "wcag_criterion": "1.1.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "duplicate-label": {
+    "rule_id": "duplicate-label",
+    "category": "forms",
+    "wcag_criterion": "3.3.2",
+    "severity_class": "serious",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "th-no-scope": {
+    "rule_id": "th-no-scope",
+    "category": "general",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "apg-tab-broken-controls": {
+    "rule_id": "apg-tab-broken-controls",
+    "category": "general",
+    "wcag_criterion": "4.1.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "touch-target-spacing": {
+    "rule_id": "touch-target-spacing",
+    "category": "general",
+    "wcag_criterion": "2.5.8",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "duplicate-aria-ref": {
+    "rule_id": "duplicate-aria-ref",
+    "category": "aria",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "input-name": {
+    "rule_id": "input-name",
+    "category": "forms",
+    "wcag_criterion": "4.1.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "autocomplete-missing": {
+    "rule_id": "autocomplete-missing",
+    "category": "forms",
+    "wcag_criterion": "1.3.5",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_static"
+    ]
+  },
+  "coga-action-fatigue": {
+    "rule_id": "coga-action-fatigue",
+    "category": "cognitive",
+    "wcag_criterion": "3.3.2",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_heuristics"
+    ]
+  },
+  "letter-spacing": {
+    "rule_id": "letter-spacing",
+    "category": "content",
+    "wcag_criterion": "1.4.12",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_heuristics"
+    ]
+  },
+  "avoid-inline-spacing": {
+    "rule_id": "avoid-inline-spacing",
+    "category": "content",
+    "wcag_criterion": "1.4.12",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_heuristics"
+    ]
+  },
+  "text-spacing": {
+    "rule_id": "text-spacing",
+    "category": "general",
+    "wcag_criterion": "1.4.12",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_heuristics"
+    ]
+  },
+  "keyboard-focusable": {
+    "rule_id": "keyboard-focusable",
+    "category": "keyboard",
+    "wcag_criterion": "2.1.1",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_heuristics"
+    ]
+  },
+  "alt-too-long": {
+    "rule_id": "alt-too-long",
+    "category": "images",
+    "wcag_criterion": "1.1.1",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_heuristics"
+    ]
+  },
+  "short-link-text": {
+    "rule_id": "short-link-text",
+    "category": "navigation",
+    "wcag_criterion": "2.4.4",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_heuristics"
+    ]
+  },
+  "vague-button-text": {
+    "rule_id": "vague-button-text",
+    "category": "general",
+    "wcag_criterion": "4.1.2",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_heuristics"
+    ]
+  },
+  "vague-label": {
+    "rule_id": "vague-label",
+    "category": "forms",
+    "wcag_criterion": "2.4.6",
+    "severity_class": "serious",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_heuristics"
+    ]
+  },
+  "coga-wall-of-text": {
+    "rule_id": "coga-wall-of-text",
+    "category": "cognitive",
+    "wcag_criterion": "3.1.5",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_heuristics"
+    ]
+  },
+  "meaningful-sequence": {
+    "rule_id": "meaningful-sequence",
+    "category": "general",
+    "wcag_criterion": "1.3.2",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_heuristics"
+    ]
+  },
+  "orientation-lock": {
+    "rule_id": "orientation-lock",
+    "category": "general",
+    "wcag_criterion": "1.3.4",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_heuristics"
+    ]
+  },
+  "images-of-text": {
+    "rule_id": "images-of-text",
+    "category": "general",
+    "wcag_criterion": "1.4.5",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_heuristics"
+    ]
+  },
+  "on-input-context-change": {
+    "rule_id": "on-input-context-change",
+    "category": "forms",
+    "wcag_criterion": "3.2.2",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_heuristics"
+    ]
+  },
+  "tabindex": {
+    "rule_id": "tabindex",
+    "category": "general",
+    "wcag_criterion": "2.1.1",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_heuristics",
+      "axe"
+    ]
+  },
+  "alt-quality": {
+    "rule_id": "alt-quality",
+    "category": "content",
+    "wcag_criterion": "1.1.1",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_heuristics"
+    ]
+  },
+  "alt-is-filename": {
+    "rule_id": "alt-is-filename",
+    "category": "images",
+    "wcag_criterion": "1.1.1",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_heuristics"
+    ]
+  },
+  "sensory-language": {
+    "rule_id": "sensory-language",
+    "category": "general",
+    "wcag_criterion": "1.3.3",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_heuristics"
+    ]
+  },
+  "weak-error-message": {
+    "rule_id": "weak-error-message",
+    "category": "general",
+    "wcag_criterion": "3.3.1",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_heuristics"
+    ]
+  },
+  "aria-tree-no-name": {
+    "rule_id": "aria-tree-no-name",
+    "category": "aria",
+    "wcag_criterion": "4.1.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_browser"
+    ]
+  },
+  "focus-trap-initial": {
+    "rule_id": "focus-trap-initial",
+    "category": "keyboard",
+    "wcag_criterion": "2.4.3",
+    "severity_class": "serious",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_browser"
+    ]
+  },
+  "focus-trap-escape": {
+    "rule_id": "focus-trap-escape",
+    "category": "keyboard",
+    "wcag_criterion": "2.1.2",
+    "severity_class": "serious",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_browser"
+    ]
+  },
+  "keyboard-unreachable": {
+    "rule_id": "keyboard-unreachable",
+    "category": "keyboard",
+    "wcag_criterion": "2.1.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_browser"
+    ]
+  },
+  "meaningful-sequence-mismatch": {
+    "rule_id": "meaningful-sequence-mismatch",
+    "category": "general",
+    "wcag_criterion": "1.3.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_browser"
+    ]
+  },
+  "no-focus-style": {
+    "rule_id": "no-focus-style",
+    "category": "keyboard",
+    "wcag_criterion": "2.4.7",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_browser"
+    ]
+  },
+  "responsive-reflow": {
+    "rule_id": "responsive-reflow",
+    "category": "general",
+    "wcag_criterion": "1.4.10",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": true,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_browser"
+    ]
+  },
+  "zoom-overflow": {
+    "rule_id": "zoom-overflow",
+    "category": "general",
+    "wcag_criterion": "1.4.4",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": true,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_browser"
+    ]
+  },
+  "target-size-minimum": {
+    "rule_id": "target-size-minimum",
+    "category": "general",
+    "wcag_criterion": "2.5.8",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": true,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_browser"
+    ]
+  },
+  "focus-trap-cycling": {
+    "rule_id": "focus-trap-cycling",
+    "category": "keyboard",
+    "wcag_criterion": "2.1.2",
+    "severity_class": "serious",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_browser"
+    ]
+  },
+  "focus-trap-background": {
+    "rule_id": "focus-trap-background",
+    "category": "keyboard",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "serious",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_browser"
+    ]
+  },
+  "focus-obscured": {
+    "rule_id": "focus-obscured",
+    "category": "keyboard",
+    "wcag_criterion": "2.4.11",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": true,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_browser"
+    ]
+  },
+  "excessive-motion": {
+    "rule_id": "excessive-motion",
+    "category": "general",
+    "wcag_criterion": "2.3.3",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_browser"
+    ]
+  },
+  "lazy-img-missing-alt": {
+    "rule_id": "lazy-img-missing-alt",
+    "category": "images",
+    "wcag_criterion": "1.1.1",
+    "severity_class": "serious",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_browser"
+    ]
+  },
+  "infinite-scroll-accessibility": {
+    "rule_id": "infinite-scroll-accessibility",
+    "category": "general",
+    "wcag_criterion": "2.4.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_browser"
+    ]
+  },
+  "skeleton-loading-state": {
+    "rule_id": "skeleton-loading-state",
+    "category": "general",
+    "wcag_criterion": "4.1.3",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "beacon_browser"
+    ]
+  },
+  "readability": {
+    "rule_id": "readability",
+    "category": "cognitive",
+    "wcag_criterion": "3.1.5",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_coga"
+    ]
+  },
+  "jargon": {
+    "rule_id": "jargon",
+    "category": "cognitive",
+    "wcag_criterion": "3.1.3",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_coga"
+    ]
+  },
+  "nav-complexity": {
+    "rule_id": "nav-complexity",
+    "category": "cognitive",
+    "wcag_criterion": "2.4.5",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_coga"
+    ]
+  },
+  "focus-disruption": {
+    "rule_id": "focus-disruption",
+    "category": "keyboard",
+    "wcag_criterion": "3.2.1",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_coga"
+    ]
+  },
+  "visual-clutter": {
+    "rule_id": "visual-clutter",
+    "category": "general",
+    "wcag_criterion": "2.4.5",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_coga"
+    ]
+  },
+  "cta-clarity": {
+    "rule_id": "cta-clarity",
+    "category": "cognitive",
+    "wcag_criterion": "2.4.6",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_coga"
+    ]
+  },
+  "form-usability": {
+    "rule_id": "form-usability",
+    "category": "cognitive",
+    "wcag_criterion": "3.3.2",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_coga"
+    ]
+  },
+  "form-no-progress": {
+    "rule_id": "form-no-progress",
+    "category": "forms",
+    "wcag_criterion": "",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_coga"
+    ]
+  },
+  "auto-carousel": {
+    "rule_id": "auto-carousel",
+    "category": "general",
+    "wcag_criterion": "2.2.2",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_coga"
+    ]
+  },
+  "heading-gap": {
+    "rule_id": "heading-gap",
+    "category": "structure",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_coga"
+    ]
+  },
+  "error-message-quality": {
+    "rule_id": "error-message-quality",
+    "category": "cognitive",
+    "wcag_criterion": "3.3.1",
+    "severity_class": "moderate",
+    "deterministic": false,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "conditional",
+    "engines": [
+      "beacon_coga"
+    ]
+  },
+  "color-contrast-enhanced": {
+    "rule_id": "color-contrast-enhanced",
+    "category": "color",
+    "wcag_criterion": "1.4.6",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": true,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "axe"
+    ]
+  },
+  "image-alt": {
+    "rule_id": "image-alt",
+    "category": "images",
+    "wcag_criterion": "1.1.1",
+    "severity_class": "serious",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "axe"
+    ]
+  },
+  "input-image-alt": {
+    "rule_id": "input-image-alt",
+    "category": "images",
+    "wcag_criterion": "1.1.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "axe"
+    ]
+  },
+  "area-alt": {
+    "rule_id": "area-alt",
+    "category": "images",
+    "wcag_criterion": "1.1.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "axe"
+    ]
+  },
+  "label": {
+    "rule_id": "label",
+    "category": "forms",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "serious",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "axe"
+    ]
+  },
+  "link-name": {
+    "rule_id": "link-name",
+    "category": "navigation",
+    "wcag_criterion": "2.4.4",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "axe"
+    ]
+  },
+  "html-has-lang": {
+    "rule_id": "html-has-lang",
+    "category": "html",
+    "wcag_criterion": "3.1.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "axe"
+    ]
+  },
+  "html-lang-valid": {
+    "rule_id": "html-lang-valid",
+    "category": "html",
+    "wcag_criterion": "3.1.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "axe"
+    ]
+  },
+  "document-title": {
+    "rule_id": "document-title",
+    "category": "html",
+    "wcag_criterion": "2.4.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "axe"
+    ]
+  },
+  "bypass": {
+    "rule_id": "bypass",
+    "category": "navigation",
+    "wcag_criterion": "2.4.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "axe"
+    ]
+  },
+  "aria-required-attr": {
+    "rule_id": "aria-required-attr",
+    "category": "aria",
+    "wcag_criterion": "4.1.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "axe"
+    ]
+  },
+  "aria-hidden-focus": {
+    "rule_id": "aria-hidden-focus",
+    "category": "aria",
+    "wcag_criterion": "4.1.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "axe"
+    ]
+  },
+  "landmark-one-main": {
+    "rule_id": "landmark-one-main",
+    "category": "html",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "axe"
+    ]
+  },
+  "region": {
+    "rule_id": "region",
+    "category": "html",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "axe"
+    ]
+  },
+  "meta-viewport": {
+    "rule_id": "meta-viewport",
+    "category": "html",
+    "wcag_criterion": "1.4.4",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "axe"
+    ]
+  },
+  "video-caption": {
+    "rule_id": "video-caption",
+    "category": "media",
+    "wcag_criterion": "1.2.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "axe"
+    ]
+  },
+  "td-headers-attr": {
+    "rule_id": "td-headers-attr",
+    "category": "general",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "axe"
+    ]
+  },
+  "th-has-data-cells": {
+    "rule_id": "th-has-data-cells",
+    "category": "general",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "axe"
+    ]
+  },
+  "definition-list": {
+    "rule_id": "definition-list",
+    "category": "general",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "axe"
+    ]
+  },
+  "list": {
+    "rule_id": "list",
+    "category": "general",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "axe"
+    ]
+  },
+  "listitem": {
+    "rule_id": "listitem",
+    "category": "general",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "axe"
+    ]
+  },
+  "form-field-multiple-labels": {
+    "rule_id": "form-field-multiple-labels",
+    "category": "general",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "axe"
+    ]
+  },
+  "WCAG20_Img_HasAlt": {
+    "rule_id": "WCAG20_Img_HasAlt",
+    "category": "general",
+    "wcag_criterion": "1.1.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "ibm"
+    ]
+  },
+  "WCAG20_Img_Button_HasAlt": {
+    "rule_id": "WCAG20_Img_Button_HasAlt",
+    "category": "general",
+    "wcag_criterion": "1.1.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "ibm"
+    ]
+  },
+  "WCAG20_Html_HasLang": {
+    "rule_id": "WCAG20_Html_HasLang",
+    "category": "general",
+    "wcag_criterion": "3.1.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "ibm"
+    ]
+  },
+  "WCAG20_Form_LabelExists": {
+    "rule_id": "WCAG20_Form_LabelExists",
+    "category": "general",
+    "wcag_criterion": "1.3.1",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "ibm"
+    ]
+  },
+  "WCAG20_A_HasName": {
+    "rule_id": "WCAG20_A_HasName",
+    "category": "general",
+    "wcag_criterion": "2.4.4",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "ibm"
+    ]
+  },
+  "WCAG20_Button_HasName": {
+    "rule_id": "WCAG20_Button_HasName",
+    "category": "general",
+    "wcag_criterion": "4.1.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "ibm"
+    ]
+  },
+  "WCAG20_Text_Contrast": {
+    "rule_id": "WCAG20_Text_Contrast",
+    "category": "general",
+    "wcag_criterion": "1.4.3",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": true,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "ibm"
+    ]
+  },
+  "WCAG21_NameRoleValue": {
+    "rule_id": "WCAG21_NameRoleValue",
+    "category": "general",
+    "wcag_criterion": "4.1.2",
+    "severity_class": "moderate",
+    "deterministic": true,
+    "requires_dom": true,
+    "requires_runtime": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "requires_human": "never",
+    "engines": [
+      "ibm"
+    ]
+  }
+}

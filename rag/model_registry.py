@@ -9,7 +9,7 @@ Thread-safe lazy initialization with configurable model name.
 import logging
 import os
 import threading
-from typing import Optional, Any
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ DEFAULT_MODEL_NAME = "all-MiniLM-L6-v2"
 MODEL_NAME = os.environ.get("EMBEDDING_MODEL", DEFAULT_MODEL_NAME)
 
 # ── Thread-safe singleton ──────────────────────────────────────
-_model: Optional[Any] = None
+_model: Any | None = None
 _lock = threading.Lock()
 
 
@@ -57,7 +57,7 @@ def get_model_name() -> str:
 
 
 # ── Reranking Model (Lazy) ─────────────────────────────────────
-_reranker: Optional[Any] = None
+_reranker: Any | None = None
 _rerank_lock = threading.Lock()
 
 def get_rerank_model() -> Any:

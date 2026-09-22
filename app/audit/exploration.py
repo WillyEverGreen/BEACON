@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urljoin, urlparse
-
 
 _MODAL_TRIGGER_TOKENS = ("modal", "popup", "overlay", "dialog")
 
@@ -158,9 +157,9 @@ class SPAStrategyPack:
     async def trigger_route_change(
         self,
         page: Any,
-        detected_framework: Optional[str] = None,
+        detected_framework: str | None = None,
         *,
-        max_actions: Optional[int] = None,
+        max_actions: int | None = None,
     ) -> dict[str, Any]:
         budget = max(0, int(max_actions if max_actions is not None else min(self.interaction_budget, self.max_route_clicks)))
         if budget == 0:
@@ -206,7 +205,7 @@ class SPAStrategyPack:
             "framework": detected_framework,
         }
 
-    async def trigger_modals(self, page: Any, *, max_actions: Optional[int] = None) -> dict[str, Any]:
+    async def trigger_modals(self, page: Any, *, max_actions: int | None = None) -> dict[str, Any]:
         budget = max(0, int(max_actions if max_actions is not None else self.interaction_budget))
         if budget == 0:
             return {
@@ -281,7 +280,7 @@ class SPAStrategyPack:
             "focus_return_missing": focus_return_missing,
         }
 
-    async def trigger_lazy_load(self, page: Any, *, max_actions: Optional[int] = None) -> dict[str, Any]:
+    async def trigger_lazy_load(self, page: Any, *, max_actions: int | None = None) -> dict[str, Any]:
         budget = max(0, int(max_actions if max_actions is not None else self.interaction_budget))
         if budget == 0:
             return {"actions_taken": 0, "growth_steps": 0, "infinite_scroll_detected": False}
@@ -318,7 +317,7 @@ class SPAStrategyPack:
             "infinite_scroll_detected": growth_steps > 0,
         }
 
-    async def run_exploration(self, page: Any, detected_framework: Optional[str] = None) -> dict[str, Any]:
+    async def run_exploration(self, page: Any, detected_framework: str | None = None) -> dict[str, Any]:
         remaining_budget = max(0, int(self.interaction_budget))
 
         # 1. Route Change Phase

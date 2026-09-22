@@ -1,13 +1,10 @@
 """Unit tests for app/services/lighthouse_enricher.py"""
 from __future__ import annotations
 
-import pytest
-
 from app.services.lighthouse_enricher import (
     merge_findings,
     select_urls_for_lighthouse,
 )
-
 
 # ── URL selection ─────────────────────────────────────────────────────────────
 

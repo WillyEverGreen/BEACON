@@ -3,17 +3,21 @@
 from __future__ import annotations
 
 import asyncio
-from collections import deque
-from dataclasses import asdict
 import logging
-from typing import Any, Awaitable, Callable, Optional
+from collections import deque
+from collections.abc import Awaitable, Callable
+from dataclasses import asdict
+from typing import Any
 
+from app.audit.failure_taxonomy import (
+    classify_failure_reason,
+    normalize_failure,
+    normalize_reason,
+)
 from app.audit.models import PageAuditResult, PageContext
 from app.audit.page_auditor import audit_page
 from app.audit.site_aggregator import aggregate_site_results
-from app.audit.failure_taxonomy import classify_failure_reason, normalize_failure, normalize_reason
 from app.config import AUDIT_PIPELINE_CONFIG
-
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +37,7 @@ def _mode_value(mapping: dict[str, Any], scan_mode: str) -> Any:
     return mapping[mode_key]
 
 
-async def _emit_event(event: dict[str, Any], events: list[dict[str, Any]], emitter: Optional[SSEEmitter]) -> None:
+async def _emit_event(event: dict[str, Any], events: list[dict[str, Any]], emitter: SSEEmitter | None) -> None:
     events.append(dict(event))
     if emitter is None:
         return
@@ -126,16 +130,16 @@ async def _audit_with_two_stage_fallback(
 async def run_site_audit(
     urls: list[str],
     scan_mode: str,
-    max_concurrent_pages: Optional[int] = None,
+    max_concurrent_pages: int | None = None,
     *,
-    page_context: Optional[PageContext] = None,
-    page_auditor: Optional[PageAuditor] = None,
-    static_only_auditor: Optional[PageAuditor] = None,
-    sse_emitter: Optional[SSEEmitter] = None,
-    partial_summary_every_pages: Optional[int] = None,
-    page_timeout_stage1_seconds: Optional[float] = None,
-    page_timeout_stage2_seconds: Optional[float] = None,
-    global_sla_seconds: Optional[float] = None,
+    page_context: PageContext | None = None,
+    page_auditor: PageAuditor | None = None,
+    static_only_auditor: PageAuditor | None = None,
+    sse_emitter: SSEEmitter | None = None,
+    partial_summary_every_pages: int | None = None,
+    page_timeout_stage1_seconds: float | None = None,
+    page_timeout_stage2_seconds: float | None = None,
+    global_sla_seconds: float | None = None,
 ) -> dict[str, Any]:
     """Run page audits in parallel with bounded concurrency and SLA truncation support."""
     cfg = _runner_config()

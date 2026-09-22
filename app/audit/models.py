@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, field
-from typing import Any, Awaitable, Callable, Optional
-
+from typing import Any
 
 StateProvider = Callable[[str, str, "PageContext"], Awaitable[dict[str, Any] | str]]
 StaticEngine = Callable[[str, str], list[dict[str, Any]]]
@@ -22,17 +22,17 @@ class PageContext:
     playwright_driver: Any = None
     playwright_browser: Any = None
     owns_browser: bool = False
-    browser_factory: Optional[BrowserFactory] = None
+    browser_factory: BrowserFactory | None = None
 
     bm25_index: Any = None
-    llm_semaphore: Optional[asyncio.Semaphore] = None
+    llm_semaphore: asyncio.Semaphore | None = None
     cache: dict[str, Any] = field(default_factory=dict)
 
-    state_provider: Optional[StateProvider] = None
-    static_engine: Optional[StaticEngine] = None
-    interactive_engine: Optional[InteractiveEngine] = None
-    axe_engine: Optional[AxeEngine] = None
-    cognitive_engine: Optional[CognitiveEngine] = None
+    state_provider: StateProvider | None = None
+    static_engine: StaticEngine | None = None
+    interactive_engine: InteractiveEngine | None = None
+    axe_engine: AxeEngine | None = None
+    cognitive_engine: CognitiveEngine | None = None
 
     async def close(self) -> None:
         """Close browser resources created by this context."""

@@ -7,8 +7,8 @@ import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")))
 
-import app.services.audit_runner as audit_runner
 from app.audit.failure_taxonomy import normalize_reason
+from app.services import audit_runner
 
 
 @dataclass(frozen=True)
@@ -114,7 +114,7 @@ def _isolate_runner(monkeypatch):
 
 
 async def _run_modes_for_scenario(monkeypatch, scenario: Scenario) -> dict[str, dict[str, Any]]:
-    import app.services.browser_probes as browser_probes
+    from app.services import browser_probes
 
     class _FakeBrowserProber:
         def __init__(self, url: str, timeout: int = 30000, max_retries: int = 2):

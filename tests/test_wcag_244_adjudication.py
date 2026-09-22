@@ -8,9 +8,8 @@ Validates:
 - Case D: ARIA label context PASS (aria-label, aria-labelledby)
 - Edge cases: Distant non-proximate heading (e.g. footer vs main), empty link
 """
-import pytest
-from app.services.dom_context import DOMContextExtractor
 from app.services.adjudicator import _pre_adjudicate_fast_path
+from app.services.dom_context import DOMContextExtractor
 
 
 def test_wcag_244_case_a_contextual_heading_pass():

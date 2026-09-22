@@ -10,9 +10,9 @@ This module provides production-grade security middleware including:
 
 import logging
 import time
-from typing import Dict, List, Optional, Set
 from collections import defaultdict, deque
-from fastapi import Request, Response
+
+from fastapi import Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 # CORS Configuration
 # ============================================================================
 
-def get_cors_origins() -> List[str]:
+def get_cors_origins() -> list[str]:
     """
     Get allowed CORS origins from environment configuration.
     
@@ -120,7 +120,7 @@ class RateLimiter:
         self.window_size = window_size
         
         # Store request timestamps per client
-        self.client_requests: Dict[str, deque] = defaultdict(lambda: deque())
+        self.client_requests: dict[str, deque] = defaultdict(lambda: deque())
         
         # Last cleanup time
         self.last_cleanup = time.time()
@@ -174,7 +174,7 @@ class RateLimiter:
         self.last_cleanup = current_time
         logger.debug(f"Rate limiter cleanup: {len(self.client_requests)} active clients")
     
-    def check_rate_limit(self, request: Request) -> tuple[bool, Optional[int], int, int]:
+    def check_rate_limit(self, request: Request) -> tuple[bool, int | None, int, int]:
         """
         Check if request should be rate limited.
         
@@ -242,7 +242,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         app,
         requests_per_minute: int = 60,
         requests_per_hour: int = 1000,
-        exempt_paths: Optional[Set[str]] = None
+        exempt_paths: set[str] | None = None
     ):
         """
         Initialize rate limit middleware.

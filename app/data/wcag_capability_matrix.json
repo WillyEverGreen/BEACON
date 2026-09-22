@@ -1,0 +1,1990 @@
+[
+  {
+    "criterion": "1.1.1",
+    "title": "Non-text Content",
+    "level": "A",
+    "capability_state": "IMPLEMENTED_AI_CONTEXTUAL",
+    "implemented": true,
+    "automation_type": [
+      "dom",
+      "browser_runtime",
+      "ai_contextual"
+    ],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "conditional",
+    "detector_ids": [
+      "svg-no-accessible-name",
+      "unlabeled-icon",
+      "image-redundant-alt",
+      "missing-alt",
+      "empty-alt",
+      "alt-too-long",
+      "alt-quality",
+      "alt-is-filename",
+      "lazy-img-missing-alt",
+      "image-alt",
+      "input-image-alt",
+      "area-alt",
+      "WCAG20_Img_HasAlt",
+      "WCAG20_Img_Button_HasAlt"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet",
+      "computed_styles"
+    ],
+    "limitations": [
+      "Requires semantic or contextual validation when machine heuristics detect ambiguity."
+    ]
+  },
+  {
+    "criterion": "1.2.1",
+    "title": "Audio-only and Video-only (Prerecorded)",
+    "level": "A",
+    "capability_state": "IMPLEMENTED_DETERMINISTIC",
+    "implemented": true,
+    "automation_type": [
+      "dom"
+    ],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "never",
+    "detector_ids": [
+      "video-transcript",
+      "media-alternative",
+      "missing-transcript"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet"
+    ],
+    "limitations": []
+  },
+  {
+    "criterion": "1.2.2",
+    "title": "Captions (Prerecorded)",
+    "level": "A",
+    "capability_state": "IMPLEMENTED_DETERMINISTIC",
+    "implemented": true,
+    "automation_type": [
+      "dom",
+      "browser_runtime"
+    ],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "never",
+    "detector_ids": [
+      "missing-captions",
+      "video-caption"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet",
+      "computed_styles"
+    ],
+    "limitations": []
+  },
+  {
+    "criterion": "1.2.3",
+    "title": "Audio Description or Media Alternative (Prerecorded)",
+    "level": "A",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "1.2.4",
+    "title": "Captions (Live)",
+    "level": "AA",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "1.2.5",
+    "title": "Audio Description (Prerecorded)",
+    "level": "AA",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "1.2.6",
+    "title": "Sign Language (Prerecorded)",
+    "level": "AAA",
+    "capability_state": "ADVISORY_ONLY",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": true,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "1.2.7",
+    "title": "Extended Audio Description (Prerecorded)",
+    "level": "AAA",
+    "capability_state": "ADVISORY_ONLY",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": true,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "1.2.8",
+    "title": "Media Alternative (Prerecorded)",
+    "level": "AAA",
+    "capability_state": "ADVISORY_ONLY",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": true,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "1.2.9",
+    "title": "Audio-only (Live)",
+    "level": "AAA",
+    "capability_state": "ADVISORY_ONLY",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": true,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "1.3.1",
+    "title": "Info and Relationships",
+    "level": "A",
+    "capability_state": "IMPLEMENTED_AI_CONTEXTUAL",
+    "implemented": true,
+    "automation_type": [
+      "dom",
+      "browser_runtime",
+      "ai_contextual"
+    ],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "conditional",
+    "detector_ids": [
+      "no-headings",
+      "no-main-landmark",
+      "no-nav-landmark",
+      "no-header-landmark",
+      "no-footer-landmark",
+      "landmark-roles",
+      "missing-label",
+      "semantic-html",
+      "empty-heading",
+      "missing-landmark",
+      "table-no-headers",
+      "table-no-caption",
+      "visibility-aria-mismatch",
+      "placeholder-as-label",
+      "missing-h1",
+      "multiple-h1",
+      "heading-order",
+      "no-fieldset-legend",
+      "fake-list",
+      "div-itis-missing-semantics",
+      "broken-aria-label",
+      "broken-aria-description",
+      "th-no-scope",
+      "duplicate-aria-ref",
+      "focus-trap-background",
+      "heading-gap",
+      "label",
+      "landmark-one-main",
+      "region",
+      "td-headers-attr",
+      "th-has-data-cells",
+      "definition-list",
+      "list",
+      "listitem",
+      "form-field-multiple-labels",
+      "WCAG20_Form_LabelExists"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet",
+      "computed_styles"
+    ],
+    "limitations": [
+      "Requires semantic or contextual validation when machine heuristics detect ambiguity."
+    ]
+  },
+  {
+    "criterion": "1.3.2",
+    "title": "Meaningful Sequence",
+    "level": "A",
+    "capability_state": "IMPLEMENTED_BROWSER",
+    "implemented": true,
+    "automation_type": [
+      "browser_runtime",
+      "ai_contextual"
+    ],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "conditional",
+    "detector_ids": [
+      "meaningful-sequence",
+      "meaningful-sequence-mismatch"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet",
+      "computed_styles"
+    ],
+    "limitations": [
+      "Requires semantic or contextual validation when machine heuristics detect ambiguity."
+    ]
+  },
+  {
+    "criterion": "1.3.3",
+    "title": "Sensory Characteristics",
+    "level": "A",
+    "capability_state": "IMPLEMENTED_AI_CONTEXTUAL",
+    "implemented": true,
+    "automation_type": [
+      "ai_contextual"
+    ],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "conditional",
+    "detector_ids": [
+      "sensory-language"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet"
+    ],
+    "limitations": [
+      "Requires semantic or contextual validation when machine heuristics detect ambiguity."
+    ]
+  },
+  {
+    "criterion": "1.3.4",
+    "title": "Orientation",
+    "level": "AA",
+    "capability_state": "IMPLEMENTED_AI_CONTEXTUAL",
+    "implemented": true,
+    "automation_type": [
+      "ai_contextual"
+    ],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "conditional",
+    "detector_ids": [
+      "orientation-lock"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet"
+    ],
+    "limitations": [
+      "Requires semantic or contextual validation when machine heuristics detect ambiguity."
+    ]
+  },
+  {
+    "criterion": "1.3.5",
+    "title": "Identify Input Purpose",
+    "level": "AA",
+    "capability_state": "IMPLEMENTED_DETERMINISTIC",
+    "implemented": true,
+    "automation_type": [
+      "dom"
+    ],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "never",
+    "detector_ids": [
+      "autocomplete-missing"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet"
+    ],
+    "limitations": []
+  },
+  {
+    "criterion": "1.3.6",
+    "title": "Identify Purpose",
+    "level": "AAA",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "1.4.1",
+    "title": "Use of Color",
+    "level": "A",
+    "capability_state": "IMPLEMENTED_DETERMINISTIC",
+    "implemented": true,
+    "automation_type": [
+      "dom"
+    ],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "never",
+    "detector_ids": [
+      "link-no-underline"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet"
+    ],
+    "limitations": []
+  },
+  {
+    "criterion": "1.4.2",
+    "title": "Audio Control",
+    "level": "A",
+    "capability_state": "IMPLEMENTED_DETERMINISTIC",
+    "implemented": true,
+    "automation_type": [
+      "dom"
+    ],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "never",
+    "detector_ids": [
+      "autoplay-media"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet"
+    ],
+    "limitations": []
+  },
+  {
+    "criterion": "1.4.3",
+    "title": "Contrast (Minimum)",
+    "level": "AA",
+    "capability_state": "IMPLEMENTED_VISUAL",
+    "implemented": true,
+    "automation_type": [
+      "dom",
+      "browser_runtime",
+      "visual_render"
+    ],
+    "requires_browser": true,
+    "requires_visual": true,
+    "requires_at": false,
+    "human_review": "conditional",
+    "detector_ids": [
+      "color-contrast",
+      "WCAG20_Text_Contrast"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet",
+      "bounding_rect",
+      "color_contrast_ratio",
+      "computed_styles"
+    ],
+    "limitations": [
+      "Requires semantic or contextual validation when machine heuristics detect ambiguity."
+    ]
+  },
+  {
+    "criterion": "1.4.4",
+    "title": "Resize Text",
+    "level": "AA",
+    "capability_state": "IMPLEMENTED_VISUAL",
+    "implemented": true,
+    "automation_type": [
+      "dom",
+      "browser_runtime",
+      "visual_render"
+    ],
+    "requires_browser": true,
+    "requires_visual": true,
+    "requires_at": false,
+    "human_review": "never",
+    "detector_ids": [
+      "viewport-zoom-disabled",
+      "small-font-size",
+      "zoom-overflow",
+      "meta-viewport"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet",
+      "bounding_rect",
+      "color_contrast_ratio",
+      "computed_styles"
+    ],
+    "limitations": []
+  },
+  {
+    "criterion": "1.4.5",
+    "title": "Images of Text",
+    "level": "AA",
+    "capability_state": "IMPLEMENTED_AI_CONTEXTUAL",
+    "implemented": true,
+    "automation_type": [
+      "ai_contextual"
+    ],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "conditional",
+    "detector_ids": [
+      "images-of-text"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet"
+    ],
+    "limitations": [
+      "Requires semantic or contextual validation when machine heuristics detect ambiguity."
+    ]
+  },
+  {
+    "criterion": "1.4.6",
+    "title": "Contrast (Enhanced)",
+    "level": "AAA",
+    "capability_state": "IMPLEMENTED_VISUAL",
+    "implemented": true,
+    "automation_type": [
+      "browser_runtime",
+      "visual_render"
+    ],
+    "requires_browser": true,
+    "requires_visual": true,
+    "requires_at": false,
+    "human_review": "never",
+    "detector_ids": [
+      "color-contrast-enhanced"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet",
+      "bounding_rect",
+      "color_contrast_ratio",
+      "computed_styles"
+    ],
+    "limitations": []
+  },
+  {
+    "criterion": "1.4.7",
+    "title": "Low or No Background Audio",
+    "level": "AAA",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": true,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "1.4.8",
+    "title": "Visual Presentation",
+    "level": "AAA",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": true,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "1.4.9",
+    "title": "Images of Text (No Exception)",
+    "level": "AAA",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": true,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "1.4.10",
+    "title": "Reflow",
+    "level": "AA",
+    "capability_state": "IMPLEMENTED_VISUAL",
+    "implemented": true,
+    "automation_type": [
+      "browser_runtime",
+      "visual_render"
+    ],
+    "requires_browser": true,
+    "requires_visual": true,
+    "requires_at": false,
+    "human_review": "never",
+    "detector_ids": [
+      "responsive-reflow"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet",
+      "bounding_rect",
+      "color_contrast_ratio",
+      "computed_styles"
+    ],
+    "limitations": []
+  },
+  {
+    "criterion": "1.4.11",
+    "title": "Non-text Contrast",
+    "level": "AA",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": true,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "1.4.12",
+    "title": "Text Spacing",
+    "level": "AA",
+    "capability_state": "IMPLEMENTED_AI_CONTEXTUAL",
+    "implemented": true,
+    "automation_type": [
+      "ai_contextual"
+    ],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "conditional",
+    "detector_ids": [
+      "letter-spacing",
+      "avoid-inline-spacing",
+      "text-spacing"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet"
+    ],
+    "limitations": [
+      "Requires semantic or contextual validation when machine heuristics detect ambiguity."
+    ]
+  },
+  {
+    "criterion": "1.4.13",
+    "title": "Content on Hover or Focus",
+    "level": "AA",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": true,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "2.1.1",
+    "title": "Keyboard",
+    "level": "A",
+    "capability_state": "IMPLEMENTED_VISUAL",
+    "implemented": true,
+    "automation_type": [
+      "dom",
+      "browser_runtime",
+      "visual_render",
+      "ai_contextual"
+    ],
+    "requires_browser": true,
+    "requires_visual": true,
+    "requires_at": false,
+    "human_review": "conditional",
+    "detector_ids": [
+      "focus-management",
+      "keyboard-mouse-only-handler",
+      "keyboard-div-onclick-no-role",
+      "keyboard-tabindex-negative",
+      "keyboard-focus-invisible",
+      "keyboard-role-button-no-tabindex",
+      "keyboard-event-suppressed",
+      "keyboard-focusable",
+      "tabindex",
+      "keyboard-unreachable"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet",
+      "bounding_rect",
+      "color_contrast_ratio",
+      "computed_styles"
+    ],
+    "limitations": [
+      "Requires semantic or contextual validation when machine heuristics detect ambiguity."
+    ]
+  },
+  {
+    "criterion": "2.1.2",
+    "title": "No Keyboard Trap",
+    "level": "A",
+    "capability_state": "IMPLEMENTED_DETERMINISTIC",
+    "implemented": true,
+    "automation_type": [
+      "dom",
+      "browser_runtime"
+    ],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "never",
+    "detector_ids": [
+      "keyboard-trap",
+      "focus-trap-escape",
+      "focus-trap-cycling"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet",
+      "computed_styles"
+    ],
+    "limitations": []
+  },
+  {
+    "criterion": "2.1.3",
+    "title": "Keyboard (No Exception)",
+    "level": "AAA",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "2.1.4",
+    "title": "Character Key Shortcuts",
+    "level": "A",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "2.2.1",
+    "title": "Timing Adjustable",
+    "level": "A",
+    "capability_state": "IMPLEMENTED_DETERMINISTIC",
+    "implemented": true,
+    "automation_type": [
+      "dom"
+    ],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "never",
+    "detector_ids": [
+      "meta-refresh",
+      "timeout-no-warning"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet"
+    ],
+    "limitations": []
+  },
+  {
+    "criterion": "2.2.2",
+    "title": "Pause, Stop, Hide",
+    "level": "A",
+    "capability_state": "IMPLEMENTED_AI_CONTEXTUAL",
+    "implemented": true,
+    "automation_type": [
+      "dom",
+      "ai_contextual"
+    ],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "conditional",
+    "detector_ids": [
+      "marquee-used",
+      "auto-update-no-control",
+      "auto-carousel"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet"
+    ],
+    "limitations": [
+      "Requires semantic or contextual validation when machine heuristics detect ambiguity."
+    ]
+  },
+  {
+    "criterion": "2.2.3",
+    "title": "No Timing",
+    "level": "AAA",
+    "capability_state": "ADVISORY_ONLY",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "2.2.4",
+    "title": "Interruptions",
+    "level": "AAA",
+    "capability_state": "ADVISORY_ONLY",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "2.2.5",
+    "title": "Re-authenticating",
+    "level": "AAA",
+    "capability_state": "ADVISORY_ONLY",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "2.2.6",
+    "title": "Timeouts",
+    "level": "AAA",
+    "capability_state": "ADVISORY_ONLY",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "2.3.1",
+    "title": "Three Flashes or Below Threshold",
+    "level": "A",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "2.3.2",
+    "title": "Three Flashes",
+    "level": "AAA",
+    "capability_state": "ADVISORY_ONLY",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "2.3.3",
+    "title": "Animation from Interactions",
+    "level": "AAA",
+    "capability_state": "IMPLEMENTED_BROWSER",
+    "implemented": true,
+    "automation_type": [
+      "browser_runtime"
+    ],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "never",
+    "detector_ids": [
+      "excessive-motion"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet",
+      "computed_styles"
+    ],
+    "limitations": []
+  },
+  {
+    "criterion": "2.4.1",
+    "title": "Bypass Blocks",
+    "level": "A",
+    "capability_state": "IMPLEMENTED_DETERMINISTIC",
+    "implemented": true,
+    "automation_type": [
+      "dom",
+      "browser_runtime"
+    ],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "never",
+    "detector_ids": [
+      "missing-skip-link",
+      "infinite-scroll-accessibility",
+      "bypass"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet",
+      "computed_styles"
+    ],
+    "limitations": []
+  },
+  {
+    "criterion": "2.4.2",
+    "title": "Page Titled",
+    "level": "A",
+    "capability_state": "IMPLEMENTED_DETERMINISTIC",
+    "implemented": true,
+    "automation_type": [
+      "dom",
+      "browser_runtime"
+    ],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "never",
+    "detector_ids": [
+      "no-title",
+      "document-title"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet",
+      "computed_styles"
+    ],
+    "limitations": []
+  },
+  {
+    "criterion": "2.4.3",
+    "title": "Focus Order",
+    "level": "A",
+    "capability_state": "IMPLEMENTED_DETERMINISTIC",
+    "implemented": true,
+    "automation_type": [
+      "dom",
+      "browser_runtime"
+    ],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "never",
+    "detector_ids": [
+      "css-reordering",
+      "positive-tabindex",
+      "focus-trap-initial"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet",
+      "computed_styles"
+    ],
+    "limitations": []
+  },
+  {
+    "criterion": "2.4.4",
+    "title": "Link Purpose (In Context)",
+    "level": "A",
+    "capability_state": "IMPLEMENTED_AI_CONTEXTUAL",
+    "implemented": true,
+    "automation_type": [
+      "dom",
+      "browser_runtime",
+      "ai_contextual"
+    ],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "conditional",
+    "detector_ids": [
+      "link-purpose",
+      "empty-link",
+      "inaccessible-document-link",
+      "short-link-text",
+      "link-name",
+      "WCAG20_A_HasName"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet",
+      "computed_styles"
+    ],
+    "limitations": [
+      "Requires semantic or contextual validation when machine heuristics detect ambiguity."
+    ]
+  },
+  {
+    "criterion": "2.4.5",
+    "title": "Multiple Ways",
+    "level": "AA",
+    "capability_state": "IMPLEMENTED_AI_CONTEXTUAL",
+    "implemented": true,
+    "automation_type": [
+      "ai_contextual"
+    ],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "conditional",
+    "detector_ids": [
+      "nav-complexity",
+      "visual-clutter"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet"
+    ],
+    "limitations": [
+      "Requires semantic or contextual validation when machine heuristics detect ambiguity."
+    ]
+  },
+  {
+    "criterion": "2.4.6",
+    "title": "Headings and Labels",
+    "level": "AA",
+    "capability_state": "IMPLEMENTED_AI_CONTEXTUAL",
+    "implemented": true,
+    "automation_type": [
+      "ai_contextual"
+    ],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "conditional",
+    "detector_ids": [
+      "vague-label",
+      "cta-clarity"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet"
+    ],
+    "limitations": [
+      "Requires semantic or contextual validation when machine heuristics detect ambiguity."
+    ]
+  },
+  {
+    "criterion": "2.4.7",
+    "title": "Focus Visible",
+    "level": "AA",
+    "capability_state": "IMPLEMENTED_BROWSER",
+    "implemented": true,
+    "automation_type": [
+      "browser_runtime"
+    ],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "never",
+    "detector_ids": [
+      "no-focus-style"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet",
+      "computed_styles"
+    ],
+    "limitations": []
+  },
+  {
+    "criterion": "2.4.8",
+    "title": "Location",
+    "level": "AAA",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "2.4.9",
+    "title": "Link Purpose (Link Only)",
+    "level": "AAA",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "2.4.10",
+    "title": "Section Headings",
+    "level": "AAA",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "2.4.11",
+    "title": "Focus Not Obscured (Minimum)",
+    "level": "AA",
+    "capability_state": "IMPLEMENTED_VISUAL",
+    "implemented": true,
+    "automation_type": [
+      "browser_runtime",
+      "visual_render"
+    ],
+    "requires_browser": true,
+    "requires_visual": true,
+    "requires_at": false,
+    "human_review": "never",
+    "detector_ids": [
+      "focus-obscured"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet",
+      "bounding_rect",
+      "color_contrast_ratio",
+      "computed_styles"
+    ],
+    "limitations": []
+  },
+  {
+    "criterion": "2.4.12",
+    "title": "Focus Not Obscured (Enhanced)",
+    "level": "AAA",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "2.4.13",
+    "title": "Focus Appearance",
+    "level": "AAA",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "2.5.1",
+    "title": "Pointer Gestures",
+    "level": "A",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "2.5.2",
+    "title": "Pointer Cancellation",
+    "level": "A",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "2.5.3",
+    "title": "Label in Name",
+    "level": "A",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "2.5.4",
+    "title": "Motion Actuation",
+    "level": "A",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "2.5.5",
+    "title": "Target Size (Enhanced)",
+    "level": "AAA",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "2.5.7",
+    "title": "Dragging Movements",
+    "level": "AA",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "2.5.8",
+    "title": "Target Size (Minimum)",
+    "level": "AA",
+    "capability_state": "IMPLEMENTED_VISUAL",
+    "implemented": true,
+    "automation_type": [
+      "dom",
+      "browser_runtime",
+      "visual_render"
+    ],
+    "requires_browser": true,
+    "requires_visual": true,
+    "requires_at": false,
+    "human_review": "never",
+    "detector_ids": [
+      "touch-target-spacing",
+      "target-size-minimum"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet",
+      "bounding_rect",
+      "color_contrast_ratio",
+      "computed_styles"
+    ],
+    "limitations": []
+  },
+  {
+    "criterion": "3.1.1",
+    "title": "Language of Page",
+    "level": "A",
+    "capability_state": "IMPLEMENTED_DETERMINISTIC",
+    "implemented": true,
+    "automation_type": [
+      "dom",
+      "browser_runtime"
+    ],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "never",
+    "detector_ids": [
+      "missing-lang",
+      "html-has-lang",
+      "html-lang-valid",
+      "WCAG20_Html_HasLang"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet",
+      "computed_styles"
+    ],
+    "limitations": []
+  },
+  {
+    "criterion": "3.1.2",
+    "title": "Language of Parts",
+    "level": "AA",
+    "capability_state": "IMPLEMENTED_DETERMINISTIC",
+    "implemented": true,
+    "automation_type": [
+      "dom"
+    ],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "never",
+    "detector_ids": [
+      "invalid-lang",
+      "lang-mismatch"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet"
+    ],
+    "limitations": []
+  },
+  {
+    "criterion": "3.1.3",
+    "title": "Unusual Words",
+    "level": "AAA",
+    "capability_state": "IMPLEMENTED_AI_CONTEXTUAL",
+    "implemented": true,
+    "automation_type": [
+      "ai_contextual"
+    ],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "conditional",
+    "detector_ids": [
+      "jargon"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet"
+    ],
+    "limitations": [
+      "Requires semantic or contextual validation when machine heuristics detect ambiguity."
+    ]
+  },
+  {
+    "criterion": "3.1.4",
+    "title": "Abbreviations",
+    "level": "AAA",
+    "capability_state": "ADVISORY_ONLY",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "3.1.5",
+    "title": "Reading Level",
+    "level": "AAA",
+    "capability_state": "IMPLEMENTED_AI_CONTEXTUAL",
+    "implemented": true,
+    "automation_type": [
+      "ai_contextual"
+    ],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "conditional",
+    "detector_ids": [
+      "coga-wall-of-text",
+      "readability"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet"
+    ],
+    "limitations": [
+      "Requires semantic or contextual validation when machine heuristics detect ambiguity."
+    ]
+  },
+  {
+    "criterion": "3.1.6",
+    "title": "Pronunciation",
+    "level": "AAA",
+    "capability_state": "ADVISORY_ONLY",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "3.2.1",
+    "title": "On Focus",
+    "level": "A",
+    "capability_state": "IMPLEMENTED_AI_CONTEXTUAL",
+    "implemented": true,
+    "automation_type": [
+      "ai_contextual"
+    ],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "conditional",
+    "detector_ids": [
+      "focus-disruption"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet"
+    ],
+    "limitations": [
+      "Requires semantic or contextual validation when machine heuristics detect ambiguity."
+    ]
+  },
+  {
+    "criterion": "3.2.2",
+    "title": "On Input",
+    "level": "A",
+    "capability_state": "IMPLEMENTED_AI_CONTEXTUAL",
+    "implemented": true,
+    "automation_type": [
+      "ai_contextual"
+    ],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "conditional",
+    "detector_ids": [
+      "on-input-context-change"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet"
+    ],
+    "limitations": [
+      "Requires semantic or contextual validation when machine heuristics detect ambiguity."
+    ]
+  },
+  {
+    "criterion": "3.2.3",
+    "title": "Consistent Navigation",
+    "level": "AA",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "3.2.4",
+    "title": "Consistent Identification",
+    "level": "AA",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "3.2.5",
+    "title": "Change on Request",
+    "level": "AAA",
+    "capability_state": "ADVISORY_ONLY",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "3.2.6",
+    "title": "Consistent Help",
+    "level": "A",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "3.3.1",
+    "title": "Error Identification",
+    "level": "A",
+    "capability_state": "IMPLEMENTED_AI_CONTEXTUAL",
+    "implemented": true,
+    "automation_type": [
+      "dom",
+      "ai_contextual"
+    ],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "conditional",
+    "detector_ids": [
+      "error-not-linked",
+      "weak-error-message",
+      "error-message-quality"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet"
+    ],
+    "limitations": [
+      "Requires semantic or contextual validation when machine heuristics detect ambiguity."
+    ]
+  },
+  {
+    "criterion": "3.3.2",
+    "title": "Labels or Instructions",
+    "level": "A",
+    "capability_state": "IMPLEMENTED_AI_CONTEXTUAL",
+    "implemented": true,
+    "automation_type": [
+      "dom",
+      "ai_contextual"
+    ],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "conditional",
+    "detector_ids": [
+      "duplicate-label",
+      "coga-action-fatigue",
+      "form-usability"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet"
+    ],
+    "limitations": [
+      "Requires semantic or contextual validation when machine heuristics detect ambiguity."
+    ]
+  },
+  {
+    "criterion": "3.3.3",
+    "title": "Error Suggestion",
+    "level": "AA",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "3.3.4",
+    "title": "Error Prevention (Legal, Financial, Data)",
+    "level": "AA",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "3.3.5",
+    "title": "Help",
+    "level": "AAA",
+    "capability_state": "ADVISORY_ONLY",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "3.3.6",
+    "title": "Error Prevention (All)",
+    "level": "AAA",
+    "capability_state": "ADVISORY_ONLY",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "3.3.7",
+    "title": "Redundant Entry",
+    "level": "A",
+    "capability_state": "IMPLEMENTED_DETERMINISTIC",
+    "implemented": true,
+    "automation_type": [
+      "dom"
+    ],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "conditional",
+    "detector_ids": [
+      "redundant-entry"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet"
+    ],
+    "limitations": [
+      "Requires semantic or contextual validation when machine heuristics detect ambiguity."
+    ]
+  },
+  {
+    "criterion": "3.3.8",
+    "title": "Accessible Authentication (Minimum)",
+    "level": "AA",
+    "capability_state": "IMPLEMENTED_DETERMINISTIC",
+    "implemented": true,
+    "automation_type": [
+      "dom"
+    ],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "never",
+    "detector_ids": [
+      "captcha-detected",
+      "missing-autocomplete-auth"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet"
+    ],
+    "limitations": []
+  },
+  {
+    "criterion": "3.3.9",
+    "title": "Accessible Authentication (Enhanced)",
+    "level": "AAA",
+    "capability_state": "NOT_IMPLEMENTED",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "always",
+    "detector_ids": [],
+    "evidence_requirements": [
+      "manual_tester_attestation"
+    ],
+    "limitations": [
+      "Fully automated testing cannot definitively verify compliance without human or assistive tech interaction."
+    ]
+  },
+  {
+    "criterion": "4.1.1",
+    "title": "Parsing",
+    "level": "A",
+    "capability_state": "NOT_APPLICABLE",
+    "implemented": false,
+    "automation_type": [],
+    "requires_browser": false,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "not_applicable",
+    "detector_ids": [
+      "duplicate-id"
+    ],
+    "evidence_requirements": [],
+    "limitations": [
+      "Obsolete in WCAG 2.2. Requirements covered under 1.3.1 and 4.1.2."
+    ]
+  },
+  {
+    "criterion": "4.1.2",
+    "title": "Name, Role, Value",
+    "level": "A",
+    "capability_state": "IMPLEMENTED_AI_CONTEXTUAL",
+    "implemented": true,
+    "automation_type": [
+      "dom",
+      "browser_runtime",
+      "ai_contextual"
+    ],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "conditional",
+    "detector_ids": [
+      "aria-required-parent",
+      "aria-required-children",
+      "aria-allowed-role",
+      "button-name",
+      "clickable-no-role",
+      "aria-hidden-focusable",
+      "apg-tablist-missing-tabs",
+      "apg-expanded-missing-controls",
+      "apg-dialog-no-name",
+      "apg-dialog-not-modal",
+      "aria-roles",
+      "aria-valid-attr-value",
+      "aria-valid-attr",
+      "aria-allowed-attr",
+      "role-no-name",
+      "apg-tab-missing-controls",
+      "nested-interactive",
+      "apg-tab-broken-controls",
+      "input-name",
+      "vague-button-text",
+      "aria-tree-no-name",
+      "aria-required-attr",
+      "aria-hidden-focus",
+      "WCAG20_Button_HasName",
+      "WCAG21_NameRoleValue"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet",
+      "computed_styles"
+    ],
+    "limitations": [
+      "Requires semantic or contextual validation when machine heuristics detect ambiguity."
+    ]
+  },
+  {
+    "criterion": "4.1.3",
+    "title": "Status Messages",
+    "level": "AA",
+    "capability_state": "IMPLEMENTED_DETERMINISTIC",
+    "implemented": true,
+    "automation_type": [
+      "dom",
+      "browser_runtime"
+    ],
+    "requires_browser": true,
+    "requires_visual": false,
+    "requires_at": false,
+    "human_review": "never",
+    "detector_ids": [
+      "no-aria-live",
+      "skeleton-loading-state"
+    ],
+    "evidence_requirements": [
+      "css_selector",
+      "html_snippet",
+      "computed_styles"
+    ],
+    "limitations": []
+  }
+]

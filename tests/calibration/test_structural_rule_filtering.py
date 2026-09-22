@@ -8,9 +8,6 @@ Validates:
 - Critical severity is never suppressed
 - Suppression telemetry is logged correctly
 """
-import json
-import pytest
-from unittest.mock import patch, MagicMock
 
 # Import the function under test
 from app.services.audit_runner import _apply_precision_profile

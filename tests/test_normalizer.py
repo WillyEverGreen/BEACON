@@ -4,14 +4,12 @@ Unit tests for the RAG pipeline tag module.
 Tests WCAG SC extraction, issue type classification, user impact groups,
 severity level detection, and topic extraction.
 """
-import sys
 import os
-import pytest
+import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "rag")))
 
-from tag import tag_chunk, WCAG_SC_RE, ISSUE_TYPES, USER_IMPACT, SEVERITY_MAP
-
+from tag import tag_chunk
 
 # ── WCAG SC Extraction ────────────────────────────────────────
 

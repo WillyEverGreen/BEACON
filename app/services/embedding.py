@@ -5,8 +5,8 @@ Uses the shared model from rag/model_registry.py to avoid
 loading the same ~90MB model multiple times.
 """
 import logging
-import sys
 import os
+import sys
 
 from sentence_transformers import SentenceTransformer
 
@@ -15,7 +15,7 @@ _rag_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", 
 if _rag_path not in sys.path:
     sys.path.insert(0, _rag_path)
 
-from model_registry import get_embedding_model as _get_shared_model  # noqa: E402
+from model_registry import get_embedding_model as _get_shared_model
 
 logger = logging.getLogger(__name__)
 

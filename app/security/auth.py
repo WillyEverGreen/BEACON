@@ -8,7 +8,6 @@ import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from threading import RLock
-from typing import Optional
 
 import bcrypt
 from fastapi.responses import JSONResponse
@@ -84,7 +83,7 @@ class APIKeyStore:
                 self.file_path,
             )
 
-    def authenticate(self, raw_key: str) -> Optional[AuthResult]:
+    def authenticate(self, raw_key: str) -> AuthResult | None:
         if not raw_key:
             return None
 
@@ -151,7 +150,7 @@ def has_required_role(actual_role: str, required_role: str) -> bool:
     return ROLE_ORDER.get(actual_role, 0) >= ROLE_ORDER.get(required_role, 99)
 
 
-def required_role_for_request(method: str, path: str) -> Optional[str]:
+def required_role_for_request(method: str, path: str) -> str | None:
     path = path or "/"
     method = (method or "GET").upper()
 

@@ -3,19 +3,28 @@
 from __future__ import annotations
 
 import asyncio
-from collections import deque
 import inspect
 import logging
 import time
+from collections import deque
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Awaitable, Callable, Optional
+from typing import Any
 
 import app.config as app_config
-from app.audit.failure_taxonomy import DegradedReason, normalize_failure, normalize_reason
+from app.audit.failure_taxonomy import (
+    DegradedReason,
+    normalize_failure,
+    normalize_reason,
+)
 from app.crawlers.common import normalize_scan_mode
 from app.crawlers.crawler import CrawlQueueEntry, CrawlSession
-from app.crawlers.page_selector import LiveDOMLinkExtractor, SelectedLink, select_links_for_enqueue
+from app.crawlers.page_selector import (
+    LiveDOMLinkExtractor,
+    SelectedLink,
+    select_links_for_enqueue,
+)
 from app.crawlers.site_aggregator import aggregate_site_issues
 from app.crawlers.site_scorer import compute_site_score
 from app.observability.telemetry import record_operational_event
@@ -75,7 +84,7 @@ class CrawlConfig:
     standard_page_skip_budget_threshold: int = 1
 
     @classmethod
-    def from_runtime_defaults(cls) -> "CrawlConfig":
+    def from_runtime_defaults(cls) -> CrawlConfig:
         return cls(
             max_pages=int(app_config.CRAWL_MAX_PAGES_PER_SITE),
             max_depth=int(app_config.CRAWL_MAX_DEPTH),
@@ -85,7 +94,7 @@ class CrawlConfig:
             scan_mode="deep",
         )
 
-    def normalized(self) -> "CrawlConfig":
+    def normalized(self) -> CrawlConfig:
         scan_mode = normalize_scan_mode(self.scan_mode)
         _, timeout_max = _timeout_bounds_for_mode(scan_mode)
         timeout_per_page_s = int(self.timeout_per_page_s)
@@ -145,8 +154,8 @@ class SiteCrawlOrchestrator:
     def __init__(
         self,
         *,
-        audit_callable: Optional[AuditCallable] = None,
-        link_extractor: Optional[LiveDOMLinkExtractor] = None,
+        audit_callable: AuditCallable | None = None,
+        link_extractor: LiveDOMLinkExtractor | None = None,
         event_recorder: EventRecorder = record_operational_event,
     ) -> None:
         self._audit_callable = audit_callable or _default_audit_callable
@@ -867,9 +876,7 @@ def _timeout_bounds_for_mode(scan_mode: str) -> tuple[int, int]:
 def _timeout_for_page_type(*, page_type: str, scan_mode: str, fallback_timeout_s: int) -> int:
     lowered_page_type = str(page_type or "").strip().lower()
 
-    if lowered_page_type in {"homepage", "interaction"}:
-        timeout_min, timeout_max = _timeout_bounds_for_mode("deep")
-    elif lowered_page_type == "nav":
+    if lowered_page_type in {"homepage", "interaction"} or lowered_page_type == "nav":
         timeout_min, timeout_max = _timeout_bounds_for_mode("deep")
     else:
         timeout_min, timeout_max = _timeout_bounds_for_mode("fast")
@@ -921,7 +928,7 @@ def _issue_identity_key(issue: dict[str, Any]) -> str:
     wcag = str(issue.get("wcag_criterion") or "")
     selector = str(issue.get("selector") or issue.get("element") or issue.get("target") or "")
     role = str(issue.get("element_role") or issue.get("element_type") or "")
-    return "|".join([issue_type, wcag, selector.strip(), role.strip()])
+    return f"{issue_type}|{wcag}|{selector.strip()}|{role.strip()}"
 
 
 def _safe_ratio(numerator: int, denominator: int) -> float:

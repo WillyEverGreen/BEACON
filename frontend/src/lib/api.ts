@@ -49,20 +49,55 @@ export const api = {
     const response = await apiClient.post('/scans/', data);
     return response.data;
   },
-  exportScan: async (projectId: string, scanId: string, format: "sarif" | "earl" | "markdown" | "json") => {
+  getScan: async (
+    projectId: string,
+    scanId: string,
+    options?: { profile?: string; persona?: string; view?: string }
+  ) => {
+    const params = new URLSearchParams();
+    if (options?.profile) params.append("profile", options.profile);
+    if (options?.persona) params.append("persona", options.persona);
+    if (options?.view) params.append("view", options.view);
+    const queryString = params.toString() ? `?${params.toString()}` : "";
+    const response = await apiClient.get(`/scans/${projectId}/${scanId}${queryString}`);
+    return response.data;
+  },
+  getProfiles: async () => {
+    const response = await apiClient.get('/profiles');
+    return response.data;
+  },
+  getPersonas: async () => {
+    const response = await apiClient.get('/personas');
+    return response.data;
+  },
+  exportScan: async (projectId: string, scanId: string, format: "sarif" | "earl" | "markdown" | "json" | "csv") => {
     const response = await apiClient.get(`/scans/${projectId}/${scanId}/export/${format}`, {
-      responseType: format === "markdown" ? "text" : "json",
+      responseType: format === "markdown" || format === "csv" ? "text" : "json",
     });
+    return response.data;
+  },
+  generateAccessibilityStatement: async (
+    projectId: string,
+    scanId: string,
+    orgName?: string,
+    profile?: string,
+  ) => {
+    const params = new URLSearchParams();
+    if (orgName) params.append("org_name", orgName);
+    if (profile) params.append("profile", profile);
+    const queryString = params.toString() ? `?${params.toString()}` : "";
+    const response = await apiClient.get(`/scans/${projectId}/${scanId}/statement${queryString}`);
     return response.data;
   },
 };
 
-export function downloadScanReport(projectId: string, scanId: string, format: "sarif" | "earl" | "markdown" | "json") {
+export function downloadScanReport(projectId: string, scanId: string, format: "sarif" | "earl" | "markdown" | "json" | "csv") {
   const extensionMap: Record<string, string> = {
     sarif: "sarif",
     earl: "earl.jsonld",
     markdown: "md",
     json: "json",
+    csv: "csv",
   };
   const ext = extensionMap[format] || format;
   const link = document.createElement("a");
@@ -75,14 +110,15 @@ export function downloadScanReport(projectId: string, scanId: string, format: "s
 
 export default api;
 
-export function toUserFacingError(error: any): { message: string; retryable: boolean } {
+export function toUserFacingError(error: unknown): { message: string; retryable: boolean } {
   let message = "An unexpected error occurred.";
   let retryable = true;
 
-  if (error?.response) {
-    const status = error.response.status;
-    const data = error.response.data;
-    
+  if (typeof error === "object" && error !== null && "response" in error) {
+    const resp = (error as { response?: { status?: number; data?: { error?: string; detail?: string } } }).response;
+    const status = resp?.status;
+    const data = resp?.data;
+
     if (status === 401 || status === 403) {
       message = data?.error || data?.detail || "Access denied. Please check your credentials.";
       retryable = false;
@@ -92,12 +128,12 @@ export function toUserFacingError(error: any): { message: string; retryable: boo
     } else if (status === 502) {
       message = data?.error || "BEACON backend is offline. Please start the backend server on port 8000 (`py -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload`).";
       retryable = true;
-    } else if (status >= 500) {
+    } else if (status && status >= 500) {
       message = data?.error || data?.detail || "Server error occurred. Please try again later.";
     } else {
-      message = data?.error || data?.detail || `Error: ${status} - ${error.message}`;
+      message = data?.error || data?.detail || `Error: ${status} - ${(error as { message?: string }).message || "Unknown error"}`;
     }
-  } else if (error?.request) {
+  } else if (typeof error === "object" && error !== null && "request" in error) {
     message = "Network error. Please check your connection and try again.";
   } else if (error instanceof Error) {
     message = error.message;
@@ -107,3 +143,4 @@ export function toUserFacingError(error: any): { message: string; retryable: boo
 
   return { message, retryable };
 }
+

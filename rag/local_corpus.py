@@ -1,6 +1,4 @@
 # local_corpus.py
-import json
-import hashlib
 import logging
 from pathlib import Path
 

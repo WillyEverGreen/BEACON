@@ -1,6 +1,5 @@
 """Unit tests for Phase 3 Audit Engine Adapters."""
 
-import pytest
 from app.audit.adapters.axe_adapter import AxeAdapter
 from app.audit.adapters.heuristics_adapter import HeuristicsAdapter
 

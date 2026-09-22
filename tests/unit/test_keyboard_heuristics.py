@@ -1,5 +1,5 @@
-import pytest
 from app.services.heuristics import HeuristicAnalyzer
+
 
 def test_keyboard_trap_tabindex_and_click_handlers():
     """Verify that HeuristicAnalyzer correctly flags positive tabindex and interactive elements missing tabindex."""

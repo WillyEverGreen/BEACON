@@ -1,10 +1,8 @@
 """Unit tests for Phase 4 Multi-Engine Consensus & ACT Adjudication."""
 
-import pytest
+from app.audit.adapters.alfa_adapter import AlfaAdapter
 from app.audit.adapters.axe_adapter import AxeAdapter
 from app.audit.adapters.ibm_adapter import IBMAdapter
-from app.audit.adapters.alfa_adapter import AlfaAdapter
-from app.audit.adapters.heuristics_adapter import HeuristicsAdapter
 from app.audit.consensus import ConsensusEngine
 from app.models.contracts import Finding
 

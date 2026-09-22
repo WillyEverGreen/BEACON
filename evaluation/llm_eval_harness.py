@@ -1,20 +1,21 @@
+import argparse
 import asyncio
 import json
 import os
 import sys
-import argparse
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any
 
 # Ensure we can import app modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.services.llm import generate_remediation
-from evaluation.gena11y_loader import load_gena11y_cases
 from evaluation.act_loader import load_act_cases
 from evaluation.fix_quality_eval import run_axe_on_html
+from evaluation.gena11y_loader import load_gena11y_cases
 
-async def sample_fixes(snippet: str, sc_id: str, rule_id: str, k: int = 3) -> List[str]:
+
+async def sample_fixes(snippet: str, sc_id: str, rule_id: str, k: int = 3) -> list[str]:
     """Sample k independent fixes from the LLM."""
     issue = {
         "html_snippet": snippet,
@@ -44,7 +45,7 @@ async def sample_fixes(snippet: str, sc_id: str, rule_id: str, k: int = 3) -> Li
         
     return fixes
 
-async def evaluate_case(case: Any, k: int = 3) -> Dict[str, Any]:
+async def evaluate_case(case: Any, k: int = 3) -> dict[str, Any]:
     """Evaluate a single test case for pass@k."""
     html_content = case.fixture_file.read_text(encoding="utf-8")
     

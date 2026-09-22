@@ -1,15 +1,16 @@
 """Quick smoke test for the Accessibility Intelligence Engine."""
 import asyncio
-import ssl
+
 import httpx
-from app.services.static_checks import StaticChecker
+
+from app.services.cognitive_checks import CognitiveAnalyzer
+from app.services.confidence import apply_confidence_rules
+from app.services.dedup_engine import deduplicate
+from app.services.grouper import group_issues
 from app.services.heuristics import HeuristicAnalyzer
 from app.services.normalizer import normalize_all
-from app.services.dedup_engine import deduplicate
-from app.services.confidence import apply_confidence_rules
-from app.services.grouper import group_issues
 from app.services.report import generate_markdown_report
-from app.services.cognitive_checks import CognitiveAnalyzer
+from app.services.static_checks import StaticChecker
 
 
 async def test():

@@ -7,11 +7,11 @@ before embedding/upsert.
 from __future__ import annotations
 
 import argparse
-from datetime import datetime
 import json
 import re
+from collections.abc import Iterable
+from datetime import datetime
 from pathlib import Path
-from typing import Iterable
 from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 

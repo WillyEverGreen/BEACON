@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional, Protocol, Tuple
+from typing import Any, Protocol
 
 
 class AntiBotState(str, Enum):
@@ -26,9 +26,9 @@ class AntiBotState(str, Enum):
 class Fingerprint:
     """Multi-signal structural and interactive fingerprint of a web page."""
     dom_hash: str
-    landmarks: Tuple[str, ...] = field(default_factory=tuple)
-    roles: Tuple[str, ...] = field(default_factory=tuple)
-    interactive_counts: Dict[str, int] = field(default_factory=dict)
+    landmarks: tuple[str, ...] = field(default_factory=tuple)
+    roles: tuple[str, ...] = field(default_factory=tuple)
+    interactive_counts: dict[str, int] = field(default_factory=dict)
     form_count: int = 0
     text_density_ratio: float = 0.0
 
@@ -56,21 +56,21 @@ class Finding:
     selector_fingerprint: str
     html_snippet: str
     message: str
-    evidence: Dict[str, Any] = field(default_factory=dict)
+    evidence: dict[str, Any] = field(default_factory=dict)
     group_id: str = ""
     scanner_confidence: float = 0.5
     verification_confidence: float = 0.5
     wcag_mapping_confidence: float = 0.5
     consensus_confidence: float = 0.5
-    confidence_breakdown: Dict[str, float] = field(default_factory=dict)
+    confidence_breakdown: dict[str, float] = field(default_factory=dict)
     confidence: float = 0.5             # Calibrated BEACON final confidence [0.0 - 1.0]
     agreement_count: int = 1
-    participating_engines: List[str] = field(default_factory=list)
-    act_rule_id: Optional[str] = None
+    participating_engines: list[str] = field(default_factory=list)
+    act_rule_id: str | None = None
     act_adjudicated: bool = False
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert finding to standard serialized dictionary."""
         return {
             "id": self.id,
@@ -118,14 +118,14 @@ class PatchResult:
     static_validation_passed: bool = False
     runtime_validation: str = "not_run"
     visual_validation: str = "not_run"
-    rejection_reason: Optional[str] = None
+    rejection_reason: str | None = None
     violations_before_count: int = 0
     violations_after_count: int = 0
     new_violations_introduced: int = 0
     syntax_valid: bool = True
     execution_time_ms: float = 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "finding_id": self.finding_id,
             "patch_accepted": self.patch_accepted,
@@ -144,6 +144,6 @@ class PatchResult:
 class FindingNormalizer(Protocol):
     """Protocol implemented by engine adapters to convert native findings to Finding."""
 
-    def normalize(self, raw_finding: Dict[str, Any], context: Dict[str, Any]) -> Finding:
+    def normalize(self, raw_finding: dict[str, Any], context: dict[str, Any]) -> Finding:
         """Convert engine-specific finding dictionary to canonical Finding."""
         ...

@@ -4,7 +4,7 @@ ChromaDB storage module — persists embedded chunks to the vector store.
 Handles batched upsert to respect ChromaDB's per-call limits.
 """
 import logging
-from typing import Iterable
+from collections.abc import Iterable
 
 import chromadb
 

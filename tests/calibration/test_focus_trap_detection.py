@@ -8,7 +8,6 @@ Validates:
 - No close button → focus-trap-escape
 - No modals → no issues
 """
-import pytest
 from app.services.browser_probes import _make_issue
 
 

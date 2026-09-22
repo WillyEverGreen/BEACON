@@ -12,16 +12,15 @@ Each site is audited in BOTH fast and deep modes with the production profile.
 """
 import asyncio
 import json
-import sys
 import os
+import sys
 import time
-from pathlib import Path
 from collections import defaultdict
+from pathlib import Path
 
 sys.path.insert(0, os.path.abspath("."))
 
 from app.services.audit_runner import run_audit
-
 
 BENCHMARK_SITES = [
     # Government / public services
@@ -211,7 +210,7 @@ def print_section(title: str):
 
 async def main():
     print_header("BEACON Production Readiness - 10-Site Comprehensive Benchmark")
-    print(f"  Profile: production | Modes: fast + deep")
+    print("  Profile: production | Modes: fast + deep")
     print(f"  Sites: {len(BENCHMARK_SITES)} | Expected audits: {len(BENCHMARK_SITES) * 2}")
 
     all_results = {"fast": [], "deep": []}
@@ -295,7 +294,7 @@ async def main():
                 print(f"  Severity: {sev_str}")
 
             if r["top_rules"]:
-                print(f"  Top rules:")
+                print("  Top rules:")
                 for rule in r["top_rules"][:5]:
                     print(f"    • {rule['rule']:35s} ×{rule['count']}")
 
@@ -347,7 +346,7 @@ async def main():
         cat_scores = defaultdict(list)
         for r in results:
             cat_scores[r["category"]].append(r["score"])
-        print(f"  |_ By Category:")
+        print("  |_ By Category:")
         for cat, cat_s in sorted(cat_scores.items()):
             print(f"     |- {cat:12s}: avg={sum(cat_s)/len(cat_s):.1f} ({len(cat_s)} sites)")
 

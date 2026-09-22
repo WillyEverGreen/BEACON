@@ -288,3 +288,7 @@ frontend/.superdesign/
 # Phase run artifacts (runtime outputs — move to evaluation/results/ instead)
 phase*_results.json
 phase*_triage.md
+
+# IDE runner state
+.auto-accept.json
+

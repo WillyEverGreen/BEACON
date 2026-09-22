@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.audit.adapters.base import BaseAuditAdapter
 from app.audit.fingerprint import stable_selector_fingerprint
 from app.models.contracts import Finding
 
-
-GUIDEPUP_WCAG_MAP: Dict[str, Dict[str, str]] = {
+GUIDEPUP_WCAG_MAP: dict[str, dict[str, str]] = {
     "dialog-announcement": {"wcag": "4.1.3", "level": "AA", "severity": "critical"},
     "dialog-focus-trap": {"wcag": "2.1.2", "level": "A", "severity": "critical"},
     "live-region-polite": {"wcag": "4.1.3", "level": "AA", "severity": "serious"},
@@ -27,7 +26,7 @@ class GuidepupAdapter(BaseAuditAdapter):
     def __init__(self, engine_version: str = "0.14.0", rule_version: str = "1.0.0") -> None:
         super().__init__(name="guidepup_sr", engine_version=engine_version, rule_version=rule_version)
 
-    def normalize(self, raw_issue: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Finding:
+    def normalize(self, raw_issue: dict[str, Any], context: dict[str, Any] | None = None) -> Finding:
         """Convert a Guidepup speech trace assertion failure into a canonical Finding."""
         rule_id = str(raw_issue.get("rule_id") or raw_issue.get("test_id") or "sr-speech-assertion")
         target = str(raw_issue.get("target") or raw_issue.get("selector") or "body")
@@ -47,8 +46,8 @@ class GuidepupAdapter(BaseAuditAdapter):
 
         finding_id = self.generate_finding_id(rule_id, target)
 
-        spoken_phrases: List[str] = raw_issue.get("spoken_phrases", [])
-        missing_phrases: List[str] = raw_issue.get("missing_announcements", [])
+        spoken_phrases: list[str] = raw_issue.get("spoken_phrases", [])
+        missing_phrases: list[str] = raw_issue.get("missing_announcements", [])
 
         evidence = {
             "sr_engine": "guidepup_virtual_sr",

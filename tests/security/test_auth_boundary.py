@@ -1,10 +1,11 @@
 # tests/security/test_auth_boundary.py
-import pytest
 import os
 import uuid
-from supabase import create_client
 
+import pytest
 from dotenv import load_dotenv
+
+from supabase import create_client
 
 # Load environment variables from .env
 load_dotenv()

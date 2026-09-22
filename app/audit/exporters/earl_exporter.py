@@ -6,12 +6,11 @@ Reference: https://www.w3.org/WAI/standards-guidelines/earl/
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
 import uuid
+from datetime import datetime, timezone
+from typing import Any
 
 from app.models.contracts import Finding
-
 
 EARL_CONTEXT = {
     "earl": "http://www.w3.org/ns/earl#",
@@ -23,16 +22,16 @@ EARL_CONTEXT = {
 
 
 def export_to_earl(
-    findings: List[Finding],
+    findings: list[Finding],
     target_url: str,
     tool_version: str = "2.1.0",
-    metadata: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Export canonical Findings to W3C EARL 1.0 JSON-LD format."""
     now_iso = datetime.now(timezone.utc).isoformat()
     report_id = f"urn:beacon:report:{uuid.uuid4().hex[:12]}"
 
-    graph: List[Dict[str, Any]] = []
+    graph: list[dict[str, Any]] = []
 
     # 1. Assertor: BEACON Engine
     assertor_id = "https://github.com/WillyEverGreen/BEACON"
@@ -64,7 +63,7 @@ def export_to_earl(
             else f"urn:beacon:rule:{f.rule_id}"
         )
 
-        test_result: Dict[str, Any] = {
+        test_result: dict[str, Any] = {
             "@type": "TestResult",
             "outcome": "earl:failed",
             "dct:description": f.message,

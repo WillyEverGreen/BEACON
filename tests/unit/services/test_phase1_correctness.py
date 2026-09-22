@@ -7,13 +7,16 @@ import logging
 
 import pytest
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # P1-TEST-1: Config constants exist with correct types and values
 # ─────────────────────────────────────────────────────────────────────────────
 
 def test_config_constants_exist():
-    from app.config import DEGRADED_MODE_MULTIPLIER, DEGRADED_MODE_MAX_SCORE, MAX_SITEMAP_DEPTH
+    from app.config import (
+        DEGRADED_MODE_MAX_SCORE,
+        DEGRADED_MODE_MULTIPLIER,
+        MAX_SITEMAP_DEPTH,
+    )
     assert isinstance(DEGRADED_MODE_MULTIPLIER, float), "DEGRADED_MODE_MULTIPLIER must be float"
     assert DEGRADED_MODE_MULTIPLIER == 0.85, f"Expected 0.85, got {DEGRADED_MODE_MULTIPLIER}"
     assert isinstance(DEGRADED_MODE_MAX_SCORE, float), "DEGRADED_MODE_MAX_SCORE must be float"
@@ -24,7 +27,7 @@ def test_config_constants_exist():
 
 def test_sitemap_max_depth_alias_matches():
     """SITEMAP_MAX_DEPTH and MAX_SITEMAP_DEPTH must refer to the same value."""
-    from app.config import SITEMAP_MAX_DEPTH, MAX_SITEMAP_DEPTH
+    from app.config import MAX_SITEMAP_DEPTH, SITEMAP_MAX_DEPTH
     assert MAX_SITEMAP_DEPTH == SITEMAP_MAX_DEPTH, "Alias mismatch"
 
 
@@ -33,7 +36,7 @@ def test_sitemap_max_depth_alias_matches():
 # ─────────────────────────────────────────────────────────────────────────────
 
 def test_degraded_score_order_and_penalty():
-    from app.config import DEGRADED_MODE_MULTIPLIER, DEGRADED_MODE_MAX_SCORE
+    from app.config import DEGRADED_MODE_MAX_SCORE, DEGRADED_MODE_MULTIPLIER
 
     # Case 1: raw=95 → multiply to 80.75 → cap is no-op (80.75 < 82.0)
     raw = 95.0
@@ -140,6 +143,7 @@ def test_pipeline_ordering_assertion_present():
     This is a static introspection test that catches accidental deletion.
     """
     import inspect
+
     from app.services import audit_runner
     source = inspect.getsource(audit_runner)
     assert "hybrid_ran = False" in source, "hybrid_ran sentinel missing from audit_runner"

@@ -3,9 +3,9 @@ Seed the rule_trust_registry.json from ACT benchmark results.
 Run once: python app/data/_seed_trust_registry.py
 """
 import json
+import logging
 from collections import Counter
 from pathlib import Path
-import logging
 
 logger = logging.getLogger(__name__)
 

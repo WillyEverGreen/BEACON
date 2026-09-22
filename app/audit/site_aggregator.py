@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
 import logging
-from typing import Any, Iterable
+from collections import defaultdict
+from collections.abc import Iterable
+from typing import Any
 
 from app.audit.failure_taxonomy import normalize_failure
 from app.audit.fingerprint import stable_selector_fingerprint
 from app.audit.models import PageAuditResult, SiteAuditResult
-
 
 logger = logging.getLogger(__name__)
 

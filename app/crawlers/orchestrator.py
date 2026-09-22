@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import asyncio
-from collections import Counter
-from dataclasses import dataclass
 import logging
-from typing import Callable, Optional
+from collections import Counter
+from collections.abc import Callable
+from dataclasses import dataclass
 
 from app.config import CRAWLER_CONFIG, SCAN_MODES, resolve_max_pages
+from app.crawlers.common import (
+    detect_critical_page_type,
+    normalize_url,
+    priority_path_boost,
+)
 from app.crawlers.discovery_crawler import DiscoveryCrawler
-from app.crawlers.common import detect_critical_page_type, normalize_url, priority_path_boost
 from app.crawlers.dom_crawler import DOMCrawler
 from app.crawlers.models import CrawledURL, SitemapURL
 from app.crawlers.sitemap_crawler import SitemapCrawler
@@ -23,7 +27,7 @@ class _MergedURL:
     url: str
     depth: int
     base_priority: float
-    page_type: Optional[str]
+    page_type: str | None
     sources: set[str]
     priority_score: float = 0.0
 
@@ -34,9 +38,9 @@ class CrawlerOrchestrator:
     def __init__(
         self,
         *,
-        sitemap_crawler: Optional[SitemapCrawler] = None,
-        discovery_factory: Optional[Callable[..., DiscoveryCrawler]] = None,
-        dom_crawler: Optional[DOMCrawler] = None,
+        sitemap_crawler: SitemapCrawler | None = None,
+        discovery_factory: Callable[..., DiscoveryCrawler] | None = None,
+        dom_crawler: DOMCrawler | None = None,
     ) -> None:
         self.sitemap_crawler = sitemap_crawler or SitemapCrawler()
         self.discovery_factory = discovery_factory or (lambda **kwargs: DiscoveryCrawler(**kwargs))
@@ -45,8 +49,9 @@ class CrawlerOrchestrator:
     async def _check_bot_wall(self, url: str) -> None:
         """Perform a preflight fetch to check if the seed URL is protected by a bot wall."""
         from curl_cffi.requests import AsyncSession
+
+        from app.audit.failure_taxonomy import DegradedReason, normalize_failure
         from app.services.audit_runner import stable_request_headers
-        from app.audit.failure_taxonomy import normalize_failure, DegradedReason
         
         headers = stable_request_headers(url, attempt_index=0)
         try:
@@ -201,19 +206,19 @@ class CrawlerOrchestrator:
             if isinstance(row, SitemapURL):
                 upsert(row.url, "sitemap", int(row.depth), float(row.priority))
             else:
-                upsert(str(getattr(row, "url")), "sitemap", int(getattr(row, "depth", 0)), float(getattr(row, "priority", default_priority)))
+                upsert(str(row.url), "sitemap", int(getattr(row, "depth", 0)), float(getattr(row, "priority", default_priority)))
 
         for row in discovery_results:
             if isinstance(row, CrawledURL):
                 upsert(row.url, "discovery", int(row.depth), default_priority)
             else:
-                upsert(str(getattr(row, "url")), "discovery", int(getattr(row, "depth", 0)), default_priority)
+                upsert(str(row.url), "discovery", int(getattr(row, "depth", 0)), default_priority)
 
         for row in dom_results:
             if isinstance(row, CrawledURL):
                 upsert(row.url, "dom", int(row.depth), default_priority)
             else:
-                upsert(str(getattr(row, "url")), "dom", int(getattr(row, "depth", 0)), default_priority)
+                upsert(str(row.url), "dom", int(getattr(row, "depth", 0)), default_priority)
 
         return list(merged.values())
 

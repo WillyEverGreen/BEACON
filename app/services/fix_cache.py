@@ -7,7 +7,6 @@ import hashlib
 import json
 import logging
 from pathlib import Path
-from typing import Optional
 
 from app.config import CACHE_STATS
 
@@ -60,7 +59,7 @@ def get_cache_key(rule_id: str, html_snippet: str) -> str:
     key_str = f"{rule_id}::{normalized}"
     return hashlib.sha256(key_str.encode("utf-8")).hexdigest()
 
-def get_cached_fix(rule_id: str, html_snippet: str) -> Optional[dict]:
+def get_cached_fix(rule_id: str, html_snippet: str) -> dict | None:
     """Retrieve a previously generated fix if it meets the success criteria."""
     key = get_cache_key(rule_id, html_snippet)
     match = _fix_library.get(key)

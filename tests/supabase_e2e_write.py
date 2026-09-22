@@ -1,8 +1,8 @@
 import asyncio
-import os
 import uuid
-from app.db.repository import persist_audit_payload, get_audit_history
-from app.config import settings
+
+from app.db.repository import get_audit_history
+
 
 async def test_supabase_write():
     print("Starting Supabase E2E Write Test...")

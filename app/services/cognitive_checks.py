@@ -6,6 +6,7 @@ form usability, and error message quality analysis.
 import hashlib
 import logging
 import re
+
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
@@ -385,7 +386,7 @@ class CognitiveAnalyzer:
 
             # Check for progress indicators in multi-step forms
             has_progress = bool(
-                form.find(class_=re.compile(r'progress|step|wizard', re.I)) or
+                form.find(class_=re.compile(r'progress|step|wizard', re.IGNORECASE)) or
                 form.find(attrs={"role": "progressbar"})
             )
             if field_count > 5 and not has_progress:
@@ -404,14 +405,14 @@ class CognitiveAnalyzer:
         """Check error message quality."""
         issues = []
         error_elements = self.soup.find_all(
-            class_=re.compile(r'error|invalid|alert', re.I)
+            class_=re.compile(r'error|invalid|alert', re.IGNORECASE)
         )
 
         generic_patterns = [
-            re.compile(r'^error\.?$', re.I),
-            re.compile(r'^invalid\.?$', re.I),
-            re.compile(r'^required\.?$', re.I),
-            re.compile(r'^this field is required\.?$', re.I),
+            re.compile(r'^error\.?$', re.IGNORECASE),
+            re.compile(r'^invalid\.?$', re.IGNORECASE),
+            re.compile(r'^required\.?$', re.IGNORECASE),
+            re.compile(r'^this field is required\.?$', re.IGNORECASE),
         ]
 
         for elem in error_elements:
@@ -441,7 +442,7 @@ class CognitiveAnalyzer:
         """
         issues = []
         carousel_signals = self.soup.find_all(
-            class_=re.compile(r"carousel|slider|slideshow|swiper|glide|splide", re.I)
+            class_=re.compile(r"carousel|slider|slideshow|swiper|glide|splide", re.IGNORECASE)
         )
         for elem in carousel_signals:
             # Heuristic: auto-advancing if data-autoplay or interval attributes
@@ -454,8 +455,8 @@ class CognitiveAnalyzer:
                 or elem.get("autoplay") is not None
             )
             has_pause = bool(
-                elem.find(class_=re.compile(r"pause|stop", re.I))
-                or elem.find(attrs={"aria-label": re.compile(r"pause|stop", re.I)})
+                elem.find(class_=re.compile(r"pause|stop", re.IGNORECASE))
+                or elem.find(attrs={"aria-label": re.compile(r"pause|stop", re.IGNORECASE)})
             )
             if has_autoplay and not has_pause:
                 issues.append(_make_issue(
@@ -480,10 +481,10 @@ class CognitiveAnalyzer:
         issues = []
         # Detect elements wired to trigger dialogs/popups
         focus_triggers = self.soup.find_all(
-            attrs={"onfocus": re.compile(r"modal|popup|dialog|overlay|show\(", re.I)}
+            attrs={"onfocus": re.compile(r"modal|popup|dialog|overlay|show\(", re.IGNORECASE)}
         )
         focus_triggers += self.soup.find_all(
-            attrs={"data-toggle": re.compile(r"modal|popup|dropdown", re.I),
+            attrs={"data-toggle": re.compile(r"modal|popup|dropdown", re.IGNORECASE),
                    "tabindex": True}
         )
         if focus_triggers:

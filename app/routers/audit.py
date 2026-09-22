@@ -6,16 +6,22 @@ import asyncio
 import json
 import logging
 import time
-from fastapi import APIRouter, HTTPException, Query, Header, Depends
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from typing import Optional
+
 from app.models import (
-    AuditRequest, AuditResponse, AuditIssue, IssueGroup,
-    CognitiveScore, FeedbackRequest, FeedbackResponse,
+    AuditIssue,
+    AuditRequest,
+    AuditResponse,
+    CognitiveScore,
+    FeedbackRequest,
+    FeedbackResponse,
+    IssueGroup,
 )
+from app.security.jwt_utils import get_current_user_id
 from app.services.audit_runner import get_audit_runtime_health, run_audit
-from app.services.feedback import record_feedback, get_feedback_stats
-from app.security.jwt_utils import extract_user_id_from_jwt, get_current_user_id
+from app.services.feedback import get_feedback_stats, record_feedback
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +106,7 @@ def _build_explain_payload(result: dict) -> dict:
 async def audit_url(
     request: AuditRequest,
     explain: bool = Query(default=False, description="Include explainability payload in response"),
-    user_id: Optional[str] = Depends(get_current_user_id),
+    user_id: str | None = Depends(get_current_user_id),
 ):
     """
     Run accessibility audit on a URL.
@@ -218,7 +224,7 @@ async def audit_url(
 
     except Exception as e:
         logger.error(f"Audit error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Audit failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Audit failed: {e!s}")
 
 
 @router.post("/feedback", response_model=FeedbackResponse)
@@ -238,7 +244,7 @@ async def submit_feedback(request: FeedbackRequest):
         return FeedbackResponse(**result)
     except Exception as e:
         logger.error(f"Feedback error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Feedback recording failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Feedback recording failed: {e!s}")
 
 
 @router.get("/feedback/stats")
@@ -263,7 +269,7 @@ async def get_enrichment(audit_id: str):
 @router.post("/stream")
 async def audit_stream(
     request: AuditRequest,
-    user_id: Optional[str] = Depends(get_current_user_id),
+    user_id: str | None = Depends(get_current_user_id),
 ):
     """
     SSE streaming audit endpoint.
@@ -326,8 +332,8 @@ async def cache_stats():
 
     Also returns hit_rate per tier to see if caching is actually working.
     """
-    from app.services.fix_cache import get_cache_stats
     from app.config import CACHE_STATS
+    from app.services.fix_cache import get_cache_stats
 
     fix_stats = get_cache_stats()
 
@@ -354,3 +360,19 @@ async def cache_stats():
         "raw_counters": CACHE_STATS,
         "fix_library":  fix_stats,
     }
+
+
+@router.post("/view")
+async def project_audit_view(
+    audit_data: dict,
+    profile: str | None = Query(None, description="Regulatory profile ID"),
+    persona: str | None = Query(None, description="Persona lens ID"),
+    view: str | None = Query("DEVELOPER", description="Role view"),
+):
+    """Project audit findings into role views & regulatory profiles (§46–§47)."""
+    try:
+        from app.services.role_views import project_scan_view
+        return project_scan_view(audit_data, profile_id=profile, persona_id=persona, view=view)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+

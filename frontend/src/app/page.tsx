@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { TimelineSection } from "@/components/timeline-section";
-import { Features } from "@/components/blocks/features-8";
 import Link from "next/link";
 
 const brands = [

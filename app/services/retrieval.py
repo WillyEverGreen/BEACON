@@ -16,7 +16,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from app.config import CACHE_STATS, settings
 
@@ -25,7 +25,7 @@ _rag_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", 
 if _rag_path not in sys.path:
     sys.path.insert(0, _rag_path)
 
-from query import hybrid_retrieve, rerank, expand_query  # noqa: E402
+from query import expand_query, hybrid_retrieve, rerank
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +97,7 @@ def _clone_chunks(chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 def _cache_key(
     query: str,
-    filters: Optional[dict],
+    filters: dict | None,
     limit: int,
     wcag_reference: str,
     issue_type: str,
@@ -190,7 +190,7 @@ def _metadata_wcag_tokens(meta: dict[str, Any]) -> set[str]:
     return tokens
 
 
-def _matches_filters(meta: dict[str, Any], filters: Optional[dict]) -> bool:
+def _matches_filters(meta: dict[str, Any], filters: dict | None) -> bool:
     if not isinstance(filters, dict) or not filters:
         return True
     for key, expected in filters.items():
@@ -364,7 +364,7 @@ def _select_relevant_chunks(
     wcag_reference: str,
     issue_type: str,
     limit: int,
-    filters: Optional[dict] = None,
+    filters: dict | None = None,
 ) -> list[dict[str, Any]]:
     if not candidates:
         return []
@@ -461,7 +461,7 @@ async def _retrieve_primary_candidates(query: str, window: int) -> list[dict[str
 
 async def retrieve(
     query: str,
-    filters: Optional[dict] = None,
+    filters: dict | None = None,
     n_results: int = 10,
     use_query_expansion: bool = True,
 ) -> list[dict]:

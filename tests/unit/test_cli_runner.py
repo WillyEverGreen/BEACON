@@ -1,8 +1,10 @@
 import argparse
-import pytest
 from unittest.mock import AsyncMock, patch
-from pathlib import Path
+
+import pytest
+
 from scripts.run_detailed_audit_cli import _run_cli
+
 
 @pytest.mark.asyncio
 async def test_run_cli_fail_on_threshold(tmp_path):

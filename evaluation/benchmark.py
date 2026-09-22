@@ -1,4 +1,7 @@
-import sys, os, time
+import os
+import sys
+import time
+
 sys.path.insert(0, os.path.abspath('rag'))
 from query import hybrid_retrieve, rerank
 
@@ -34,6 +37,6 @@ for q in queries:
 avg = sum(times) / len(times)
 print()
 print(f'  Average: {avg:.3f}s per query')
-print(f'  Target:  < 2.000s')
+print('  Target:  < 2.000s')
 print(f'  Status:  {"✅ TARGET MET" if avg < 2.0 else "❌ NEEDS WORK"} ')
 print('='*60)

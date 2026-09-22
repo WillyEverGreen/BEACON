@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, Dict, List, Optional
-from bs4 import BeautifulSoup, NavigableString, Tag
+from typing import Any
+
+from bs4 import BeautifulSoup, Tag
 
 logger = logging.getLogger(__name__)
 
@@ -69,9 +70,9 @@ class DOMContextExtractor:
             and len(self.raw_html) > 60
         )
 
-    def _find_target_tag(self, selector: str, html_snippet: str) -> Optional[Tag]:
+    def _find_target_tag(self, selector: str, html_snippet: str) -> Tag | None:
         """Locate the target Tag in the parsed soup using selector or snippet."""
-        target: Optional[Tag] = None
+        target: Tag | None = None
 
         if selector and selector != "body" and selector != "<html>":
             try:
@@ -103,7 +104,7 @@ class DOMContextExtractor:
         """Resolve space-separated ID references (e.g. aria-labelledby) to their DOM text."""
         if not id_refs:
             return ""
-        resolved_parts: List[str] = []
+        resolved_parts: list[str] = []
         for ref_id in id_refs.split():
             clean_id = ref_id.strip()
             if not clean_id:
@@ -132,7 +133,7 @@ class DOMContextExtractor:
         # At least one concrete informative noun/verb indicating destination/action
         return len(informative_words) >= 1
 
-    def _get_nearest_landmark(self, tag: Tag) -> Optional[str]:
+    def _get_nearest_landmark(self, tag: Tag) -> str | None:
         """Find the enclosing landmark role or semantic tag."""
         curr = tag.parent
         while curr and curr.name not in ("[document]", "html"):
@@ -144,7 +145,7 @@ class DOMContextExtractor:
             curr = curr.parent
         return None
 
-    def _get_preceding_heading(self, tag: Tag) -> Optional[Dict[str, Any]]:
+    def _get_preceding_heading(self, tag: Tag) -> dict[str, Any] | None:
         """Find the proximate preceding heading element (h1-h6) per WCAG Technique H80.
         
         Technique H80 requires the heading to provide context for links in the same
@@ -177,7 +178,7 @@ class DOMContextExtractor:
 
         return None
 
-    def _get_nearest_heading(self, tag: Tag) -> Optional[Dict[str, str]]:
+    def _get_nearest_heading(self, tag: Tag) -> dict[str, str] | None:
         """Find the physically closest heading preceding or following the tag."""
         prev_h = tag.find_previous(["h1", "h2", "h3", "h4", "h5", "h6"])
         next_h = tag.find_next(["h1", "h2", "h3", "h4", "h5", "h6"])
@@ -209,7 +210,7 @@ class DOMContextExtractor:
                 return full_text[:200]
         return ""
 
-    def extract_link_context(self, selector: str, html_snippet: str) -> Dict[str, Any]:
+    def extract_link_context(self, selector: str, html_snippet: str) -> dict[str, Any]:
         """Extract surrounding programmatic context for WCAG 2.4.4."""
         tag = self._find_target_tag(selector, html_snippet)
         if not tag:
@@ -260,7 +261,7 @@ class DOMContextExtractor:
             landmark_role = landmark.split("[role='")[-1].replace("']", "") if "role=" in landmark else landmark
 
         # Siblings
-        siblings: List[str] = []
+        siblings: list[str] = []
         prev_sib = tag.find_previous_sibling()
         next_sib = tag.find_next_sibling()
         if prev_sib:
@@ -269,14 +270,14 @@ class DOMContextExtractor:
             siblings.append(f"next:<{next_sib.name}>:{next_sib.get_text(' ', strip=True)[:60]}")
 
         # Ancestor chain
-        ancestor_chain: List[str] = []
+        ancestor_chain: list[str] = []
         curr = tag.parent
         while curr and curr.name not in ("[document]"):
             ancestor_chain.append(curr.name)
             curr = curr.parent
 
         # Relevant IDs
-        relevant_ids: List[str] = []
+        relevant_ids: list[str] = []
         if tag_id:
             relevant_ids.append(tag_id)
         if aria_labelledby:
@@ -291,15 +292,7 @@ class DOMContextExtractor:
         if not is_generic_text and len(link_text) > 2:
             # Descriptive text in link itself
             has_sufficient_context = True
-        elif aria_label and (len(aria_label) > len(link_text) + 3 or aria_label.lower() not in GENERIC_LINK_TEXTS):
-            has_sufficient_context = True
-        elif resolved_labelledby_text and len(resolved_labelledby_text) > 3:
-            has_sufficient_context = True
-        elif self._is_semantically_informative_sentence(sentence, link_text):
-            has_sufficient_context = True
-        elif preceding_h and len(preceding_h.get("text", "")) > 3:
-            has_sufficient_context = True
-        elif self._is_semantically_informative_sentence(parent_text, link_text):
+        elif aria_label and (len(aria_label) > len(link_text) + 3 or aria_label.lower() not in GENERIC_LINK_TEXTS) or resolved_labelledby_text and len(resolved_labelledby_text) > 3 or self._is_semantically_informative_sentence(sentence, link_text) or preceding_h and len(preceding_h.get("text", "")) > 3 or self._is_semantically_informative_sentence(parent_text, link_text):
             has_sufficient_context = True
 
         return {
@@ -326,7 +319,7 @@ class DOMContextExtractor:
             "dom_is_complete": self.dom_is_complete,
         }
 
-    def extract_form_context(self, selector: str, html_snippet: str) -> Dict[str, Any]:
+    def extract_form_context(self, selector: str, html_snippet: str) -> dict[str, Any]:
         """Extract surrounding programmatic label and association context for form controls.
         
         BEACON implementation of relevant accessible-name semantics (derived from W3C AccName principles).
@@ -396,7 +389,7 @@ class DOMContextExtractor:
                 legend_text = legend.get_text(" ", strip=True)
 
         # Nearby text (adjacent sibling text nodes)
-        nearby_parts: List[str] = []
+        nearby_parts: list[str] = []
         prev_sib = tag.find_previous_sibling()
         if prev_sib and prev_sib.name in ("span", "p", "label", "div"):
             t = prev_sib.get_text(" ", strip=True)
@@ -460,7 +453,7 @@ class DOMContextExtractor:
             "dom_is_complete": self.dom_is_complete,
         }
 
-    def extract_landmark_context(self) -> Dict[str, Any]:
+    def extract_landmark_context(self) -> dict[str, Any]:
         """Extract page-level landmark topology and bypass capabilities."""
         mains = self.soup.find_all("main") + self.soup.find_all(attrs={"role": "main"})
         navs = self.soup.find_all("nav") + self.soup.find_all(attrs={"role": "navigation"})
@@ -474,7 +467,7 @@ class DOMContextExtractor:
         top_level_headings = [h.get_text(" ", strip=True) for h in h1s]
 
         # Structured document landmarks
-        document_landmarks: List[Dict[str, Any]] = []
+        document_landmarks: list[dict[str, Any]] = []
         landmark_groups = [
             (mains, "main"),
             (navs, "navigation"),
@@ -501,7 +494,7 @@ class DOMContextExtractor:
 
         # Skip links
         first_links = self.soup.find_all("a", limit=8)
-        skip_links: List[Dict[str, str]] = []
+        skip_links: list[dict[str, str]] = []
         for a in first_links:
             href = str(a.get("href", "")).strip()
             text = a.get_text(" ", strip=True).lower()
@@ -509,7 +502,7 @@ class DOMContextExtractor:
                 skip_links.append({"href": href, "text": text})
 
         # Repeated blocks detection
-        repeated_blocks: List[Dict[str, Any]] = []
+        repeated_blocks: list[dict[str, Any]] = []
         for n in navs:
             links = n.find_all("a")
             if len(links) >= 4:
@@ -561,15 +554,16 @@ class DOMContextExtractor:
             "dom_is_complete": self.dom_is_complete,
         }
 
-    def extract_context_for_issue(self, issue: dict) -> Dict[str, Any]:
+    def extract_context_for_issue(self, issue: dict) -> dict[str, Any]:
         """Route to appropriate context extractor based on rule_id and category."""
         rule_id = str(issue.get("rule_id", "") or "").lower()
         category = str(issue.get("category", "") or "").lower()
         selector = str(issue.get("element", "") or issue.get("selector", "") or "")
         snippet = str(issue.get("html_snippet", "") or "")
 
-        context: Dict[str, Any] = {
+        context: dict[str, Any] = {
             "rule_id": rule_id,
+            "category": category,
             "selector": selector,
             "dom_is_complete": self.dom_is_complete,
         }
