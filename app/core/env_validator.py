@@ -90,9 +90,13 @@ def validate_production_env() -> tuple[bool, list[str]]:
     if is_production:
         # Ensure CORS is configured for production domains
         cors_origins = os.getenv("BACKEND_CORS_ORIGINS", "")
-        if "localhost" in cors_origins or not cors_origins:
+        if not cors_origins:
             errors.append(
-                "⚠️  BACKEND_CORS_ORIGINS should not include 'localhost' in production. "
+                "⚠️  BACKEND_CORS_ORIGINS is not set. Set to your production frontend domain(s)."
+            )
+        elif "localhost" in cors_origins and not any(d in cors_origins for d in (".vercel.app", ".onrender.com", "https://")):
+            errors.append(
+                "⚠️  BACKEND_CORS_ORIGINS contains only 'localhost' in production. "
                 "Set to your production frontend domain(s)."
             )
         

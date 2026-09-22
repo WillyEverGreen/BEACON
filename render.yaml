@@ -29,9 +29,9 @@ services:
       - key: BOOTSTRAP_ADMIN_API_KEY
         sync: false
       - key: CORS_ORIGINS
-        value: https://frontend-seven-phi-64.vercel.app,http://localhost:3000
+        value: https://frontend-seven-phi-64.vercel.app
       - key: BACKEND_CORS_ORIGINS
-        value: http://localhost:3000
+        value: https://frontend-seven-phi-64.vercel.app
       - key: RATE_LIMIT_ENABLED
         value: true
       - key: RATE_LIMIT_PER_MINUTE
