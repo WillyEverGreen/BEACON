@@ -3,7 +3,10 @@ import logging
 import re
 import time
 
-import chromadb
+try:
+    import chromadb
+except ImportError:
+    chromadb = None
 from model_registry import get_bm25_cache, get_embedding_model, get_rerank_model
 from rank_bm25 import BM25Okapi
 
@@ -26,6 +29,9 @@ _chroma_col = None
 def _get_chroma_collection():
     """Lazy-init ChromaDB collection with error recovery."""
     global _chroma_client, _chroma_col
+    if chromadb is None:
+        logger.warning("ChromaDB module is not installed — vector store disabled")
+        return None
     if _chroma_col is not None:
         return _chroma_col
     try:

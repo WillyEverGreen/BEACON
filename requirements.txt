@@ -17,8 +17,10 @@ numpy>=1.26.0
 sentence-transformers==3.3.1
 tiktoken==0.8.0
 
-# Search & Ranking
+# Search, Ranking & Vector Store
 rank-bm25==0.2.2
+scikit-learn>=1.4.0
+chromadb>=0.5.0
 
 # LLM (OpenAI compatible - e.g. NVIDIA NIM)
 openai==1.51.0

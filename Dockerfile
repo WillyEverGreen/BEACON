@@ -77,8 +77,8 @@ RUN useradd -m -u 1000 -s /bin/bash beacon && \
 
 WORKDIR /app
 
-# Copy Python packages from builder
-COPY --from=python-builder /root/.local /home/beacon/.local
+# Copy Python packages from builder with proper permissions
+COPY --chown=beacon:beacon --from=python-builder /root/.local /home/beacon/.local
 
 # Copy Lighthouse from Node stage
 COPY --from=node-lighthouse /usr/local/lib/node_modules/lighthouse /usr/local/lib/node_modules/lighthouse
@@ -94,8 +94,9 @@ COPY --chown=beacon:beacon axe-core/axe.min.js ./axe-core/axe.min.js
 # Switch to non-root user
 USER beacon
 
-# Add local Python packages to PATH
-ENV PATH=/home/beacon/.local/bin:$PATH
+# Add local Python packages and app modules to PATH & PYTHONPATH
+ENV PATH=/home/beacon/.local/bin:$PATH \
+    PYTHONPATH=/app:/app/rag
 
 # Install browser runtime for Camoufox (as non-root user)
 RUN python -m camoufox fetch || echo "Camoufox fetch failed, will fallback to Playwright"

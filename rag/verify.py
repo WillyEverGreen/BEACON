@@ -6,7 +6,10 @@ Can be run standalone: python verify.py
 """
 import logging
 
-import chromadb
+try:
+    import chromadb
+except ImportError:
+    chromadb = None
 
 logger = logging.getLogger("rag.verify")
 

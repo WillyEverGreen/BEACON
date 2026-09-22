@@ -6,7 +6,10 @@ Handles batched upsert to respect ChromaDB's per-call limits.
 import logging
 from collections.abc import Iterable
 
-import chromadb
+try:
+    import chromadb
+except ImportError:
+    chromadb = None
 
 logger = logging.getLogger("rag.store")
 
