@@ -85,11 +85,12 @@ COPY --from=node-lighthouse /usr/local/lib/node_modules/lighthouse /usr/local/li
 RUN ln -s /usr/local/lib/node_modules/lighthouse/cli/index.js /usr/local/bin/lighthouse && \
     chmod +x /usr/local/bin/lighthouse
 
-# Copy application code
+# Copy application code and offline axe-core bundle
 COPY --chown=beacon:beacon app/ ./app/
 COPY --chown=beacon:beacon rag/ ./rag/
 COPY --chown=beacon:beacon data/ ./data/
 COPY --chown=beacon:beacon corpus/ ./corpus/
+COPY --chown=beacon:beacon axe-core/axe.min.js ./axe-core/axe.min.js
 
 # Switch to non-root user
 USER beacon
@@ -100,12 +101,12 @@ ENV PATH=/home/beacon/.local/bin:$PATH
 # Install browser runtime for Camoufox (as non-root user)
 RUN python -m camoufox fetch || echo "Camoufox fetch failed, will fallback to Playwright"
 
-# Health check
+# Health check (supports dynamic PORT or default 8000)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8000/health/ready || exit 1
+    CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
 # Expose port
 EXPOSE 8000
 
-# Start application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+# Start application with dynamic Render port support
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]

@@ -35,22 +35,28 @@ def get_cors_origins() -> list[str]:
     """
     import os
     
-    # Get CORS origins from environment (comma-separated)
-    cors_origins_str = os.getenv("CORS_ORIGINS", "")
+    # Get CORS origins from environment (supporting both CORS_ORIGINS and BACKEND_CORS_ORIGINS)
+    cors_origins_str = os.getenv("CORS_ORIGINS", "").strip()
+    backend_cors_str = os.getenv("BACKEND_CORS_ORIGINS", "").strip()
     
-    if not cors_origins_str:
+    combined = []
+    for raw in [cors_origins_str, backend_cors_str]:
+        if raw:
+            combined.extend([origin.strip() for origin in raw.split(",") if origin.strip()])
+    
+    # Deduplicate while preserving order
+    origins = list(dict.fromkeys(combined))
+    
+    if not origins:
         # Default development origins
-        logger.warning("CORS_ORIGINS not configured, using development defaults")
+        logger.warning("CORS_ORIGINS / BACKEND_CORS_ORIGINS not configured, using development defaults")
         return [
             "http://localhost:3000",
             "http://localhost:3001",
             "http://127.0.0.1:3000",
         ]
     
-    # Parse comma-separated origins
-    origins = [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
-    
-    logger.info(f"CORS configured with {len(origins)} origins")
+    logger.info(f"CORS configured with {len(origins)} origins: {origins}")
     return origins
 
 

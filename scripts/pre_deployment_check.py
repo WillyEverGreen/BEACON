@@ -12,6 +12,7 @@ Checks that the codebase is ready for production deployment:
 
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -142,8 +143,12 @@ def check_secrets() -> tuple[bool, list[str]]:
             if not file_path.is_file():
                 continue
             
-            # Skip binary files and common non-source files
-            if file_path.suffix in [".pyc", ".png", ".jpg", ".pdf", ".woff", ".woff2"]:
+            # Skip dependency folders, build artifacts, and git directories
+            if any(part in file_path.parts for part in ["node_modules", ".git", ".next", "__pycache__", "dist", "build", ".venv", "venv"]):
+                continue
+            
+            # Skip binary files, source maps, wasm, and image/font assets
+            if file_path.suffix in [".pyc", ".png", ".jpg", ".pdf", ".woff", ".woff2", ".map", ".wasm", ".ico", ".svg"]:
                 continue
             
             try:
@@ -177,10 +182,17 @@ def check_env_files() -> tuple[bool, list[str]]:
     
     for env_file in env_files:
         if Path(env_file).exists():
-            # Check if it's tracked by git
-            result = os.system(f'git ls-files --error-unmatch "{env_file}" 2>/dev/null')
-            if result == 0:
-                errors.append(f"{env_file} is tracked by git (should be gitignored)")
+            # Check if it's tracked by git using cross-platform subprocess
+            try:
+                result = subprocess.run(
+                    ["git", "ls-files", "--error-unmatch", env_file],
+                    capture_output=True,
+                    text=True,
+                )
+                if result.returncode == 0:
+                    errors.append(f"{env_file} is tracked by git (should be gitignored)")
+            except Exception as e:
+                print_warning(f"Could not run git check for {env_file}: {e}")
     
     if errors:
         for error in errors:

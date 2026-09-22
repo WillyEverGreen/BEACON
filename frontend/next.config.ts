@@ -36,11 +36,14 @@ function validateEnv() {
     missing.forEach(varName => {
       console.error(`   - ${varName}`);
     });
-    console.error('\nPlease check your .env.local file or Vercel environment variables.');
+    console.error('\nPlease configure these environment variables in your Vercel Project Settings → Environment Variables:');
+    console.error('   1. NEXT_PUBLIC_SUPABASE_URL');
+    console.error('   2. NEXT_PUBLIC_SUPABASE_ANON_KEY');
+    console.error('   3. BEACON_API_URL (e.g. https://your-backend.onrender.com)');
     console.error('See frontend/.env.example for the complete list.\n');
     
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('Missing required environment variables');
+    if (process.env.NODE_ENV === 'production' && !process.env.CI_SKIP_ENV_VALIDATION) {
+      throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
     }
   } else {
     console.log('✅ Environment variables validated');

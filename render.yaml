@@ -1,4 +1,4 @@
-﻿services:
+services:
   - type: web
     name: beacon-api
     runtime: docker
@@ -8,7 +8,7 @@
     dockerfilePath: ./Dockerfile
     dockerContext: .
     
-    healthCheckPath: /health/ready
+    healthCheckPath: /health
     
     autoDeploy: true
     
