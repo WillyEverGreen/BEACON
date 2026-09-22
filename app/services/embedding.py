@@ -8,21 +8,23 @@ import logging
 import os
 import sys
 
-from sentence_transformers import SentenceTransformer
-
-# Ensure rag is importable
-_rag_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "rag"))
-if _rag_path not in sys.path:
-    sys.path.insert(0, _rag_path)
-
-from model_registry import get_embedding_model as _get_shared_model
-
-logger = logging.getLogger(__name__)
+# Lazy import to avoid loading heavy PyTorch / SentenceTransformer into memory at startup
+_model = None
 
 
-def get_model() -> SentenceTransformer:
-    """Get the shared embedding model (singleton via model_registry)."""
-    return _get_shared_model()
+def get_model():
+    """Get the shared embedding model (singleton via model_registry, lazily loaded)."""
+    global _model
+    if _model is not None:
+        return _model
+
+    _rag_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "rag"))
+    if _rag_path not in sys.path:
+        sys.path.insert(0, _rag_path)
+
+    from model_registry import get_embedding_model as _get_shared_model
+    _model = _get_shared_model()
+    return _model
 
 
 def generate_embeddings(texts: list[str], batch_size: int = 64) -> list[list[float]]:

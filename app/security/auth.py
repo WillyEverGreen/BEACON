@@ -163,6 +163,22 @@ def required_role_for_request(method: str, path: str) -> str | None:
     if path == "/":
         return None
 
+    # Allow read-only access for dashboard projects and scans
+    if method == "GET" and any(
+        path == p or path.startswith(f"{p}/")
+        for p in (
+            "/v1/projects",
+            "/projects",
+            "/v1/scans",
+            "/scans",
+            "/v1/api/projects",
+            "/api/projects",
+            "/v1/api/scans",
+            "/api/scans",
+        )
+    ):
+        return None
+
     if any(path == p or path.startswith(f"{p}/") for p in _ADMIN_PATH_PREFIXES):
         return "admin"
 
@@ -197,10 +213,25 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
 
         key = _extract_api_key(request)
         if not key:
+            # Check for Supabase JWT
+            from app.security.jwt_utils import extract_user_id_from_jwt
+            token = request.headers.get("X-Supabase-Token") or request.headers.get("Authorization")
+            user_id = extract_user_id_from_jwt(token)
+            if user_id:
+                request.state.role = "auditor" if request.method in {"POST", "PUT", "PATCH", "DELETE"} else "viewer"
+                request.state.user_id = user_id
+                return await call_next(request)
             return JSONResponse({"error": "unauthorized"}, status_code=401)
 
         result = self._store.authenticate(key)
         if result is None:
+            # Check if key is actually a Supabase JWT
+            from app.security.jwt_utils import extract_user_id_from_jwt
+            user_id = extract_user_id_from_jwt(key)
+            if user_id:
+                request.state.role = "auditor" if request.method in {"POST", "PUT", "PATCH", "DELETE"} else "viewer"
+                request.state.user_id = user_id
+                return await call_next(request)
             return JSONResponse({"error": "unauthorized"}, status_code=401)
 
         if not has_required_role(result.role, required_role):

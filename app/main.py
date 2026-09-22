@@ -5,7 +5,7 @@ Registers routers, CORS, health check, and ingestion endpoint.
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.responses import PlainTextResponse
 
 from app.config import settings
@@ -147,8 +147,39 @@ app.include_router(rag.router)
 app.include_router(audit.router)
 app.include_router(dashboard_api.router)
 
+# Direct aliases without /api prefix for frontend compatibility (/v1/projects, /projects, etc.)
+direct_dashboard_router = APIRouter(tags=["Dashboard Direct"])
+for route in dashboard_api.router.routes:
+    route_path = route.path.removeprefix("/api")
+    direct_dashboard_router.add_api_route(
+        route_path,
+        route.endpoint,
+        methods=route.methods,
+        response_model=getattr(route, "response_model", None),
+        status_code=getattr(route, "status_code", None),
+        dependencies=getattr(route, "dependencies", None),
+    )
+    if route_path.endswith("/") and len(route_path) > 1:
+        direct_dashboard_router.add_api_route(
+            route_path.rstrip("/"),
+            route.endpoint,
+            methods=route.methods,
+            response_model=getattr(route, "response_model", None),
+            status_code=getattr(route, "status_code", None),
+            dependencies=getattr(route, "dependencies", None),
+        )
+
+app.include_router(direct_dashboard_router, prefix="/v1")
+app.include_router(direct_dashboard_router)
+
 
 # ── Health & Utility Endpoints ──────────────────────────────────
+
+@app.api_route("/", methods=["GET", "HEAD"])
+async def root():
+    """Root endpoint for platform health and port detection."""
+    return {"status": "ok", "service": "BEACON Accessibility Intelligence Engine"}
+
 
 @app.get("/v1/config")
 async def v1_config():
