@@ -118,13 +118,14 @@ export async function proxyToBeacon(request: Request, options: ProxyOptions): Pr
       }
     }
     
+    const data = await response.text();
     const responseHeaders = new Headers(response.headers);
-    // Delete compression and length headers because fetch() automatically decompressed the body
     responseHeaders.delete("content-encoding");
     responseHeaders.delete("content-length");
     responseHeaders.delete("transfer-encoding");
+    responseHeaders.delete("connection");
 
-    return new Response(response.body, {
+    return new Response(data, {
       status: response.status,
       statusText: response.statusText,
       headers: responseHeaders,
