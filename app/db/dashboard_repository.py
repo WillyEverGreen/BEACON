@@ -205,7 +205,7 @@ def list_projects(user_id: str | None = None) -> list[dict[str, Any]]:
 
     items = list(_read_local_json(LOCAL_PROJECTS_FILE).values())
     if user_id:
-        items = [p for p in items if p.get("user_id") == user_id]
+        items = [p for p in items if p.get("user_id") in (None, "", "system", user_id)]
     return sorted(items, key=lambda x: str(x.get("created_at") or ""), reverse=True)
 
 
@@ -225,7 +225,13 @@ def get_project(project_id: str, user_id: str | None = None) -> dict[str, Any] |
 
     items = _read_local_json(LOCAL_PROJECTS_FILE)
     proj = items.get(project_id)
-    if proj and user_id and proj.get("user_id") != user_id:
+    if not proj:
+        # Check case-insensitively
+        for k, v in items.items():
+            if str(k).lower() == str(project_id).lower():
+                proj = v
+                break
+    if proj and user_id and proj.get("user_id") not in (None, "", "system", user_id):
         return None
     return proj
 

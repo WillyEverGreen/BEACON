@@ -163,8 +163,8 @@ def required_role_for_request(method: str, path: str) -> str | None:
     if path == "/":
         return None
 
-    # Allow read-only access for dashboard projects and scans
-    if method == "GET" and any(
+    # Allow dashboard projects and scans access for users
+    if any(
         path == p or path.startswith(f"{p}/")
         for p in (
             "/v1/projects",

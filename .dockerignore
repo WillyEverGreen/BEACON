@@ -67,17 +67,18 @@ temp/
 .gitlab-ci.yml
 
 # Database
+# Database & local data
 *.db
 *.sqlite
 *.sqlite3
 chroma_db/
-data/
+/data/
 
 # Output files
 results/
 feedback_data/
 *.json
-!app/data/*.json
+!app/data/**
 !requirements.txt
 !package*.json
 
