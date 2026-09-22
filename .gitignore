@@ -246,7 +246,8 @@ GenA11y/
 a11y-llm-eval/
 act-rules.github.io/
 equal-access/
-axe-core/
+axe-core/*
+!axe-core/axe.min.js
 MagicMock/
 
 # -- Dynamic Artifacts & Data -------------------------------------------------

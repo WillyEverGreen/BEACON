@@ -1,5 +1,5 @@
 # ==============================================================================
-# BEACON Backend Dockerfile for Render Deployment
+# BEACON Backend Production Dockerfile
 # Multi-stage build for optimized production image
 # ==============================================================================
 
@@ -25,8 +25,8 @@ RUN pip install --no-cache-dir --user -r requirements.txt
 # ==============================================================================
 FROM node:18-alpine AS node-lighthouse
 
-# Install Lighthouse globally
-RUN npm install -g lighthouse@latest
+# Install Lighthouse and axe-core globally
+RUN npm install -g lighthouse@latest axe-core@latest
 
 # ==============================================================================
 # Stage 3: Final Production Image
@@ -88,7 +88,6 @@ RUN ln -s /usr/local/lib/node_modules/lighthouse/cli/index.js /usr/local/bin/lig
 # Copy application code and offline axe-core bundle
 COPY --chown=beacon:beacon app/ ./app/
 COPY --chown=beacon:beacon rag/ ./rag/
-COPY --chown=beacon:beacon data/ ./data/
 COPY --chown=beacon:beacon corpus/ ./corpus/
 COPY --chown=beacon:beacon axe-core/axe.min.js ./axe-core/axe.min.js
 
