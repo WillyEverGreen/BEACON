@@ -47,7 +47,7 @@ services:
       
       # Security Configuration
       - key: CORS_ORIGINS
-        value: https://your-app.vercel.app
+        value: https://frontend-seven-phi-64.vercel.app,http://localhost:3000
       - key: RATE_LIMIT_ENABLED
         value: true
       - key: RATE_LIMIT_PER_MINUTE
